@@ -27,12 +27,16 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.container.ConfigMNodeContainer;
 import org.apache.iotdb.confignode.persistence.schema.mnode.info.ConfigTableInfo;
 
+import org.apache.tsfile.enums.TSDataType;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
@@ -70,12 +74,24 @@ public class ConfigTableNode implements IConfigMNode {
     return tableNodeInfo.getPreDeletedColumns();
   }
 
+  public Map<String, TSDataType> getPreAlteredColumns() {
+    return tableNodeInfo.getPreAlteredColumns();
+  }
+
   public void addPreDeletedColumn(final String column) {
     tableNodeInfo.addPreDeletedColumn(column);
   }
 
   public void removePreDeletedColumn(final String column) {
     tableNodeInfo.removePreDeletedColumn(column);
+  }
+
+  public void addPreAlteredColumn(final String column, TSDataType dataType) {
+    tableNodeInfo.addPreAlteredColumn(column, dataType);
+  }
+
+  public void removePreAlteredColumn(final String column) {
+    tableNodeInfo.removePreAlteredColumn(column);
   }
 
   @Override
@@ -86,6 +102,10 @@ public class ConfigTableNode implements IConfigMNode {
   @Override
   public void setName(final String name) {
     tableNodeInfo.setName(name);
+
+    // Full path ends with name, so it needs to be updated when name changes
+    // Clear cache and compute again when fullPath is next accessed
+    this.fullPath = null;
   }
 
   @Override
@@ -202,7 +222,7 @@ public class ConfigTableNode implements IConfigMNode {
 
   @Override
   public IDatabaseMNode<IConfigMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(ConfigNodeMessages.WRONG_MNODE_TYPE);
   }
 
   @Override

@@ -1,0 +1,231 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.execution.fragment;
+
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryAttemptId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+public class FragmentInstanceManagerTest {
+
+  private static final String FAILURE_MESSAGE = "metadata lease fenced";
+
+  @BeforeClass
+  public static void setUpClass() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
+
+  @Test
+  public void testDataQueryFailureInfoAfterConcurrentContextRemoval() throws Exception {
+    assertFailureInfoAfterConcurrentContextRemoval(true);
+  }
+
+  @Test
+  public void testSchemaQueryFailureInfoAfterConcurrentContextRemoval() throws Exception {
+    assertFailureInfoAfterConcurrentContextRemoval(false);
+  }
+
+  @Test
+  public void testPartialDispatchReleasesAttemptContextAndRejectsLateFragment() {
+    QueryId queryId = new QueryId("partial_attempt_dispatch");
+    FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+    TQueryAdmissionToken token = manager.fetchQueryAdmissionToken(TimeUnit.MINUTES.toMillis(1));
+    org.apache.iotdb.db.queryengine.common.QueryAttemptId key =
+        new org.apache.iotdb.db.queryengine.common.QueryAttemptId(queryId, 0);
+    try {
+      for (int i = 0; i < 2; i++) {
+        FragmentInstance instance = mock(FragmentInstance.class);
+        PlanFragment fragment = mock(PlanFragment.class);
+        FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId(queryId, i), "0");
+        when(instance.getId()).thenReturn(id);
+        when(instance.getFragment()).thenReturn(fragment);
+        when(instance.hasQueryAttempt()).thenReturn(true);
+        when(instance.getQueryAttemptId()).thenReturn(0);
+        when(instance.getAdmissionToken()).thenReturn(token);
+        when(instance.getDataNodeFINum()).thenReturn(3);
+        when(instance.getTimeOut()).thenReturn(TimeUnit.MINUTES.toMillis(1));
+        when(fragment.getPlanNodeTree())
+            .thenThrow(new MetadataLeaseFencedException(FAILURE_MESSAGE, RETRY_UNTIL_SUCCESS));
+        FragmentInstanceInfo result =
+            manager.execDataQueryFragmentInstance(instance, mock(IDataRegionForQuery.class));
+        assertTrue(result.getState().isFailed());
+      }
+      assertTrue(manager.getQueryAttempts().hasSharedContext(key));
+      manager.closeQueryAttempt(queryId, 0, token, true);
+      org.junit.Assert.assertFalse(manager.getQueryAttempts().hasSharedContext(key));
+      FragmentInstance late = mock(FragmentInstance.class);
+      when(late.getId()).thenReturn(new FragmentInstanceId(new PlanFragmentId(queryId, 2), "0"));
+      when(late.hasQueryAttempt()).thenReturn(true);
+      when(late.getQueryAttemptId()).thenReturn(0);
+      when(late.getAdmissionToken()).thenReturn(token);
+      org.junit.Assert.assertThrows(
+          org.apache.iotdb.commons.exception.IoTDBRuntimeException.class,
+          () -> manager.execDataQueryFragmentInstance(late, mock(IDataRegionForQuery.class)));
+    } finally {
+      manager.closeQueryAttempt(queryId, 0, token, true);
+      for (int i = 0; i < 3; i++) {
+        manager.cancelTask(new FragmentInstanceId(new PlanFragmentId(queryId, i), "0"), true);
+      }
+    }
+  }
+
+  @Test
+  public void testCancelledDataAdmissionReleasesTransferredUdfScope() throws Exception {
+    assertCancelledAdmissionReleasesUdfScope(true);
+  }
+
+  @Test
+  public void testCancelledSchemaAdmissionReleasesTransferredUdfScope() throws Exception {
+    assertCancelledAdmissionReleasesUdfScope(false);
+  }
+
+  private void assertCancelledAdmissionReleasesUdfScope(boolean dataQuery) throws Exception {
+    UDFClassLoaderManager classLoaders = UDFClassLoaderManager.getInstance();
+    if (classLoaders == null) {
+      classLoaders = UDFClassLoaderManager.setupAndGetInstance();
+    }
+    UDFClassLoaderManager loader = classLoaders;
+    QueryId queryId = new QueryId("cancelled_admission_" + dataQuery);
+    FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId(queryId, 0), "0");
+    UDFClassLoaderManager.QueryScope scope = loader.openQueryScope(id.getFullId());
+    FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+    TQueryAdmissionToken token = manager.fetchQueryAdmissionToken(30000);
+    FragmentInstance instance = mock(FragmentInstance.class);
+    when(instance.getId()).thenReturn(id);
+    when(instance.hasQueryAttempt()).thenReturn(true);
+    when(instance.getQueryAttemptId()).thenReturn(0);
+    when(instance.getAdmissionToken()).thenReturn(token);
+    when(instance.getTimeOut()).thenReturn(30000L);
+    when(instance.getDataNodeFINum()).thenReturn(3);
+    when(instance.claimUDFQueryScope()).thenReturn(scope);
+    // The attempt closes after registration, before the newly created FI context adopts the
+    // deserializer's scope. No execution listener will exist to perform its cleanup.
+    when(instance.getSessionInfo())
+        .thenAnswer(
+            ignored -> {
+              manager.closeQueryAttempt(queryId, 0, token, true);
+              return null;
+            });
+    try {
+      FragmentInstanceInfo info =
+          dataQuery
+              ? manager.execDataQueryFragmentInstance(instance, mock(IDataRegionForQuery.class))
+              : manager.execSchemaQueryFragmentInstance(instance, mock(ISchemaRegion.class));
+      assertEquals(FragmentInstanceState.CANCELLED, info.getState());
+      org.junit.Assert.assertThrows(
+          IllegalStateException.class, () -> loader.withQueryScope(scope, () -> null));
+      org.junit.Assert.assertFalse(
+          manager.getQueryAttempts().hasSharedContext(new QueryAttemptId(queryId, 0)));
+    } finally {
+      manager.cancelTask(id, true);
+      loader.finalizeUDFQuery(scope);
+    }
+  }
+
+  private void assertFailureInfoAfterConcurrentContextRemoval(boolean dataQuery) throws Exception {
+    String queryType = dataQuery ? "data" : "schema";
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(
+            new PlanFragmentId(new QueryId(queryType + "_context_removal"), 0), "0");
+    FragmentInstance instance = mock(FragmentInstance.class);
+    PlanFragment fragment = mock(PlanFragment.class);
+    CountDownLatch planningStarted = new CountDownLatch(1);
+    CountDownLatch failPlanning = new CountDownLatch(1);
+
+    when(instance.getId()).thenReturn(instanceId);
+    when(instance.getFragment()).thenReturn(fragment);
+    when(instance.getDataNodeFINum()).thenReturn(1);
+    when(instance.getTimeOut()).thenReturn(TimeUnit.SECONDS.toMillis(30));
+    when(fragment.getPlanNodeTree())
+        .thenAnswer(
+            ignored -> {
+              planningStarted.countDown();
+              if (!failPlanning.await(10, TimeUnit.SECONDS)) {
+                throw new AssertionError("Timed out waiting to fail planning");
+              }
+              throw new MetadataLeaseFencedException(FAILURE_MESSAGE, RETRY_UNTIL_SUCCESS);
+            });
+
+    FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<FragmentInstanceInfo> executionFuture =
+          executor.submit(
+              () ->
+                  dataQuery
+                      ? manager.execDataQueryFragmentInstance(
+                          instance, mock(IDataRegionForQuery.class))
+                      : manager.execSchemaQueryFragmentInstance(
+                          instance, mock(ISchemaRegion.class)));
+
+      assertTrue(planningStarted.await(10, TimeUnit.SECONDS));
+      Future<FragmentInstanceInfo> cancellationFuture =
+          executor.submit(() -> manager.cancelTask(instanceId, true));
+
+      // cancelTask removes the context before it waits for the in-progress computeIfAbsent on the
+      // execution map. This recreates the race that previously made the failure path look up a
+      // null context.
+      await().atMost(10, TimeUnit.SECONDS).until(() -> manager.getInstanceInfo(instanceId) == null);
+      failPlanning.countDown();
+
+      FragmentInstanceInfo failureInfo = executionFuture.get(10, TimeUnit.SECONDS);
+      assertNotNull(failureInfo);
+      assertTrue(failureInfo.getState().isFailed());
+      assertEquals(FAILURE_MESSAGE, failureInfo.getMessage());
+      assertTrue(failureInfo.getErrorCode().isPresent());
+      assertEquals(
+          TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(),
+          failureInfo.getErrorCode().get().getCode());
+      assertNotNull(cancellationFuture.get(10, TimeUnit.SECONDS));
+    } finally {
+      failPlanning.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+      manager.cancelTask(instanceId, true);
+    }
+  }
+}

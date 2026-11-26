@@ -1,0 +1,74 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.schema.table;
+
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+import org.apache.iotdb.commons.path.PartialPath;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
+
+public class Audit {
+  public static final String TABLE_MODEL_AUDIT_DATABASE = "__audit";
+  public static final String TREE_MODEL_AUDIT_DATABASE =
+      String.format("%s.%s", ROOT, TABLE_MODEL_AUDIT_DATABASE);
+  public static final String RESERVED_DATABASE_NAME_ERROR_MSG =
+      SchemaMessages
+          .MESSAGE_THE_DATABASE_NAME_ARG_IS_RESERVED_PLEASE_USE_ANOTHER_VALID_DATABASE_NAME_ECC25B4E;
+  public static final PartialPath TREE_MODEL_AUDIT_DATABASE_PATH =
+      new PartialPath(new String[] {"root", TABLE_MODEL_AUDIT_DATABASE});
+  public static final PartialPath TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN =
+      new PartialPath(new String[] {"root", TABLE_MODEL_AUDIT_DATABASE, MULTI_LEVEL_PATH_WILDCARD});
+
+  private Audit() {}
+
+  /**
+   * @param prefixPath without any * or **
+   */
+  public static boolean includeByAuditTreeDB(PartialPath prefixPath) {
+    String[] nodes = prefixPath.getNodes();
+    return nodes.length >= 2 && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1]);
+  }
+
+  public static boolean isAuditTreeDatabase(PartialPath databasePath) {
+    String[] nodes = databasePath.getNodes();
+    return nodes.length == 2
+        && ROOT.equalsIgnoreCase(nodes[0])
+        && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1]);
+  }
+
+  public static boolean isAuditDatabase(final String databaseName) {
+    return isDatabaseOrDescendant(databaseName, TABLE_MODEL_AUDIT_DATABASE)
+        || isDatabaseOrDescendant(databaseName, TREE_MODEL_AUDIT_DATABASE);
+  }
+
+  // Audit database names are matched case-insensitively: root.__Audit is also an audit database.
+  private static boolean isDatabaseOrDescendant(
+      final String databaseName, final String auditDatabaseName) {
+    return databaseName != null
+        && databaseName.regionMatches(true, 0, auditDatabaseName, 0, auditDatabaseName.length())
+        && (databaseName.length() == auditDatabaseName.length()
+            || databaseName.charAt(auditDatabaseName.length()) == '.');
+  }
+
+  public static String getReservedDatabaseNameErrorMsg(String databaseName) {
+    return String.format(RESERVED_DATABASE_NAME_ERROR_MSG, databaseName);
+  }
+}

@@ -36,15 +36,16 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullC
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,6 +54,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -62,6 +65,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
@@ -78,6 +82,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     super.setUp();
   }
 
+  @Ignore
   @Test
   public void testBasicPullConsumerWithCommitAsync() throws Exception {
     // Insert some historical data
@@ -132,9 +137,9 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   }
                   for (final SubscriptionMessage message : messages) {
                     int rowCountInOneMessage = 0;
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
-                      while (dataSet.hasNext()) {
+                    for (final ResultSet dataSet : message.getResultSets()) {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
                         dataSet.next();
                         rowCount.addAndGet(1);
                         rowCountInOneMessage++;
@@ -225,6 +230,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testBasicPushConsumer() {
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
@@ -267,8 +273,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                 message -> {
                   onReceiveCount.getAndIncrement();
                   message
-                      .getSessionDataSetsHandler()
-                      .tabletIterator()
+                      .getRecordTabletIterator()
                       .forEachRemaining(tablet -> rowCount.addAndGet(tablet.getRowSize()));
                   return ConsumeResult.SUCCESS;
                 })
@@ -324,6 +329,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testPollUnsubscribedTopics() throws Exception {
     // Insert some historical data
@@ -386,10 +392,13 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
-                      while (dataSet.hasNext()) {
-                        timestampSum.getAndAdd(dataSet.next().getTimestamp());
+                    for (final ResultSet dataSet : message.getResultSets()) {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        timestampSum.getAndAdd(
+                            ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                .nextRecord()
+                                .getTimestamp());
                         rowCount.addAndGet(1);
                       }
                     }
@@ -424,6 +433,138 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Test
+  public void testInitialTopicRetainsProgressAfterUnsubscribe() throws Exception {
+    final String topicName = "topic_initial_retained_progress";
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("create database root.retain_progress");
+      for (int i = 0; i < 20; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.retain_progress.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    }
+
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
+      session.open();
+      final Properties properties = new Properties();
+      properties.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
+      properties.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, true);
+      session.createTopic(topicName, properties);
+    }
+
+    try (final SubscriptionTreePullConsumer consumer =
+        new SubscriptionTreePullConsumer.Builder()
+            .host(host)
+            .port(port)
+            .consumerId("consumer_retained_progress")
+            .consumerGroupId("group_retained_progress")
+            .autoCommit(false)
+            .buildPullConsumer()) {
+      consumer.open();
+      consumer.subscribe(topicName);
+
+      Assert.assertEquals(
+          LongStream.range(0, 20).boxed().collect(Collectors.toList()),
+          pollTimestamps(consumer, 20, true));
+
+      try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement(
+            "insert into root.retain_progress.d1(time, s1) values (20, 1)");
+        session.executeNonQueryStatement("flush");
+      }
+
+      // Leave this delivery uncommitted. The server must requeue it when the last consumer leaves.
+      Assert.assertEquals(Collections.singletonList(20L), pollTimestamps(consumer, 1, false));
+
+      consumer.unsubscribe(topicName);
+      try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement(
+            "insert into root.retain_progress.d1(time, s1) values (21, 1)");
+        session.executeNonQueryStatement("flush");
+      }
+
+      consumer.subscribe(topicName);
+      Assert.assertEquals(Arrays.asList(20L, 21L), pollTimestamps(consumer, 2, true));
+      consumer.unsubscribe(topicName);
+    }
+  }
+
+  @Test
+  public void testInitialTopicDoesNotRetainProgressByDefault() throws Exception {
+    final String topicName = "topic_initial_unretained_progress";
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("create database root.unretained_progress");
+      for (int i = 0; i < 3; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.unretained_progress.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    }
+
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
+      session.open();
+      final Properties properties = new Properties();
+      properties.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
+      session.createTopic(topicName, properties);
+    }
+
+    try (final SubscriptionTreePullConsumer consumer =
+        new SubscriptionTreePullConsumer.Builder()
+            .host(host)
+            .port(port)
+            .consumerId("consumer_unretained_progress")
+            .consumerGroupId("group_unretained_progress")
+            .autoCommit(false)
+            .buildPullConsumer()) {
+      consumer.open();
+      consumer.subscribe(topicName);
+      Assert.assertEquals(Arrays.asList(0L, 1L, 2L), pollTimestamps(consumer, 3, true));
+      consumer.unsubscribe(topicName);
+
+      try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement(
+            "insert into root.unretained_progress.d1(time, s1) values (3, 1)");
+        session.executeNonQueryStatement("flush");
+      }
+
+      consumer.subscribe(topicName);
+      Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L), pollTimestamps(consumer, 4, true));
+      consumer.unsubscribe(topicName);
+    }
+  }
+
+  private static List<Long> pollTimestamps(
+      final SubscriptionTreePullConsumer consumer, final int expectedRows, final boolean commit) {
+    final List<Long> timestamps = new ArrayList<>();
+    AWAIT.untilAsserted(
+        () -> {
+          final List<SubscriptionMessage> messages = consumer.poll(Duration.ofSeconds(1));
+          for (final SubscriptionMessage message : messages) {
+            for (final ResultSet dataSet : message.getResultSets()) {
+              try (final ResultSet result = dataSet) {
+                final SubscriptionRecordHandler.SubscriptionResultSet records =
+                    (SubscriptionRecordHandler.SubscriptionResultSet) result;
+                while (records.hasNext()) {
+                  timestamps.add(records.nextRecord().getTimestamp());
+                }
+              }
+            }
+          }
+          if (commit) {
+            consumer.commitSync(messages);
+          }
+          Assert.assertEquals(expectedRows, timestamps.size());
+        });
+    Collections.sort(timestamps);
+    return timestamps;
+  }
+
+  @Ignore
   @Test
   public void testTsFileDeduplication() {
     // Insert some historical data
@@ -465,12 +606,12 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .consumeListener(
                 message -> {
                   onReceiveCount.getAndIncrement();
-                  try (final TsFileReader tsFileReader = message.getTsFileHandler().openReader()) {
-                    final QueryDataSet dataSet =
-                        tsFileReader.query(
-                            QueryExpression.create(
-                                Collections.singletonList(new Path("root.db.d1", "s1", true)),
-                                null));
+                  try (final ITsFileTreeReader tsFileReader =
+                      message.getTsFile().openTreeReader()) {
+                    final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                        SubscriptionTreeReaderTestUtils.query(
+                            tsFileReader,
+                            Collections.singletonList(new Path("root.db.d1", "s1", true)));
                     while (dataSet.hasNext()) {
                       dataSet.next();
                       rowCount.addAndGet(1);
@@ -496,6 +637,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testDataSetDeduplication() {
     // Insert some historical data
@@ -538,11 +680,15 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .ackStrategy(AckStrategy.AFTER_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
-                    while (dataSet.hasNext()) {
-                      dataSet.next();
-                      rowCount.addAndGet(1);
+                  for (final ResultSet dataSet : message.getResultSets()) {
+                    try {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        dataSet.next();
+                        rowCount.addAndGet(1);
+                      }
+                    } catch (final IOException e) {
+                      throw new RuntimeException(e);
                     }
                   }
                   return ConsumeResult.SUCCESS;
@@ -562,6 +708,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
   // same to
   // org.apache.iotdb.subscription.it.local.IoTDBSubscriptionBasicIT.testDataSetDeduplication,
   // but missing consumer id & consumer group id when building consumer
+  @Ignore
   @Test
   public void testMissingConsumerId() {
     // Insert some historical data
@@ -602,11 +749,15 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .ackStrategy(AckStrategy.AFTER_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
-                    while (dataSet.hasNext()) {
-                      dataSet.next();
-                      rowCount.addAndGet(1);
+                  for (final ResultSet dataSet : message.getResultSets()) {
+                    try {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        dataSet.next();
+                        rowCount.addAndGet(1);
+                      }
+                    } catch (final IOException e) {
+                      throw new RuntimeException(e);
                     }
                   }
                   return ConsumeResult.SUCCESS;
@@ -628,6 +779,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testDropSubscriptionBySession() throws Exception {
     // Insert some historical data

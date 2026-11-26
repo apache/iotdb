@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
@@ -72,9 +73,29 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
           dataRegion.executeCompaction();
         }
       } catch (InterruptedException ignored) {
+        boolean isStoppedByUser =
+            CompactionScheduleTaskManager.getInstance().isStoppingAllScheduleTask();
         logger.info(
-            "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted", workerId);
-        return null;
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTIONSCHEDULETASKWORKER_COMPACTION_SCHEDULE_IS_INTERRUPTED_9EF702D1,
+            workerId,
+            isStoppedByUser);
+        if (isStoppedByUser) {
+          return null;
+        }
+      } catch (Exception e) {
+        logger.error(
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTIONSCHEDULETASKWORKER_FAILED_TO_EXECUTE_COMPACTION_4F302761,
+            workerId,
+            e);
+      } catch (Throwable t) {
+        logger.error(
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTIONSCHEDULETASKWORKER_FAILED_TO_EXECUTE_COMPACTION_E571F6E3,
+            workerId,
+            t);
+        throw t;
       }
     }
   }

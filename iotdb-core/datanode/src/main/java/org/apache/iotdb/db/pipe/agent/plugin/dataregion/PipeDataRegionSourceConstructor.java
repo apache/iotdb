@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.donothing.DoNot
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
-import org.apache.iotdb.db.pipe.source.mqtt.MQTTSource;
 
 class PipeDataRegionSourceConstructor extends PipeSourceConstructor {
 
@@ -43,8 +42,5 @@ class PipeDataRegionSourceConstructor extends PipeSourceConstructor {
         BuiltinPipePlugin.DO_NOTHING_SOURCE.getPipePluginName(), DoNothingSource::new);
     pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBDataRegionSource::new);
-
-    pluginConstructors.put(BuiltinPipePlugin.MQTT_EXTRACTOR.getPipePluginName(), MQTTSource::new);
-    pluginConstructors.put(BuiltinPipePlugin.MQTT_SOURCE.getPipePluginName(), MQTTSource::new);
   }
 }

@@ -24,12 +24,13 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 
+import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -39,6 +40,8 @@ import java.util.Set;
  */
 public class InFilter extends SchemaFilter {
 
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(InFilter.class);
+
   private final Set<String> values;
 
   public InFilter(Set<String> values) {
@@ -47,7 +50,7 @@ public class InFilter extends SchemaFilter {
 
   public InFilter(final ByteBuffer byteBuffer) {
     final int length = ReadWriteIOUtils.readInt(byteBuffer);
-    this.values = new HashSet<>();
+    this.values = Sets.newHashSetWithExpectedSize(length);
     for (int i = 0; i < length; ++i) {
       values.add(ReadWriteIOUtils.readString(byteBuffer));
     }
@@ -98,5 +101,10 @@ public class InFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(values);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOfCollection(values);
   }
 }

@@ -21,11 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -49,6 +51,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFilePieceNode.class);
 
   private File tsFile;
+  private long pieceIndex;
 
   private long dataSize;
   private List<TsFileData> tsFileDataList;
@@ -58,10 +61,19 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   public LoadTsFilePieceNode(PlanNodeId id, File tsFile) {
+    this(id, tsFile, 0L);
+  }
+
+  public LoadTsFilePieceNode(PlanNodeId id, File tsFile, long pieceIndex) {
     super(id);
     this.tsFile = tsFile;
+    this.pieceIndex = pieceIndex;
     this.dataSize = 0;
     this.tsFileDataList = new ArrayList<>();
+  }
+
+  public long getPieceIndex() {
+    return pieceIndex;
   }
 
   public long getDataSize() {
@@ -103,7 +115,8 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of load piece TsFile is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_LOAD_PIECE_TSFILE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -124,13 +137,14 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       serializeAttributes(stream);
       byteBuffer.put(byteOutputStream.toByteArray());
     } catch (IOException e) {
-      LOGGER.error("Serialize to ByteBuffer error.", e);
+      LOGGER.error(DataNodeQueryMessages.SERIALIZE_TO_BYTEBUFFER_ERROR, e);
     }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LOAD_TSFILE.serialize(stream);
+    ReadWriteIOUtils.write(pieceIndex, stream);
     ReadWriteIOUtils.write(tsFile.getPath(), stream); // TODO: can save this space
     ReadWriteIOUtils.write(tsFileDataList.size(), stream);
     for (TsFileData tsFileData : tsFileDataList) {
@@ -139,15 +153,17 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       } catch (IOException e) {
         LOGGER.error(
             String.format(
-                "Serialize data of TsFile %s error, skip TsFileData %s",
-                tsFile.getPath(), tsFileData));
+                DataNodeQueryMessages.SERIALIZE_DATA_OF_TSFILE_S_ERROR_SKIP_TSFILEDATA_S,
+                tsFile.getPath(),
+                tsFileData));
       }
     }
   }
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
-    throw new NotImplementedException("split load piece TsFile is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.SPLIT_LOAD_PIECE_TSFILE_IS_NOT_IMPLEMENTED);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -156,8 +172,10 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     ByteBufferInputStream stream = new ByteBufferInputStream(buffer);
     try {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
+      final long pieceIndex = ReadWriteIOUtils.readLong(stream);
       final File tsFile = new File(ReadWriteIOUtils.readString(stream));
-      final LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
+      final LoadTsFilePieceNode pieceNode =
+          new LoadTsFilePieceNode(new PlanNodeId(""), tsFile, pieceIndex);
       final int tsFileDataSize = ReadWriteIOUtils.readInt(stream);
       for (int i = 0; i < tsFileDataSize; i++) {
         TsFileData tsFileData = TsFileData.deserialize(stream);
@@ -166,7 +184,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       pieceNode.setPlanNodeId(PlanNodeId.deserialize(stream));
       return pieceNode;
     } catch (IOException | PageException | IllegalPathException e) {
-      LOGGER.error("Deserialize {} error.", LoadTsFilePieceNode.class.getName(), e);
+      LOGGER.error(DataNodeQueryMessages.DESERIALIZE_ERROR, LoadTsFilePieceNode.class.getName(), e);
       return null;
     }
   }
@@ -181,21 +199,30 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     }
     LoadTsFilePieceNode loadTsFilePieceNode = (LoadTsFilePieceNode) o;
     return Objects.equals(tsFile, loadTsFilePieceNode.tsFile)
+        && pieceIndex == loadTsFilePieceNode.pieceIndex
         && Objects.equals(dataSize, loadTsFilePieceNode.dataSize)
         && Objects.equals(tsFileDataList, loadTsFilePieceNode.tsFileDataList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFile, dataSize, tsFileDataList);
+    return Objects.hash(tsFile, pieceIndex, dataSize, tsFileDataList);
   }
 
   @Override
   public String toString() {
-    return "LoadTsFilePieceNode{" + "tsFile=" + tsFile + ", dataSize=" + dataSize + '}';
+    return "LoadTsFilePieceNode{"
+        + "tsFile="
+        + tsFile
+        + ", pieceIndex="
+        + pieceIndex
+        + ", dataSize="
+        + dataSize
+        + '}';
   }
 
-  public static class ByteBufferInputStream extends InputStream {
+  public static class ByteBufferInputStream extends InputStream
+      implements ChunkData.ByteBufferSliceSource {
     private final ByteBuffer buffer;
 
     public ByteBufferInputStream(ByteBuffer buffer) {
@@ -220,9 +247,11 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       return toRead;
     }
 
-    public ByteBuffer read(int length) {
+    @Override
+    public ByteBuffer readSlice(int length) {
       if (length < 0 || length > buffer.remaining()) {
-        throw new IllegalArgumentException("Invalid length for slicing: " + length);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_LENGTH_FOR_SLICING + length);
       }
       ByteBuffer slicedBuffer = buffer.slice();
       slicedBuffer.limit(length);

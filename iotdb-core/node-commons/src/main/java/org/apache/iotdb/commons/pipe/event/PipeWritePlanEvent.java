@@ -36,7 +36,9 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final boolean isGeneratedByPipe) {
     super(
@@ -45,7 +47,9 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE);

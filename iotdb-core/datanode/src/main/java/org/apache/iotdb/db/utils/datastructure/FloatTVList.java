@@ -28,9 +28,9 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -61,6 +61,15 @@ public abstract class FloatTVList extends TVList {
       default:
         return new TimFloatTVList();
     }
+  }
+
+  @Override
+  public synchronized TVList cloneForFlushSort() {
+    FloatTVList cloneList = FloatTVList.newList();
+    cloneAs(cloneList);
+    cloneList.bitMap = this.bitMap;
+    cloneList.values = this.values;
+    return cloneList;
   }
 
   @Override
@@ -137,7 +146,7 @@ public abstract class FloatTVList extends TVList {
   @Override
   public TimeValuePair getTimeValuePair(int index) {
     return new TimeValuePair(
-        getTime(index), TsPrimitiveType.getByType(TSDataType.FLOAT, getFloat(index)));
+        getTime(index), Type.fromTsDataType(TSDataType.FLOAT).getTsPrimitiveType(getFloat(index)));
   }
 
   @Override
@@ -147,7 +156,7 @@ public abstract class FloatTVList extends TVList {
     if (!Float.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
       value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
-    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.FLOAT, value));
+    return new TimeValuePair(time, Type.fromTsDataType(TSDataType.FLOAT).getTsPrimitiveType(value));
   }
 
   @Override

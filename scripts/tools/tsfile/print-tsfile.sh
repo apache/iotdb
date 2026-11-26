@@ -24,9 +24,11 @@ echo ---------------------
 
 source "$(dirname "$0")/../../conf/iotdb-common.sh"
 #get_iotdb_include and checkAllVariables is in iotdb-common.sh
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
+fi
 VARS=$(get_iotdb_include "$*")
 checkAllVariables
-export IOTDB_HOME="${IOTDB_HOME}/.."
 eval set -- "$VARS"
 
 

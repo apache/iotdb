@@ -64,8 +64,8 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testLogin() throws AuthException {
-    Assert.assertTrue(authorizer.login("root", "root"));
-    Assert.assertFalse(authorizer.login("root", "error"));
+    Assert.assertTrue(authorizer.login("root", "root", false));
+    Assert.assertThrows(AuthException.class, () -> authorizer.login("root", "error", false));
   }
 
   @Test
@@ -76,7 +76,7 @@ public class LocalFileAuthorizerTest {
     } catch (AuthException e) {
       assertEquals("User user already exists", e.getMessage());
     }
-    Assert.assertTrue(authorizer.login(userName, password));
+    Assert.assertTrue(authorizer.login(userName, password, false));
     authorizer.deleteUser(userName);
     try {
       authorizer.deleteUser(userName);
@@ -130,7 +130,7 @@ public class LocalFileAuthorizerTest {
       authorizer.grantPrivilegeToUser(
           "error", new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA, false));
     } catch (AuthException e) {
-      assertEquals("No such user error", e.getMessage());
+      assertEquals("User error does not exist", e.getMessage());
     }
 
     try {
@@ -230,7 +230,7 @@ public class LocalFileAuthorizerTest {
   public void testUpdatePassword() throws AuthException {
     authorizer.createUser(userName, password);
     authorizer.updateUserPassword(userName, "newPassword123456");
-    Assert.assertTrue(authorizer.login(userName, "newPassword123456"));
+    Assert.assertTrue(authorizer.login(userName, "newPassword123456", false));
   }
 
   @Test
@@ -250,7 +250,7 @@ public class LocalFileAuthorizerTest {
     IAuthorizer authorizer = BasicAuthorizer.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
-    assertEquals(CommonDescriptor.getInstance().getConfig().getAdminName(), userList.get(0));
+    assertEquals(CommonDescriptor.getInstance().getConfig().getDefaultAdminName(), userList.get(0));
 
     int userCnt = 10;
     for (int i = 0; i < userCnt; i++) {

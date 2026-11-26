@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -104,7 +105,7 @@ public class LoadTsFileTreeSchemaCache {
   public boolean getDeviceIsAligned(IDeviceID device) {
     if (!tsFileDevice2IsAligned.containsKey(device)) {
       LOGGER.warn(
-          "Device {} is not in the tsFileDevice2IsAligned cache {}.",
+          DataNodeQueryMessages.DEVICE_ARG_IS_NOT_IN_THE_TSFILEDEVICE2ISALIGNED_CACHE_ARG,
           device,
           tsFileDevice2IsAligned);
     }
@@ -195,7 +196,8 @@ public class LoadTsFileTreeSchemaCache {
   }
 
   public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
-    return ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device);
+    return ModificationUtils.isDeviceDeletedByMods(
+        currentModifications, currentTimeIndex, device, false);
   }
 
   public boolean isTimeSeriesDeletedByMods(IDeviceID device, TimeseriesMetadata timeseriesMetadata)
@@ -205,7 +207,8 @@ public class LoadTsFileTreeSchemaCache {
         device,
         timeseriesMetadata.getMeasurementId(),
         timeseriesMetadata.getStatistics().getStartTime(),
-        timeseriesMetadata.getStatistics().getEndTime());
+        timeseriesMetadata.getStatistics().getEndTime(),
+        false);
   }
 
   public void addAlreadySetDatabase(PartialPath database) {

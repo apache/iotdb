@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -57,6 +58,8 @@ public class SystemInfo {
   private volatile boolean rejected = false;
 
   private long memorySizeForMemtable;
+  // Flush reservations reduce the MemTable budget; they must not also enter DataRegion usage.
+  private final WriteMemoryManager flushMemoryManager = new WriteMemoryManager("FlushTasks");
   private final Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
@@ -111,7 +114,8 @@ public class SystemInfo {
     totalStorageGroupMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Report database Status to the system. " + "After adding {}, current sg mem cost is {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_REPORT_DATABASE_STATUS_TO_THE_SYSTEM_AFTER_ADDING_CURRENT_8982BBD7,
           delta,
           totalStorageGroupMemCost);
     }
@@ -121,14 +125,15 @@ public class SystemInfo {
       return true;
     } else if (totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
-          "The total database mem costs are too large, call for flushing. "
-              + "Current sg cost is {}",
+          StorageEngineMessages
+              .STORAGE_LOG_THE_TOTAL_DATABASE_MEM_COSTS_ARE_TOO_LARGE_CALL_FOR_FLUSHING_26AD8CDF,
           totalStorageGroupMemCost);
       chooseMemTablesToMarkFlush(tsFileProcessor);
       return true;
     } else {
       logger.info(
-          "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THRESHOLD ({})",
+          StorageEngineMessages
+              .STORAGE_LOG_CHANGE_SYSTEM_TO_REJECT_STATUS_TRIGGERED_BY_LOGICAL_SG_MEM_6F9BCBD3,
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost,
@@ -139,10 +144,11 @@ public class SystemInfo {
           return true;
         } else {
           throw new WriteProcessRejectException(
-              "Total database MemCost "
-                  + totalStorageGroupMemCost
-                  + " is over than memorySizeForWriting "
-                  + memorySizeForMemtable);
+              String.format(
+                  StorageEngineMessages
+                      .STORAGE_EXCEPTION_TOTAL_DATABASE_MEMCOST_S_IS_OVER_THAN_MEMORYSIZEFORWRITING_C63E4D72,
+                  totalStorageGroupMemCost,
+                  memorySizeForMemtable));
         }
       } else {
         return false;
@@ -171,13 +177,15 @@ public class SystemInfo {
     if (totalStorageGroupMemCost >= FLUSH_THRESHOLD
         && totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
-          "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
+          StorageEngineMessages
+              .STORAGE_LOG_SG_RELEASED_MEMORY_DELTA_BUT_STILL_EXCEEDING_FLUSH_PROPORTION_DB68D9D5,
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       if (rejected) {
         logger.info(
-            "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
+            StorageEngineMessages
+                .STORAGE_LOG_SG_RELEASED_MEMORY_DELTA_SET_SYSTEM_TO_NORMAL_STATUS_TOTALSGMEMCOST_0F714668,
             dataRegionInfo.getDataRegion().getDatabaseName(),
             delta,
             totalStorageGroupMemCost);
@@ -186,7 +194,8 @@ public class SystemInfo {
       rejected = false;
     } else if (totalStorageGroupMemCost >= REJECT_THRESHOLD) {
       logger.warn(
-          "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
+          StorageEngineMessages
+              .STORAGE_LOG_SG_RELEASED_MEMORY_DELTA_BUT_SYSTEM_IS_STILL_IN_REJECT_STATUS_AD5E475C,
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
@@ -194,7 +203,8 @@ public class SystemInfo {
       rejected = true;
     } else {
       logger.debug(
-          "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
+          StorageEngineMessages
+              .STORAGE_LOG_SG_RELEASED_MEMORY_DELTA_SYSTEM_IS_IN_NORMAL_STATUS_TOTALSGMEMCOST_600A4A8D,
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
@@ -233,8 +243,10 @@ public class SystemInfo {
       // source file num is greater than the max file num for compaction
       throw new CompactionFileCountExceededException(
           String.format(
-              "Required file num %d is greater than the max file num %d for compaction.",
-              fileNum, totalFileLimitForCompactionTask));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_REQUIRED_FILE_NUM_D_IS_GREATER_THAN_THE_MAX_FILE_NUM_D_FOR_AB6DE95B,
+              fileNum,
+              totalFileLimitForCompactionTask));
     }
     long startTime = System.currentTimeMillis();
     int originFileNum = this.compactionFileNumCost.get();
@@ -243,8 +255,12 @@ public class SystemInfo {
       if (System.currentTimeMillis() - startTime >= timeOutInSecond * 1000L) {
         throw new CompactionFileCountExceededException(
             String.format(
-                "Failed to allocate %d files for compaction after %d seconds, max file num for compaction module is %d, %d files is used.",
-                fileNum, timeOutInSecond, totalFileLimitForCompactionTask, originFileNum));
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_FAILED_TO_ALLOCATE_D_FILES_FOR_COMPACTION_AFTER_D_SECONDS_C701F750,
+                fileNum,
+                timeOutInSecond,
+                totalFileLimitForCompactionTask,
+                originFileNum));
       }
       Thread.sleep(100);
       originFileNum = this.compactionFileNumCost.get();
@@ -258,8 +274,10 @@ public class SystemInfo {
       // source file num is greater than the max file num for compaction
       throw new CompactionFileCountExceededException(
           String.format(
-              "Required file num %d is greater than the max file num %d for compaction.",
-              fileNum, totalFileLimitForCompactionTask));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_REQUIRED_FILE_NUM_D_IS_GREATER_THAN_THE_MAX_FILE_NUM_D_FOR_AB6DE95B,
+              fileNum,
+              totalFileLimitForCompactionTask));
     }
     int originFileNum = this.compactionFileNumCost.get();
     while (true) {
@@ -267,8 +285,11 @@ public class SystemInfo {
       if (!canUpdate && !waitUntilAcquired) {
         throw new CompactionFileCountExceededException(
             String.format(
-                "Failed to allocate %d files for compaction, max file num for compaction module is %d, %d files is used.",
-                fileNum, totalFileLimitForCompactionTask, originFileNum));
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_FAILED_TO_ALLOCATE_D_FILES_FOR_COMPACTION_MAX_FILE_NUM_FOR_9B954F8C,
+                fileNum,
+                totalFileLimitForCompactionTask,
+                originFileNum));
       }
       if (canUpdate
           && compactionFileNumCost.compareAndSet(originFileNum, originFileNum + fileNum)) {
@@ -286,9 +307,10 @@ public class SystemInfo {
       // required memory cost is greater than the total memory budget for compaction
       throw new CompactionMemoryNotEnoughException(
           String.format(
-              "Required memory cost %d bytes is greater than "
-                  + "the total memory budget for compaction %d bytes",
-              memoryCost, compactionMemoryBlock.getTotalMemorySizeInBytes()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_REQUIRED_MEMORY_COST_D_BYTES_IS_GREATER_THAN_THE_TOTAL_MEMORY_444D8FE4,
+              memoryCost,
+              compactionMemoryBlock.getTotalMemorySizeInBytes()));
     }
     boolean allocateResult =
         waitUntilAcquired
@@ -297,8 +319,8 @@ public class SystemInfo {
     if (!allocateResult) {
       throw new CompactionMemoryNotEnoughException(
           String.format(
-              "Failed to allocate %d bytes memory for compaction, "
-                  + "total memory budget for compaction module is %d bytes, %d bytes is used",
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_FAILED_TO_ALLOCATE_D_BYTES_MEMORY_FOR_COMPACTION_TOTAL_MEMORY_33BE3C71,
               memoryCost,
               compactionMemoryBlock.getTotalMemorySizeInBytes(),
               compactionMemoryBlock.getUsedMemoryInBytes()));
@@ -349,8 +371,10 @@ public class SystemInfo {
     return compactionMemoryBlock.getTotalMemorySizeInBytes();
   }
 
-  public void loadWriteMemory() {
-    memorySizeForMemtable = memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes();
+  public synchronized void loadWriteMemory() {
+    memorySizeForMemtable =
+        memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes()
+            - flushMemoryManager.getMemoryUsageInBytes();
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
@@ -399,7 +423,7 @@ public class SystemInfo {
   }
 
   private void logCurrentTotalSGMemory() {
-    logger.debug("Current Sg cost is {}", totalStorageGroupMemCost);
+    logger.debug(StorageEngineMessages.CURRENT_SG_COST, totalStorageGroupMemCost);
   }
 
   /**
@@ -428,8 +452,12 @@ public class SystemInfo {
       }
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
-      selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
+      // A marked memtable already has a flush pending. Count its memory towards the target,
+      // but do not enqueue another task on every report while the region write lock is held.
+      if (!selectedTsFileProcessor.getWorkMemTable().shouldFlush()) {
+        selectedTsFileProcessor.setWorkMemTableShouldFlush();
+        flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
+      }
       if (selectedTsFileProcessor == currentTsFileProcessor) {
         isCurrentTsFileProcessorSelected = true;
       }
@@ -467,24 +495,39 @@ public class SystemInfo {
     private static final SystemInfo instance = new SystemInfo();
   }
 
-  public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForMemtable -= estimatedTemporaryMemSize;
-    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
-    WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
-    WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
-    WritingMetrics.getInstance()
-        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getTotalMemorySizeInBytes());
+  public synchronized FlushMemoryReservation reserveTemporaryMemoryForFlushing(
+      String name, long estimatedBytes) {
+    WriteMemoryBlock block =
+        flushMemoryManager.createBlock(name, WriteMemoryBlock.Category.FLUSH_TEMPORARY);
+    try {
+      block.add(estimatedBytes);
+      loadWriteMemory();
+      return new FlushMemoryReservation(block);
+    } catch (RuntimeException e) {
+      block.close();
+      loadWriteMemory();
+      throw e;
+    }
   }
 
-  public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForMemtable += estimatedTemporaryMemSize;
-    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
-    WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
-    WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
-    WritingMetrics.getInstance()
-        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getTotalMemorySizeInBytes());
+  public WriteMemoryManager getFlushMemoryManager() {
+    return flushMemoryManager;
+  }
+
+  public final class FlushMemoryReservation implements AutoCloseable {
+    private final WriteMemoryBlock block;
+
+    private FlushMemoryReservation(WriteMemoryBlock block) {
+      this.block = block;
+    }
+
+    @Override
+    public void close() {
+      synchronized (SystemInfo.this) {
+        block.close();
+        loadWriteMemory();
+      }
+    }
   }
 
   public long getTotalMemTableSize() {

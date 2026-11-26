@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class OutputColumn {
 
@@ -47,7 +50,7 @@ public class OutputColumn {
   public OutputColumn(List<InputLocation> sourceLocations, boolean overlapped) {
     checkArgument(
         sourceLocations != null && !sourceLocations.isEmpty(),
-        "size of sourceLocations should be larger than 0");
+        DataNodeQueryMessages.EXCEPTION_SIZE_OF_SOURCELOCATIONS_SHOULD_BE_LARGER_THAN_0_2EC41A23);
     this.sourceLocations = sourceLocations;
     this.overlapped = overlapped;
   }
@@ -65,7 +68,9 @@ public class OutputColumn {
   }
 
   public InputLocation getSourceLocation(int index) {
-    checkArgument(index < sourceLocations.size(), "index is not valid");
+    checkArgument(
+        index < sourceLocations.size(),
+        DataNodeQueryMessages.EXCEPTION_INDEX_IS_NOT_VALID_2AB4FB3A);
     return sourceLocations.get(index);
   }
 

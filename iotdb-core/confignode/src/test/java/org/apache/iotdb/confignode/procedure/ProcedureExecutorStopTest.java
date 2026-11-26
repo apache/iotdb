@@ -1,0 +1,57 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.confignode.procedure;
+
+import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
+import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
+
+import org.junit.Test;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertTrue;
+
+public class ProcedureExecutorStopTest {
+
+  /**
+   * An idle executor must stop without waiting out the poll intervals of its threads: the timeout
+   * and worker-monitor threads used to wait until awaitTermination interrupted them (about 2 s
+   * each), and every worker slept another second after its scheduler was stopped.
+   */
+  @Test(timeout = 60_000)
+  public void anIdleExecutorStopsWithoutWaitingOutItsPollIntervals() {
+    TestProcEnv env = new TestProcEnv();
+    IProcedureStore store = new NoopProcedureStore();
+    ProcedureExecutor<TestProcEnv> executor = new ProcedureExecutor<>(env, store);
+    env.setScheduler(executor.getScheduler());
+    executor.init(4);
+    store.start();
+    executor.startWorkers();
+
+    long start = System.nanoTime();
+    executor.stop();
+    executor.join();
+    long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+
+    store.stop();
+    store.cleanup();
+    assertTrue("stop and join took " + tookMillis + " ms", tookMillis < 1_500);
+  }
+}

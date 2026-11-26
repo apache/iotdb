@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.rescon.disk;
 
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -36,8 +40,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -183,6 +189,77 @@ public class FolderManagerTest {
       assertTrue(e.getMessage().contains("Can't get next folder"));
     } catch (Exception e) {
       fail("Should have thrown DiskSpaceInsufficientException");
+    }
+  }
+
+  @Test
+  public void testFolderManagerCanSkipNodeStatusChangeWhenDiskFull() {
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    NodeStatus originalStatus = commonConfig.getNodeStatus();
+    String originalStatusReason = commonConfig.getStatusReason();
+    commonConfig.setNodeStatus(NodeStatus.Running);
+
+    try {
+      new FolderManager(Collections.emptyList(), strategyType, false);
+      fail("Expected DiskSpaceInsufficientException");
+    } catch (DiskSpaceInsufficientException e) {
+      assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
+      assertEquals(null, commonConfig.getStatusReason());
+    } finally {
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      commonConfig.setNodeStatusWithReason(originalStatus, originalStatusReason);
+    }
+  }
+
+  @Test
+  public void testFolderManagerSetsReadOnlyWithDiskFullReasonWhenDiskFull() {
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    NodeStatus originalStatus = commonConfig.getNodeStatus();
+    String originalStatusReason = commonConfig.getStatusReason();
+    commonConfig.setNodeStatus(NodeStatus.Running);
+
+    try {
+      // All folders are exhausted, so the node must switch to ReadOnly with the DiskFull reason.
+      new FolderManager(Collections.emptyList(), strategyType, true);
+      fail("Expected DiskSpaceInsufficientException");
+    } catch (DiskSpaceInsufficientException e) {
+      assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+      assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
+    } finally {
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      commonConfig.setNodeStatusWithReason(originalStatus, originalStatusReason);
+    }
+  }
+
+  @Test
+  public void testFolderManagerReadOnlyReasonWhenFoldersBecomeUnavailable() {
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    NodeStatus originalStatus = commonConfig.getNodeStatus();
+    String originalStatusReason = commonConfig.getStatusReason();
+
+    try {
+      // Exercise runtime selection failures after the manager has initialized successfully.
+      testFolders.forEach(
+          folder -> folderManager.updateFolderState(folder, FolderManager.FolderState.ABNORMAL));
+      for (String reason : Arrays.asList(null, NodeStatus.MANUAL)) {
+        commonConfig.setNodeStatus(NodeStatus.Running);
+        if (reason != null) {
+          commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, reason);
+        }
+
+        try {
+          folderManager.getNextFolder();
+          fail("Expected DiskSpaceInsufficientException");
+        } catch (DiskSpaceInsufficientException e) {
+          assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+          // A disk failure must not replace Manual with an automatically recoverable reason.
+          assertEquals(
+              reason == null ? NodeStatus.DISK_FULL : reason, commonConfig.getStatusReason());
+        }
+      }
+    } finally {
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      commonConfig.setNodeStatusWithReason(originalStatus, originalStatusReason);
     }
   }
 }

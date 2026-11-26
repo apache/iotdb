@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -33,7 +33,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class PipePlanTablePatternParseVisitor
-    extends PlanVisitor<Optional<PlanNode>, TablePattern> {
+    implements PlanVisitor<Optional<PlanNode>, TablePattern> {
   @Override
   public Optional<PlanNode> visitPlan(final PlanNode node, final TablePattern pattern) {
     return Optional.of(node);

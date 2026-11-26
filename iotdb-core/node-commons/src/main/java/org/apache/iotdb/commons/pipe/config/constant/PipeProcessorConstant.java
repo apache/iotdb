@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class PipeProcessorConstant {
@@ -83,6 +85,6 @@ public class PipeProcessorConstant {
   public static final String PROCESSOR_RENAME_DATABASE_NEW_DB_NAME = "processor.new-db-name";
 
   private PipeProcessorConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

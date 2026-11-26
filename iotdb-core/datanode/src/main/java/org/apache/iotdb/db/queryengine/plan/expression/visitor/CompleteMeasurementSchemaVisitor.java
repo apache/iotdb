@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.view.BrokenViewException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -78,7 +78,7 @@ public class CompleteMeasurementSchemaVisitor extends ExpressionVisitor<Expressi
   public Expression visitFunctionExpression(
       FunctionExpression functionExpression, ISchemaTree schemaTree) {
     List<Expression> children = functionExpression.getExpressions();
-    List<Expression> replacedChildren = new ArrayList<>();
+    List<Expression> replacedChildren = new ArrayList<>(children.size());
     for (Expression child : children) {
       replacedChildren.add(this.process(child, schemaTree));
     }

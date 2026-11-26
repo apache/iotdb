@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.service.metric;
 
+import org.apache.iotdb.commons.i18n.ServiceMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,18 +41,14 @@ public class GcTimeAlerter implements JvmGcMonitorMetrics.GcTimeAlertHandler {
   @Override
   public void alert(JvmGcMonitorMetrics.GcData gcData) {
     logger.warn(
-        "Error metrics taken time: "
-            + sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getTimestamp())))));
-    logger.warn("Gc Time Percentage: " + gcData.getGcTimePercentage() + "%");
+        ServiceMessages.GC_ALERT_METRICS_TAKEN_TIME,
+        sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getTimestamp())))));
+    logger.warn(ServiceMessages.GC_ALERT_GC_TIME_PERCENTAGE, gcData.getGcTimePercentage());
+    logger.warn(ServiceMessages.GC_ALERT_ACCUMULATED_GC_TIME, gcData.getGcTimeWithinObsWindow());
     logger.warn(
-        "Accumulated GC time within current observation window: "
-            + gcData.getGcTimeWithinObsWindow()
-            + " ms");
-    logger.warn(
-        "The observation window is from: "
-            + sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getStartObsWindowTs()))))
-            + " to: "
-            + sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getTimestamp())))));
-    logger.warn("The observation window time is: " + gcData.getCurrentObsWindowTs() + " ms.");
+        ServiceMessages.GC_ALERT_OBSERVATION_WINDOW_FROM_TO,
+        sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getStartObsWindowTs())))),
+        sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getTimestamp())))));
+    logger.warn(ServiceMessages.GC_ALERT_OBSERVATION_WINDOW_TIME, gcData.getCurrentObsWindowTs());
   }
 }

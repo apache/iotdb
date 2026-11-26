@@ -23,6 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -83,7 +84,7 @@ public interface IWritableMemChunk extends WALEntryValue {
       int end,
       TSStatus[] results);
 
-  long count();
+  long count(boolean ignoreAllNullRows);
 
   long rowCount();
 
@@ -97,7 +98,9 @@ public interface IWritableMemChunk extends WALEntryValue {
    */
   void sortTvListForFlush();
 
-  default long getMaxTime() {
+  void releaseTemporaryTvListForFlush();
+
+  default long getMaxTime(boolean ignoreAllNullRows) {
     return Long.MAX_VALUE;
   }
 
@@ -112,19 +115,28 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   IChunkWriter createIChunkWriter();
 
-  void encode(BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times);
+  void encode(
+      BlockingQueue<Object> ioTaskQueue,
+      BatchEncodeInfo encodeInfo,
+      long[] times,
+      boolean ignoreAllNullRows);
 
   void release();
 
   long getFirstPoint();
 
-  long getLastPoint();
+  long getLastPoint(boolean ignoreAllNullRows);
 
-  boolean isEmpty();
+  boolean isEmpty(boolean ignoreAllNullRows);
 
   List<? extends TVList> getSortedList();
 
   TVList getWorkingTVList();
 
   void setWorkingTVList(TVList list);
+
+  void setEncryptParameter(EncryptParameter encryptParameter);
+
+  TVList initWorkingListForFlushIfNecessary(
+      TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList);
 }

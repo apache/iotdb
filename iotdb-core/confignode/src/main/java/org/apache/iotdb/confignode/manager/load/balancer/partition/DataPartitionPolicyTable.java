@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.structure.BalanceTreeMap;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DataPartitionPolicyTable {
@@ -75,8 +78,8 @@ public class DataPartitionPolicyTable {
     seriesPartitionSlotCounter.put(
         regionGroupId, seriesPartitionSlotCounter.get(regionGroupId) + 1);
     LOGGER.info(
-        "[ActivateDataAllotTable] Activate SeriesPartitionSlot {} "
-            + "to RegionGroup {}, SeriesPartitionSlot Count: {}",
+        ManagerMessages.ACTIVATEDATAALLOTTABLE_ACTIVATE_SERIESPARTITIONSLOT
+            + ManagerMessages.LOG_REGIONGROUP_ARG_SERIESPARTITIONSLOT_COUNT_ARG_30F57B14,
         seriesPartitionSlot,
         regionGroupId,
         seriesPartitionSlotCounter.get(regionGroupId));
@@ -110,7 +113,7 @@ public class DataPartitionPolicyTable {
       }
       Collections.shuffle(seriesPartitionSlots);
 
-      int mu = SERIES_SLOT_NUM / dataRegionGroups.size();
+      int mu = getRetainedSlotLimit(dataAllotMap, dataRegionGroups.size());
       for (TSeriesPartitionSlot seriesPartitionSlot : seriesPartitionSlots) {
         if (!dataAllotMap.containsKey(seriesPartitionSlot)) {
           // Skip unallocated SeriesPartitionSlot
@@ -140,7 +143,7 @@ public class DataPartitionPolicyTable {
     }
     dataAllotTableLock.lock();
     try {
-      int mu = SERIES_SLOT_NUM / seriesPartitionSlotCounter.size();
+      int mu = getRetainedSlotLimit(dataAllotMap, seriesPartitionSlotCounter.size());
       dataAllotMap.forEach(
           (seriesPartitionSlot, regionGroupId) -> {
             if (regionGroupId != null && seriesPartitionSlotCounter.get(regionGroupId) < mu) {
@@ -157,14 +160,27 @@ public class DataPartitionPolicyTable {
     }
   }
 
+  private int getRetainedSlotLimit(
+      Map<TSeriesPartitionSlot, TConsensusGroupId> assignments, int regionGroupCount) {
+    if (CONF.getDataRegionGroupExtensionPolicy() == RegionGroupExtensionPolicy.PROACTIVE) {
+      // Empty DataPartition entries have no last group and must not inflate the recovery limit.
+      long activeSlotCount = assignments.values().stream().filter(Objects::nonNull).count();
+      // New groups are created before the pending slots are activated. Keep at least one slot
+      // per existing group so that incremental growth does not discard balanced assignments.
+      return Math.max(1, (int) (activeSlotCount / regionGroupCount));
+    }
+    return SERIES_SLOT_NUM / regionGroupCount;
+  }
+
   public void logDataAllotTable(String database) {
     seriesPartitionSlotCounter
         .keySet()
         .forEach(
             regionGroupId ->
                 LOGGER.info(
-                    "[ReBalanceDataAllotTable] Database: {}, "
-                        + "RegionGroupId: {}, SeriesPartitionSlot Count: {}",
+                    ManagerMessages.REBALANCEDATAALLOTTABLE_DATABASE
+                        + ManagerMessages
+                            .LOG_REGIONGROUPID_ARG_SERIESPARTITIONSLOT_COUNT_ARG_5DAE4B6A,
                     database,
                     regionGroupId,
                     seriesPartitionSlotCounter.get(regionGroupId)));

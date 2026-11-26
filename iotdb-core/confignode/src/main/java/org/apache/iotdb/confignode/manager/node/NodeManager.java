@@ -20,14 +20,18 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
@@ -44,6 +48,7 @@ import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
@@ -61,14 +66,19 @@ import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
@@ -79,6 +89,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
@@ -97,6 +108,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
+import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -124,7 +137,7 @@ public class NodeManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
   protected final NodeInfo nodeInfo;
@@ -132,12 +145,18 @@ public class NodeManager {
   private final ReentrantLock removeConfigNodeLock;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
+
+  public static final int APPLY_CONFIG_LOCALLY = -2;
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
     this.removeConfigNodeLock = new ReentrantLock();
+  }
+
+  public NodeInfo getNodeInfo() {
+    return nodeInfo;
   }
 
   /**
@@ -173,6 +192,8 @@ public class NodeManager {
     globalConfig.setTimestampPrecision(commonConfig.getTimestampPrecision());
     globalConfig.setSchemaEngineMode(commonConfig.getSchemaEngineMode());
     globalConfig.setTagAttributeTotalSize(commonConfig.getTagAttributeTotalSize());
+    globalConfig.setEnableGrantOption(commonConfig.getEnableGrantOption());
+    globalConfig.setRestrictObjectLimit(commonConfig.isRestrictObjectLimit());
     dataSet.setGlobalConfig(globalConfig);
   }
 
@@ -223,6 +244,10 @@ public class NodeManager {
     ratisConfig.setSchemaMaxRetryAttempts(conf.getSchemaRegionRatisMaxRetryAttempts());
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
+    ratisConfig.setDataReconfigurationMaxRetryAttempts(
+        conf.getDataRegionRatisReconfigurationMaxRetryAttempts());
+    ratisConfig.setSchemaReconfigurationMaxRetryAttempts(
+        conf.getSchemaRegionRatisReconfigurationMaxRetryAttempts());
 
     ratisConfig.setSchemaPreserveWhenPurge(conf.getSchemaRegionRatisPreserveLogsWhenPurge());
     ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());
@@ -249,7 +274,18 @@ public class NodeManager {
     dataSet.setCqConfig(cqConfig);
   }
 
-  private TRuntimeConfiguration getRuntimeConfiguration() {
+  private TAuditConfig getAuditConfig() {
+    TAuditConfig auditConfig = new TAuditConfig();
+    auditConfig.setEnableAuditLog(COMMON_CONFIG.isEnableAuditLog());
+    if (COMMON_CONFIG.isEnableAuditLog()) {
+      auditConfig.setAuditableOperationType(COMMON_CONFIG.getAuditableOperationTypeInStr());
+      auditConfig.setAuditableOperationLevel(COMMON_CONFIG.getAuditableOperationLevelInStr());
+      auditConfig.setAuditableOperationResult(COMMON_CONFIG.getAuditableOperationResult());
+    }
+    return auditConfig;
+  }
+
+  private TRuntimeConfiguration getRuntimeConfiguration(int dataNodeId) {
     getPipeManager().getPipePluginCoordinator().lock();
     try {
       getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
@@ -262,6 +298,8 @@ public class NodeManager {
               getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
           runtimeConfiguration.setAllUDFInformation(
               getUDFManager().getAllUDFTable().getAllUDFInformation());
+          runtimeConfiguration.setAllUserDefinedServiceInfo(
+              getServiceManager().getUserDefinedService(dataNodeId));
           runtimeConfiguration.setAllPipeInformation(
               getPipeManager()
                   .getPipePluginCoordinator()
@@ -272,7 +310,14 @@ public class NodeManager {
           runtimeConfiguration.setTableInfo(
               getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
           runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
+          runtimeConfiguration.setAuditConfig(getAuditConfig());
+          runtimeConfiguration.setSuperUserName(getPermissionManager().getUserName(0));
+          runtimeConfiguration.setFenceThresholdMs(
+              ConfigNodeDescriptor.getInstance().getConf().getMetadataLeaseFenceMs());
           return runtimeConfiguration;
+        } catch (AuthException e) {
+          // This will never reach, definitely
+          throw new RuntimeException(e);
         } finally {
           getUDFManager().getUdfInfo().releaseUDFTableLock();
         }
@@ -295,29 +340,31 @@ public class NodeManager {
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
     resp.setConfigNodeList(getRegisteredConfigNodes());
 
-    // Create a new DataNodeHeartbeatCache and force update NodeStatus
     int dataNodeId = nodeInfo.generateNextNodeId();
-    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.DataNode, dataNodeId);
-    // TODO: invoke a force heartbeat to update new DataNode's status immediately
 
     RegisterDataNodePlan registerDataNodePlan =
         new RegisterDataNodePlan(req.getDataNodeConfiguration());
     // Register new DataNode
     registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
-    try {
-      getConsensusManager().write(registerDataNodePlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    TSStatus registerStatus = writeConfigPhysicalPlan(registerDataNodePlan);
+    if (!isConsensusWriteSuccessful(registerStatus)) {
+      resp.setStatus(registerStatus);
+      return resp;
     }
 
     // update datanode's versionInfo
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(req.getVersionInfo(), dataNodeId);
-    try {
-      getConsensusManager().write(updateVersionInfoPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    TSStatus updateVersionStatus = writeConfigPhysicalPlan(updateVersionInfoPlan);
+    if (!isConsensusWriteSuccessful(updateVersionStatus)) {
+      resp.setStatus(
+          rollbackDataNodeRegistration(
+              registerDataNodePlan.getDataNodeConfiguration().getLocation(), updateVersionStatus));
+      return resp;
     }
+
+    // Create a new DataNodeHeartbeatCache. The heartbeat service will refresh NodeStatus shortly.
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.DataNode, dataNodeId);
 
     // Bind DataNode metrics
     PartitionMetrics.bindDataNodePartitionMetricsWhenUpdate(
@@ -326,10 +373,13 @@ public class NodeManager {
     // Adjust the maximum RegionGroup number of each Database
     getClusterSchemaManager().adjustMaxRegionGroupNum();
 
-    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
+    resp.setStatus(
+        buildSuccessStatus(
+            ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION.getMessage(),
+            registerStatus.getMessage()));
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    resp.setRuntimeConfiguration(getRuntimeConfiguration(dataNodeId));
     return resp;
   }
 
@@ -344,7 +394,7 @@ public class NodeManager {
     if (clusterId == null) {
       resp.setStatus(
           new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
-              .setMessage("clusterId has not generated"));
+              .setMessage(ManagerMessages.CLUSTERID_HAS_NOT_GENERATED));
       return resp;
     }
 
@@ -354,10 +404,10 @@ public class NodeManager {
       // Update DataNodeConfiguration when modified during restart
       UpdateDataNodePlan updateDataNodePlan =
           new UpdateDataNodePlan(req.getDataNodeConfiguration());
-      try {
-        getConsensusManager().write(updateDataNodePlan);
-      } catch (ConsensusException e) {
-        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus updateStatus = writeConfigPhysicalPlan(updateDataNodePlan);
+      if (!isConsensusWriteSuccessful(updateStatus)) {
+        resp.setStatus(updateStatus);
+        return resp;
       }
     }
     TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
@@ -365,15 +415,15 @@ public class NodeManager {
       // Update versionInfo when modified during restart
       UpdateVersionInfoPlan updateVersionInfoPlan =
           new UpdateVersionInfoPlan(req.getVersionInfo(), nodeId);
-      try {
-        getConsensusManager().write(updateVersionInfoPlan);
-      } catch (ConsensusException e) {
-        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus updateStatus = writeConfigPhysicalPlan(updateVersionInfoPlan);
+      if (!isConsensusWriteSuccessful(updateStatus)) {
+        resp.setStatus(updateStatus);
+        return resp;
       }
     }
 
-    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
-    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    resp.setStatus(buildSuccessStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART.getMessage()));
+    resp.setRuntimeConfiguration(getRuntimeConfiguration(nodeId));
 
     resp.setCorrectConsensusGroups(getPartitionManager().getAllReplicaSets(nodeId));
     return resp;
@@ -388,7 +438,7 @@ public class NodeManager {
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().lock();
-    LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info(ManagerMessages.NODEMANAGER_START_TO_REMOVE_DATANODE, removeDataNodePlan);
     try {
       // Checks if the RemoveDataNode request is valid
       RemoveDataNodeHandler removeDataNodeHandler =
@@ -397,7 +447,7 @@ public class NodeManager {
           removeDataNodeHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
       if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            "The remove DataNode request check failed. req: {}, check result: {}",
+            ManagerMessages.THE_REMOVE_DATANODE_REQUEST_CHECK_FAILED_REQ_CHECK_RESULT,
             removeDataNodePlan,
             preCheckStatus.getStatus());
         return preCheckStatus;
@@ -409,7 +459,7 @@ public class NodeManager {
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         dataSet.setStatus(
             new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
-                .setMessage("Migrate the service on the removed DataNodes failed"));
+                .setMessage(ManagerMessages.MIGRATE_THE_SERVICE_ON_THE_REMOVED_DATANODES_FAILED));
         return dataSet;
       }
 
@@ -419,15 +469,15 @@ public class NodeManager {
       TSStatus status;
       if (removeSucceed) {
         status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        status.setMessage("Server accepted the request");
+        status.setMessage(ManagerMessages.SERVER_ACCEPTED_THE_REQUEST);
       } else {
         status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
-        status.setMessage("Server rejected the request, maybe requests are too many");
+        status.setMessage(ManagerMessages.SERVER_REJECTED_THE_REQUEST_MAYBE_REQUESTS_ARE_TOO_MANY);
       }
       dataSet.setStatus(status);
 
       LOGGER.info(
-          "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
+          ManagerMessages.NODEMANAGER_SUBMIT_REMOVEDATANODEPLAN_FINISHED_REMOVEDATANODEPLAN,
           removeDataNodePlan);
       return dataSet;
     } finally {
@@ -450,13 +500,12 @@ public class NodeManager {
       // Update versionInfo when modified during restart
       UpdateVersionInfoPlan updateConfigNodePlan =
           new UpdateVersionInfoPlan(versionInfo, configNodeId);
-      try {
-        return getConsensusManager().write(updateConfigNodePlan);
-      } catch (ConsensusException e) {
-        return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
+      TSStatus updateStatus = writeConfigPhysicalPlan(updateConfigNodePlan);
+      if (!isConsensusWriteSuccessful(updateStatus)) {
+        return updateStatus;
       }
     }
-    return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
+    return buildSuccessStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART.getMessage());
   }
 
   public List<TAINodeInfo> getRegisteredAINodeInfoList() {
@@ -464,7 +513,7 @@ public class NodeManager {
     for (TAINodeConfiguration aiNodeConfiguration : getRegisteredAINodes()) {
       TAINodeInfo aiNodeInfo = new TAINodeInfo();
       aiNodeInfo.setAiNodeId(aiNodeConfiguration.getLocation().getAiNodeId());
-      aiNodeInfo.setStatus(getLoadManager().getNodeStatusWithReason(aiNodeInfo.getAiNodeId()));
+      aiNodeInfo.setStatus(getLoadManager().getNodeStatus(aiNodeInfo.getAiNodeId()).getStatus());
       aiNodeInfo.setInternalAddress(aiNodeConfiguration.getLocation().getInternalEndPoint().ip);
       aiNodeInfo.setInternalPort(aiNodeConfiguration.getLocation().getInternalEndPoint().port);
       aiNodeInfoList.add(aiNodeInfo);
@@ -497,32 +546,42 @@ public class NodeManager {
       dataSet.setConfigNodeList(Collections.emptyList());
       dataSet.setStatus(
           new TSStatus(TSStatusCode.REGISTER_AI_NODE_ERROR.getStatusCode())
-              .setMessage("There is already one AINode in the cluster."));
+              .setMessage(ManagerMessages.THERE_IS_ALREADY_ONE_AINODE_IN_THE_CLUSTER));
       return dataSet;
     }
 
     int aiNodeId = nodeInfo.generateNextNodeId();
-    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.AINode, aiNodeId);
     RegisterAINodePlan registerAINodePlan = new RegisterAINodePlan(req.getAiNodeConfiguration());
     // Register new DataNode
     registerAINodePlan.getAINodeConfiguration().getLocation().setAiNodeId(aiNodeId);
-    try {
-      getConsensusManager().write(registerAINodePlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    TSStatus registerStatus = writeConfigPhysicalPlan(registerAINodePlan);
+    if (!isConsensusWriteSuccessful(registerStatus)) {
+      AINodeRegisterResp resp = new AINodeRegisterResp();
+      resp.setConfigNodeList(getRegisteredConfigNodes());
+      resp.setStatus(registerStatus);
+      return resp;
     }
 
     // update datanode's versionInfo
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(req.getVersionInfo(), aiNodeId);
-    try {
-      getConsensusManager().write(updateVersionInfoPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    TSStatus updateVersionStatus = writeConfigPhysicalPlan(updateVersionInfoPlan);
+    if (!isConsensusWriteSuccessful(updateVersionStatus)) {
+      AINodeRegisterResp resp = new AINodeRegisterResp();
+      resp.setConfigNodeList(getRegisteredConfigNodes());
+      resp.setStatus(
+          rollbackAiNodeRegistration(
+              registerAINodePlan.getAINodeConfiguration().getLocation(), updateVersionStatus));
+      return resp;
     }
 
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.AINode, aiNodeId);
+
     AINodeRegisterResp resp = new AINodeRegisterResp();
-    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
+    resp.setStatus(
+        buildSuccessStatus(
+            ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION.getMessage(),
+            registerStatus.getMessage()));
     resp.setConfigNodeList(getRegisteredConfigNodes());
     resp.setAINodeId(registerAINodePlan.getAINodeConfiguration().getLocation().getAiNodeId());
     return resp;
@@ -532,8 +591,8 @@ public class NodeManager {
   public TSStatus removeAINode() {
     // check if the node exists
     if (nodeInfo.getRegisteredAINodes().isEmpty()) {
-      return new TSStatus(TSStatusCode.REMOVE_AI_NODE_ERROR.getStatusCode())
-          .setMessage("Remove AINode failed because there is no AINode in the cluster.");
+      return new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
+          .setMessage(ManagerMessages.REMOVE_AINODE_FAILED_BECAUSE_THERE_IS_NO_AINODE_IN_THE);
     }
 
     // We remove the only AINode by default
@@ -544,13 +603,13 @@ public class NodeManager {
     TSStatus status;
     if (removeSucceed) {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("Server accepted the request");
+      status.setMessage(ManagerMessages.SERVER_ACCEPTED_THE_REQUEST);
     } else {
       status = new TSStatus(TSStatusCode.REMOVE_AI_NODE_ERROR.getStatusCode());
-      status.setMessage("Server rejected the request, maybe requests are too many");
+      status.setMessage(ManagerMessages.SERVER_REJECTED_THE_REQUEST_MAYBE_REQUESTS_ARE_TOO_MANY);
     }
 
-    LOGGER.info("NodeManager submit RemoveAINodePlan finished, {}", removeAINodePlan);
+    LOGGER.info(ManagerMessages.NODEMANAGER_SUBMIT_REMOVEAINODEPLAN_FINISHED, removeAINodePlan);
     return status;
   }
 
@@ -560,10 +619,12 @@ public class NodeManager {
     if (!req.getAiNodeConfiguration().equals(aiNodeConfiguration)) {
       // Update AINodeConfiguration when modified during restart
       UpdateAINodePlan updateAINodePlan = new UpdateAINodePlan(req.getAiNodeConfiguration());
-      try {
-        getConsensusManager().write(updateAINodePlan);
-      } catch (ConsensusException e) {
-        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus updateStatus = writeConfigPhysicalPlan(updateAINodePlan);
+      if (!isConsensusWriteSuccessful(updateStatus)) {
+        TAINodeRestartResp resp = new TAINodeRestartResp();
+        resp.setConfigNodeList(getRegisteredConfigNodes());
+        resp.setStatus(updateStatus);
+        return resp;
       }
     }
     TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
@@ -571,15 +632,17 @@ public class NodeManager {
       // Update versionInfo when modified during restart
       UpdateVersionInfoPlan updateVersionInfoPlan =
           new UpdateVersionInfoPlan(req.getVersionInfo(), nodeId);
-      try {
-        getConsensusManager().write(updateVersionInfoPlan);
-      } catch (ConsensusException e) {
-        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus updateStatus = writeConfigPhysicalPlan(updateVersionInfoPlan);
+      if (!isConsensusWriteSuccessful(updateStatus)) {
+        TAINodeRestartResp resp = new TAINodeRestartResp();
+        resp.setConfigNodeList(getRegisteredConfigNodes());
+        resp.setStatus(updateStatus);
+        return resp;
       }
     }
 
     TAINodeRestartResp resp = new TAINodeRestartResp();
-    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
+    resp.setStatus(buildSuccessStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART.getMessage()));
     resp.setConfigNodeList(getRegisteredConfigNodes());
     return resp;
   }
@@ -588,7 +651,7 @@ public class NodeManager {
     try {
       return (AINodeConfigurationResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       AINodeConfigurationResp response = new AINodeConfigurationResp();
@@ -608,7 +671,7 @@ public class NodeManager {
     try {
       return (DataNodeConfigurationResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       DataNodeConfigurationResp response = new DataNodeConfigurationResp();
@@ -677,17 +740,29 @@ public class NodeManager {
   public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
     List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
+    Map<Integer, NodeStatistics> nodeStatisticsSnapshot =
+        getLoadManager().getNodeStatisticsSnapshot();
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
           registeredDataNode -> {
             TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
             int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
             dataNodeInfo.setDataNodeId(dataNodeId);
-            dataNodeInfo.setStatus(getLoadManager().getNodeStatusWithReason(dataNodeId));
+            NodeStatistics statistics = nodeStatisticsSnapshot.get(dataNodeId);
+            dataNodeInfo.setStatus(
+                statistics == null
+                    ? NodeStatus.Unknown.getStatus()
+                    : statistics.getStatus().getStatus());
+            dataNodeInfo.setStatusReason(statistics == null ? null : statistics.getStatusReason());
             dataNodeInfo.setRpcAddresss(
                 registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
             dataNodeInfo.setRpcPort(
                 registeredDataNode.getLocation().getClientRpcEndPoint().getPort());
+            final TEndPoint internalRpcEndPoint =
+                registeredDataNode.getLocation().getInternalEndPoint();
+            if (internalRpcEndPoint != null) {
+              dataNodeInfo.setInternalRpcEndPoint(internalRpcEndPoint);
+            }
             dataNodeInfo.setDataRegionNum(0);
             dataNodeInfo.setSchemaRegionNum(0);
             dataNodeInfo.setCpuCoreNum(registeredDataNode.getResource().getCpuCoreNum());
@@ -810,16 +885,54 @@ public class NodeManager {
     return nodeInfo.getNodeVersionInfo();
   }
 
+  /** Checks the version and build of every registered ConfigNode. */
+  public boolean isConfigNodeVersionConsistentWith(TNodeVersionInfo expectedVersion) {
+    if (expectedVersion == null
+        || !isKnownVersionValue(expectedVersion.getVersion())
+        || !isKnownVersionValue(expectedVersion.getBuildInfo())) {
+      return false;
+    }
+    List<TConfigNodeLocation> configNodes = getRegisteredConfigNodes();
+    if (configNodes.isEmpty()) {
+      return false;
+    }
+    Map<Integer, TNodeVersionInfo> versions = getNodeVersionInfo();
+    for (TConfigNodeLocation configNode : configNodes) {
+      if (!hasMatchingVersion(expectedVersion, versions.get(configNode.getConfigNodeId()))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean hasMatchingVersion(
+      TNodeVersionInfo expectedVersion, TNodeVersionInfo actualVersion) {
+    return actualVersion != null
+        && expectedVersion.getVersion().equals(actualVersion.getVersion())
+        && expectedVersion.getBuildInfo().equals(actualVersion.getBuildInfo());
+  }
+
+  private static boolean isKnownVersionValue(String value) {
+    return value != null && !value.trim().isEmpty() && !"UNKNOWN".equalsIgnoreCase(value.trim());
+  }
+
   public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
     List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
+    Map<Integer, NodeStatistics> nodeStatisticsSnapshot =
+        getLoadManager().getNodeStatisticsSnapshot();
     if (registeredConfigNodes != null) {
       registeredConfigNodes.forEach(
           configNodeLocation -> {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
-            info.setStatus(getLoadManager().getNodeStatusWithReason(configNodeId));
+            NodeStatistics statistics = nodeStatisticsSnapshot.get(configNodeId);
+            info.setStatus(
+                statistics == null
+                    ? NodeStatus.Unknown.getStatus()
+                    : statistics.getStatus().getStatus());
+            info.setStatusReason(statistics == null ? null : statistics.getStatusReason());
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             info.setRoleType(
@@ -860,21 +973,32 @@ public class NodeManager {
    *
    * @param configNodeLocation The new ConfigNode.
    * @param versionInfo The new ConfigNode's versionInfo.
+   * @throws IllegalStateException if the ConfigNode information or version cannot be persisted
    */
   public void applyConfigNode(
       TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
-    try {
-      getConsensusManager().write(applyConfigNodePlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    final TSStatus applyStatus = writeConfigPhysicalPlan(applyConfigNodePlan);
+    if (!isConsensusWriteSuccessful(applyStatus)) {
+      throw new IllegalStateException(
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_APPLY_CONFIGNODE_ARG_THROUGH_CONSENSUS_LAYER_ARG_B4A985D7,
+              configNodeLocation,
+              describeStatus(applyStatus)));
     }
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
-    try {
-      getConsensusManager().write(updateVersionInfoPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    final TSStatus updateStatus = writeConfigPhysicalPlan(updateVersionInfoPlan);
+    if (!isConsensusWriteSuccessful(updateStatus)) {
+      // ADD_PEER has already joined this node to Raft. Removing it here would also mark the
+      // joining node as Removing. Keep the membership and let REGISTER_SUCCESS retry both plans.
+      throw new IllegalStateException(
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_PERSIST_VERSION_INFO_FOR_CONFIGNODE_ARG_ARG_REGISTRATION_REMAINS_PENDING_AND_MUST_BE_RETRIED_F662C350,
+              configNodeLocation.getConfigNodeId(),
+              describeStatus(updateStatus)));
     }
   }
 
@@ -890,7 +1014,8 @@ public class NodeManager {
       if (getRegisteredConfigNodes().size() <= 1) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
-                "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
+                ManagerMessages
+                    .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_ONLY_ONE_CONFIGNODE_CURRENT_CLUSTER_D1273758);
       }
 
       // Check OnlineConfigNodes number
@@ -902,21 +1027,24 @@ public class NodeManager {
         if (System.nanoTime() > deadline) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
               .setMessage(
-                  "Remove ConfigNode failed because there is no other ConfigNode in Running status in current Cluster.");
+                  ManagerMessages
+                      .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_NO_OTHER_CONFIGNODE_RUNNING_STATUS_C9C43315);
         }
         try {
           Thread.sleep(1000);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
-              .setMessage("Remove ConfigNode failed due to thread interruption.");
+              .setMessage(ManagerMessages.REMOVE_CONFIGNODE_FAILED_DUE_TO_THREAD_INTERRUPTION);
         }
       }
 
       // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
       if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
-            .setMessage("Remove ConfigNode failed because the ConfigNode not in current Cluster.");
+            .setMessage(
+                ManagerMessages
+                    .REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER);
       }
 
       // Check whether the remove ConfigNode is leader
@@ -924,7 +1052,8 @@ public class NodeManager {
       if (leader == null) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
-                "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
+                ManagerMessages
+                    .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CONFIGNODEGROUP_LEADER_ELECTION_PLEASE_RETRY_3EE602F6);
       }
 
       if (leader
@@ -939,39 +1068,86 @@ public class NodeManager {
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Successfully remove confignode.");
+        .setMessage(ManagerMessages.SUCCESSFULLY_REMOVE_CONFIGNODE);
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private TSStatus transferLeader(
       RemoveConfigNodePlan removeConfigNodePlan, ConsensusGroupId groupId) {
-    Optional<TConfigNodeLocation> optional =
+    final TConfigNodeLocation removedConfigNode = removeConfigNodePlan.getConfigNodeLocation();
+    final List<TConfigNodeLocation> newLeaderCandidates =
         filterConfigNodeThroughStatus(NodeStatus.Running).stream()
-            .filter(e -> !e.equals(removeConfigNodePlan.getConfigNodeLocation()))
-            .findAny();
-    TConfigNodeLocation newLeader = null;
-    if (optional.isPresent()) {
-      newLeader = optional.get();
-    } else {
+            .filter(configNode -> !configNode.equals(removedConfigNode))
+            .sorted(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId))
+            .toList();
+    if (newLeaderCandidates.isEmpty()) {
       return new TSStatus(TSStatusCode.TRANSFER_LEADER_ERROR.getStatusCode())
           .setMessage(
-              "Transfer ConfigNode leader failed because can not find any running ConfigNode.");
+              ManagerMessages
+                  .MESSAGE_TRANSFER_CONFIGNODE_LEADER_FAILED_BECAUSE_CAN_NOT_FIND_ANY_RUNNING_1FE4F96D);
     }
-    try {
-      getConsensusManager()
-          .getConsensusImpl()
-          .transferLeader(
-              groupId,
-              new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
-    } catch (ConsensusException e) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
-          .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");
+
+    final long retryDeadline =
+        System.nanoTime()
+            + TimeUnit.MILLISECONDS.toNanos(COMMON_CONFIG.getCnConnectionTimeoutInMS());
+    final long transferLeaderTimeout =
+        TimeUnit.MILLISECONDS.toNanos(CONF.getRatisTransferLeaderTimeoutMs());
+
+    for (int i = 0; i < newLeaderCandidates.size(); i++) {
+      if (i > 0 && retryDeadline - System.nanoTime() <= transferLeaderTimeout) {
+        LOGGER.warn(
+            ManagerMessages
+                .LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C);
+        break;
+      }
+
+      final TConfigNodeLocation newLeaderCandidate = newLeaderCandidates.get(i);
+      try {
+        getConsensusManager()
+            .getConsensusImpl()
+            .transferLeader(
+                groupId,
+                new Peer(
+                    groupId,
+                    newLeaderCandidate.getConfigNodeId(),
+                    newLeaderCandidate.getConsensusEndPoint()));
+      } catch (RatisRequestFailedException e) {
+        LOGGER.warn(
+            ManagerMessages
+                .LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADER_FROM_ARG_TO_ARG_TRYING_ANOTHER_CANDIDATE_BA922E92,
+            removedConfigNode.getConfigNodeId(),
+            newLeaderCandidate.getConfigNodeId(),
+            e);
+      } catch (ConsensusException e) {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+            .setMessage(
+                ManagerMessages.REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED);
+      }
+
+      final TConfigNodeLocation actualLeader = getConsensusManager().getLeaderLocation();
+      if (actualLeader != null && !actualLeader.equals(removedConfigNode)) {
+        return buildConfigNodeLeaderTransferredStatus(actualLeader);
+      }
+
+      LOGGER.warn(
+          ManagerMessages
+              .LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1,
+          removedConfigNode.getConfigNodeId(),
+          newLeaderCandidate.getConfigNodeId());
     }
+
+    return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+        .setMessage(
+            ManagerMessages.REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED);
+  }
+
+  private TSStatus buildConfigNodeLeaderTransferredStatus(TConfigNodeLocation newLeader) {
     return new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         .setRedirectNode(newLeader.getInternalEndPoint())
         .setMessage(
-            "The ConfigNode to be removed is leader, already transfer Leader to "
+            ManagerMessages.MESSAGE_CONFIGNODE_REMOVED_LEADER_ALREADY_TRANSFER_LEADER_FA6D1603
                 + newLeader
-                + ".");
+                + ConfigNodeMessages.EXCEPTION_DOT_9D9B854A);
   }
 
   public List<TSStatus> merge() {
@@ -1026,7 +1202,7 @@ public class NodeManager {
     if (!targetDataNodes.isEmpty()) {
       DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
           new DataNodeAsyncRequestContext<>(
-              CnToDnAsyncRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
+              CnToDnAsyncRequestType.SET_CONFIGURATION, req, targetDataNodes);
       CnToDnInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequestWithRetry(clientHandler);
       responseList.addAll(clientHandler.getResponseList());
@@ -1048,7 +1224,7 @@ public class NodeManager {
                 SyncConfigNodeClientPool.getInstance()
                     .sendSyncRequestToConfigNodeWithRetry(
                         configNode.getInternalEndPoint(),
-                        new TSetConfigurationReq(req.getConfigs(), configNode.getConfigNodeId()),
+                        new TSetConfigurationReq(req.getConfigs(), APPLY_CONFIG_LOCALLY),
                         CnToCnNodeRequestType.SET_CONFIGURATION);
       } catch (Exception e) {
         status =
@@ -1124,6 +1300,37 @@ public class NodeManager {
     return resp;
   }
 
+  public TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId) {
+    // data node
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (dataNodeLocationMap.containsKey(nodeId)) {
+      TDataNodeLocation dataNodeLocation = dataNodeLocationMap.get(nodeId);
+      return (TShowAppliedConfigurationsResp)
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeLocation.getInternalEndPoint(),
+                  null,
+                  CnToDnSyncRequestType.SHOW_APPLIED_CONFIGURATIONS);
+    }
+
+    // other config node
+    TShowAppliedConfigurationsResp resp =
+        new TShowAppliedConfigurationsResp(RpcUtils.SUCCESS_STATUS);
+    for (TConfigNodeLocation registeredConfigNode : getRegisteredConfigNodes()) {
+      if (registeredConfigNode.getConfigNodeId() != nodeId) {
+        continue;
+      }
+      return (TShowAppliedConfigurationsResp)
+          SyncConfigNodeClientPool.getInstance()
+              .sendSyncRequestToConfigNodeWithRetry(
+                  registeredConfigNode.getInternalEndPoint(),
+                  nodeId,
+                  CnToCnNodeRequestType.SHOW_APPLIED_CONFIGURATIONS);
+    }
+    return resp;
+  }
+
   public List<TSStatus> setSystemStatus(String status) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -1150,35 +1357,43 @@ public class NodeManager {
    * @param dataNodeId the DataNode obtains target read, -1 means we will kill all queries on all
    *     DataNodes
    */
-  public TSStatus killQuery(String queryId, int dataNodeId) {
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername) {
     if (dataNodeId < 0) {
-      return killAllQueries();
+      return killAllQueries(allowedUsername);
     } else {
-      return killSpecificQuery(queryId, getRegisteredDataNodeLocations().get(dataNodeId));
+      return killSpecificQuery(
+          queryId, getRegisteredDataNodeLocations().get(dataNodeId), allowedUsername);
     }
   }
 
-  private TSStatus killAllQueries() {
+  private TSStatus killAllQueries(String allowedUsername) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<String, TSStatus> clientHandler =
+    TKillQueryInstanceReq req = new TKillQueryInstanceReq();
+    req.setAllowedUsername(allowedUsername);
+    DataNodeAsyncRequestContext<TKillQueryInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
+            CnToDnAsyncRequestType.KILL_QUERY_INSTANCE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
   }
 
-  private TSStatus killSpecificQuery(String queryId, TDataNodeLocation dataNodeLocation) {
+  private TSStatus killSpecificQuery(
+      String queryId, TDataNodeLocation dataNodeLocation, String allowedUsername) {
     if (dataNodeLocation == null) {
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage(
-              "The target DataNode is not existed, please ensure your input <queryId> is correct");
+              ManagerMessages
+                  .MESSAGE_TARGET_DATANODE_NOT_EXISTED_PLEASE_ENSURE_YOUR_INPUT_QUERYID_CORRECT_AB84CCDF);
     } else {
+      TKillQueryInstanceReq req = new TKillQueryInstanceReq();
+      req.setQueryId(queryId);
+      req.setAllowedUsername(allowedUsername);
       return (TSStatus)
           SyncDataNodeClientPool.getInstance()
               .sendSyncRequestToDataNodeWithRetry(
                   dataNodeLocation.getInternalEndPoint(),
-                  queryId,
+                  req,
                   CnToDnSyncRequestType.KILL_QUERY_INSTANCE);
     }
   }
@@ -1239,6 +1454,112 @@ public class NodeManager {
     return getRegisteredDataNode(dataNodeId).getLocation();
   }
 
+  private TSStatus writeConfigPhysicalPlan(ConfigPhysicalPlan plan) {
+    try {
+      return getConsensusManager().write(plan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  private boolean isConsensusWriteSuccessful(TSStatus status) {
+    return status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  private TSStatus rollbackDataNodeRegistration(
+      TDataNodeLocation dataNodeLocation, TSStatus versionUpdateStatus) {
+    final TSStatus rollbackStatus =
+        writeConfigPhysicalPlan(
+            new RemoveDataNodePlan(Collections.singletonList(dataNodeLocation)));
+    if (isConsensusWriteSuccessful(rollbackStatus)) {
+      return new TSStatus(versionUpdateStatus.getCode())
+          .setMessage(
+              String.format(
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_5DDB311F,
+                  dataNodeLocation.getDataNodeId(),
+                  describeStatus(versionUpdateStatus)));
+    }
+
+    LOGGER.error(
+        ConfigNodeMessages
+            .LOG_FAILED_TO_ROLL_BACK_DATANODE_REGISTRATION_ARG_AFTER_VERSION_INFO_PERSISTENCE_FAILURE_VERSIONUPDATESTATUS_ARG_ROLLBACKSTATUS_ARG_437E6F09,
+        dataNodeLocation,
+        versionUpdateStatus,
+        rollbackStatus);
+    return new TSStatus(rollbackStatus.getCode())
+        .setMessage(
+            String.format(
+                ConfigNodeMessages
+                    .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_ROLLBACK_ALSO_FAILED_ARG_MANUAL_CLEANUP_MAY_BE_REQUIRED_BEFORE_RETRYING_THE_REGISTRATION_5463B5FF,
+                dataNodeLocation.getDataNodeId(),
+                describeStatus(versionUpdateStatus),
+                describeStatus(rollbackStatus)));
+  }
+
+  private TSStatus rollbackAiNodeRegistration(
+      TAINodeLocation aiNodeLocation, TSStatus versionUpdateStatus) {
+    final TSStatus rollbackStatus = writeConfigPhysicalPlan(new RemoveAINodePlan(aiNodeLocation));
+    if (isConsensusWriteSuccessful(rollbackStatus)) {
+      return new TSStatus(versionUpdateStatus.getCode())
+          .setMessage(
+              String.format(
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_AINODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_7571C626,
+                  aiNodeLocation.getAiNodeId(),
+                  describeStatus(versionUpdateStatus)));
+    }
+
+    LOGGER.error(
+        ConfigNodeMessages
+            .LOG_FAILED_TO_ROLL_BACK_AINODE_REGISTRATION_ARG_AFTER_VERSION_INFO_PERSISTENCE_FAILURE_VERSIONUPDATESTATUS_ARG_ROLLBACKSTATUS_ARG_BFF24BD4,
+        aiNodeLocation,
+        versionUpdateStatus,
+        rollbackStatus);
+    return new TSStatus(rollbackStatus.getCode())
+        .setMessage(
+            String.format(
+                ConfigNodeMessages
+                    .MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_AINODE_ARG_ARG_THE_REGISTRATION_ROLLBACK_ALSO_FAILED_ARG_MANUAL_CLEANUP_MAY_BE_REQUIRED_BEFORE_RETRYING_THE_REGISTRATION_B9B1DCCD,
+                aiNodeLocation.getAiNodeId(),
+                describeStatus(versionUpdateStatus),
+                describeStatus(rollbackStatus)));
+  }
+
+  private TSStatus buildStatus(int statusCode, String... messages) {
+    final TSStatus status = new TSStatus(statusCode);
+    final StringBuilder builder = new StringBuilder();
+    for (String message : messages) {
+      if (message == null || message.isEmpty()) {
+        continue;
+      }
+      if (!builder.isEmpty()) {
+        builder.append(' ');
+      }
+      builder.append(message);
+    }
+    if (!builder.isEmpty()) {
+      status.setMessage(builder.toString());
+    }
+    return status;
+  }
+
+  private TSStatus buildSuccessStatus(String... messages) {
+    return buildStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode(), messages);
+  }
+
+  private String describeStatus(TSStatus status) {
+    if (status == null) {
+      return ConfigNodeMessages.MESSAGE_UNKNOWN_ERROR_E9EEAFF8;
+    }
+    if (status.getMessage() != null && !status.getMessage().isEmpty()) {
+      return status.getMessage();
+    }
+    return String.format(ConfigNodeMessages.MESSAGE_STATUS_CODE_ARG_4B3BCD8B, status.getCode());
+  }
+
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
   }
@@ -1249,6 +1570,10 @@ public class NodeManager {
 
   private ClusterManager getClusterManager() {
     return configManager.getClusterManager();
+  }
+
+  private PermissionManager getPermissionManager() {
+    return configManager.getPermissionManager();
   }
 
   private PartitionManager getPartitionManager() {
@@ -1273,5 +1598,9 @@ public class NodeManager {
 
   private TTLManager getTTLManager() {
     return configManager.getTTLManager();
+  }
+
+  private ExternalServiceManager getServiceManager() {
+    return configManager.getExternalServiceManager();
   }
 }

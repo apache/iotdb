@@ -30,8 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -61,19 +61,15 @@ public class ShowPathSetTemplateTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    try {
-      if (listPath != null) {
-        // template.get
-        for (PartialPath path : listPath) {
-          builder.getTimeColumnBuilder().writeLong(0L);
-          builder
-              .getColumnBuilder(0)
-              .writeBinary(new Binary(path.getFullPath(), TSFileConfig.STRING_CHARSET));
-          builder.declarePosition();
-        }
+    if (listPath != null) {
+      // template.get
+      for (PartialPath path : listPath) {
+        builder.getTimeColumnBuilder().writeLong(0L);
+        builder
+            .getColumnBuilder(0)
+            .writeBinary(new Binary(path.getFullPath(), TSFileConfig.STRING_CHARSET));
+        builder.declarePosition();
       }
-    } catch (Exception e) {
-      e.printStackTrace();
     }
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPathSetTemplateHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

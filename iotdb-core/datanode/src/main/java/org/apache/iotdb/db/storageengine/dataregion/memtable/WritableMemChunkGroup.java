@@ -20,13 +20,18 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -39,9 +44,16 @@ import java.util.Map.Entry;
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
+  private EncryptParameter encryptParameter;
 
   public WritableMemChunkGroup() {
     memChunkMap = new HashMap<>();
+    encryptParameter = EncryptUtils.getEncryptParameter();
+  }
+
+  public WritableMemChunkGroup(EncryptParameter encryptParameter) {
+    memChunkMap = new HashMap<>();
+    this.encryptParameter = encryptParameter;
   }
 
   @Override
@@ -70,7 +82,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
     return memChunkMap.computeIfAbsent(
-        schema.getMeasurementName(), k -> new WritableMemChunk(schema));
+        schema.getMeasurementName(), k -> new WritableMemChunk(schema, encryptParameter));
   }
 
   @Override
@@ -81,10 +93,10 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long count() {
+  public long count(boolean ignoreAllNullRows) {
     long count = 0;
     for (IWritableMemChunk memChunk : memChunkMap.values()) {
-      count += memChunk.count();
+      count += memChunk.count(ignoreAllNullRows);
     }
     return count;
   }
@@ -106,17 +118,19 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public Map<String, IWritableMemChunk> getMemChunkMap() {
+  public Map<String, IWritableMemChunk> getMemChunkMap(boolean ignoreAllNullRows) {
+    // a group of non-aligned chunks never stores all-null rows, so ignoreAllNullRows makes no
+    // difference
     return memChunkMap;
   }
 
   @Override
-  public boolean isEmpty() {
-    return memChunkMap.isEmpty() || count() == 0;
+  public boolean isEmpty(boolean ignoreAllNullRows) {
+    return memChunkMap.isEmpty() || count(ignoreAllNullRows) == 0;
   }
 
   @Override
-  public long delete(ModEntry modEntry) {
+  public long delete(ModEntry modEntry, boolean ignoreAllNullRows) {
     Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
     long deletedPointsNumber = 0;
     while (iter.hasNext()) {
@@ -128,11 +142,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       IWritableMemChunk chunk = entry.getValue();
       if (modEntry.getStartTime() == Long.MIN_VALUE && modEntry.getEndTime() == Long.MAX_VALUE) {
         iter.remove();
-        deletedPointsNumber += chunk.count();
+        deletedPointsNumber += chunk.count(ignoreAllNullRows);
         chunk.release();
       } else {
         deletedPointsNumber += chunk.delete(modEntry.getStartTime(), modEntry.getEndTime());
-        if (chunk.count() == 0) {
+        if (chunk.count(ignoreAllNullRows) == 0) {
           iter.remove();
         }
       }
@@ -141,8 +155,8 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long deleteTime(ModEntry modEntry) {
-    return delete(modEntry);
+  public long deleteTime(ModEntry modEntry, boolean ignoreAllNullRows) {
+    return delete(modEntry, ignoreAllNullRows);
   }
 
   @Override
@@ -154,10 +168,10 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getMaxTime() {
+  public long getMaxTime(boolean ignoreAllNullRows) {
     long maxTime = Long.MIN_VALUE;
     for (IWritableMemChunk memChunk : memChunkMap.values()) {
-      maxTime = Math.max(maxTime, memChunk.getMaxTime());
+      maxTime = Math.max(maxTime, memChunk.getMaxTime(ignoreAllNullRows));
     }
     return maxTime;
   }
@@ -167,7 +181,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     int size = 0;
     size += Integer.BYTES;
     for (Map.Entry<String, IWritableMemChunk> entry : memChunkMap.entrySet()) {
-      size += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+      size += WALWriteUtils.sizeToWrite(entry.getKey());
       size += entry.getValue().serializedSize();
     }
     return size;
@@ -183,6 +197,14 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     }
   }
 
+  @Override
+  public void setEncryptParameter(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+    for (IWritableMemChunk memChunk : memChunkMap.values()) {
+      memChunk.setEncryptParameter(encryptParameter);
+    }
+  }
+
   public static WritableMemChunkGroup deserialize(DataInputStream stream) throws IOException {
     WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
     int memChunkMapSize = stream.readInt();
@@ -192,6 +214,21 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       memChunkGroup.memChunkMap.put(measurement, memChunk);
     }
     return memChunkGroup;
+  }
+
+  @Override
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    for (MeasurementSchema incomingSchema : node.getMeasurementSchemas()) {
+      if (incomingSchema == null) {
+        continue;
+      }
+
+      IWritableMemChunk memChunk = memChunkMap.get(incomingSchema.getMeasurementName());
+      if (memChunk != null && memChunk.getSchema().getType() != incomingSchema.getType()) {
+        throw new DataTypeInconsistentException(
+            memChunk.getWorkingTVList().getDataType(), incomingSchema.getType());
+      }
+    }
   }
 
   public static WritableMemChunkGroup deserializeSingleTVListMemChunks(DataInputStream stream)

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.DiffFunctionHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.ReplaceFunctionHelper;
@@ -46,7 +47,9 @@ public class BuiltInScalarFunctionHelperFactory {
         return new RoundFunctionHelper();
       default:
         throw new IllegalArgumentException(
-            String.format("Invalid scalar function [%s].", functionName));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_INVALID_SCALAR_FUNCTION_S_4DC1ED95,
+                functionName));
     }
   }
 }

@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.queryengine.execution.schedule.queue;
 
-public class QueueElement implements IDIndexedAccessible {
+public class QueueElement
+    implements org.apache.iotdb.calc.execution.schedule.queue.IDIndexedAccessible {
   private QueueElementID id;
   private final int value;
 
@@ -32,12 +33,12 @@ public class QueueElement implements IDIndexedAccessible {
   }
 
   @Override
-  public ID getDriverTaskId() {
+  public org.apache.iotdb.calc.execution.schedule.queue.ID getDriverTaskId() {
     return id;
   }
 
   @Override
-  public void setId(ID id) {
+  public void setId(org.apache.iotdb.calc.execution.schedule.queue.ID id) {
     this.id = (QueueElementID) id;
   }
 
@@ -51,7 +52,7 @@ public class QueueElement implements IDIndexedAccessible {
     return o instanceof QueueElement && ((QueueElement) o).getDriverTaskId().equals(this.id);
   }
 
-  public static class QueueElementID implements ID {
+  public static class QueueElementID implements org.apache.iotdb.calc.execution.schedule.queue.ID {
     private final int id;
 
     public QueueElementID(int id) {

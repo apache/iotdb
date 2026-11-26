@@ -44,7 +44,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.getWindowStart;
 import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class TumbleTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
@@ -145,9 +147,9 @@ public class TumbleTableFunction implements TableFunction {
       // find the proper window
       long timeValue = input.getLong(0);
       if (timeValue >= origin) {
-        long windowStart = origin + (timeValue - origin) / size * size;
+        long windowStart = getWindowStart(timeValue, origin, size);
         properColumnBuilders.get(0).writeLong(windowStart);
-        properColumnBuilders.get(1).writeLong(windowStart + size);
+        properColumnBuilders.get(1).writeLong(saturatedAdd(windowStart, size));
         passThroughIndexBuilder.writeLong(curIndex);
       }
       curIndex++;

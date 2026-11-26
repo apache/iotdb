@@ -21,15 +21,21 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
 
 /** General RPC handler for TSStatus response type. */
 public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSStatus> {
@@ -48,42 +54,57 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
 
   @Override
   public void onComplete(TSStatus response) {
-    // Put response
     responseMap.put(requestId, response);
 
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Remove only if success
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      LOGGER.info(
+          ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
     } else {
-      LOGGER.error(
-          "Failed to {} on DataNode: {}, response: {}",
+      logFailure(
+          ConfigNodeMessages.FAILED_TO_ON_DATANODE_RESPONSE,
           requestType,
           formattedTargetLocation,
           response);
     }
 
-    // Always CountDown
     countDownLatch.countDown();
   }
 
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
-    LOGGER.error(errorMsg);
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            Objects.toString(requestType),
+            Objects.toString(formattedTargetLocation),
+            Objects.toString(e.getMessage()));
+    logFailure(errorMsg);
+    // the DN throw Exception -> TApplicationException
+    // the DN crash -> TTransportException or ConnectException
+    // the thrift frame timeout -> TimeoutException
+    // A timeout means no response was received, not that the DataNode failed to execute the
+    // request.
+    int code =
+        e instanceof TTransportException
+                || e instanceof ConnectException
+                || e instanceof TimeoutException
+            ? TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode()
+            : TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode();
 
-    responseMap.put(
-        requestId,
-        new TSStatus(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+    responseMap.put(requestId, new TSStatus(RpcUtils.getStatus(code, errorMsg)));
 
-    // Always CountDown
     countDownLatch.countDown();
+  }
+
+  private void logFailure(final String format, final Object... args) {
+    if (!LoggerPeriodicalLogReducer.shouldLog(format, args)) {
+      return;
+    }
+    if (requestType == CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_RUNTIME) {
+      LOGGER.warn(format, args);
+    } else {
+      LOGGER.error(format, args);
+    }
   }
 }

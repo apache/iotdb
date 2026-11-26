@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.utils;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.function.Function;
@@ -27,10 +29,10 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Streams.stream;
 
 public final class MoreLists {
   public static <T> List<List<T>> listOfListsCopy(List<List<T>> lists) {
@@ -38,20 +40,21 @@ public final class MoreLists {
   }
 
   public static <T> List<T> filteredCopy(Iterable<T> elements, Predicate<T> predicate) {
-    requireNonNull(elements, "elements is null");
-    requireNonNull(predicate, "predicate is null");
+    requireNonNull(elements, DataNodeQueryMessages.EXCEPTION_ELEMENTS_IS_NULL_3451C1DA);
+    requireNonNull(predicate, DataNodeQueryMessages.EXCEPTION_PREDICATE_IS_NULL_22E687A9);
     return stream(elements).filter(predicate).collect(toImmutableList());
   }
 
   public static <T, R> List<R> mappedCopy(Iterable<T> elements, Function<T, R> mapper) {
-    requireNonNull(elements, "elements is null");
-    requireNonNull(mapper, "mapper is null");
+    requireNonNull(elements, DataNodeQueryMessages.EXCEPTION_ELEMENTS_IS_NULL_3451C1DA);
+    requireNonNull(mapper, DataNodeQueryMessages.EXCEPTION_MAPPER_IS_NULL_1D7789D1);
     return stream(elements).map(mapper).collect(toImmutableList());
   }
 
   public static <T> List<T> nElements(int n, IntFunction<T> function) {
-    checkArgument(n >= 0, "n must be greater than or equal to zero");
-    requireNonNull(function, "function is null");
+    checkArgument(
+        n >= 0, DataNodeQueryMessages.EXCEPTION_N_MUST_BE_GREATER_THAN_OR_EQUAL_TO_ZERO_C4CE8BF0);
+    requireNonNull(function, DataNodeQueryMessages.EXCEPTION_FUNCTION_IS_NULL_E0FA4B62);
     return IntStream.range(0, n).mapToObj(function).collect(toImmutableList());
   }
 

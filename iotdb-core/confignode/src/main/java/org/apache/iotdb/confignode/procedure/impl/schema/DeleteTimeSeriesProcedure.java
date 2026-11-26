@@ -23,27 +23,38 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.procedure.ProcedureWithPendingCleanup;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteTimeSeriesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -55,22 +66,38 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+
 public class DeleteTimeSeriesProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState> {
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState>
+    implements ProcedureWithPendingCleanup {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTimeSeriesProcedure.class);
 
   private String queryId;
 
+  private final ModFileDeletionProgress modProgress =
+      new ModFileDeletionProgress(
+          this::getProcId,
+          () -> !isFinished() && getCurrentState() == DeleteTimeSeriesState.DELETE_DATA);
+
   private PathPatternTree patternTree;
+  private PathPatternTree originalPatternTree;
+  private final List<TDatabaseSchema> deleteDatabaseSchemas = new ArrayList<>();
+  private String databaseDeletionFailure;
   private transient ByteBuffer patternTreeBytes;
+  private boolean mayDeleteAudit;
 
   private transient String requestMessage;
 
@@ -79,17 +106,21 @@ public class DeleteTimeSeriesProcedure
   private transient boolean isAllLogicalView;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public DeleteTimeSeriesProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
 
   public DeleteTimeSeriesProcedure(
-      final String queryId, final PathPatternTree patternTree, final boolean isGeneratedByPipe) {
+      final String queryId,
+      final PathPatternTree patternTree,
+      final boolean isGeneratedByPipe,
+      boolean mayDeleteAudit) {
     super(isGeneratedByPipe);
     this.queryId = queryId;
     setPatternTree(patternTree);
+    this.mayDeleteAudit = mayDeleteAudit;
   }
 
   @Override
@@ -99,8 +130,12 @@ public class DeleteTimeSeriesProcedure
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
+        case PREPARE_DELETE:
+          prepareDelete(env);
+          break;
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct schemaEngine black list of timeSeries {}", requestMessage);
+          LOGGER.info(
+              ProcedureMessages.CONSTRUCT_SCHEMAENGINE_BLACK_LIST_OF_TIMESERIES, requestMessage);
           if (constructBlackList(env) > 0) {
             setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
@@ -115,41 +150,148 @@ public class DeleteTimeSeriesProcedure
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
-          invalidateCache(env);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES, requestMessage);
+          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, true);
+          setNextState(DeleteTimeSeriesState.DELETE_DATA);
           break;
         case DELETE_DATA:
-          LOGGER.info("Delete data of timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DELETE_DATA_OF_TIMESERIES, requestMessage);
           deleteData(env);
           break;
         case DELETE_TIMESERIES_SCHEMA:
-          LOGGER.info("Delete timeSeries schemaEngine of {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DELETE_TIMESERIES_SCHEMAENGINE_OF, requestMessage);
           deleteTimeSeriesSchema(env);
           collectPayload4Pipe(env);
+          if (!isFailed() && !deleteDatabaseSchemas.isEmpty()) {
+            setNextState(DeleteTimeSeriesState.DELETE_DATABASES);
+            break;
+          }
+          return Flow.NO_MORE_STATE;
+        case DELETE_DATABASES:
+          if (patternTree.isEmpty()) {
+            modProgress.finishWithoutModFiles();
+          }
+          // This is a background task: an RPC wait timeout must not allow recreation while a
+          // database-deletion procedure is still running.
+          final TSStatus deleteStatus =
+              env.getConfigManager()
+                  .getProcedureManager()
+                  .deleteDatabases(
+                      deleteDatabaseSchemas, isGeneratedByPipe, Long.MAX_VALUE, queryId);
+          if (deleteStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            databaseDeletionFailure = deleteStatus.toString();
+          }
+          // Persist deletion's result before recreating any database. Recovery must never delete
+          // databases again once their schemas have been recreated and accept new writes.
+          setNextState(DeleteTimeSeriesState.RECREATE_DATABASES);
+          break;
+        case RECREATE_DATABASES:
+          recreateDatabases(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DeleteTimeSeries-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.DELETETIMESERIES_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  /** Keep the full-database optimization inside the durable asynchronous deletion task. */
+  private void prepareDelete(final ConfigNodeProcedureEnv env) {
+    final ConfigManager manager = env.getConfigManager();
+    final Set<TDatabaseSchema> databases = new HashSet<>();
+    final List<PartialPath> databasePatterns = new ArrayList<>();
+    final PathPatternTree remaining = new PathPatternTree();
+    for (PartialPath path : patternTree.getAllPathPatterns()) {
+      if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
+          && path.getNodeLength() > 1) {
+        // Pattern-tree paths are PartialPaths, whose getDevicePath() includes the final **.
+        final PartialPath prefix =
+            new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1));
+        if (prefix.hasWildcard()) {
+          remaining.appendPathPattern(path);
+          continue;
+        }
+        final Map<String, TDatabaseSchema> matched =
+            manager.getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(prefix);
+        matched.remove(TREE_MODEL_AUDIT_DATABASE);
+        if (!matched.isEmpty()) {
+          databases.addAll(matched.values());
+          databasePatterns.add(path);
+          continue;
+        }
+      }
+      remaining.appendPathPattern(path);
+    }
+    if (!databases.isEmpty()) {
+      try {
+        SchemaUtils.checkSchemaRegionUsingTemplate(manager, databasePatterns);
+      } catch (MetadataException e) {
+        setFailure(new ProcedureException(e));
+        return;
+      }
+      remaining.constructTree();
+      setPatternTree(remaining);
+      deleteDatabaseSchemas.addAll(databases);
+    }
+    setNextState(
+        patternTree.isEmpty() && !deleteDatabaseSchemas.isEmpty()
+            ? DeleteTimeSeriesState.DELETE_DATABASES
+            : DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST);
+  }
+
+  private void recreateDatabases(final ConfigNodeProcedureEnv env) {
+    final ConfigManager manager = env.getConfigManager();
+    final List<TSStatus> failures = new ArrayList<>();
+    if (databaseDeletionFailure != null) {
+      failures.add(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, databaseDeletionFailure));
+    }
+    // Recreate the original database schemas even when deletion reports a failure, as before.
+    for (TDatabaseSchema database : deleteDatabaseSchemas) {
+      final TSStatus status =
+          manager
+              .getClusterSchemaManager()
+              .setDatabase(
+                  new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, database),
+                  isGeneratedByPipe);
+      if (status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        try {
+          if (database.equals(
+              manager.getClusterSchemaManager().getDatabaseSchemaByName(database.getName()))) {
+            // A previous execution may have recreated this database before the state was stored.
+            continue;
+          }
+        } catch (DatabaseNotExistsException e) {
+          failures.add(RpcUtils.getStatus(TSStatusCode.DATABASE_NOT_EXIST, e.getMessage()));
+        }
+      }
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failures.add(status);
+      }
+    }
+    if (!failures.isEmpty()) {
+      setFailure(
+          new ProcedureException(new IoTDBException(RpcUtils.squashResponseStatusList(failures))));
     }
   }
 
   // Return the total num of timeSeries in schemaEngine black list
   private long constructBlackList(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayDeleteAudit);
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
     isAllLogicalView = true;
-    final List<TSStatus> successResult = new ArrayList<>();
     final DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq> constructBlackListTask =
         new DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq>(
-            "construct schema engine black list",
+            ProcedureMessages.MESSAGE_CONSTRUCT_SCHEMA_ENGINE_BLACK_LIST_FCE4CBE0,
             env,
             targetSchemaRegionGroup,
             CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
@@ -160,107 +302,115 @@ public class DeleteTimeSeriesProcedure
               final TDataNodeLocation dataNodeLocation,
               final List<TConsensusGroupId> consensusGroupIdList,
               final TSStatus response) {
-            final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
             if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               isAllLogicalView = false;
-              successResult.add(response);
             } else if (response.getCode() == TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
               successResult.add(response);
-            } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              final List<TSStatus> subStatusList = response.getSubStatus();
-              for (int i = 0; i < subStatusList.size(); i++) {
-                if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  successResult.add(subStatusList.get(i));
-                } else {
-                  failedRegionList.add(consensusGroupIdList.get(i));
-                }
-              }
-            } else {
-              failedRegionList.addAll(consensusGroupIdList);
+              return Collections.emptyList();
             }
-            return failedRegionList;
+            return processResponseOfOneDataNodeWithSuccessResult(
+                dataNodeLocation, consensusGroupIdList, response);
           }
         };
     constructBlackListTask.execute();
 
     return !isFailed()
-        ? successResult.stream()
+        ? constructBlackListTask.getSuccessResult().stream()
             .mapToLong(resp -> Long.parseLong(resp.getMessage()))
             .reduce(Long::sum)
             .orElse(0L)
         : 0;
   }
 
-  private void invalidateCache(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
+  public static void invalidateCache(
+      final ConfigNodeProcedureEnv env,
+      final ByteBuffer patternTreeBytes,
+      final String requestMessage,
+      final Consumer<ProcedureException> setFailure,
+      final boolean needLock) {
+    // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
+    // schema cache and resyncs on recovery, so it cannot serve the to-be-deleted/altered series),
+    // instead of hard-failing on the first unreachable DataNode. This runs before the physical
+    // delete in the state machine, so the "delete only after PROCEED" ordering holds.
+    if (!SchemaUtils.invalidateMatchedSchemaCache(
+        env.getConfigManager(), patternTreeBytes, needLock)) {
       // All dataNodes must clear the related schemaEngine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaEngine cache of timeSeries {}", requestMessage);
-        setFailure(
-            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
-        return;
-      }
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES, requestMessage);
+      setFailure.accept(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
     }
-
-    setNextState(DeleteTimeSeriesState.DELETE_DATA);
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
-    deleteDataWithRawPathPattern(env);
-  }
-
-  private void deleteDataWithRawPathPattern(final ConfigNodeProcedureEnv env) {
-    executeDeleteData(env, patternTree);
-    if (isFailed()) {
-      return;
-    }
-    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
-  }
-
-  private void executeDeleteData(
-      final ConfigNodeProcedureEnv env, final PathPatternTree patternTree) {
     if (isAllLogicalView) {
+      modProgress.finishWithoutModFiles();
+      setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
       return;
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
-        env.getConfigManager().getRelatedDataRegionGroup(patternTree);
+        env.getConfigManager().getRelatedDataRegionGroup(patternTree, mayDeleteAudit);
 
     // Target timeSeries has no data
     if (relatedDataRegionGroup.isEmpty()) {
+      modProgress.finishWithoutModFiles();
+      setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
       return;
     }
 
+    modProgress.setRegionCount(relatedDataRegionGroup.size());
+    modProgress.trackRegionReplicas(relatedDataRegionGroup);
     final DeleteTimeSeriesRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
         new DeleteTimeSeriesRegionTaskExecutor<>(
-            "delete data",
+            ProcedureMessages.MESSAGE_DELETE_DATA_1896591B,
             env,
             relatedDataRegionGroup,
             false,
             CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
-            ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteDataForDeleteSchemaReq(
-                        new ArrayList<>(consensusGroupIdList),
-                        preparePatternTreeBytesData(patternTree))
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+            (dataNodeLocation, consensusGroupIdList) -> {
+              modProgress.trackRegions(dataNodeLocation, consensusGroupIdList);
+              return new TDeleteDataForDeleteSchemaReq(
+                      new ArrayList<>(consensusGroupIdList),
+                      preparePatternTreeBytesData(patternTree))
+                  .setIsGeneratedByPipe(isGeneratedByPipe)
+                  .setProcedureId(getProcId())
+                  .setTrackModFileProgress(true);
+            });
     deleteDataTask.execute();
+    modProgress.finish(
+        () -> {
+          if (!isFailed()) {
+            setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
+          }
+        });
+  }
+
+  public TDropTableModProgress getModFileProgress() {
+    return modProgress.snapshot();
+  }
+
+  public void updateModFileProgress() {
+    modProgress.update();
+  }
+
+  @Override
+  public boolean hasPendingCleanup() {
+    return modProgress.hasPendingCleanup();
+  }
+
+  @Override
+  public void retryPendingCleanup() {
+    updateModFileProgress();
   }
 
   private void deleteTimeSeriesSchema(final ConfigNodeProcedureEnv env) {
     final DeleteTimeSeriesRegionTaskExecutor<TDeleteTimeSeriesReq> deleteTimeSeriesTask =
         new DeleteTimeSeriesRegionTaskExecutor<>(
-            "delete time series in schema engine",
+            ProcedureMessages.MESSAGE_DELETE_TIME_SERIES_IN_SCHEMA_ENGINE_9B3DA44A,
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayDeleteAudit),
             CnToDnAsyncRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)
@@ -295,7 +445,7 @@ public class DeleteTimeSeriesProcedure
     if (deleteTimeSeriesState == DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST) {
       final DeleteTimeSeriesRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
           new DeleteTimeSeriesRegionTaskExecutor<>(
-              "roll back schema engine black list",
+              ProcedureMessages.MESSAGE_ROLL_BACK_SCHEMA_ENGINE_BLACK_LIST_39BA8E03,
               env,
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
               CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
@@ -322,7 +472,7 @@ public class DeleteTimeSeriesProcedure
 
   @Override
   protected DeleteTimeSeriesState getInitialState() {
-    return DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST;
+    return DeleteTimeSeriesState.PREPARE_DELETE;
   }
 
   public String getQueryId() {
@@ -330,16 +480,53 @@ public class DeleteTimeSeriesProcedure
   }
 
   public PathPatternTree getPatternTree() {
-    return patternTree;
+    return originalPatternTree == null ? patternTree : originalPatternTree;
+  }
+
+  public boolean deletesDatabase(final String database) {
+    // Table and tree databases have separate namespaces, even with the same qualified path.
+    if (PathUtils.isTableModelDatabase(database)) {
+      return false;
+    }
+    final PartialPath databasePath;
+    try {
+      databasePath = PartialPath.getQualifiedDatabasePartialPath(database);
+    } catch (IllegalPathException e) {
+      return false;
+    }
+    final String[] databaseNodes = databasePath.getNodes();
+    for (PartialPath path : getPatternTree().getAllPathPatterns()) {
+      if (!PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
+          || path.getNodeLength() <= 1) {
+        continue;
+      }
+      final PartialPath prefix =
+          new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1));
+      if (!prefix.hasWildcard()
+          && prefix.getNodeLength() <= databaseNodes.length
+          && Arrays.equals(
+              prefix.getNodes(), Arrays.copyOf(databaseNodes, prefix.getNodeLength()))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public String getDeleteProgress() {
+    final DeleteTimeSeriesState state = getCurrentState();
+    return isFinished() || state == null ? getState().name() : state.name();
   }
 
   public void setPatternTree(final PathPatternTree patternTree) {
+    if (originalPatternTree == null) {
+      originalPatternTree = patternTree;
+    }
     this.patternTree = patternTree;
     requestMessage = patternTree.getAllPathPatterns().toString();
     patternTreeBytes = preparePatternTreeBytesData(patternTree);
   }
 
-  private ByteBuffer preparePatternTreeBytesData(final PathPatternTree patternTree) {
+  public static ByteBuffer preparePatternTreeBytesData(final PathPatternTree patternTree) {
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
@@ -359,41 +546,84 @@ public class DeleteTimeSeriesProcedure
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     patternTree.serialize(stream);
+    ReadWriteIOUtils.write(mayDeleteAudit, stream);
+    ReadWriteIOUtils.write(originalPatternTree != patternTree, stream);
+    if (originalPatternTree != patternTree) {
+      originalPatternTree.serialize(stream);
+    }
+    ReadWriteIOUtils.write(deleteDatabaseSchemas.size(), stream);
+    for (TDatabaseSchema database : deleteDatabaseSchemas) {
+      ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(database, stream);
+    }
+    ReadWriteIOUtils.write(databaseDeletionFailure, stream);
+    modProgress.serialize(stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
+    originalPatternTree = null;
+    deleteDatabaseSchemas.clear();
+    databaseDeletionFailure = null;
     setPatternTree(PathPatternTree.deserialize(byteBuffer));
     if (getCurrentState() == DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE
         || getCurrentState() == DeleteTimeSeriesState.DELETE_DATA) {
-      LOGGER.info("Successfully restored, will set mods to the data regions anyway");
+      LOGGER.info(ProcedureMessages.SUCCESSFULLY_RESTORED_WILL_SET_MODS_TO_THE_DATA_REGIONS_ANYWAY);
     }
+    if (byteBuffer.hasRemaining()) {
+      mayDeleteAudit = ReadWriteIOUtils.readBoolean(byteBuffer);
+    }
+    if (byteBuffer.hasRemaining()) {
+      originalPatternTree =
+          ReadWriteIOUtils.readBoolean(byteBuffer)
+              ? PathPatternTree.deserialize(byteBuffer)
+              : patternTree;
+      final int size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; i++) {
+        deleteDatabaseSchemas.add(
+            ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer));
+      }
+      if (byteBuffer.hasRemaining()) {
+        databaseDeletionFailure = ReadWriteIOUtils.readString(byteBuffer);
+      }
+    }
+    modProgress.deserialize(byteBuffer);
   }
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
+    if (this == o) {
+      return true;
+    }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
     final DeleteTimeSeriesProcedure that = (DeleteTimeSeriesProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
-        && this.patternTree.equals(that.patternTree);
+        && this.patternTree.equals(that.patternTree)
+        && Objects.equals(originalPatternTree, that.originalPatternTree)
+        && deleteDatabaseSchemas.equals(that.deleteDatabaseSchemas)
+        && Objects.equals(databaseDeletionFailure, that.databaseDeletionFailure);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        patternTree,
+        originalPatternTree,
+        deleteDatabaseSchemas,
+        databaseDeletionFailure);
   }
 
-  private class DeleteTimeSeriesRegionTaskExecutor<Q>
-      extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+  private class DeleteTimeSeriesRegionTaskExecutor<Q> extends DataNodeTSStatusTaskExecutor<Q> {
 
     private final String taskName;
 
@@ -424,29 +654,6 @@ public class DeleteTimeSeriesProcedure
     }
 
     @Override
-    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-        final TDataNodeLocation dataNodeLocation,
-        final List<TConsensusGroupId> consensusGroupIdList,
-        final TSStatus response) {
-      final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
-      }
-
-      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        final List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          }
-        }
-      } else {
-        failedRegionList.addAll(consensusGroupIdList);
-      }
-      return failedRegionList;
-    }
-
-    @Override
     protected void onAllReplicasetFailure(
         final TConsensusGroupId consensusGroupId,
         final Set<TDataNodeLocation> dataNodeLocationSet) {
@@ -454,12 +661,12 @@ public class DeleteTimeSeriesProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete time series %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      ProcedureMessages.DELETE_TIME_SERIES_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN,
                       requestMessage,
                       taskName,
                       consensusGroupId.type,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      printFailureMap()))));
       interruptTask();
     }
   }

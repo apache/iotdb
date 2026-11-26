@@ -24,13 +24,16 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +44,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncIoTConsensusServiceClient.class);
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
@@ -55,8 +59,17 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
     super(
         property.getProtocolFactory(),
         tAsyncClientManager,
-        TNonblockingSocketWrapper.wrap(
-            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+        commonConfig.isEnableInternalSSL()
+            ? TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(),
+                endpoint.getPort(),
+                property.getConnectionTimeoutMs(),
+                commonConfig.getKeyStorePath(),
+                commonConfig.getKeyStorePwd(),
+                commonConfig.getTrustStorePath(),
+                commonConfig.getTrustStorePwd())
+            : TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
@@ -79,7 +92,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception("This client has been invalidated"));
+      super.onError(new Exception(IoTConsensusMessages.CLIENT_INVALIDATED));
     }
   }
 
@@ -112,7 +125,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
       return true;
     } catch (Exception e) {
       logger.info(
-          "Unexpected exception occurs in {}, error msg is {}",
+          IoTConsensusMessages.UNEXPECTED_EXCEPTION_IN_CLIENT,
           this,
           ExceptionUtils.getRootCause(e).toString());
       return false;
@@ -147,7 +160,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
           new AsyncIoTConsensusServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

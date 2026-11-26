@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.node.role;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
@@ -49,7 +50,7 @@ public interface IInternalMNode<N extends IMNode<N>> extends IMNode<N> {
     if (isDevice()) {
       return new DeviceMNodeWrapper<>(this);
     } else {
-      throw new UnsupportedOperationException("Wrong node type");
+      throw new UnsupportedOperationException(SchemaMessages.WRONG_NODE_TYPE);
     }
   }
 }

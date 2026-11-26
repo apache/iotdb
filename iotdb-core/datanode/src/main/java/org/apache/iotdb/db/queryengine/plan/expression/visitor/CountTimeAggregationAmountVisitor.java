@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
@@ -27,12 +28,12 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME;
 
 public class CountTimeAggregationAmountVisitor extends CollectVisitor {
 
   public static final String COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD =
-      "The parameter of count_time aggregation can only be '*'.";
+      DataNodeQueryMessages.EXCEPTION_THE_PARAMETER_OF_COUNT_TIME_AGGREGATION_CAN_ONLY_BE_299782B5;
 
   @Override
   public List<Expression> visitFunctionExpression(

@@ -22,20 +22,24 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
@@ -130,8 +134,8 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitPipeEnrichedInsertNode(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+    return ((PlanVisitor<R, C>) visitor).visitPipeEnrichedInsertNode(this, context);
   }
 
   @Override
@@ -158,6 +162,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
   @Override
   public void setDataRegionReplicaSet(final TRegionReplicaSet dataRegionReplicaSet) {
     insertNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+  }
+
+  @Override
+  public void clearUselessFieldsAfterRouting() {
+    insertNode.clearUselessFieldsAfterRouting();
   }
 
   @Override
@@ -232,6 +241,50 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
+  public long getRoutingEpoch() {
+    return insertNode.getRoutingEpoch();
+  }
+
+  @Override
+  public SearchNode setRoutingEpoch(final long routingEpoch) {
+    insertNode.setRoutingEpoch(routingEpoch);
+    return this;
+  }
+
+  @Override
+  public long getPhysicalTime() {
+    return insertNode.getPhysicalTime();
+  }
+
+  @Override
+  public SearchNode setPhysicalTime(final long physicalTime) {
+    insertNode.setPhysicalTime(physicalTime);
+    return this;
+  }
+
+  @Override
+  public int getNodeId() {
+    return insertNode.getNodeId();
+  }
+
+  @Override
+  public SearchNode setNodeId(final int nodeId) {
+    insertNode.setNodeId(nodeId);
+    return this;
+  }
+
+  @Override
+  public long getSyncIndex() {
+    return insertNode.getSyncIndex();
+  }
+
+  @Override
+  public SearchNode setSyncIndex(final long syncIndex) {
+    insertNode.setSyncIndex(syncIndex);
+    return this;
+  }
+
+  @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(byteBuffer);
     insertNode.serialize(byteBuffer);
@@ -241,6 +294,16 @@ public class PipeEnrichedInsertNode extends InsertNode {
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(stream);
     insertNode.serialize(stream);
+  }
+
+  @Override
+  protected int serializedAttributesSize() {
+    return PlanNodeType.BYTES + insertNode.serializeToByteBufferSize();
+  }
+
+  @Override
+  protected int serializedPlanNodeIdSize() {
+    return ReadWriteIOUtils.sizeToWrite(super.getPlanNodeId().getId());
   }
 
   public static PipeEnrichedInsertNode deserialize(final ByteBuffer buffer) {
@@ -296,5 +359,10 @@ public class PipeEnrichedInsertNode extends InsertNode {
   @Override
   public int hashCode() {
     return insertNode.hashCode();
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    insertNode.checkDataType(memTable);
   }
 }

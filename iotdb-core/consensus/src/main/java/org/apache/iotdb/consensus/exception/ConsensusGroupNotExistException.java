@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.exception;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 public class ConsensusGroupNotExistException extends ConsensusException {
 
@@ -31,7 +32,7 @@ public class ConsensusGroupNotExistException extends ConsensusException {
   }
 
   public ConsensusGroupNotExistException(ConsensusGroupId groupId) {
-    super(String.format("The consensus group %s doesn't exist", groupId));
+    super(String.format(ConsensusMessages.CONSENSUS_GROUP_NOT_EXIST, groupId));
     this.groupId = groupId;
   }
 

@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 
-import com.google.common.collect.Streams;
+import org.apache.ratis.thirdparty.com.google.common.collect.Streams;
 
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictChildOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.filter;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class PruneFilterColumns extends ProjectOffPushDownRule<FilterNode> {
   public PruneFilterColumns() {

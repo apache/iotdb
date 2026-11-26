@@ -18,19 +18,24 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryManager;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -66,16 +71,26 @@ public interface IMemTable extends WALEntryValue {
       Object[] objectValue);
 
   /**
+   * @param ignoreAllNullRows whether rows whose values are all null should be ignored, it is
+   *     determined by the data model of the database the memtable belongs to
    * @return the number of points
    */
-  long size();
+  long size(boolean ignoreAllNullRows);
 
   /**
    * @return memory usage
    */
   long memSize();
 
-  /** only used when mem control enabled */
+  void setWriteMemoryManager(WriteMemoryManager manager);
+
+  WriteMemoryBlock getArrayMemoryBlock();
+
+  WriteMemoryBlock getBinaryMemoryBlock();
+
+  WriteMemoryBlock getStructureMemoryBlock();
+
+  /** Adds TVList array memory; containers and Binary payload have separate blocks. */
   void addTVListRamCost(long cost);
 
   /** only used when mem control enabled */
@@ -87,6 +102,15 @@ public interface IMemTable extends WALEntryValue {
   int getSeriesNumber();
 
   long getTotalPointsNum();
+
+  long getTotalValueCount();
+
+  long getNullValueCount();
+
+  /**
+   * @return the ratio of null values to all valid values written into this MemTable
+   */
+  double getNullValueRatio();
 
   /**
    * insert into this memtable
@@ -112,6 +136,16 @@ public interface IMemTable extends WALEntryValue {
   int insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException;
 
+  default int insertAlignedTablet(
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs)
+      throws WriteProcessException {
+    return insertAlignedTablet(insertTabletNode, start, end, results);
+  }
+
   ReadOnlyMemChunk query(
       QueryContext context,
       IFullPath fullPath,
@@ -125,7 +159,8 @@ public interface IMemTable extends WALEntryValue {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<ModEntry, IMemTable>> modsToMemtabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemtabled,
+      Filter globalTimeFilter)
       throws IOException, QueryProcessException, MetadataException;
 
   void queryForDeviceRegionScan(
@@ -134,7 +169,8 @@ public interface IMemTable extends WALEntryValue {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<ModEntry, IMemTable>> modsToMemtabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemtabled,
+      Filter globalTimeFilter)
       throws IOException, QueryProcessException, MetadataException;
 
   /** putBack all the memory resources. */
@@ -147,7 +183,7 @@ public interface IMemTable extends WALEntryValue {
    *
    * @return
    */
-  long delete(ModEntry modEntry);
+  long delete(ModEntry modEntry, boolean ignoreAllNullRows);
 
   /**
    * Make a copy of this MemTable.
@@ -191,11 +227,17 @@ public interface IMemTable extends WALEntryValue {
 
   void setFlushStatus(FlushStatus flushStatus);
 
-  Map<IDeviceID, Long> getMaxTime();
+  Map<IDeviceID, Long> getMaxTime(boolean ignoreAllNullRows);
 
   String getDatabase();
 
   String getDataRegionId();
 
   void setDatabaseAndDataRegionId(String database, String dataRegionId);
+
+  EncryptParameter getEncryptParameter();
+
+  void setEncryptParameter(EncryptParameter encryptParameter);
+
+  void checkDataType(InsertNode node) throws DataTypeInconsistentException;
 }

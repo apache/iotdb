@@ -19,15 +19,28 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
 public class TimeoutExecutorThread<Env> extends StoppableThread {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TimeoutExecutorThread.class);
   private static final int DELAY_QUEUE_TIMEOUT = 20;
   private final ProcedureExecutor<Env> executor;
   private final DelayQueue<ProcedureDelayContainer<Env>> queue = new DelayQueue<>();
+  private final Set<Procedure<Env>> registeredInternalProcedures = ConcurrentHashMap.newKeySet();
+
+  /** Queued by {@link #sendStopSignal()}; due at once, carries no procedure. */
+  private final ProcedureDelayContainer<Env> stopMarker = new ProcedureDelayContainer<>(null);
 
   public TimeoutExecutorThread(
       ProcedureExecutor<Env> envProcedureExecutor, ThreadGroup threadGroup, String name) {
@@ -37,11 +50,22 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
   }
 
   public void add(Procedure<Env> procedure) {
-    queue.add(new ProcedureDelayContainer<>(procedure));
+    ProcedureDelayContainer<Env> delayTask = new ProcedureDelayContainer<>(procedure);
+    if (procedure instanceof InternalProcedure) {
+      if (!registeredInternalProcedures.add(procedure)) {
+        return;
+      }
+      procedure.setState(ProcedureState.WAITING_TIMEOUT);
+    }
+    queue.remove(delayTask);
+    queue.add(delayTask);
   }
 
   public boolean remove(Procedure<Env> procedure) {
-    return queue.remove(new ProcedureDelayContainer<>(procedure));
+    boolean unregistered =
+        procedure instanceof InternalProcedure && registeredInternalProcedures.remove(procedure);
+    boolean removed = queue.remove(new ProcedureDelayContainer<>(procedure));
+    return unregistered || removed || procedure.isFinished();
   }
 
   private ProcedureDelayContainer<Env> takeQuietly() {
@@ -57,28 +81,47 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
   public void run() {
     while (executor.isRunning()) {
       ProcedureDelayContainer<Env> delayTask = takeQuietly();
-      if (delayTask == null) {
+      if (delayTask == null || delayTask == stopMarker) {
         continue;
       }
       Procedure<Env> procedure = delayTask.getProcedure();
       if (procedure instanceof InternalProcedure) {
+        if (!registeredInternalProcedures.contains(procedure) || procedure.isFinished()) {
+          continue;
+        }
         InternalProcedure internal = (InternalProcedure) procedure;
         internal.periodicExecute(executor.getEnvironment());
-        procedure.updateTimestamp();
-        queue.add(delayTask);
+        if (!procedure.isFinished() && registeredInternalProcedures.contains(procedure)) {
+          procedure.updateTimestamp();
+          queue.add(delayTask);
+        }
       } else {
         if (procedure.setTimeoutFailure(executor.getEnvironment())) {
           long rootProcId = executor.getRootProcedureId(procedure);
           RootProcedureStack<Env> rollbackStack = executor.getRollbackStack(rootProcId);
           rollbackStack.abort();
-          executor.getStore().update(procedure);
-          executor.getScheduler().addFront(procedure);
+          try {
+            executor.getStore().update(procedure);
+          } catch (Exception e) {
+            // Do nothing since new CN leader can converge to the correct state when restore this
+            // procedure.
+            LOGGER.warn(ProcedureMessages.FAILED_TO_UPDATE_PROCEDURE, procedure, e);
+          }
+          executor.getScheduler(procedure).addFront(procedure);
         }
       }
     }
   }
 
-  public void sendStopSignal() {}
+  @Override
+  public void sendStopSignal() {
+    // wake run() from its queue poll (up to DELAY_QUEUE_TIMEOUT seconds), so that it
+    // sees the stopped executor at once. Before, join() waited until awaitTermination's eighth
+    // join round interrupted the thread, about 2 s per thread on every stop.
+    if (!queue.contains(stopMarker)) {
+      queue.add(stopMarker);
+    }
+  }
 
   private static class ProcedureDelayContainer<Env> implements Delayed {
 
@@ -93,7 +136,27 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
     }
 
     @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof ProcedureDelayContainer)) {
+        return false;
+      }
+      ProcedureDelayContainer<?> that = (ProcedureDelayContainer<?>) o;
+      return procedure == that.procedure;
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(procedure);
+    }
+
+    @Override
     public long getDelay(TimeUnit unit) {
+      if (procedure == null) {
+        return 0; // the stop marker
+      }
       long delay = procedure.getTimeoutTimestamp() - System.currentTimeMillis();
       return unit.convert(delay, TimeUnit.MILLISECONDS);
     }

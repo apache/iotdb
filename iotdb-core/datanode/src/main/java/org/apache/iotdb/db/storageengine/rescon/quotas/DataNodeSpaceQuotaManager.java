@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -88,9 +89,9 @@ public class DataNodeSpaceQuotaManager {
           spaceQuotaLimit.put(database, spaceQuota.getSpaceQuota().get(database));
         }
       }
-      LOGGER.info("Space quota limit restore succeeded, limit: {}.", spaceQuotaLimit);
+      LOGGER.info(StorageEngineMessages.SPACE_QUOTA_RESTORE_SUCCEEDED, spaceQuotaLimit);
     } else {
-      LOGGER.error("Space quota limit restore failed, limit: {}.", spaceQuotaLimit);
+      LOGGER.error(StorageEngineMessages.SPACE_QUOTA_RESTORE_FAILED, spaceQuotaLimit);
     }
   }
 

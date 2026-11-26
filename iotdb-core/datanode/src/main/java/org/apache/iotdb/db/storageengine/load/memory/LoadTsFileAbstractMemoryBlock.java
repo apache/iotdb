@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load.memory;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,13 +59,21 @@ public abstract class LoadTsFileAbstractMemoryBlock implements AutoCloseable {
     return isClosed.get();
   }
 
+  /**
+   * Creates a sub-block that caps the memory one part of a task may hold and accounts it on this
+   * block as well.
+   */
+  public LoadTsFileAbstractMemoryBlock createSubBlock(final long maxMemorySizeInBytes) {
+    return new LoadTsFileSubMemoryBlock(this, maxMemorySizeInBytes);
+  }
+
   @Override
   public void close() {
     if (isClosed.compareAndSet(false, true)) {
       try {
         releaseAllMemory();
       } catch (Exception e) {
-        LOGGER.error("Release memory block {} failed", this, e);
+        LOGGER.error(StorageEngineMessages.RELEASE_MEMORY_BLOCK_FAILED, this, e);
       }
     }
   }

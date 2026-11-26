@@ -19,20 +19,22 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterator {
   private final BitMap bitMap;
-  private final List<int[]> valueColumnDeleteCursor;
   private int iteratorIndex = 0;
   private int[] rowIndices;
 
@@ -40,27 +42,31 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
       boolean ignoreAllNullRows,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     super(
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        tvListRowCounts,
+        scanOrder,
+        globalTimeFilter,
         timeColumnDeletion,
         valueColumnsDeletionList,
         floatPrecision,
         encodingList,
         ignoreAllNullRows,
-        maxNumberOfPointsInPage);
+        maxNumberOfPointsInPage,
+        queryContext);
     this.bitMap = new BitMap(tsDataTypeList.size());
-    this.valueColumnDeleteCursor = new ArrayList<>();
-    for (int i = 0; i < tsDataTypeList.size(); i++) {
-      valueColumnDeleteCursor.add(new int[] {0});
-    }
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
@@ -86,7 +92,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
                 && isPointDeleted(
                     currentTime,
                     valueColumnsDeletionList.get(columnIndex),
-                    valueColumnDeleteCursor.get(columnIndex)))
+                    valueColumnDeleteCursor.get(columnIndex),
+                    scanOrder))
             || iterator.isNullValue(rowIndices[columnIndex], columnIndex)) {
           bitMap.mark(columnIndex);
         }
@@ -97,6 +104,22 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
       }
     }
     probeNext = true;
+  }
+
+  @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    iteratorIndex = 0;
+    while (iteratorIndex < alignedTvListIterators.size() && !hasNext) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (!iterator.hasNextTimeValuePair()) {
+        iteratorIndex++;
+        continue;
+      }
+      hasNext = iterator.hasNextTimeValuePair();
+    }
+    probeNext = false;
   }
 
   @Override
@@ -129,5 +152,13 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
   @Override
   protected int currentRowIndex(int columnIndex) {
     return rowIndices[columnIndex];
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (AlignedTVList.AlignedTVListIterator iterator : alignedTvListIterators) {
+      iterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

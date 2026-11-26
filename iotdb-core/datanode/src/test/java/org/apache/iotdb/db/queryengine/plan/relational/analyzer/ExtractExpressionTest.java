@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import static org.apache.iotdb.commons.queryengine.utils.DateTimeUtils.initTimestampPrecision;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.expression;
@@ -33,6 +35,11 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 
 public class ExtractExpressionTest {
+  @BeforeClass
+  public static void setUp() {
+    initTimestampPrecision();
+  }
+
   @Test
   public void pushDownTest() {
     PlanTester planTester = new PlanTester();

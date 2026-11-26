@@ -247,7 +247,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
         String.format(
             "create table %s2%s (s1 string tag, status %s field)",
             sourceTypeName, targetTypeName, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         null,
         BaseEnv.TABLE_SQL_DIALECT,
         env,
@@ -263,7 +263,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='tablet')",
             receiverEnv.getIP(), receiverEnv.getPort());
-    TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql), null);
   }
 
@@ -299,7 +299,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
     switch (sourceType) {
       case STRING:
       case TEXT:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
@@ -307,7 +307,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
             null);
         return;
       case TIMESTAMP:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
@@ -315,7 +315,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
             null);
         return;
       case DATE:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
@@ -323,7 +323,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
             null);
         return;
       case BLOB:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
@@ -331,7 +331,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
             null);
         return;
       default:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,

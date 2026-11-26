@@ -146,10 +146,14 @@ remote_ports_check() {
       if [ -n "$unreachable_ports" ]; then
         unreachable_combinations+=("IP: $host, Ports: $unreachable_ports")
       fi
+      display_host="$host"
+      if [[ "$display_host" == *:* ]] && [[ "${display_host:0:1}" != "[" ]]; then
+        display_host="[$display_host]"
+      fi
       if [ -n "$ip_port_list" ]; then
-        ip_port_list="$ip_port_list,$host:$all_ports"
+        ip_port_list="$ip_port_list,$display_host:$all_ports"
       else
-        ip_port_list="$host:$all_ports"
+        ip_port_list="$display_host:$all_ports"
       fi
   done
   echo ""
@@ -316,7 +320,7 @@ local_dirs_check() {
 
 local_jdk_check() {
   echo "Check: Installation Environment(JDK)"
-  echo "Requirement: JDK Version >=1.8"
+  echo "Requirement: JDK Version >=17"
 
   if [ -z $JAVA ] ; then
     echo "Result: Unable to find java executable. Check JAVA_HOME and PATH environment variables. "

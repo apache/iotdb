@@ -19,14 +19,18 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.NotCompatibleTsFileException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -36,6 +40,11 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 
 /** This class is used to help recover TsFile. */
 public abstract class AbstractTsFileRecoverPerformer implements Closeable {
@@ -61,6 +70,8 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
    */
   protected void recoverWithWriter() throws DataRegionException, IOException {
     File tsFile = tsFileResource.getTsFile();
+    boolean reinitialize =
+        tsFile.exists() && !tsFileResource.resourceFileExists() && hasNoPersistedData(tsFile);
     File chunkMetadataTempFile =
         new File(tsFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX);
     if (chunkMetadataTempFile.exists()) {
@@ -75,15 +86,22 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
     }
 
     if (!tsFile.exists()) {
-      logger.error("TsFile {} is missing, will skip its recovery.", tsFile);
+      logger.error(StorageEngineMessages.TSFILE_MISSING_SKIP_RECOVERY, tsFile);
       return;
     }
 
-    writer = new RestorableTsFileIOWriter(tsFile);
+    writer =
+        reinitialize
+            ? reinitializeWriter(tsFile)
+            : new RestorableTsFileIOWriter(
+                tsFile,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()));
     if (writer.hasCrashed()) {
       byte versionNumber;
       try (TsFileSequenceReader sequenceReader =
-          new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+          new TsFileSequenceReader(
+              tsFile.getAbsolutePath(),
+              EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()))) {
         versionNumber = sequenceReader.readVersionNumber();
       } catch (NotCompatibleTsFileException e) {
         versionNumber = -1;
@@ -92,11 +110,51 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       if (versionNumber != TSFileConfig.VERSION_NUMBER) {
         // cannot rewrite a file with V3 header, delete it first
         writer.close();
-        tsFile.delete();
-        writer = new RestorableTsFileIOWriter(tsFile);
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
+        writer =
+            EncryptDBUtils.createRestorableWriterForNewFile(
+                tsFile,
+                tsFileResource.getDatabaseName(),
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()));
       }
     } else {
       reconstructResourceFile();
+    }
+  }
+
+  private static boolean hasNoPersistedData(File file) throws IOException {
+    byte[] magic = TSFileConfig.MAGIC_STRING.getBytes(StandardCharsets.UTF_8);
+    try (FileChannel input = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
+      if (input.size() == 0) {
+        return true;
+      }
+      if (input.size() != magic.length + Byte.BYTES) {
+        return false;
+      }
+      byte[] expected = Arrays.copyOf(magic, magic.length + Byte.BYTES);
+      expected[magic.length] = TSFileConfig.VERSION_NUMBER;
+      ByteBuffer header = ByteBuffer.allocate(expected.length);
+      IOUtils.readFully(input, header);
+      return Arrays.equals(expected, header.array());
+    }
+  }
+
+  private RestorableTsFileIOWriter reinitializeWriter(File file) throws IOException {
+    // Resolve the new-file policy before modifying even a header-only file.
+    EncryptParameter parameter =
+        EncryptDBUtils.createEncryptParameterForNewFile(
+            file,
+            tsFileResource.getDatabaseName(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(file.getAbsolutePath()));
+    try {
+      try (FileChannel output = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
+        output.truncate(0);
+      }
+      return new RestorableTsFileIOWriter(file, parameter);
+    } finally {
+      if (parameter != null && parameter.isTdePageAead()) {
+        parameter.close();
+      }
     }
   }
 
@@ -105,7 +163,8 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       tsFileResource.deserialize();
     } catch (Throwable e) {
       logger.warn(
-          "Cannot deserialize .resource file of {}, try to reconstruct it.",
+          StorageEngineMessages
+              .STORAGE_LOG_CANNOT_DESERIALIZE_RESOURCE_FILE_OF_TRY_TO_RECONSTRUCT_IT_F82299C6,
           tsFileResource.getTsFile(),
           e);
       reconstructResourceFile();
@@ -114,7 +173,10 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
 
   protected void reconstructResourceFile() throws IOException {
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
+        new TsFileSequenceReader(
+            tsFileResource.getTsFile().getAbsolutePath(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(
+                tsFileResource.getTsFile().getAbsolutePath()))) {
       TsFileResourceUtils.updateTsFileResource(reader, tsFileResource);
     }
 

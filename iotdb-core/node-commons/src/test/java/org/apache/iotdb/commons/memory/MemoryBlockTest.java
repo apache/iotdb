@@ -21,6 +21,9 @@ package org.apache.iotdb.commons.memory;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class MemoryBlockTest {
 
   @Test
@@ -63,5 +66,43 @@ public class MemoryBlockTest {
 
     memoryBlock1.close();
     memoryBlock2.close();
+  }
+
+  @Test
+  public void testAllocateNoPhantomSuccessUnderContention() throws InterruptedException {
+    final int rounds = 2000;
+    for (int i = 0; i < rounds; i++) {
+      AtomicLongMemoryBlock memoryBlock = new AtomicLongMemoryBlock("ContentionBlock", null, 1);
+      AtomicInteger successCount = new AtomicInteger(0);
+      CountDownLatch startLatch = new CountDownLatch(1);
+      CountDownLatch doneLatch = new CountDownLatch(2);
+
+      Runnable allocateTask =
+          () -> {
+            try {
+              startLatch.await();
+              if (memoryBlock.allocate(1)) {
+                successCount.incrementAndGet();
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new RuntimeException(e);
+            } finally {
+              doneLatch.countDown();
+            }
+          };
+
+      Thread t1 = new Thread(allocateTask, "memory-block-test-1");
+      Thread t2 = new Thread(allocateTask, "memory-block-test-2");
+      t1.start();
+      t2.start();
+      startLatch.countDown();
+      doneLatch.await();
+
+      Assert.assertEquals(1, successCount.get());
+      Assert.assertEquals(1, memoryBlock.getUsedMemoryInBytes());
+      Assert.assertEquals(0, memoryBlock.release(1));
+      Assert.assertEquals(0, memoryBlock.getUsedMemoryInBytes());
+    }
   }
 }

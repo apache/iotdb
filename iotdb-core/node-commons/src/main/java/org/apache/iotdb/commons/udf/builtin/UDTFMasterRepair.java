@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.udf.builtin;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.MasterRepairUtil;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -42,25 +43,25 @@ public class UDTFMasterRepair implements UDTF {
     if (validator.getParameters().hasAttribute("omega")) {
       validator.validate(
           omega -> (int) omega >= 0,
-          "Parameter omega should be non-negative.",
+          CommonMessages.EXCEPTION_PARAMETER_OMEGA_SHOULD_BE_NON_NEGATIVE_6154A6D7,
           validator.getParameters().getInt("omega"));
     }
     if (validator.getParameters().hasAttribute("eta")) {
       validator.validate(
           eta -> (double) eta > 0,
-          "Parameter eta should be larger than 0.",
+          CommonMessages.EXCEPTION_PARAMETER_ETA_SHOULD_BE_LARGER_THAN_0_022CA22F,
           validator.getParameters().getDouble("eta"));
     }
     if (validator.getParameters().hasAttribute("k")) {
       validator.validate(
           k -> (int) k > 0,
-          "Parameter k should be a positive integer.",
+          CommonMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458,
           validator.getParameters().getInt("k"));
     }
     if (validator.getParameters().hasAttribute("output_column")) {
       validator.validate(
           outputColumn -> (int) outputColumn > 0,
-          "Parameter output_column should be a positive integer.",
+          CommonMessages.EXCEPTION_PARAMETER_OUTPUT_COLUMN_SHOULD_BE_A_POSITIVE_INTEGER_A58CE07F,
           validator.getParameters().getInt("output_column"));
     }
   }

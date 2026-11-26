@@ -21,13 +21,15 @@
 package org.apache.iotdb.db.exception.metadata.template;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class DifferentTemplateException extends MetadataException {
 
   public DifferentTemplateException(String path, String templateName) {
     super(
-        String.format("The template on %s is different from %s", path, templateName),
+        String.format(
+            DataNodeSchemaMessages.TEMPLATE_ON_PATH_DIFFERENT_FROM_FMT, path, templateName),
         TSStatusCode.DIFFERENT_TEMPLATE.getStatusCode(),
         true);
   }

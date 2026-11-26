@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -114,6 +115,9 @@ public class BackwardSort extends QuickSort {
       last_time = cur_time;
       i += step;
       blocks += 1;
+    }
+    if (blocks == 0.0) {
+      throw new IllegalStateException(DataNodeMiscMessages.BLOCKS_SHOULD_NEVER_BE_ZERO);
     }
     double ratio = overlap / blocks;
     int mul = (int) Math.ceil(ratio / INVERSION_RATIOS_THRESHOLD);

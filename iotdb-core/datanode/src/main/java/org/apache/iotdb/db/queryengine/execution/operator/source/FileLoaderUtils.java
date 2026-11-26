@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -36,7 +41,9 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.M
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -48,14 +55,17 @@ import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPageReader;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class FileLoaderUtils {
 
@@ -130,7 +140,8 @@ public class FileLoaderUtils {
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
 
-        timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
+        timeSeriesMetadata =
+            (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath, globalTimeFilter);
         if (timeSeriesMetadata != null) {
           timeSeriesMetadata.setChunkMetadataLoader(
               new MemChunkMetadataLoader(resource, seriesPath, context, globalTimeFilter));
@@ -138,15 +149,42 @@ public class FileLoaderUtils {
       }
 
       if (timeSeriesMetadata != null) {
+        SchemaUtils.changeTimeseriesMetadataModified(
+            timeSeriesMetadata, seriesPath.getSeriesType());
         if (timeSeriesMetadata.getStatistics().getStartTime()
             > timeSeriesMetadata.getStatistics().getEndTime()) {
           return null;
         }
         if (globalTimeFilter != null && globalTimeFilter.canSkip(timeSeriesMetadata)) {
+          // for unclosed tsfile, the timeSeriesMetadata.getStatistics().getCount() may be
+          // inaccurate
+          // maybe return one but actual count is much more than one
+          context
+              .getQueryStatistics()
+              .addFilteredRowsOfTimeSeriesLevel(timeSeriesMetadata.getStatistics().getCount());
           return null;
         }
       }
+
       return timeSeriesMetadata;
+    } catch (IoTDBRuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      if (loadFromMem) {
+        throw e;
+      }
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      throw new CorruptedTsFileException(
+          resource.getTsFile(),
+          CorruptedTsFileException.Stage.READ_TIMESERIES_METADATA,
+          context.isExternalTsFileScan()
+              ? String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8,
+                  resource.getTsFile())
+              : DataNodeQueryMessages
+                  .EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E,
+          e);
     } finally {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
@@ -183,21 +221,32 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
     try {
       AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata;
+      List<TSDataType> targetDataTypeList =
+          alignedPath.getSchemaList().stream()
+              .map(IMeasurementSchema::getType)
+              .collect(Collectors.toList());
       // If the tsfile is closed, we need to load from tsfile
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows);
+                resource,
+                alignedPath,
+                context,
+                globalTimeFilter,
+                ignoreAllNullRows,
+                rootMeasurementMetadataIndexNodeOffset);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
-            (AbstractAlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(alignedPath);
+            (AbstractAlignedTimeSeriesMetadata)
+                resource.getTimeSeriesMetadata(alignedPath, globalTimeFilter);
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new MemAlignedChunkMetadataLoader(
@@ -207,15 +256,40 @@ public class FileLoaderUtils {
       }
 
       if (alignedTimeSeriesMetadata != null) {
+        SchemaUtils.changeAlignedTimeseriesMetadataModified(
+            alignedTimeSeriesMetadata, targetDataTypeList);
         if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
             > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
           return null;
         }
         if (globalTimeFilter != null && globalTimeFilter.canSkip(alignedTimeSeriesMetadata)) {
+          // record the timeSeries level filtered data
+          context
+              .getQueryStatistics()
+              .addFilteredRowsOfTimeSeriesLevel(
+                  alignedTimeSeriesMetadata.getStatistics().getCount());
           return null;
         }
       }
       return alignedTimeSeriesMetadata;
+    } catch (IoTDBRuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      if (loadFromMem) {
+        throw e;
+      }
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      throw new CorruptedTsFileException(
+          resource.getTsFile(),
+          CorruptedTsFileException.Stage.READ_TIMESERIES_METADATA,
+          context.isExternalTsFileScan()
+              ? String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8,
+                  resource.getTsFile())
+              : DataNodeQueryMessages
+                  .EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E,
+          e);
     } finally {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
@@ -258,7 +332,8 @@ public class FileLoaderUtils {
       AlignedFullPath alignedPath,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -281,7 +356,8 @@ public class FileLoaderUtils {
             context.ignoreNotExistsDevice()
                 || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
             isDebug,
-            context);
+            context,
+            rootMeasurementMetadataIndexNodeOffset);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -301,17 +377,17 @@ public class FileLoaderUtils {
             new ArrayList<>(valueMeasurementList.size());
         // if all the queried aligned sensors does not exist, we will return null
         boolean exist = false;
-        for (String valueMeasurement : valueMeasurementList) {
+        for (String measurement : valueMeasurementList) {
           TimeseriesMetadata valueColumn =
               cache.get(
                   filePath,
-                  new TimeSeriesMetadataCacheKey(
-                      resource.getTsFileID(), deviceId, valueMeasurement),
+                  new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, measurement),
                   allSensors,
                   context.ignoreNotExistsDevice()
                       || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                   isDebug,
-                  context);
+                  context,
+                  rootMeasurementMetadataIndexNodeOffset);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
         }
@@ -433,12 +509,59 @@ public class FileLoaderUtils {
    *     IOException will be thrown
    */
   public static List<IPageReader> loadPageReaderList(
-      IChunkMetadata chunkMetaData, Filter globalTimeFilter) throws IOException {
-    checkArgument(chunkMetaData != null, "Can't init null chunkMeta");
+      IChunkMetadata chunkMetaData,
+      Filter globalTimeFilter,
+      List<TSDataType> targetDataTypeList,
+      FragmentInstanceContext context)
+      throws IOException {
+    checkArgument(
+        chunkMetaData != null,
+        DataNodeQueryMessages.EXCEPTION_CAN_QUOTE_T_INIT_NULL_CHUNKMETA_15C12BEE);
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-    IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
-    return chunkReader.loadPageReaderList();
+    File tsFile = null;
+    if (chunkLoader instanceof DiskChunkLoader) {
+      tsFile = ((DiskChunkLoader) chunkLoader).getTsFile();
+    } else if (chunkLoader instanceof DiskAlignedChunkLoader) {
+      tsFile = ((DiskAlignedChunkLoader) chunkLoader).getTsFile();
+    }
+    final IChunkReader chunkReader;
+    try {
+      chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
+    } catch (ChunkTypeInconsistentException e) {
+      // if the chunk in tsfile is a value chunk of aligned series but registered series is
+      // non-aligned, we should skip all data of this chunk.
+      return Collections.emptyList();
+    } catch (Exception e) {
+      if (tsFile == null) {
+        throw e;
+      }
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      throw new CorruptedTsFileException(
+          tsFile,
+          CorruptedTsFileException.Stage.READ_CHUNK_DATA_OR_LOAD_PAGE_READER,
+          context.isExternalTsFileScan()
+              ? String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70,
+                  tsFile)
+              : DataNodeQueryMessages
+                  .EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1,
+          e);
+    }
+    if (chunkMetaData.isDataTypeModifiedAndCannotUseStatistics()) {
+      chunkReader.markDataTypeModifiedAndCannotUseStatistics();
+    }
+    try {
+      return chunkReader.loadPageReaderList();
+    } catch (IOException | RuntimeException | Error failure) {
+      try {
+        chunkReader.close();
+      } catch (IOException | RuntimeException | Error cleanup) {
+        failure.addSuppressed(cleanup);
+      }
+      throw failure;
+    }
   }
 
   /**

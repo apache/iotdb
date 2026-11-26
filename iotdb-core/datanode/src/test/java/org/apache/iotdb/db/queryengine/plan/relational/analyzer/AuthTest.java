@@ -19,18 +19,32 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecker;
+import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -44,9 +58,13 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetad
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class AuthTest {
 
@@ -67,7 +85,7 @@ public class AuthTest {
     String sql = String.format("SELECT * FROM %s.%s", DB1, TABLE1);
     ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkTablePrivilege(eq(userRoot), any(), any());
+    Mockito.doNothing().when(authChecker).checkTablePrivilege(eq(userRoot), any(), any(), any());
     // user `user1` don't hava testdb.table1's SELECT privilege
     String errorMsg =
         String.format(
@@ -75,11 +93,11 @@ public class AuthTest {
             user1, TableModelPrivilege.SELECT, DB1, TABLE1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
+        .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT), any());
     // user `user2` has testdb.table1's SELECT privilege
     Mockito.doNothing()
         .when(authChecker)
-        .checkTablePrivilege(eq(user2), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
+        .checkTablePrivilege(eq(user2), eq(testdbTable1), eq(TableModelPrivilege.SELECT), any());
 
     String userName = userRoot;
     try {
@@ -107,6 +125,50 @@ public class AuthTest {
   }
 
   @Test
+  public void testInformationSchemaReceiversUseSameLocalAuthAsPipes() {
+    final ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+
+    try {
+      analyzeSQL(
+          String.format(
+              "SELECT * FROM %s.%s",
+              InformationSchema.INFORMATION_DATABASE, InformationSchema.PIPES),
+          user1,
+          authChecker);
+      analyzeSQL(
+          String.format(
+              "SELECT * FROM %s.%s",
+              InformationSchema.INFORMATION_DATABASE, InformationSchema.RECEIVERS),
+          user1,
+          authChecker);
+    } catch (Exception e) {
+      fail("Unexpected exception : " + e.getMessage());
+    }
+
+    Mockito.verify(authChecker, Mockito.never()).checkGlobalPrivileges(any(), any(), any());
+  }
+
+  @Test
+  public void testTreeShowReceiversUsesSameLocalAuthAsShowPipes() {
+    final TreeAccessCheckVisitor visitor = new TreeAccessCheckVisitor();
+    final TreeAccessCheckContext showPipesContext =
+        new TreeAccessCheckContext(1, user1, "127.0.0.1");
+    final TreeAccessCheckContext showReceiversContext =
+        new TreeAccessCheckContext(1, user1, "127.0.0.1");
+
+    final TSStatus showPipesStatus =
+        visitor.visitShowPipes(new ShowPipesStatement(), showPipesContext);
+    final TSStatus showReceiversStatus =
+        visitor.visitShowReceivers(new ShowReceiversStatement(), showReceiversContext);
+
+    assertEquals(StatusUtils.OK.getCode(), showPipesStatus.getCode());
+    assertEquals(showPipesStatus.getCode(), showReceiversStatus.getCode());
+    assertEquals(AuditLogOperation.QUERY, showReceiversContext.getAuditLogOperation());
+    assertEquals(AuditEventType.OBJECT_AUTHENTICATION, showReceiversContext.getAuditEventType());
+    assertTrue(showReceiversContext.getResult());
+  }
+
+  @Test
   public void testDatabaseManagementRelatedAuth() {
 
     // create database
@@ -114,7 +176,7 @@ public class AuthTest {
     String sql = String.format("CREATE DATABASE %s", databaseTest1);
     ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkDatabasePrivilege(eq(userRoot), any(), any());
+    Mockito.doNothing().when(authChecker).checkDatabasePrivilege(eq(userRoot), any(), any(), any());
     // user `user1` don't hava test1's CREATE privilege
     String errorMsg =
         String.format(
@@ -122,11 +184,13 @@ public class AuthTest {
             user1, TableModelPrivilege.CREATE, databaseTest1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkDatabasePrivilege(eq(user1), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
+        .checkDatabasePrivilege(
+            eq(user1), eq(databaseTest1), eq(TableModelPrivilege.CREATE), any());
     // user `user2` has test1's CREATE privilege
     Mockito.doNothing()
         .when(authChecker)
-        .checkDatabasePrivilege(eq(user2), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
+        .checkDatabasePrivilege(
+            eq(user2), eq(databaseTest1), eq(TableModelPrivilege.CREATE), any());
 
     String userName = userRoot;
     try {
@@ -155,14 +219,16 @@ public class AuthTest {
     // use database
     String databaseTest2 = "test2";
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(userRoot), any());
+    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(userRoot), any(), any());
     // user `user1` can't see DATABASE test1
     errorMsg = String.format("%s has no privileges on DATABASE %s", user1, databaseTest1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkDatabaseVisibility(eq(user1), eq(databaseTest1));
+        .checkDatabaseVisibility(eq(user1), eq(databaseTest1), any());
     // user `user1` can see DATABASE test2
-    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(user1), eq(databaseTest2));
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkDatabaseVisibility(eq(user1), eq(databaseTest2), any());
 
     sql = String.format("USE %s", databaseTest1);
     userName = userRoot;
@@ -199,6 +265,49 @@ public class AuthTest {
 
   }
 
+  @Test
+  public void testFunctionManagementAuditOperation() {
+    ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+    String functionName = "test_function";
+
+    analyzeConfigTask(
+        String.format(
+            "CREATE FUNCTION %s AS 'org.apache.iotdb.db.query.udf.example.relational.AllSum'",
+            functionName),
+        user1,
+        authChecker);
+    analyzeConfigTask(String.format("DROP FUNCTION %s", functionName), user1, authChecker);
+
+    verify(authChecker, times(2))
+        .checkGlobalPrivilege(
+            eq(user1),
+            eq(TableModelPrivilege.SYSTEM),
+            eq(AuditLogOperation.DDL),
+            any(),
+            argThat(auditObject -> functionName.equals(auditObject.get())));
+  }
+
+  @Test
+  public void testExplicitGlobalPrivilegeAuditOperation() {
+    ITableAuthCheckerImpl authChecker = new ITableAuthCheckerImpl();
+    UserEntity auditEntity = new UserEntity(0, userRoot, "127.0.0.1");
+
+    authChecker.checkGlobalPrivilege(
+        userRoot,
+        TableModelPrivilege.SYSTEM,
+        AuditLogOperation.DDL,
+        auditEntity,
+        () -> "test_function");
+
+    assertEquals(AuditLogOperation.DDL, auditEntity.getAuditLogOperation());
+    assertEquals(Collections.singletonList(PrivilegeType.SYSTEM), auditEntity.getPrivilegeTypes());
+    assertTrue(auditEntity.getResult());
+
+    UserEntity defaultAuditEntity = new UserEntity(0, userRoot, "127.0.0.1");
+    authChecker.checkGlobalPrivilege(userRoot, TableModelPrivilege.SYSTEM, defaultAuditEntity);
+    assertEquals(AuditLogOperation.CONTROL, defaultAuditEntity.getAuditLogOperation());
+  }
+
   private void analyzeSQL(String sql, String userName, ITableAuthChecker authChecker) {
     analyzeSQL(sql, userName, authChecker, null);
   }
@@ -213,10 +322,13 @@ public class AuthTest {
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
 
     SessionInfo session =
-        new SessionInfo(
-            0, userName, zoneId, databaseNameInSessionInfo, IClientSession.SqlDialect.TABLE);
+        new SessionInfo(0, userName, zoneId, databaseNameInSessionInfo, SqlDialect.TABLE);
     StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(TEST_MATADATA, sqlParser, new AccessControlImpl(authChecker));
+        new StatementAnalyzerFactory(
+            TEST_MATADATA,
+            sqlParser,
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
+            new InternalTypeManager());
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
     Analyzer analyzer =
         new Analyzer(
@@ -235,26 +347,30 @@ public class AuthTest {
     Mockito.when(clientSession.getDatabaseName()).thenReturn(null);
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
 
-    SessionInfo session =
-        new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
+    SessionInfo session = new SessionInfo(0, userName, zoneId, null, SqlDialect.TABLE);
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
 
     statement.accept(
         new TableConfigTaskVisitor(
-            Mockito.mock(IClientSession.class), TEST_MATADATA, new AccessControlImpl(authChecker)),
+            Mockito.mock(IClientSession.class),
+            TEST_MATADATA,
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
+            new InternalTypeManager()),
         context);
   }
 
   private void analyzeConfigTask(
       String sql, String userName, ITableAuthChecker authChecker, IClientSession clientSession) {
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
-    SessionInfo session =
-        new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
+    SessionInfo session = new SessionInfo(0, userName, zoneId, null, SqlDialect.TABLE);
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
 
     statement.accept(
         new TableConfigTaskVisitor(
-            clientSession, TEST_MATADATA, new AccessControlImpl(authChecker)),
+            clientSession,
+            TEST_MATADATA,
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
+            new InternalTypeManager()),
         context);
   }
 }

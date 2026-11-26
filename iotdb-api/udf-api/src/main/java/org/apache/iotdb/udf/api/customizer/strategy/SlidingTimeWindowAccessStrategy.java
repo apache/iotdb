@@ -24,6 +24,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 
 import java.time.ZoneId;
 
@@ -108,7 +109,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
       String slidingStepString,
       String displayWindowBeginString,
       String displayWindowEndString) {
-    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
+    throw new UnsupportedOperationException(UdfApiMessages.METHOD_DEPRECATED_SINCE_V014);
   }
 
   /**
@@ -127,7 +128,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    */
   @Deprecated
   public SlidingTimeWindowAccessStrategy(String timeIntervalString, String slidingStepString) {
-    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
+    throw new UnsupportedOperationException(UdfApiMessages.METHOD_DEPRECATED_SINCE_V014);
   }
 
   /**
@@ -142,7 +143,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    * @throws UnsupportedOperationException deprecated since v0.14
    */
   public SlidingTimeWindowAccessStrategy(String timeIntervalString) {
-    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
+    throw new UnsupportedOperationException(UdfApiMessages.METHOD_DEPRECATED_SINCE_V014);
   }
 
   /**
@@ -194,17 +195,22 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   public void check() {
     if (timeInterval <= 0) {
       throw new RuntimeException(
-          String.format("Parameter timeInterval(%d) should be positive.", timeInterval));
+          String.format(
+              UdfApiMessages.EXCEPTION_PARAMETER_TIMEINTERVAL_ARG_SHOULD_BE_POSITIVE_7CF8DCE4,
+              timeInterval));
     }
     if (slidingStep <= 0) {
       throw new RuntimeException(
-          String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
+          String.format(
+              UdfApiMessages.EXCEPTION_PARAMETER_SLIDINGSTEP_ARG_SHOULD_BE_POSITIVE_BBB66A4C,
+              slidingStep));
     }
     if (displayWindowEnd < displayWindowBegin) {
       throw new RuntimeException(
           String.format(
-              "displayWindowEnd(%d) < displayWindowBegin(%d)",
-              displayWindowEnd, displayWindowBegin));
+              UdfApiMessages.EXCEPTION_DISPLAYWINDOWEND_ARG_DISPLAYWINDOWBEGIN_ARG_216864F1,
+              displayWindowEnd,
+              displayWindowBegin));
     }
   }
 

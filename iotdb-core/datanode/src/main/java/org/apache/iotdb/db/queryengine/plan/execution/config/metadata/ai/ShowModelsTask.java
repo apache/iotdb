@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai;
 
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -29,8 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.BytesUtils;
@@ -59,7 +59,7 @@ public class ShowModelsTask implements IConfigTask {
     return configTaskExecutor.showModels(modelName);
   }
 
-  public static void buildTsBlock(TShowModelResp resp, SettableFuture<ConfigTaskResult> future) {
+  public static void buildTsBlock(TShowModelsResp resp, SettableFuture<ConfigTaskResult> future) {
     List<String> modelIdList = resp.getModelIdList();
     Map<String, String> modelTypeMap = resp.getModelTypeMap();
     Map<String, String> categoryMap = resp.getCategoryMap();

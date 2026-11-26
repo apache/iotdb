@@ -24,21 +24,15 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * NOTICE: TableSessionWrapper is specific to the table model.
- *
- * <p>used for SessionPool.getSession need to do some other things like calling
- * cleanSessionAndMayThrowConnectionException in SessionPool while encountering connection exception
- * only need to putBack to SessionPool while closing.
- */
+/** Adapts a pooled session to the table-session API and releases it back to the pool on close. */
 public class TableSessionWrapper implements ITableSession {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TableSessionWrapper.class);
@@ -47,97 +41,121 @@ public class TableSessionWrapper implements ITableSession {
 
   private final SessionPool sessionPool;
 
-  private final AtomicBoolean closed;
+  private boolean closed;
 
   protected TableSessionWrapper(Session session, SessionPool sessionPool) {
     this.session = session;
     this.sessionPool = sessionPool;
-    this.closed = new AtomicBoolean(false);
   }
 
   @Override
-  public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
-    try {
-      session.insertRelationalTablet(tablet);
-    } catch (IoTDBConnectionException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
-      session = null;
-      throw e;
-    }
-  }
-
-  @Override
-  public SessionDataSet executeQueryStatement(String sql)
+  public synchronized void insert(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
+    Session currentSession = getOpenSession();
     try {
-      return session.executeQueryStatement(sql);
+      currentSession.insertRelationalTablet(tablet);
     } catch (IoTDBConnectionException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
-      session = null;
-      throw e;
+      throw releaseOnConnectionFailure(e);
     }
   }
 
   @Override
-  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  public synchronized SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
+    Session currentSession = getOpenSession();
     try {
-      return session.executeQueryStatement(sql, timeoutInMs);
+      return currentSession.executeQueryStatement(sql);
     } catch (IoTDBConnectionException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
-      session = null;
-      throw e;
+      throw releaseOnConnectionFailure(e);
     }
   }
 
   @Override
-  public void executeNonQueryStatement(String sql)
+  public synchronized SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+      throws StatementExecutionException, IoTDBConnectionException {
+    Session currentSession = getOpenSession();
+    try {
+      return currentSession.executeQueryStatement(sql, timeoutInMs);
+    } catch (IoTDBConnectionException e) {
+      throw releaseOnConnectionFailure(e);
+    }
+  }
+
+  @Override
+  public synchronized void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
+    Session currentSession = getOpenSession();
     try {
-      session.executeNonQueryStatement(sql);
+      currentSession.executeNonQueryStatement(sql);
     } catch (IoTDBConnectionException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
-      session = null;
-      throw e;
+      throw releaseOnConnectionFailure(e);
     }
   }
 
   @Override
-  public void close() throws IoTDBConnectionException {
-    if (!Objects.equals(session.getSqlDialect(), sessionPool.sqlDialect)) {
-      try {
-        session.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);
-      } catch (StatementExecutionException e) {
-        LOGGER.warn(
-            "Failed to change back sql_dialect by executing: set sql_dialect={}",
-            sessionPool.sqlDialect,
-            e);
-        session.close();
-        session = null;
-        return;
-      }
+  public synchronized void close() throws IoTDBConnectionException {
+    if (closed) {
+      return;
+    }
+    closed = true;
+    final Session sessionToRelease = session;
+    session = null;
+
+    if (sessionPool.isPoolClosed()) {
+      sessionPool.releaseSession(sessionToRelease, false);
+      return;
     }
 
-    if (closed.compareAndSet(false, true)) {
-      if (!Objects.equals(session.getDatabase(), sessionPool.database)
-          && sessionPool.database != null) {
+    boolean reusable = true;
+    try {
+      if (!Objects.equals(sessionToRelease.getSqlDialect(), sessionPool.sqlDialect)) {
         try {
-          session.executeNonQueryStatement("use " + sessionPool.database);
+          sessionToRelease.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);
         } catch (StatementExecutionException e) {
           LOGGER.warn(
-              "Failed to change back database by executing: use {}", sessionPool.database, e);
-          session.close();
-          session = null;
-          return;
+              SessionMessages
+                  .LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7,
+              sessionPool.sqlDialect,
+              e);
+          reusable = false;
         }
       }
 
-      sessionPool.putBack(session);
-      session = null;
+      if (reusable
+          && !Objects.equals(sessionToRelease.getDatabase(), sessionPool.database)
+          && sessionPool.database != null) {
+        try {
+          sessionToRelease.executeNonQueryStatement("use " + sessionPool.database);
+        } catch (StatementExecutionException e) {
+          LOGGER.warn(
+              SessionMessages.LOG_FAILED_CHANGE_BACK_DATABASE_EXECUTING_USE_ARG_274541CA,
+              sessionPool.database,
+              e);
+          reusable = false;
+        }
+      }
+    } catch (IoTDBConnectionException | RuntimeException e) {
+      sessionPool.releaseSession(sessionToRelease, false);
+      throw e;
     }
+
+    sessionPool.releaseSession(sessionToRelease, reusable);
+  }
+
+  private synchronized Session getOpenSession() throws IoTDBConnectionException {
+    if (closed || session == null) {
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+    }
+    return session;
+  }
+
+  private IoTDBConnectionException releaseOnConnectionFailure(IoTDBConnectionException exception) {
+    closed = true;
+    final Session failedSession = session;
+    session = null;
+    if (failedSession != null) {
+      sessionPool.releaseSession(failedSession, false);
+    }
+    return exception;
   }
 }

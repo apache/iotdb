@@ -1,0 +1,245 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.pipe.it.dual.treemodel.auto.basic;
+
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.MultiEnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+
+import static org.junit.Assert.fail;
+
+@RunWith(IoTDBTestRunner.class)
+@Category({MultiClusterIT2DualTreeAutoBasic.class})
+public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
+
+  @Override
+  @Before
+  public void setUp() {
+    MultiEnvFactory.createEnv(2);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(true); // set auto split to true
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(true); // set auto split to true
+    executeOnBothEnvs(BaseEnv::initClusterEnvironment);
+  }
+
+  // Only full-sync pipes split; preserve sink options and replicate the row remaining after
+  // deletion.
+  @Test
+  public void testWriteBackSinkWithTargetDatabase() throws Exception {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.writeback_source",
+            "create aligned timeseries root.writeback_source.d1(s1 INT32)",
+            "insert into root.writeback_source.d1(time,s1) aligned values "
+                + "(1,1),(2,2),(3,3),(4,4),(5,5)",
+            "flush",
+            "create pipe writeback with source ("
+                + "'path'='root.writeback_source.**','inclusion'='data.insert',"
+                + "'forwarding-pipe-requests'='false',"
+                + "'history.enable'='true','realtime.enable'='true') "
+                + "with sink ('sink'='write-back-sink','sink.database'='root.writeback_target',"
+                + "'user'='root','password'='root')"),
+        null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        senderEnv,
+        "select s1 from root.writeback_target.d1",
+        "Time,root.writeback_target.d1.s1,",
+        new HashSet<>(Arrays.asList("1,1,", "2,2,", "3,3,", "4,4,", "5,5,")),
+        90);
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> pipeInfoList =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      final TShowPipeInfo realtimePipe =
+          pipeInfoList.stream()
+              .filter(pipeInfo -> "writeback_realtime".equals(pipeInfo.id))
+              .findFirst()
+              .orElseThrow(AssertionError::new);
+      Assert.assertEquals(PipeStatus.RUNNING.name(), realtimePipe.getState());
+      Assert.assertEquals("", realtimePipe.getExceptionMessage());
+    }
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Collections.singletonList(
+            "insert into root.writeback_source.d1(time,s1) aligned values "
+                + "(6,6),(7,7),(8,8),(9,9)"),
+        null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        senderEnv,
+        "select s1 from root.writeback_target.d1",
+        "Time,root.writeback_target.d1.s1,",
+        new HashSet<>(
+            Arrays.asList("1,1,", "2,2,", "3,3,", "4,4,", "5,5,", "6,6,", "7,7,", "8,8,", "9,9,")),
+        90);
+  }
+
+  @Test
+  public void testSingleEnv() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe a2b with sink ('node-urls'='%s')",
+              receiverDataNode.getIpAndPortString()));
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+      assertAutoSplitResult(showPipeResult, "a2b");
+    }
+
+    // Do not split for pipes without insertion or non-full
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "drop pipe if exists a2b_history",
+            "drop pipe if exists a2b_realtime",
+            String.format(
+                "create pipe a2b1 with source ('inclusion'='schema') with sink ('node-urls'='%s')",
+                receiverDataNode.getIpAndPortString()),
+            String.format(
+                "create pipe a2b2 with source ('realtime.enable'='false') with sink ('node-urls'='%s')",
+                receiverDataNode.getIpAndPortString()),
+            String.format(
+                "create pipe a2b3 with source ('history.enable'='false') with sink ('node-urls'='%s')",
+                receiverDataNode.getIpAndPortString())));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+      // a2b2 is a finite history-only pipe and may have already been auto-dropped when there is no
+      // historical data to transfer. The other two pipes must remain and none of the pipes should
+      // be split because they are not full-sync pipes.
+      Assert.assertTrue(showPipeResult.stream().anyMatch(i -> Objects.equals(i.id, "a2b1")));
+      Assert.assertTrue(showPipeResult.stream().anyMatch(i -> Objects.equals(i.id, "a2b3")));
+      Assert.assertTrue(
+          showPipeResult.stream()
+              .allMatch(
+                  i ->
+                      Objects.equals(i.id, "a2b1")
+                          || Objects.equals(i.id, "a2b2")
+                          || Objects.equals(i.id, "a2b3")));
+    }
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "drop pipe if exists a2b1",
+            "drop pipe if exists a2b2",
+            "drop pipe if exists a2b3",
+            "insert into root.test.device(time, field) values(0,1),(1,2)",
+            "delete from root.test.device.* where time == 0",
+            String.format(
+                "create pipe a2b with source ('inclusion'='all') with sink "
+                    + "('node-urls'='%s', 'enable-send-tsfile-limit'='false')",
+                receiverDataNode.getIpAndPortString())));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+      assertAutoSplitResult(showPipeResult, "a2b");
+      showPipeResult.stream()
+          .filter(i -> Objects.equals(i.id, "a2b_history"))
+          .forEach(
+              i -> Assert.assertTrue(i.pipeConnector.contains("enable-send-tsfile-limit=false")));
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from root.test.device",
+        "Time,root.test.device.field,",
+        Collections.singleton("1,2.0,"));
+  }
+
+  private void assertAutoSplitResult(
+      final List<TShowPipeInfo> showPipeResult, final String pipeName) {
+    // The history pipe may have already been auto-dropped after snapshot transfer completes.
+    Assert.assertTrue(
+        showPipeResult.stream().anyMatch(i -> Objects.equals(i.id, pipeName + "_realtime")));
+    Assert.assertFalse(showPipeResult.stream().anyMatch(i -> Objects.equals(i.id, pipeName)));
+    Assert.assertTrue(
+        showPipeResult.stream()
+            .allMatch(
+                i ->
+                    Objects.equals(i.id, pipeName + "_history")
+                        || Objects.equals(i.id, pipeName + "_realtime")));
+  }
+}

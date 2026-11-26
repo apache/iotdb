@@ -1,0 +1,653 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.session.subscription.consumer.base;
+
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
+
+final class AbstractSubscriptionProviders {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProviders.class);
+
+  private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
+      new ConcurrentSkipListMap<>();
+  private final Set<Integer> knownClusterDataNodeIds = ConcurrentHashMap.newKeySet();
+  private final AtomicLong topologyGeneration = new AtomicLong(0);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
+  private final AtomicBoolean unavailableSyncInFlight = new AtomicBoolean(false);
+  private final Set<AbstractSubscriptionProvider> providersWithHeartbeatInFlight =
+      ConcurrentHashMap.newKeySet();
+  private final Object heartbeatResponseLock = new Object();
+  private int nextDataNodeId = -1;
+
+  private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
+
+  private final Set<TEndPoint> initialEndpoints;
+  private long lastUnavailableSyncTimeMs;
+
+  AbstractSubscriptionProviders(final Set<TEndPoint> initialEndpoints) {
+    this.initialEndpoints = initialEndpoints;
+  }
+
+  /////////////////////////////// lock ///////////////////////////////
+
+  void acquireReadLock() {
+    subscriptionProvidersLock.readLock().lock();
+  }
+
+  void releaseReadLock() {
+    subscriptionProvidersLock.readLock().unlock();
+  }
+
+  void acquireWriteLock() {
+    subscriptionProvidersLock.writeLock().lock();
+  }
+
+  void releaseWriteLock() {
+    subscriptionProvidersLock.writeLock().unlock();
+  }
+
+  /////////////////////////////// CRUD ///////////////////////////////
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  void openProviders(final AbstractSubscriptionConsumer consumer) throws SubscriptionException {
+    // close stale providers
+    consumer.clearTerminatedProviderStates();
+    closeProviders(false);
+
+    final Map<TEndPoint, String> connectionFailures = new LinkedHashMap<>();
+    final List<Throwable> connectionFailureCauses = new ArrayList<>();
+    for (final TEndPoint endPoint : initialEndpoints) {
+      if (isClosing.get() || consumer.isFenced()) {
+        return;
+      }
+      final AbstractSubscriptionProvider defaultProvider;
+      final int defaultDataNodeId;
+
+      try {
+        defaultProvider = consumer.constructProviderAndHandshake(endPoint);
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        throw e;
+      } catch (final Exception e) {
+        connectionFailures.put(endPoint, consumer.sanitizeConnectionFailureMessage(e));
+        connectionFailureCauses.add(e);
+        LOGGER.warn(
+            SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
+            consumer,
+            endPoint,
+            e,
+            e);
+        continue; // try next endpoint
+      }
+      defaultDataNodeId = defaultProvider.getDataNodeId();
+      addProvider(defaultDataNodeId, defaultProvider);
+      if (isClosing.get() || consumer.isFenced()) {
+        return;
+      }
+
+      final Map<Integer, TEndPoint> allEndPoints;
+      try {
+        allEndPoints = defaultProvider.heartbeat().getEndPoints();
+        knownClusterDataNodeIds.clear();
+        knownClusterDataNodeIds.addAll(allEndPoints.keySet());
+        topologyGeneration.incrementAndGet();
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        throw e;
+      } catch (final Exception e) {
+        LOGGER.warn(
+            SubscriptionMessages.LOG_ARG_FAILED_FETCH_ALL_ENDPOINTS_ARG_BECAUSE_ARG_2C9E11D4,
+            consumer,
+            endPoint,
+            e,
+            e);
+        break;
+      }
+
+      for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
+        if (isClosing.get() || consumer.isFenced()) {
+          return;
+        }
+        if (defaultDataNodeId == entry.getKey()) {
+          continue;
+        }
+
+        final AbstractSubscriptionProvider provider;
+        try {
+          provider = consumer.constructProviderAndHandshake(entry.getValue());
+        } catch (final SubscriptionConsumerFencedException e) {
+          consumer.fence(e);
+          throw e;
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
+              consumer,
+              entry.getValue(),
+              e,
+              e);
+          continue;
+        }
+        addProvider(entry.getKey(), provider);
+      }
+
+      break;
+    }
+
+    if (hasNoAvailableProviders()) {
+      final SubscriptionConnectionException exception =
+          new SubscriptionConnectionException(
+              String.format(
+                  SubscriptionMessages
+                      .EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA,
+                  initialEndpoints,
+                  connectionFailures),
+              connectionFailureCauses.isEmpty()
+                  ? null
+                  : connectionFailureCauses.get(connectionFailureCauses.size() - 1));
+      for (int i = 0; i < connectionFailureCauses.size() - 1; i++) {
+        exception.addSuppressed(connectionFailureCauses.get(i));
+      }
+      throw exception;
+    }
+
+    nextDataNodeId = subscriptionProviders.firstKey();
+  }
+
+  /** Detaches and closes the current providers. Terminal consumer close may call this lock-free. */
+  void closeProviders() {
+    closeProviders(true);
+  }
+
+  /** Detaches and closes the current providers. Terminal consumer close may call this lock-free. */
+  void closeProviders(final boolean closeConsumer) {
+    final List<AbstractSubscriptionProvider> providers = getAllProviders();
+    subscriptionProviders.clear();
+    knownClusterDataNodeIds.clear();
+    topologyGeneration.incrementAndGet();
+    for (final AbstractSubscriptionProvider provider : providers) {
+      try {
+        if (closeConsumer) {
+          provider.close();
+        } else {
+          provider.closeSession();
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
+      }
+    }
+  }
+
+  void prepareClose() {
+    isClosing.set(true);
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      provider.prepareClose();
+    }
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  void addProvider(final int dataNodeId, final AbstractSubscriptionProvider provider) {
+    if (isClosing.get()) {
+      closeProviderAddedDuringClosing(provider);
+      return;
+    }
+
+    subscriptionProviders.put(dataNodeId, provider);
+    if (isClosing.get()) {
+      subscriptionProviders.remove(dataNodeId, provider);
+      closeProviderAddedDuringClosing(provider);
+      return;
+    }
+
+    // the subscription provider is opened
+    topologyGeneration.incrementAndGet();
+    LOGGER.info(SubscriptionMessages.ADD_NEW_PROVIDER, provider);
+  }
+
+  private void closeProviderAddedDuringClosing(final AbstractSubscriptionProvider provider) {
+    provider.prepareClose();
+    try {
+      provider.close();
+    } catch (final Exception e) {
+      LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
+    }
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  void closeAndRemoveProvider(final int dataNodeId)
+      throws SubscriptionException, IoTDBConnectionException {
+    if (!containsProvider(dataNodeId)) {
+      return;
+    }
+    final AbstractSubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
+    try {
+      // Replacing a connection must not unsubscribe topics or drop the shared consumer.
+      provider.closeSession();
+    } finally {
+      LOGGER.info(SubscriptionMessages.CLOSE_STALE_PROVIDER, provider);
+      subscriptionProviders.remove(dataNodeId);
+      topologyGeneration.incrementAndGet();
+    }
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  boolean hasNoProviders() {
+    return subscriptionProviders.isEmpty();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  List<AbstractSubscriptionProvider> getAllProviders() {
+    return new ArrayList<>(subscriptionProviders.values());
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  AbstractSubscriptionProvider getProvider(final int dataNodeId) {
+    return containsProvider(dataNodeId) ? subscriptionProviders.get(dataNodeId) : null;
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  boolean hasNoAvailableProviders() {
+    return subscriptionProviders.values().stream()
+        .noneMatch(AbstractSubscriptionProvider::isAvailable);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  int getAvailableProviderCount() {
+    return (int)
+        subscriptionProviders.values().stream()
+            .filter(AbstractSubscriptionProvider::isAvailable)
+            .count();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  boolean containsProvider(final int dataNodeId) {
+    return subscriptionProviders.containsKey(dataNodeId);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  List<AbstractSubscriptionProvider> getAllAvailableProviders() {
+    return subscriptionProviders.values().stream()
+        .filter(AbstractSubscriptionProvider::isAvailable)
+        .collect(Collectors.toList());
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  Set<Integer> getExpectedDataNodeIds() {
+    if (knownClusterDataNodeIds.isEmpty()) {
+      return Collections.emptySet();
+    }
+    final Set<Integer> ids = new HashSet<>(knownClusterDataNodeIds);
+    ids.addAll(subscriptionProviders.keySet());
+    return ids;
+  }
+
+  long getTopologyGeneration() {
+    return topologyGeneration.get();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  void updateNextDataNodeId() {
+    final SortedMap<Integer, AbstractSubscriptionProvider> subProviders =
+        subscriptionProviders.tailMap(nextDataNodeId + 1);
+    nextDataNodeId =
+        subProviders.isEmpty() ? subscriptionProviders.firstKey() : subProviders.firstKey();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  AbstractSubscriptionProvider getNextAvailableProvider() {
+    if (hasNoAvailableProviders()) {
+      return null;
+    }
+
+    AbstractSubscriptionProvider provider;
+    provider = getProvider(nextDataNodeId);
+    while (Objects.isNull(provider) || !provider.isAvailable()) {
+      updateNextDataNodeId();
+      provider = getProvider(nextDataNodeId);
+    }
+    updateNextDataNodeId();
+
+    return provider;
+  }
+
+  /////////////////////////////// heartbeat ///////////////////////////////
+
+  void heartbeat(final AbstractSubscriptionConsumer consumer) {
+    if (consumer.isClosed() || consumer.isFenced()) {
+      return;
+    }
+
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      if (!providersWithHeartbeatInFlight.add(provider)) {
+        continue;
+      }
+      if (Objects.isNull(
+          SubscriptionExecutorServiceManager.submitProviderHeartbeat(
+              () -> heartbeatProvider(consumer, provider)))) {
+        providersWithHeartbeatInFlight.remove(provider);
+      }
+    }
+  }
+
+  private void heartbeatProvider(
+      final AbstractSubscriptionConsumer consumer, final AbstractSubscriptionProvider provider) {
+    try {
+      if (consumer.isClosed()
+          || consumer.isFenced()
+          || !containsProvider(provider)
+          || !provider.isAvailable()) {
+        return;
+      }
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts =
+          consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
+      final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
+      final Set<Integer> advertisedDataNodeIds = resp.getEndPoints().keySet();
+      acquireReadLock();
+      if (!knownClusterDataNodeIds.containsAll(advertisedDataNodeIds)) {
+        // Expand membership under the write lock before applying completion notices.
+        releaseReadLock();
+        acquireWriteLock();
+        try {
+          if (!containsProvider(provider) || !provider.isAvailable() || consumer.isClosed()) {
+            return;
+          }
+          addAdvertisedDataNodes(consumer, advertisedDataNodeIds);
+          acquireReadLock();
+        } finally {
+          releaseWriteLock();
+        }
+      }
+      try {
+        synchronized (heartbeatResponseLock) {
+          if (consumer.isClosed()
+              || consumer.isFenced()
+              || !containsProvider(provider)
+              || !provider.isAvailable()) {
+            return;
+          }
+          provider.setAvailable();
+          consumer.subscribedTopics = resp.getTopics();
+          consumer.invalidateProviderTopicCompletions(
+              provider.getDataNodeId(), resp.getTopicNamesToUnsubscribe());
+          for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
+            consumer.handleProviderTopicTermination(provider.getDataNodeId(), topicName);
+          }
+        }
+      } finally {
+        releaseReadLock();
+      }
+    } catch (final SubscriptionConsumerFencedException e) {
+      if (containsProvider(provider)) {
+        consumer.fence(e);
+      }
+      provider.setUnavailable();
+      consumer.clearTerminatedProviderStates();
+    } catch (final Exception e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
+          consumer,
+          provider,
+          e,
+          e);
+      provider.setUnavailable();
+      consumer.clearTerminatedProviderStates();
+    } finally {
+      providersWithHeartbeatInFlight.remove(provider);
+    }
+  }
+
+  boolean containsProvider(final AbstractSubscriptionProvider provider) {
+    return subscriptionProviders.get(provider.getDataNodeId()) == provider;
+  }
+
+  // Endpoint sync reconciles removals and establishes connections for newly discovered DataNodes.
+  private void addAdvertisedDataNodes(
+      final AbstractSubscriptionConsumer consumer, final Set<Integer> advertisedDataNodeIds) {
+    if (knownClusterDataNodeIds.addAll(advertisedDataNodeIds)) {
+      consumer.clearTerminatedProviderStates();
+      topologyGeneration.incrementAndGet();
+    }
+  }
+
+  /////////////////////////////// sync endpoints ///////////////////////////////
+
+  void sync(final AbstractSubscriptionConsumer consumer) {
+    if (consumer.isClosed() || consumer.isFenced()) {
+      return;
+    }
+
+    acquireWriteLock();
+    try {
+      if (consumer.isClosed() || consumer.isFenced()) {
+        return;
+      }
+      syncInternal(consumer);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  /** Reconnects unavailable providers immediately after a failed RPC. */
+  void syncIfUnavailable(final AbstractSubscriptionConsumer consumer) {
+    if (consumer.isClosed()
+        || consumer.isFenced()
+        || !unavailableSyncInFlight.compareAndSet(false, true)) {
+      return;
+    }
+
+    if (Objects.isNull(
+        SubscriptionExecutorServiceManager.submitProviderHeartbeat(
+            () -> {
+              try {
+                if (consumer.isClosed() || consumer.isFenced()) {
+                  return;
+                }
+                acquireWriteLock();
+                try {
+                  if (consumer.isClosed() || consumer.isFenced()) {
+                    return;
+                  }
+                  final long now = System.currentTimeMillis();
+                  if (now - lastUnavailableSyncTimeMs
+                      >= ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE) {
+                    lastUnavailableSyncTimeMs = now;
+                    syncInternal(consumer);
+                  }
+                } finally {
+                  releaseWriteLock();
+                }
+              } finally {
+                unavailableSyncInFlight.set(false);
+              }
+            }))) {
+      unavailableSyncInFlight.set(false);
+    }
+  }
+
+  private void syncInternal(final AbstractSubscriptionConsumer consumer) {
+    if (consumer.isClosed() || consumer.isFenced()) {
+      return;
+    }
+    if (hasNoAvailableProviders()) {
+      try {
+        openProviders(consumer);
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        return;
+      } catch (final Exception e) {
+        LOGGER.warn(SubscriptionMessages.OPEN_PROVIDERS_FAILED, consumer, e, e);
+        return;
+      }
+    }
+
+    final Map<Integer, TEndPoint> allEndPoints;
+    try {
+      allEndPoints = consumer.fetchAllEndPointsWithRedirection();
+      final boolean membershipChanged = !knownClusterDataNodeIds.equals(allEndPoints.keySet());
+      knownClusterDataNodeIds.clear();
+      knownClusterDataNodeIds.addAll(allEndPoints.keySet());
+      if (membershipChanged) {
+        consumer.clearTerminatedProviderStates();
+        topologyGeneration.incrementAndGet();
+      }
+    } catch (final SubscriptionConsumerFencedException e) {
+      consumer.fence(e);
+      return;
+    } catch (final Exception e) {
+      LOGGER.warn(SubscriptionMessages.FETCH_ENDPOINTS_FAILED, consumer, e, e);
+      return;
+    }
+
+    // Add new providers, replace unavailable providers, or heartbeat existing providers.
+    for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
+      if (consumer.isClosed() || consumer.isFenced()) {
+        return;
+      }
+      AbstractSubscriptionProvider provider = getProvider(entry.getKey());
+      if (Objects.nonNull(provider) && provider.isAvailable()) {
+        // Existing provider
+        try {
+          final PipeSubscribeHeartbeatResp resp = provider.heartbeat();
+          addAdvertisedDataNodes(consumer, resp.getEndPoints().keySet());
+          consumer.subscribedTopics = resp.getTopics();
+          consumer.invalidateProviderTopicCompletions(
+              provider.getDataNodeId(), resp.getTopicNamesToUnsubscribe());
+          provider.setAvailable();
+        } catch (final SubscriptionConsumerFencedException e) {
+          consumer.fence(e);
+          provider.setUnavailable();
+          return;
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
+              consumer,
+              provider,
+              e,
+              e);
+          provider.setUnavailable();
+        }
+      }
+
+      if (Objects.nonNull(provider) && !provider.isAvailable()) {
+        // Remove unavailable providers before creating replacements in this same sync round.
+        consumer.clearTerminatedProviderStates();
+        try {
+          closeAndRemoveProvider(entry.getKey());
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739,
+              consumer,
+              provider,
+              e,
+              e);
+        }
+        provider = null;
+      }
+
+      if (Objects.isNull(provider)) {
+        // New or replacement provider
+        if (consumer.isClosed() || consumer.isFenced()) {
+          return;
+        }
+        final TEndPoint endPoint = entry.getValue();
+        final AbstractSubscriptionProvider newProvider;
+        try {
+          newProvider = consumer.constructProviderAndHandshake(endPoint);
+        } catch (final SubscriptionConsumerFencedException e) {
+          consumer.fence(e);
+          return;
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
+              consumer,
+              endPoint,
+              e,
+              e);
+          continue;
+        }
+        consumer.clearTerminatedProviderStates();
+        addProvider(entry.getKey(), newProvider);
+      }
+    }
+
+    // close and remove stale providers
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      final int dataNodeId = provider.getDataNodeId();
+      if (!allEndPoints.containsKey(dataNodeId)) {
+        consumer.clearTerminatedProviderStates();
+        try {
+          closeAndRemoveProvider(dataNodeId);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739,
+              consumer,
+              provider,
+              e,
+              e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("SubscriptionProviders{");
+    for (final Map.Entry<Integer, AbstractSubscriptionProvider> entry :
+        subscriptionProviders.entrySet()) {
+      sb.append(entry.getValue().toString()).append(", ");
+    }
+    if (!subscriptionProviders.isEmpty()) {
+      sb.delete(sb.length() - 2, sb.length());
+    }
+    sb.append("}");
+    return sb.toString();
+  }
+}

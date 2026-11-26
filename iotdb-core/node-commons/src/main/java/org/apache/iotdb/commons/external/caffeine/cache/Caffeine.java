@@ -1,0 +1,987 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.external.caffeine.cache;
+
+import org.apache.iotdb.commons.external.caffeine.cache.stats.CacheStats;
+import org.apache.iotdb.commons.external.caffeine.cache.stats.ConcurrentStatsCounter;
+import org.apache.iotdb.commons.external.caffeine.cache.stats.StatsCounter;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.FormatMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Method;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+import static java.util.Locale.US;
+import static java.util.Objects.requireNonNull;
+
+/**
+ * A builder of {@link Cache}, {@link LoadingCache}, {@link AsyncCache}, and {@link
+ * AsyncLoadingCache} instances having a combination of the following features:
+ *
+ * <ul>
+ *   <li>automatic loading of entries into the cache, optionally asynchronously
+ *   <li>size-based eviction when a maximum is exceeded based on frequency and recency
+ *   <li>time-based expiration of entries, measured since last access or last write
+ *   <li>asynchronously refresh when the first stale request for an entry occurs
+ *   <li>keys automatically wrapped in {@linkplain WeakReference weak} references
+ *   <li>values automatically wrapped in {@linkplain WeakReference weak} or {@linkplain
+ *       SoftReference soft} references
+ *   <li>writes propagated to an external resource
+ *   <li>notification of evicted (or otherwise removed) entries
+ *   <li>accumulation of cache access statistics
+ * </ul>
+ *
+ * <p>These features are all optional; caches can be created using all or none of them. By default,
+ * cache instances created by {@code Caffeine} will not perform any type of eviction.
+ *
+ * <p>Usage example:
+ *
+ * {@snippet
+ *  class=org.apache.iotdb.commons.external.caffeine.cache.Snippets region=builder lang=java}
+ *
+ * <p>The returned cache is implemented as a hash table with similar performance characteristics to
+ * {@link ConcurrentHashMap}. The {@code asMap} view (and its collection views) have <i>weakly
+ * consistent iterators</i>. This means that they are safe for concurrent use, but if other threads
+ * modify the cache after the iterator is created, it is undefined which of these changes, if any,
+ * are reflected in that iterator. These iterators never throw {@link
+ * ConcurrentModificationException}.
+ *
+ * <p><b>Note:</b> By default, the returned cache uses equality comparisons (the {@link
+ * Object#equals equals} method) to determine equality for keys or values. However, if {@link
+ * #weakKeys} was specified, the cache uses identity ({@code ==}) comparisons instead for keys.
+ * Likewise, if {@link #weakValues} or {@link #softValues} was specified, the cache uses identity
+ * comparisons for values.
+ *
+ * <p>Entries are automatically evicted from the cache when any of {@linkplain #maximumSize(long)
+ * maximumSize}, {@linkplain #maximumWeight(long) maximumWeight}, {@linkplain #expireAfter(Expiry)
+ * expireAfter}, {@linkplain #expireAfterWrite expireAfterWrite}, {@linkplain #expireAfterAccess
+ * expireAfterAccess}, {@linkplain #weakKeys weakKeys}, {@linkplain #weakValues weakValues}, or
+ * {@linkplain #softValues softValues} are requested.
+ *
+ * <p>If {@linkplain #maximumSize(long) maximumSize} or {@linkplain #maximumWeight(long)
+ * maximumWeight} is requested, entries may be evicted on each cache modification.
+ *
+ * <p>If {@linkplain #expireAfter(Expiry) expireAfter}, {@linkplain #expireAfterWrite
+ * expireAfterWrite}, or {@linkplain #expireAfterAccess expireAfterAccess} is requested, then
+ * entries may be evicted on each cache modification, on occasional cache accesses, or on calls to
+ * {@link Cache#cleanUp}. A {@linkplain #scheduler(Scheduler)} may be specified to provide prompt
+ * removal of expired entries rather than waiting until activity triggers the periodic maintenance.
+ * Expired entries may be counted by {@link Cache#estimatedSize()}, but will never be visible to
+ * read or write operations.
+ *
+ * <p>If {@linkplain #weakKeys weakKeys}, {@linkplain #weakValues weakValues}, or {@linkplain
+ * #softValues softValues} are requested, it is possible for a key or value present in the cache to
+ * be reclaimed by the garbage collector. Entries with reclaimed keys or values may be removed from
+ * the cache on each cache modification, on occasional cache accesses, or on calls to {@link
+ * Cache#cleanUp}; such entries may be counted in {@link Cache#estimatedSize()}, but will never be
+ * visible to read or write operations.
+ *
+ * <p>Certain cache configurations will result in the accrual of periodic maintenance tasks that
+ * will be performed during write operations, or during occasional read operations in the absence of
+ * writes. The {@link Cache#cleanUp} method of the returned cache will also perform maintenance, but
+ * calling it should not be necessary with a high-throughput cache. Only caches built with
+ * {@linkplain #maximumSize maximumSize}, {@linkplain #maximumWeight maximumWeight}, {@linkplain
+ * #expireAfter(Expiry) expireAfter}, {@linkplain #expireAfterWrite expireAfterWrite}, {@linkplain
+ * #expireAfterAccess expireAfterAccess}, {@linkplain #weakKeys weakKeys}, {@linkplain #weakValues
+ * weakValues}, or {@linkplain #softValues softValues} perform periodic maintenance.
+ *
+ * <p>The caches produced by {@code Caffeine} are serializable when their configured components
+ * (such as the {@code CacheLoader}, {@code Weigher}, {@code Expiry}, and listeners) are
+ * serializable, and the deserialized caches retain those configuration properties. The executor,
+ * scheduler, and statistics are runtime state rather than configuration; they are not serialized
+ * and revert to the defaults. Note that the serialized form does <i>not</i> include cache contents
+ * but only configuration.
+ *
+ * @author ben.manes@gmail.com (Ben Manes)
+ * @param <K> the most general key type this builder will be able to create caches for. This is
+ *     normally {@code Object} unless it is constrained by using a method like {@code
+ *     #removalListener}
+ * @param <V> the most general value type this builder will be able to create caches for. This is
+ *     normally {@code Object} unless it is constrained by using a method like {@code
+ *     #removalListener}
+ */
+@SuppressWarnings({"all", "JavadocDeclaration", "JavadocReference"})
+public final class Caffeine<K, V> {
+  static final Supplier<StatsCounter> ENABLED_STATS_COUNTER_SUPPLIER = ConcurrentStatsCounter::new;
+  static final Logger LOGGER = LoggerFactory.getLogger(Caffeine.class);
+  static final Duration MIN_DURATION = Duration.ofNanos(Long.MIN_VALUE);
+  static final Duration MAX_DURATION = Duration.ofNanos(Long.MAX_VALUE);
+  static final double DEFAULT_LOAD_FACTOR = 0.75;
+  static final int DEFAULT_INITIAL_CAPACITY = 16;
+
+  static final int UNSET_INT = -1;
+
+  long maximumSize = UNSET_INT;
+  long maximumWeight = UNSET_INT;
+  int initialCapacity = UNSET_INT;
+
+  long expireAfterWriteNanos = UNSET_INT;
+  long expireAfterAccessNanos = UNSET_INT;
+
+  RemovalListener<? super K, ? super V> evictionListener;
+  RemovalListener<? super K, ? super V> removalListener;
+  Supplier<StatsCounter> statsCounterSupplier;
+  Weigher<? super K, ? super V> weigher;
+  Scheduler scheduler;
+  Executor executor;
+  Ticker ticker;
+
+  private Caffeine() {}
+
+  /** Ensures that the argument expression is true. */
+  @FormatMethod
+  static void requireArgument(boolean expression, String template, Object... args) {
+    if (!expression) {
+      throw new IllegalArgumentException(String.format(US, template, args));
+    }
+  }
+
+  /** Ensures that the argument expression is true. */
+  static void requireArgument(boolean expression, String message) {
+    if (!expression) {
+      throw new IllegalArgumentException(message);
+    }
+  }
+
+  /** Ensures that the argument expression is true. */
+  static void requireArgument(boolean expression) {
+    if (!expression) {
+      throw new IllegalArgumentException();
+    }
+  }
+
+  /** Ensures that the state expression is true. */
+  static void requireState(boolean expression) {
+    if (!expression) {
+      throw new IllegalStateException();
+    }
+  }
+
+  /** Ensures that the state expression is true. */
+  @FormatMethod
+  static void requireState(boolean expression, String template, Object... args) {
+    if (!expression) {
+      throw new IllegalStateException(String.format(US, template, args));
+    }
+  }
+
+  /** Returns the throwable as unchecked, wrapping a checked exceptions in a CompletionException. */
+  static RuntimeException toUnchecked(Throwable t) {
+    if (t instanceof Error) {
+      throw (Error) t;
+    } else if (t instanceof RuntimeException) {
+      return (RuntimeException) t;
+    } else if (t instanceof InterruptedException) {
+      Thread.currentThread().interrupt();
+    }
+    return new CompletionException(t);
+  }
+
+  /** Returns the smallest power of two greater than or equal to {@code x}, else the maximum. */
+  static int ceilingPowerOfTwo(int x) {
+    // From Hacker's Delight, Chapter 3, Harry S. Warren Jr.
+    if (x > (1 << 30)) {
+      return 1 << 30;
+    }
+    return 1 << -Integer.numberOfLeadingZeros(x - 1);
+  }
+
+  /** Returns the smallest power of two greater than or equal to {@code x}, else the maximum. */
+  static long ceilingPowerOfTwo(long x) {
+    // From Hacker's Delight, Chapter 3, Harry S. Warren Jr.
+    if (x > (1L << 62)) {
+      return 1L << 62;
+    }
+    return 1L << -Long.numberOfLeadingZeros(x - 1);
+  }
+
+  /**
+   * Calculate initial capacity for {@link HashMap}-based classes, from expected size and default
+   * load factor (0.75).
+   *
+   * @param numMappings the expected number of mappings
+   * @return initial capacity for HashMap based classes
+   */
+  static int calculateHashMapCapacity(int numMappings) {
+    return (int) Math.ceil(numMappings / DEFAULT_LOAD_FACTOR);
+  }
+
+  /**
+   * Calculate initial capacity for {@link HashMap}-based classes, from expected size and default
+   * load factor (0.75).
+   *
+   * @param iterable the expected number of mappings
+   * @return initial capacity for HashMap based classes
+   */
+  static int calculateHashMapCapacity(Iterable<?> iterable) {
+    return (iterable instanceof Collection)
+        ? calculateHashMapCapacity(((Collection<?>) iterable).size())
+        : DEFAULT_INITIAL_CAPACITY;
+  }
+
+  /**
+   * Returns the number of nanoseconds of the given duration without throwing or overflowing.
+   *
+   * <p>Instead of throwing {@link ArithmeticException}, this method silently saturates to either
+   * {@link Long#MAX_VALUE} or {@link Long#MIN_VALUE}. This behavior can be useful when decomposing
+   * a duration in order to call a legacy API which requires a {@code long, TimeUnit} pair.
+   */
+  static long toNanosSaturated(Duration duration) {
+    return duration.isNegative()
+        ? (duration.compareTo(MIN_DURATION) <= 0) ? Long.MIN_VALUE : duration.toNanos()
+        : (duration.compareTo(MAX_DURATION) >= 0) ? Long.MAX_VALUE : duration.toNanos();
+  }
+
+  /** Returns whether the instance has implemented a method for enhanced functionality. */
+  static boolean hasMethodOverride(
+      Class<?> clazz, Object instance, String methodName, Class<?>... parameterTypes) {
+    try {
+      Method instanceMethod = instance.getClass().getMethod(methodName, parameterTypes);
+      Method classMethod = clazz.getMethod(methodName, parameterTypes);
+      return !instanceMethod.equals(classMethod);
+    } catch (NoSuchMethodException | SecurityException e) {
+      LOGGER.warn(
+          CommonMessages.LOG_CANNOT_DETERMINE_IF_ARG_OVERRIDES_ARG_ARG_065FF946,
+          instance.getClass().getSimpleName(),
+          methodName,
+          Arrays.toString(parameterTypes),
+          e);
+      return false;
+    }
+  }
+
+  /**
+   * Constructs a new {@code Caffeine} instance with default settings, including strong keys, strong
+   * values, and no automatic eviction of any kind.
+   *
+   * <p>Note that while this return type is {@code Caffeine<Object, Object>}, type parameters on the
+   * {@link #build} methods allow you to create a cache of any key and value type desired.
+   *
+   * @return a new instance with default settings
+   */
+  public static Caffeine<Object, Object> newBuilder() {
+    return new Caffeine<>();
+  }
+
+  /**
+   * Sets the minimum total size for the internal data structures. Providing a large enough estimate
+   * at construction time avoids the need for expensive resizing operations later, but setting this
+   * value unnecessarily high wastes memory.
+   *
+   * @param initialCapacity minimum total size for the internal data structures
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws IllegalArgumentException if {@code initialCapacity} is negative
+   * @throws IllegalStateException if an initial capacity was already set
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> initialCapacity(int initialCapacity) {
+    requireState(
+        this.initialCapacity == UNSET_INT,
+        CommonMessages.EXCEPTION_INITIAL_CAPACITY_WAS_ALREADY_SET_TO_ARG_79FF9FB8,
+        this.initialCapacity);
+    requireArgument(
+        initialCapacity >= 0,
+        CommonMessages.EXCEPTION_INITIAL_CAPACITY_MUST_NOT_BE_NEGATIVE_89AD0C3E);
+    this.initialCapacity = initialCapacity;
+    return this;
+  }
+
+  boolean hasInitialCapacity() {
+    return (initialCapacity != UNSET_INT);
+  }
+
+  int getInitialCapacity() {
+    return hasInitialCapacity() ? initialCapacity : DEFAULT_INITIAL_CAPACITY;
+  }
+
+  /**
+   * Specifies the executor to use when running asynchronous tasks. The executor is delegated to
+   * when sending removal notifications, when asynchronous computations are performed by {@link
+   * AsyncCache} or {@link LoadingCache#refresh} or {@link #refreshAfterWrite}, or when performing
+   * periodic maintenance. By default, {@link ForkJoinPool#commonPool()} is used.
+   *
+   * <p>The primary intent of this method is to facilitate testing of caches which have been
+   * configured with {@link #removalListener} or utilize asynchronous computations. A test may
+   * instead prefer to configure the cache to execute tasks directly on the same thread.
+   *
+   * <p>Beware that configuring a cache with an executor that discards tasks or never runs them may
+   * experience non-deterministic behavior.
+   *
+   * @param executor the executor to use for asynchronous execution
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws NullPointerException if the specified executor is null
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> executor(Executor executor) {
+    requireState(
+        this.executor == null,
+        CommonMessages.EXCEPTION_EXECUTOR_WAS_ALREADY_SET_TO_ARG_58A5EECE,
+        this.executor);
+    this.executor = requireNonNull(executor);
+    return this;
+  }
+
+  Executor getExecutor() {
+    return (executor == null) ? ForkJoinPool.commonPool() : executor;
+  }
+
+  /**
+   * Specifies the scheduler to use when scheduling routine maintenance based on an expiration
+   * event. This augments the periodic maintenance that occurs during normal cache operations to
+   * allow for the prompt removal of expired entries regardless of whether any cache activity is
+   * occurring at that time. By default, {@link Scheduler#disabledScheduler()} is used.
+   *
+   * <p>The scheduling between expiration events is paced to exploit batching and to minimize
+   * executions in short succession. This minimum difference between the scheduled executions is
+   * implementation-specific, currently at ~1 second (2^30 ns). In addition, the provided scheduler
+   * may not offer real-time guarantees (including {@link ScheduledThreadPoolExecutor}). The
+   * scheduling is best-effort and does not make any hard guarantees of when an expired entry will
+   * be removed.
+   *
+   * @param scheduler the scheduler that submits a task to the {@link #executor(Executor)} after a
+   *     given delay
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws NullPointerException if the specified scheduler is null
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> scheduler(Scheduler scheduler) {
+    requireState(
+        this.scheduler == null,
+        CommonMessages.EXCEPTION_SCHEDULER_WAS_ALREADY_SET_TO_ARG_E61EFF23,
+        this.scheduler);
+    this.scheduler = requireNonNull(scheduler);
+    return this;
+  }
+
+  Scheduler getScheduler() {
+    if ((scheduler == null) || (scheduler == Scheduler.disabledScheduler())) {
+      return Scheduler.disabledScheduler();
+    } else if (scheduler == Scheduler.systemScheduler()) {
+      return scheduler;
+    }
+    return Scheduler.guardedScheduler(scheduler);
+  }
+
+  /**
+   * Specifies the maximum number of entries the cache may contain. Note that the cache <b>may evict
+   * an entry before this limit is exceeded or temporarily exceed the threshold while evicting</b>.
+   * As the cache size grows close to the maximum, the cache evicts entries that are less likely to
+   * be used again. For example, the cache may evict an entry because it hasn't been used recently
+   * or very often.
+   *
+   * <p>When {@code maximumSize} is zero, elements will be evicted immediately after being loaded
+   * into the cache. This can be useful in testing, or to disable caching temporarily without a code
+   * change. As eviction is scheduled on the configured {@link #executor}, tests may instead prefer
+   * to configure the cache to execute tasks directly on the same thread.
+   *
+   * <p>This feature cannot be used in conjunction with {@link #maximumWeight}.
+   *
+   * @param maximumSize the maximum size of the cache
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws IllegalArgumentException if {@code maximumSize} is negative
+   * @throws IllegalStateException if a maximum size or weight was already set
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> maximumSize(long maximumSize) {
+    requireState(
+        this.maximumSize == UNSET_INT,
+        CommonMessages.EXCEPTION_MAXIMUM_SIZE_WAS_ALREADY_SET_TO_ARG_0FE8510C,
+        this.maximumSize);
+    requireState(
+        this.maximumWeight == UNSET_INT,
+        CommonMessages.EXCEPTION_MAXIMUM_WEIGHT_WAS_ALREADY_SET_TO_ARG_FFCC0743,
+        this.maximumWeight);
+    requireState(
+        this.weigher == null,
+        CommonMessages.EXCEPTION_MAXIMUM_SIZE_CANNOT_BE_COMBINED_WITH_WEIGHER_4A442F9D);
+    requireArgument(
+        maximumSize >= 0, CommonMessages.EXCEPTION_MAXIMUM_SIZE_MUST_NOT_BE_NEGATIVE_16AA24D2);
+    this.maximumSize = maximumSize;
+    return this;
+  }
+
+  /**
+   * Specifies the maximum weight of entries the cache may contain. Weight is determined using the
+   * {@link Weigher} specified with {@link #weigher}, and use of this method requires a
+   * corresponding call to {@link #weigher} prior to calling {@link #build}.
+   *
+   * <p>Note that the cache <b>may evict an entry before this limit is exceeded or temporarily
+   * exceed the threshold while evicting</b>. As the cache size grows close to the maximum, the
+   * cache evicts entries that are less likely to be used again. For example, the cache may evict an
+   * entry because it hasn't been used recently or very often.
+   *
+   * <p>When {@code maximumWeight} is zero, elements will be evicted immediately after being loaded
+   * into the cache. This can be useful in testing, or to disable caching temporarily without a code
+   * change. As eviction is scheduled on the configured {@link #executor}, tests may instead prefer
+   * to configure the cache to execute tasks directly on the same thread.
+   *
+   * <p>Note that weight is only used to determine whether the cache is over capacity; it has no
+   * effect on selecting which entry should be evicted next.
+   *
+   * <p>This feature cannot be used in conjunction with {@link #maximumSize}.
+   *
+   * @param maximumWeight the maximum total weight of entries the cache may contain
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws IllegalArgumentException if {@code maximumWeight} is negative
+   * @throws IllegalStateException if a maximum weight or size was already set
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> maximumWeight(long maximumWeight) {
+    requireState(
+        this.maximumWeight == UNSET_INT,
+        CommonMessages.EXCEPTION_MAXIMUM_WEIGHT_WAS_ALREADY_SET_TO_ARG_FFCC0743,
+        this.maximumWeight);
+    requireState(
+        this.maximumSize == UNSET_INT,
+        CommonMessages.EXCEPTION_MAXIMUM_SIZE_WAS_ALREADY_SET_TO_ARG_0FE8510C,
+        this.maximumSize);
+    requireArgument(
+        maximumWeight >= 0, CommonMessages.EXCEPTION_MAXIMUM_WEIGHT_MUST_NOT_BE_NEGATIVE_717B327F);
+    this.maximumWeight = maximumWeight;
+    return this;
+  }
+
+  /**
+   * Specifies the weigher to use in determining the weight of entries. Entry weight is taken into
+   * consideration by {@link #maximumWeight(long)} when determining which entries to evict, and use
+   * of this method requires a corresponding call to {@link #maximumWeight(long)} prior to calling
+   * {@link #build}. Weights are measured and recorded when entries are inserted into or updated in
+   * the cache, and are thus effectively static during the lifetime of a cache entry.
+   *
+   * <p>When the weight of an entry is zero it will not be considered for size-based eviction
+   * (though it still may be evicted by other means).
+   *
+   * <p><b>Important note:</b> Instead of returning <em>this</em> as a {@code Caffeine} instance,
+   * this method returns {@code Caffeine<K1, V1>}. From this point on, either the original reference
+   * or the returned reference may be used to complete configuration and build the cache, but only
+   * the "generic" one is type-safe. That is, it will properly prevent you from building caches
+   * whose key or value types are incompatible with the types accepted by the weigher already
+   * provided; the {@code Caffeine} type cannot do this. For best results, simply use the standard
+   * method-chaining idiom, as illustrated in the documentation at top, configuring a {@code
+   * Caffeine} and building your {@link Cache} all in a single statement.
+   *
+   * <p><b>Warning:</b> if you ignore the above advice, and use this {@code Caffeine} to build a
+   * cache whose key or value type is incompatible with the weigher, you will likely experience a
+   * {@link ClassCastException} at some <i>undefined</i> point in the future.
+   *
+   * @param weigher the weigher to use in calculating the weight of cache entries
+   * @param <K1> key type of the weigher
+   * @param <V1> value type of the weigher
+   * @return the cache builder reference that should be used instead of {@code this} for any
+   *     remaining configuration and cache building
+   * @throws IllegalStateException if a weigher was already set
+   */
+  @CanIgnoreReturnValue
+  @SuppressWarnings("PMD.TypeParameterNamingConventions")
+  public <K1 extends K, V1 extends V> Caffeine<K1, V1> weigher(
+      Weigher<? super K1, ? super V1> weigher) {
+    requireNonNull(weigher);
+    requireState(
+        this.weigher == null,
+        CommonMessages.EXCEPTION_WEIGHER_WAS_ALREADY_SET_TO_ARG_84645186,
+        this.weigher);
+    requireState(
+        this.maximumSize == UNSET_INT,
+        CommonMessages.EXCEPTION_WEIGHER_CANNOT_BE_COMBINED_WITH_MAXIMUM_SIZE_0A2D1969);
+
+    @SuppressWarnings("unchecked")
+    var self = (Caffeine<K1, V1>) this;
+    self.weigher = weigher;
+    return self;
+  }
+
+  boolean evicts() {
+    return getMaximum() != UNSET_INT;
+  }
+
+  boolean isWeighted() {
+    return (weigher != null);
+  }
+
+  long getMaximum() {
+    return isWeighted() ? maximumWeight : maximumSize;
+  }
+
+  @SuppressWarnings({"JavaAnnotator", "PMD.TypeParameterNamingConventions", "unchecked"})
+  <K1 extends K, V1 extends V> Weigher<K1, V1> getWeigher() {
+    Weigher<K1, V1> delegate =
+        (weigher == null) || (weigher == Weigher.singletonWeigher())
+            ? Weigher.singletonWeigher()
+            : Weigher.boundedWeigher((Weigher<K1, V1>) weigher);
+    return delegate;
+  }
+
+  boolean isStrongKeys() {
+    return true;
+  }
+
+  boolean isStrongValues() {
+    return true;
+  }
+
+  boolean isWeakValues() {
+    return false;
+  }
+
+  /**
+   * Specifies that each entry should be automatically removed from the cache once a fixed duration
+   * has elapsed after the entry's creation, or the most recent replacement of its value.
+   *
+   * <p>Expired entries may be counted in {@link Cache#estimatedSize()}, but will never be visible
+   * to read or write operations. Expired entries are cleaned up as part of the routine maintenance
+   * described in the class Javadoc. A {@link #scheduler(Scheduler)} may be configured for a prompt
+   * removal of expired entries.
+   *
+   * @param duration the length of time after an entry is created or updated before it should be
+   *     automatically removed
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws IllegalArgumentException if {@code duration} is negative
+   * @throws IllegalStateException if {@link #expireAfterWrite} or {@link #expireAfter(Expiry)} was
+   *     already set
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> expireAfterWrite(Duration duration) {
+    return expireAfterWrite(toNanosSaturated(duration), TimeUnit.NANOSECONDS);
+  }
+
+  /**
+   * Specifies that each entry should be automatically removed from the cache once a fixed duration
+   * has elapsed after the entry's creation, or the most recent replacement of its value.
+   *
+   * <p>Expired entries may be counted in {@link Cache#estimatedSize()}, but will never be visible
+   * to read or write operations. Expired entries are cleaned up as part of the routine maintenance
+   * described in the class Javadoc. A {@link #scheduler(Scheduler)} may be configured for a prompt
+   * removal of expired entries.
+   *
+   * <p>If you can represent the duration as a {@link java.time.Duration} (which should be preferred
+   * when feasible), use {@link #expireAfterWrite(Duration)} instead.
+   *
+   * @param duration the length of time after an entry is created or updated before it should be
+   *     automatically removed
+   * @param unit the unit that {@code duration} is expressed in
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws IllegalArgumentException if {@code duration} is negative
+   * @throws IllegalStateException if {@link #expireAfterWrite} or {@link #expireAfter(Expiry)} was
+   *     already set
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> expireAfterWrite(long duration, TimeUnit unit) {
+    requireState(
+        expireAfterWriteNanos == UNSET_INT,
+        CommonMessages.EXCEPTION_EXPIREAFTERWRITE_WAS_ALREADY_SET_TO_ARG_NS_7218F232,
+        expireAfterWriteNanos);
+    requireArgument(
+        duration >= 0,
+        CommonMessages.EXCEPTION_DURATION_CANNOT_BE_NEGATIVE_ARG_ARG_3C151FCA,
+        duration,
+        unit);
+    this.expireAfterWriteNanos = unit.toNanos(duration);
+    return this;
+  }
+
+  long getExpiresAfterWriteNanos() {
+    return expireAfterWriteNanos;
+  }
+
+  boolean expiresAfterWrite() {
+    return (expireAfterWriteNanos != UNSET_INT);
+  }
+
+  /**
+   * Specifies that each entry should be automatically removed from the cache once a fixed duration
+   * has elapsed after the entry's creation, the most recent replacement of its value, or its last
+   * access. Access time is reset by all cache read and write operations (including {@code
+   * Cache.asMap().get(Object)} and {@code Cache.asMap().put(K, V)}), but not by operations on the
+   * collection-views of {@link Cache#asMap}.
+   *
+   * <p>Expired entries may be counted in {@link Cache#estimatedSize()}, but will never be visible
+   * to read or write operations. Expired entries are cleaned up as part of the routine maintenance
+   * described in the class Javadoc. A {@link #scheduler(Scheduler)} may be configured for a prompt
+   * removal of expired entries.
+   *
+   * @param duration the length of time after an entry is last accessed before it should be
+   *     automatically removed
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws IllegalArgumentException if {@code duration} is negative
+   * @throws IllegalStateException if {@link #expireAfterAccess} or {@link #expireAfter(Expiry)} was
+   *     already set
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> expireAfterAccess(Duration duration) {
+    return expireAfterAccess(toNanosSaturated(duration), TimeUnit.NANOSECONDS);
+  }
+
+  /**
+   * Specifies that each entry should be automatically removed from the cache once a fixed duration
+   * has elapsed after the entry's creation, the most recent replacement of its value, or its last
+   * read. Access time is reset by all cache read and write operations (including {@code
+   * Cache.asMap().get(Object)} and {@code Cache.asMap().put(K, V)}), but not by operations on the
+   * collection-views of {@link Cache#asMap}.
+   *
+   * <p>Expired entries may be counted in {@link Cache#estimatedSize()}, but will never be visible
+   * to read or write operations. Expired entries are cleaned up as part of the routine maintenance
+   * described in the class Javadoc. A {@link #scheduler(Scheduler)} may be configured for a prompt
+   * removal of expired entries.
+   *
+   * <p>If you can represent the duration as a {@link java.time.Duration} (which should be preferred
+   * when feasible), use {@link #expireAfterAccess(Duration)} instead.
+   *
+   * @param duration the length of time after an entry is last accessed before it should be
+   *     automatically removed
+   * @param unit the unit that {@code duration} is expressed in
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws IllegalArgumentException if {@code duration} is negative
+   * @throws IllegalStateException if {@link #expireAfterAccess} or {@link #expireAfter(Expiry)} was
+   *     already set
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> expireAfterAccess(long duration, TimeUnit unit) {
+    requireState(
+        expireAfterAccessNanos == UNSET_INT,
+        CommonMessages.EXCEPTION_EXPIREAFTERACCESS_WAS_ALREADY_SET_TO_ARG_NS_CA739654,
+        expireAfterAccessNanos);
+    requireArgument(
+        duration >= 0,
+        CommonMessages.EXCEPTION_DURATION_CANNOT_BE_NEGATIVE_ARG_ARG_3C151FCA,
+        duration,
+        unit);
+    this.expireAfterAccessNanos = unit.toNanos(duration);
+    return this;
+  }
+
+  long getExpiresAfterAccessNanos() {
+    return expireAfterAccessNanos;
+  }
+
+  boolean expiresAfterAccess() {
+    return (expireAfterAccessNanos != UNSET_INT);
+  }
+
+  boolean expiresVariable() {
+    return false;
+  }
+
+  boolean refreshAfterWrite() {
+    return false;
+  }
+
+  /**
+   * Specifies a nanosecond-precision time source for use in determining when entries should be
+   * expired or refreshed. By default, {@link System#nanoTime} is used.
+   *
+   * <p>The primary intent of this method is to facilitate testing of caches which have been
+   * configured with {@link #expireAfterWrite}, {@link #expireAfterAccess}, or {@link
+   * #refreshAfterWrite}. Note that this ticker is not used when recording statistics.
+   *
+   * @param ticker a nanosecond-precision time source
+   * @return this {@code Caffeine} instance (for chaining)
+   * @throws IllegalStateException if a ticker was already set
+   * @throws NullPointerException if the specified ticker is null
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> ticker(Ticker ticker) {
+    requireState(
+        this.ticker == null,
+        CommonMessages.EXCEPTION_TICKER_WAS_ALREADY_SET_TO_ARG_59220FA7,
+        this.ticker);
+    this.ticker = requireNonNull(ticker);
+    return this;
+  }
+
+  Ticker getTicker() {
+    boolean useTicker = expiresAfterAccess() || expiresAfterWrite();
+    return useTicker ? (ticker == null) ? Ticker.systemTicker() : ticker : Ticker.disabledTicker();
+  }
+
+  /**
+   * Specifies a listener instance that caches should notify each time an entry is evicted. The
+   * cache will invoke this listener during the atomic operation to remove the entry. In the case of
+   * expiration or reference collection, the entry may be pending removal and will be discarded as
+   * part of the routine maintenance described in the class documentation above. For a more prompt
+   * notification on expiration a {@link #scheduler(Scheduler)} may be configured. A {@link
+   * #removalListener(RemovalListener)} may be preferred when the listener should be invoked for any
+   * {@linkplain RemovalCause reason}, be performed outside of the atomic operation to remove the
+   * entry, or be delegated to the configured {@link #executor(Executor)}.
+   *
+   * <p><b>Important note:</b> after invoking this method, do not continue to use <i>this</i> cache
+   * builder reference; instead use the reference this method <i>returns</i>. At runtime, these
+   * point to the same instance, but only the returned reference has the correct generic type
+   * information so as to ensure type safety. For best results, use the standard method-chaining
+   * idiom illustrated in the class documentation above, configuring a builder and building your
+   * cache in a single statement. Failure to heed this advice can result in a {@link
+   * ClassCastException} being thrown by a cache operation at some <i>undefined</i> point in the
+   * future.
+   *
+   * <p><b>Warning:</b> The {@code evictionListener} <b>must not</b> modify this cache and any
+   * exception thrown will <i>not</i> be propagated to the {@code Cache} user, only logged via a
+   * {@link Logger}.
+   *
+   * <p>This feature cannot be used in conjunction when {@link #weakKeys()} is combined with {@link
+   * #buildAsync}.
+   *
+   * @param evictionListener a listener instance that caches should notify each time an entry is
+   *     being automatically removed due to eviction
+   * @param <K1> the key type of the listener
+   * @param <V1> the value type of the listener
+   * @return the cache builder reference that should be used instead of {@code this} for any
+   *     remaining configuration and cache building
+   * @throws IllegalStateException if a removal listener was already set
+   * @throws NullPointerException if the specified removal listener is null
+   */
+  @CanIgnoreReturnValue
+  @SuppressWarnings("PMD.TypeParameterNamingConventions")
+  public <K1 extends K, V1 extends V> Caffeine<K1, V1> evictionListener(
+      RemovalListener<? super K1, ? super V1> evictionListener) {
+    requireState(
+        this.evictionListener == null,
+        CommonMessages.EXCEPTION_EVICTION_LISTENER_WAS_ALREADY_SET_TO_ARG_083BC682,
+        this.evictionListener);
+
+    @SuppressWarnings("unchecked")
+    var self = (Caffeine<K1, V1>) this;
+    self.evictionListener = requireNonNull(evictionListener);
+    return self;
+  }
+
+  @SuppressWarnings({"JavaAnnotator", "PMD.TypeParameterNamingConventions", "unchecked"})
+  <K1 extends K, V1 extends V> RemovalListener<K1, V1> getEvictionListener() {
+    return (RemovalListener<K1, V1>) evictionListener;
+  }
+
+  /**
+   * Specifies a listener instance that caches should notify each time an entry is removed for any
+   * {@linkplain RemovalCause reason}. The cache will invoke this listener on the configured {@link
+   * #executor(Executor)} after the entry's removal operation has completed. If the executor rejects
+   * a notification, the listener is invoked on the calling thread. In the case of expiration or
+   * reference collection, the entry may be pending removal and will be discarded as part of the
+   * routine maintenance described in the class documentation above. For a more prompt notification
+   * on expiration a {@link #scheduler(Scheduler)} may be configured. An {@link
+   * #evictionListener(RemovalListener)} may be preferred when the listener should be invoked as
+   * part of the atomic operation to remove the entry.
+   *
+   * <p><b>Important note:</b> after invoking this method, do not continue to use <i>this</i> cache
+   * builder reference; instead use the reference this method <i>returns</i>. At runtime, these
+   * point to the same instance, but only the returned reference has the correct generic type
+   * information so as to ensure type safety. For best results, use the standard method-chaining
+   * idiom illustrated in the class documentation above, configuring a builder and building your
+   * cache in a single statement. Failure to heed this advice can result in a {@link
+   * ClassCastException} being thrown by a cache operation at some <i>undefined</i> point in the
+   * future.
+   *
+   * <p><b>Warning:</b> any exception thrown by {@code removalListener} will <i>not</i> be
+   * propagated to the {@code Cache} user, only logged via a {@link Logger}.
+   *
+   * @param removalListener a listener instance that caches should notify each time an entry is
+   *     removed
+   * @param <K1> the key type of the listener
+   * @param <V1> the value type of the listener
+   * @return the cache builder reference that should be used instead of {@code this} for any
+   *     remaining configuration and cache building
+   * @throws IllegalStateException if a removal listener was already set
+   * @throws NullPointerException if the specified removal listener is null
+   */
+  @CanIgnoreReturnValue
+  @SuppressWarnings("PMD.TypeParameterNamingConventions")
+  public <K1 extends K, V1 extends V> Caffeine<K1, V1> removalListener(
+      RemovalListener<? super K1, ? super V1> removalListener) {
+    requireState(
+        this.removalListener == null,
+        CommonMessages.EXCEPTION_REMOVAL_LISTENER_WAS_ALREADY_SET_TO_ARG_5BF5704F,
+        this.removalListener);
+
+    @SuppressWarnings("unchecked")
+    var self = (Caffeine<K1, V1>) this;
+    self.removalListener = requireNonNull(removalListener);
+    return self;
+  }
+
+  @SuppressWarnings({"JavaAnnotator", "PMD.TypeParameterNamingConventions", "unchecked"})
+  <K1 extends K, V1 extends V> RemovalListener<K1, V1> getRemovalListener() {
+    return (RemovalListener<K1, V1>) removalListener;
+  }
+
+  /**
+   * Enables the accumulation of {@link CacheStats} during the operation of the cache. Without this
+   * {@link Cache#stats} will return zero for all statistics. Note that recording statistics
+   * requires bookkeeping to be performed with each operation, and thus imposes a performance
+   * penalty on cache operations.
+   *
+   * @return this {@code Caffeine} instance (for chaining)
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> recordStats() {
+    requireState(
+        this.statsCounterSupplier == null,
+        CommonMessages.EXCEPTION_STATISTICS_RECORDING_WAS_ALREADY_SET_8D7AA0B3);
+    statsCounterSupplier = ENABLED_STATS_COUNTER_SUPPLIER;
+    return this;
+  }
+
+  /**
+   * Enables the accumulation of {@link CacheStats} during the operation of the cache. Without this
+   * {@link Cache#stats} will return zero for all statistics. Note that recording statistics
+   * requires bookkeeping to be performed with each operation, and thus imposes a performance
+   * penalty on cache operations. Any exception thrown by the supplied {@link StatsCounter} will be
+   * suppressed and logged.
+   *
+   * @param statsCounterSupplier a supplier instance that returns a new {@link StatsCounter}
+   * @return this {@code Caffeine} instance (for chaining)
+   */
+  @CanIgnoreReturnValue
+  public Caffeine<K, V> recordStats(Supplier<? extends StatsCounter> statsCounterSupplier) {
+    requireState(
+        this.statsCounterSupplier == null,
+        CommonMessages.EXCEPTION_STATISTICS_RECORDING_WAS_ALREADY_SET_8D7AA0B3);
+    requireNonNull(statsCounterSupplier);
+    this.statsCounterSupplier = () -> StatsCounter.guardedStatsCounter(statsCounterSupplier.get());
+    return this;
+  }
+
+  boolean isRecordingStats() {
+    return (statsCounterSupplier != null);
+  }
+
+  Supplier<StatsCounter> getStatsCounterSupplier() {
+    return (statsCounterSupplier == null)
+        ? StatsCounter::disabledStatsCounter
+        : statsCounterSupplier;
+  }
+
+  boolean isBounded() {
+    return (maximumSize != UNSET_INT)
+        || (maximumWeight != UNSET_INT)
+        || (expireAfterAccessNanos != UNSET_INT)
+        || (expireAfterWriteNanos != UNSET_INT);
+  }
+
+  /**
+   * Builds a cache which does not automatically load values when keys are requested unless a
+   * mapping function is provided. Note that multiple threads can concurrently load values for
+   * distinct keys.
+   *
+   * <p>Consider {@link #build(CacheLoader)} instead, if it is feasible to implement a {@code
+   * CacheLoader}.
+   *
+   * <p>This method does not alter the state of this {@code Caffeine} instance, so it can be invoked
+   * again to create multiple independent caches.
+   *
+   * @param <K1> the key type of the cache
+   * @param <V1> the value type of the cache
+   * @return a cache having the requested features
+   */
+  @SuppressWarnings("PMD.TypeParameterNamingConventions")
+  public <K1 extends K, V1 extends V> Cache<K1, V1> build() {
+    requireWeightWithWeigher();
+
+    @SuppressWarnings("unchecked")
+    var self = (Caffeine<K1, V1>) this;
+    return isBounded()
+        ? new BoundedLocalCache.BoundedLocalManualCache<>(self)
+        : new UnboundedLocalCache.UnboundedLocalManualCache<>(self);
+  }
+
+  /**
+   * Builds a cache, which either returns an already-loaded value for a given key or atomically
+   * computes or retrieves it using the supplied {@code CacheLoader}. If another thread is currently
+   * loading the value for this key, simply waits for that thread to finish and returns its loaded
+   * value. Note that multiple threads can concurrently load values for distinct keys.
+   *
+   * <p>This method does not alter the state of this {@code Caffeine} instance, so it can be invoked
+   * again to create multiple independent caches.
+   *
+   * @param loader the cache loader used to obtain new values
+   * @param <K1> the key type of the loader
+   * @param <V1> the value type of the loader
+   * @return a cache having the requested features
+   */
+  @SuppressWarnings("PMD.TypeParameterNamingConventions")
+  public <K1 extends K, V1 extends V> LoadingCache<K1, V1> build(
+      CacheLoader<? super K1, V1> loader) {
+    requireWeightWithWeigher();
+
+    @SuppressWarnings("unchecked")
+    var self = (Caffeine<K1, V1>) this;
+    return isBounded()
+        ? new BoundedLocalCache.BoundedLocalLoadingCache<>(self, loader)
+        : new UnboundedLocalCache.UnboundedLocalLoadingCache<>(self, loader);
+  }
+
+  void requireWeightWithWeigher() {
+    if (weigher == null) {
+      requireState(
+          maximumWeight == UNSET_INT,
+          CommonMessages.EXCEPTION_MAXIMUMWEIGHT_REQUIRES_WEIGHER_458CD148);
+    } else {
+      requireState(
+          maximumWeight != UNSET_INT,
+          CommonMessages.EXCEPTION_WEIGHER_REQUIRES_MAXIMUMWEIGHT_D212C663);
+    }
+  }
+
+  /**
+   * Returns a string representation for this Caffeine instance. The exact form of the returned
+   * string is not specified.
+   */
+  @Override
+  public String toString() {
+    var s = new StringBuilder(200).append(getClass().getSimpleName()).append('{');
+    int baseLength = s.length();
+    if (initialCapacity != UNSET_INT) {
+      s.append("initialCapacity=").append(initialCapacity).append(", ");
+    }
+    if (maximumSize != UNSET_INT) {
+      s.append("maximumSize=").append(maximumSize).append(", ");
+    }
+    if (maximumWeight != UNSET_INT) {
+      s.append("maximumWeight=").append(maximumWeight).append(", ");
+    }
+    if (expireAfterWriteNanos != UNSET_INT) {
+      s.append("expireAfterWrite=").append(expireAfterWriteNanos).append("ns, ");
+    }
+    if (expireAfterAccessNanos != UNSET_INT) {
+      s.append("expireAfterAccess=").append(expireAfterAccessNanos).append("ns, ");
+    }
+    if (evictionListener != null) {
+      s.append("evictionListener, ");
+    }
+    if (removalListener != null) {
+      s.append("removalListener, ");
+    }
+    if (s.length() > baseLength) {
+      s.delete(s.length() - 2, s.length());
+    }
+    return s.append('}').toString();
+  }
+}

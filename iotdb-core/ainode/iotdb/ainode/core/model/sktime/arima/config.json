@@ -1,0 +1,25 @@
+{
+  "model_type": "sktime",
+  "model_id": "arima",
+  "output_length": 1,
+  "order": [1, 0, 0],
+  "seasonal_order": [0, 0, 0, 0],
+  "start_params": null,
+  "method": "lbfgs",
+  "maxiter": 50,
+  "suppress_warnings": false,
+  "out_of_sample_size": 0,
+  "scoring": "mse",
+  "scoring_args": null,
+  "trend": null,
+  "with_intercept": true,
+  "time_varying_regression": false,
+  "enforce_stationarity": true,
+  "enforce_invertibility": true,
+  "simple_differencing": false,
+  "measurement_error": false,
+  "mle_regression": true,
+  "hamilton_representation": false,
+  "concentrate_scale": false
+}
+

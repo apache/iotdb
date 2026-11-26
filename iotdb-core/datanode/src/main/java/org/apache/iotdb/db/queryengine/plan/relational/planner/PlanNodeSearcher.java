@@ -19,24 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Predicates.alwaysFalse;
-import static com.google.common.base.Predicates.alwaysTrue;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup.noLookup;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChildReplacer.replaceChildren;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Predicates.alwaysFalse;
+import static org.apache.ratis.thirdparty.com.google.common.base.Predicates.alwaysTrue;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getOnlyElement;
 
 public class PlanNodeSearcher {
   public static PlanNodeSearcher searchFrom(PlanNode node) {
@@ -60,8 +61,8 @@ public class PlanNodeSearcher {
   private Predicate<PlanNode> recurseOnlyWhen = alwaysTrue();
 
   private PlanNodeSearcher(PlanNode node, Lookup lookup) {
-    this.node = requireNonNull(node, "node is null");
-    this.lookup = requireNonNull(lookup, "lookup is null");
+    this.node = requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
+    this.lookup = requireNonNull(lookup, DataNodeQueryMessages.EXCEPTION_LOOKUP_IS_NULL_B8FD7E65);
   }
 
   @SafeVarargs
@@ -78,12 +79,13 @@ public class PlanNodeSearcher {
   }
 
   public PlanNodeSearcher where(Predicate<PlanNode> where) {
-    this.where = requireNonNull(where, "where is null");
+    this.where = requireNonNull(where, DataNodeQueryMessages.EXCEPTION_WHERE_IS_NULL_A1A3FCBC);
     return this;
   }
 
   public PlanNodeSearcher recurseOnlyWhen(Predicate<PlanNode> skipOnly) {
-    this.recurseOnlyWhen = requireNonNull(skipOnly, "skipOnly is null");
+    this.recurseOnlyWhen =
+        requireNonNull(skipOnly, DataNodeQueryMessages.EXCEPTION_SKIPONLY_IS_NULL_80DB0703);
     return this;
   }
 
@@ -143,7 +145,8 @@ public class PlanNodeSearcher {
     if (where.test(node)) {
       checkArgument(
           node.getChildren().size() == 1,
-          "Unable to remove plan node as it contains 0 or more than 1 children");
+          DataNodeQueryMessages
+              .EXCEPTION_UNABLE_TO_REMOVE_PLAN_NODE_AS_IT_CONTAINS_0_OR_MORE_THAN_1_CHILDREN_6F26E194);
       return node.getChildren().get(0);
     }
     if (recurseOnlyWhen.test(node)) {
@@ -164,7 +167,8 @@ public class PlanNodeSearcher {
     if (where.test(node)) {
       checkArgument(
           node.getChildren().size() == 1,
-          "Unable to remove plan node as it contains 0 or more than 1 children");
+          DataNodeQueryMessages
+              .EXCEPTION_UNABLE_TO_REMOVE_PLAN_NODE_AS_IT_CONTAINS_0_OR_MORE_THAN_1_CHILDREN_6F26E194);
       return node.getChildren().get(0);
     }
     if (recurseOnlyWhen.test(node)) {
@@ -176,7 +180,8 @@ public class PlanNodeSearcher {
         return replaceChildren(node, ImmutableList.of(removeFirstRecursive(sources.get(0))));
       }
       throw new IllegalArgumentException(
-          "Unable to remove first node when a node has multiple children, use removeAll instead");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_UNABLE_TO_REMOVE_FIRST_NODE_WHEN_A_NODE_HAS_MULTIPLE_CHILDREN_FB6E81C5);
     }
     return node;
   }
@@ -219,7 +224,8 @@ public class PlanNodeSearcher {
       return replaceChildren(node, ImmutableList.of(replaceFirstRecursive(node, sources.get(0))));
     }
     throw new IllegalArgumentException(
-        "Unable to replace first node when a node has multiple children, use replaceAll instead");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_UNABLE_TO_REPLACE_FIRST_NODE_WHEN_A_NODE_HAS_MULTIPLE_CHILDREN_2C3D0E9E);
   }
 
   public boolean matches() {

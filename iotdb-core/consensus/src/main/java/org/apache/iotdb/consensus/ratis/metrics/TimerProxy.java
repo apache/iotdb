@@ -46,9 +46,14 @@ public class TimerProxy implements Timekeeper {
     }
   }
 
-  private final Timer timer;
+  /** IoTDB Timer, replaced when the metric service restarts. */
+  private volatile Timer timer;
 
   TimerProxy(Timer timer) {
+    this.timer = timer;
+  }
+
+  void setTimer(Timer timer) {
     this.timer = timer;
   }
 

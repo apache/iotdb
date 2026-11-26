@@ -20,7 +20,10 @@
 package org.apache.iotdb.commons.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
@@ -28,6 +31,7 @@ import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRPCRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -73,6 +77,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_DEFAULT_VALUE;
@@ -86,6 +92,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
@@ -96,6 +103,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
@@ -119,6 +127,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_FORMAT_KEY;
@@ -126,12 +135,14 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_BATCH_DELAY_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_BATCH_SIZE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LOAD_TSFILE_STRATEGY_KEY;
@@ -143,26 +154,29 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 
 @TreeModel
 @TableModel
-public abstract class IoTDBSink implements PipeConnector {
+public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
-  private static final String PARSE_URL_ERROR_FORMATTER =
-      "Exception occurred while parsing node urls from target servers: {}";
-  private static final String PARSE_URL_ERROR_MESSAGE =
-      "Error occurred while parsing node urls from target servers, please check the specified 'host':'port' or 'node-urls'";
+  private static final String PARSE_URL_ERROR_FORMATTER = PipeMessages.PARSE_URL_ERROR;
+  private static final String PARSE_URL_ERROR_MESSAGE = PipeMessages.PARSE_URL_ERROR_MESSAGE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSink.class);
 
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
+  protected String userId = "-1";
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+  protected String cliHostname = "";
+  protected UserEntity userEntity;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
   protected String loadBalanceStrategy;
 
   protected String loadTsFileStrategy;
   protected boolean loadTsFileValidation;
+  protected boolean shouldWaitForSchemaBeforeLoad;
 
   protected boolean shouldMarkAsPipeRequest;
+  protected boolean skipIfNoPrivileges;
 
   private boolean isRpcCompressionEnabled;
   private final List<PipeCompressor> compressors = new ArrayList<>();
@@ -178,9 +192,14 @@ public abstract class IoTDBSink implements PipeConnector {
   protected boolean shouldReceiverConvertOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
+  protected boolean shouldAsyncLoadTsFileOnTypeMismatch =
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE;
   private final AtomicLong totalUncompressedSize = new AtomicLong(0);
   private final AtomicLong totalCompressedSize = new AtomicLong(0);
   protected String attributeSortedString;
+  protected String sinkTaskId;
+  protected String pipeName;
+  protected long creationTime = Long.MIN_VALUE;
   protected Timer compressionTimer;
   protected boolean isRealtimeFirst;
 
@@ -195,7 +214,7 @@ public abstract class IoTDBSink implements PipeConnector {
                 || (boolean) args[4]
                 || (((boolean) args[5] || (boolean) args[6]) && (boolean) args[7]),
         String.format(
-            "One of %s, %s:%s, %s, %s:%s must be specified",
+            PipeMessages.MESSAGE_ONE_OF_ARG_ARG_ARG_ARG_ARG_ARG_MUST_BE_SPECIFIED_A41C7BCE,
             CONNECTOR_IOTDB_NODE_URLS_KEY,
             CONNECTOR_IOTDB_HOST_KEY,
             CONNECTOR_IOTDB_PORT_KEY,
@@ -214,7 +233,7 @@ public abstract class IoTDBSink implements PipeConnector {
     validator.validate(
         requestMaxBatchSizeInBytes -> (long) requestMaxBatchSizeInBytes > 0,
         String.format(
-            "%s must be > 0, but got %s",
+            PipeMessages.MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_B2A3D4A2,
             SINK_IOTDB_BATCH_SIZE_KEY,
             parameters.getLongOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
@@ -242,6 +261,9 @@ public abstract class IoTDBSink implements PipeConnector {
             CONNECTOR_MARK_AS_GENERAL_WRITE_REQUEST_KEY, SINK_MARK_AS_GENERAL_WRITE_REQUEST_KEY),
         false);
 
+    userId =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_USER_ID, SINK_IOTDB_USER_ID), "-1");
     username =
         parameters.getStringOrDefault(
             Arrays.asList(
@@ -250,6 +272,10 @@ public abstract class IoTDBSink implements PipeConnector {
                 CONNECTOR_IOTDB_USERNAME_KEY,
                 SINK_IOTDB_USERNAME_KEY),
             CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
+    cliHostname =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_CLI_HOSTNAME, SINK_IOTDB_CLI_HOSTNAME), "");
+    userEntity = new UserEntity(Long.parseLong(userId), username, cliHostname);
     password =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
@@ -265,8 +291,9 @@ public abstract class IoTDBSink implements PipeConnector {
     validator.validate(
         arg -> CONNECTOR_LOAD_BALANCE_STRATEGY_SET.contains(loadBalanceStrategy),
         String.format(
-            "Load balance strategy should be one of %s, but got %s.",
-            CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
+            PipeMessages.MESSAGE_LOAD_BALANCE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_9247DA78,
+            CONNECTOR_LOAD_BALANCE_STRATEGY_SET,
+            loadBalanceStrategy),
         loadBalanceStrategy);
 
     loadTsFileStrategy =
@@ -279,13 +306,16 @@ public abstract class IoTDBSink implements PipeConnector {
     validator.validate(
         arg -> CONNECTOR_LOAD_TSFILE_STRATEGY_SET.contains(loadTsFileStrategy),
         String.format(
-            "Load tsfile strategy should be one of %s, but got %s.",
-            CONNECTOR_LOAD_TSFILE_STRATEGY_SET, loadTsFileStrategy),
+            PipeMessages.MESSAGE_LOAD_TSFILE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_FF567B85,
+            CONNECTOR_LOAD_TSFILE_STRATEGY_SET,
+            loadTsFileStrategy),
         loadTsFileStrategy);
     loadTsFileValidation =
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_LOAD_TSFILE_VALIDATION_KEY, SINK_LOAD_TSFILE_VALIDATION_KEY),
             CONNECTOR_LOAD_TSFILE_VALIDATION_DEFAULT_VALUE);
+    shouldWaitForSchemaBeforeLoad =
+        parameters.getBooleanOrDefault(SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY, false);
 
     final int zstdCompressionLevel =
         parameters.getIntOrDefault(
@@ -296,7 +326,8 @@ public abstract class IoTDBSink implements PipeConnector {
             (int) arg >= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE
                 && (int) arg <= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE,
         String.format(
-            "Zstd compression level should be in the range [%d, %d], but got %d.",
+            PipeMessages
+                .MESSAGE_ZSTD_COMPRESSION_LEVEL_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_E5A3079B,
             CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE,
             CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE,
             zstdCompressionLevel),
@@ -318,8 +349,9 @@ public abstract class IoTDBSink implements PipeConnector {
         validator.validate(
             arg -> CONNECTOR_COMPRESSOR_SET.contains(trimmedCompressionType),
             String.format(
-                "Compressor should be one of %s, but got %s.",
-                CONNECTOR_COMPRESSOR_SET, trimmedCompressionType),
+                PipeMessages.MESSAGE_COMPRESSOR_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A1E39742,
+                CONNECTOR_COMPRESSOR_SET,
+                trimmedCompressionType),
             trimmedCompressionType);
         compressors.add(
             PipeCompressorFactory.getCompressor(
@@ -329,8 +361,10 @@ public abstract class IoTDBSink implements PipeConnector {
     validator.validate(
         arg -> compressors.size() <= Byte.MAX_VALUE,
         String.format(
-            "The number of compressors should be less than or equal to %d, but got %d.",
-            Byte.MAX_VALUE, compressors.size()),
+            PipeMessages
+                .EXCEPTION_THE_NUMBER_OF_COMPRESSORS_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_ARG_BUT_GOT_ARG_128D372F,
+            Byte.MAX_VALUE,
+            compressors.size()),
         compressors.size());
     isRpcCompressionEnabled = !compressors.isEmpty();
 
@@ -341,14 +375,16 @@ public abstract class IoTDBSink implements PipeConnector {
     validator.validate(
         arg -> endPointRateLimitBytesPerSecond <= Double.MAX_VALUE,
         String.format(
-            "Rate limit should be in the range (0, %f], but got %f.",
-            Double.MAX_VALUE, endPointRateLimitBytesPerSecond),
+            PipeMessages.MESSAGE_RATE_LIMIT_SHOULD_BE_IN_THE_RANGE_0_F_BUT_GOT_F_A84E09CD,
+            Double.MAX_VALUE,
+            endPointRateLimitBytesPerSecond),
         endPointRateLimitBytesPerSecond);
 
     validator.validate(
         arg -> arg.equals("retry") || arg.equals("ignore"),
         String.format(
-            "The value of key %s or %s must be either 'retry' or 'ignore'.",
+            PipeMessages
+                .EXCEPTION_THE_VALUE_OF_KEY_ARG_OR_ARG_MUST_BE_EITHER_RETRY_OR_IGNORE_783FDB2B,
             CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
             SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
         parameters
@@ -376,13 +412,17 @@ public abstract class IoTDBSink implements PipeConnector {
       throws Exception {
     final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
     if (environment instanceof PipeTaskSinkRuntimeEnvironment) {
-      attributeSortedString =
-          ((PipeTaskSinkRuntimeEnvironment) environment).getAttributeSortedString();
+      final PipeTaskSinkRuntimeEnvironment sinkEnvironment =
+          (PipeTaskSinkRuntimeEnvironment) environment;
+      attributeSortedString = sinkEnvironment.getAttributeSortedString();
+      sinkTaskId = sinkEnvironment.getSinkTaskId();
+      pipeName = sinkEnvironment.getPipeName();
+      creationTime = sinkEnvironment.getCreationTime();
     }
 
     nodeUrls.clear();
     nodeUrls.addAll(parseNodeUrls(parameters));
-    LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
+    LOGGER.info(PipeMessages.IOTDB_SINK_NODE_URLS, nodeUrls);
 
     isTabletBatchModeEnabled =
         parameters.getBooleanOrDefault(
@@ -394,7 +434,7 @@ public abstract class IoTDBSink implements PipeConnector {
                     Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
                     CONNECTOR_FORMAT_HYBRID_VALUE)
                 .equals(CONNECTOR_FORMAT_TS_FILE_VALUE);
-    LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+    LOGGER.info(PipeMessages.IOTDB_SINK_TABLET_BATCH_MODE, isTabletBatchModeEnabled);
 
     final boolean shouldMarkAsGeneralWriteRequest =
         parameters.getBooleanOrDefault(
@@ -410,7 +450,7 @@ public abstract class IoTDBSink implements PipeConnector {
               Arrays.asList(CONNECTOR_MARK_AS_PIPE_REQUEST_KEY, SINK_MARK_AS_PIPE_REQUEST_KEY),
               CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE);
     }
-    LOGGER.info("IoTDBConnector shouldMarkAsPipeRequest: {}", shouldMarkAsPipeRequest);
+    LOGGER.info(PipeMessages.IOTDB_SINK_MARK_AS_PIPE_REQUEST, shouldMarkAsPipeRequest);
 
     final String connectorSkipIfValue =
         parameters
@@ -424,12 +464,14 @@ public abstract class IoTDBSink implements PipeConnector {
             .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)
             .collect(Collectors.toSet());
-    boolean skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
     if (!skipIfOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
-          String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
+          String.format(
+              PipeMessages.EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054,
+              skipIfOptionSet));
     }
-    LOGGER.info("IoTDBConnector skipIfNoPrivileges: {}", skipIfNoPrivileges);
+    LOGGER.info(PipeMessages.IOTDB_SINK_SKIP_IF_NO_PRIVILEGES, skipIfNoPrivileges);
 
     receiverStatusHandler =
         new PipeReceiverStatusHandler(
@@ -468,10 +510,20 @@ public abstract class IoTDBSink implements PipeConnector {
                 CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
                 SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY),
             CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE);
+    shouldAsyncLoadTsFileOnTypeMismatch =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY,
+                SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY),
+            CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE);
     LOGGER.info(
-        "IoTDBConnector {} = {}",
+        PipeMessages.LOG_IOTDBSINK_ARG_ARG_4E140C06,
         CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
         shouldReceiverConvertOnTypeMismatch);
+    LOGGER.info(
+        PipeMessages.LOG_IOTDBSINK_ARG_ARG_4E140C06,
+        CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY,
+        shouldAsyncLoadTsFileOnTypeMismatch);
     isRealtimeFirst =
         parameters.getBooleanOrDefault(
             Arrays.asList(
@@ -479,7 +531,9 @@ public abstract class IoTDBSink implements PipeConnector {
                 PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
             PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
     LOGGER.info(
-        "IoTDBConnector {} = {}", PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY, isRealtimeFirst);
+        PipeMessages.LOG_IOTDBSINK_ARG_ARG_4E140C06,
+        PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
+        isRealtimeFirst);
   }
 
   protected LinkedHashSet<TEndPoint> parseNodeUrls(final PipeParameters parameters)
@@ -551,11 +605,11 @@ public abstract class IoTDBSink implements PipeConnector {
   private void checkNodeUrls(final Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
     for (final TEndPoint nodeUrl : nodeUrls) {
       if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "host cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, PipeMessages.HOST_CANNOT_BE_EMPTY);
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
       if (nodeUrl.port == 0) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "port cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, PipeMessages.PORT_CANNOT_BE_EMPTY);
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
     }
@@ -565,6 +619,18 @@ public abstract class IoTDBSink implements PipeConnector {
   public void close() {
     // TODO: Not all the limiters should be closed here, but it's fine for now.
     PIPE_END_POINT_RATE_LIMITER_MAP.clear();
+  }
+
+  public void discardReceiverRuntimeSessions() {
+    // Do nothing by default.
+  }
+
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
+
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
   }
 
   public TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
@@ -603,37 +669,72 @@ public abstract class IoTDBSink implements PipeConnector {
     return totalUncompressedSize.get();
   }
 
+  protected void appendPipeInfoToHandshakeParams(final Map<String, String> params) {
+    if (pipeName == null) {
+      return;
+    }
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_NAME, pipeName);
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_CREATION_TIME,
+        String.valueOf(creationTime));
+  }
+
   public void rateLimitIfNeeded(
       final String pipeName,
       final long creationTime,
       final TEndPoint endPoint,
       final long bytesLength) {
     if (pipeName != null && endPointRateLimitBytesPerSecond > 0) {
-      PIPE_END_POINT_RATE_LIMITER_MAP
-          .computeIfAbsent(
+      final PipeEndPointRateLimiter limiter =
+          PIPE_END_POINT_RATE_LIMITER_MAP.computeIfAbsent(
               new Pair<>(pipeName, creationTime),
               endpoint ->
-                  new PipeEndPointRateLimiter(
-                      pipeName, creationTime, endPointRateLimitBytesPerSecond))
-          .acquire(endPoint, bytesLength);
+                  PipeEndPointRateLimiter.isPipeAlive(pipeName, creationTime)
+                      ? new PipeEndPointRateLimiter(
+                          pipeName, creationTime, endPointRateLimitBytesPerSecond)
+                      : null);
+      if (limiter != null) {
+        limiter.acquire(endPoint, bytesLength);
+      }
     }
 
     GLOBAL_RATE_LIMITER.acquire(bytesLength);
   }
 
+  public static void clearPipeRateLimiter(final String pipeName, final long creationTime) {
+    PIPE_END_POINT_RATE_LIMITER_MAP.remove(new Pair<>(pipeName, creationTime));
+  }
+
   /**
-   * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
-   * its batched or queued events in the output pipe connector.
+   * When a region task is dropped, the connector may be reused and will not be closed. Discard its
+   * batched or queued events in the output pipe connector.
    */
-  public synchronized void discardEventsOfPipe(final String pipeName, final int regionId) {
-    // Do nothing by default
+  public synchronized void discardEventsOfPipe(
+      final String pipeName, final long creationTime, final int regionId) {
+    // Rate limiter state is pipe-wide and is cleared only after the whole pipe is dropped.
   }
 
   public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
   }
 
+  public boolean shouldWaitForSchemaBeforeLoad() {
+    return shouldWaitForSchemaBeforeLoad;
+  }
+
+  public boolean shouldAsyncLoadTsFileOnTypeMismatch() {
+    return shouldAsyncLoadTsFileOnTypeMismatch;
+  }
+
+  public String getSinkTaskId() {
+    return sinkTaskId;
+  }
+
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
+    // do nothing by default
+  }
+
+  public void setSchemaBatchSizeHistogram(Histogram schemaBatchSizeHistogram) {
     // do nothing by default
   }
 
@@ -642,6 +743,10 @@ public abstract class IoTDBSink implements PipeConnector {
   }
 
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    // do nothing by default
+  }
+
+  public void setSchemaBatchTimeIntervalHistogram(Histogram schemaBatchTimeIntervalHistogram) {
     // do nothing by default
   }
 

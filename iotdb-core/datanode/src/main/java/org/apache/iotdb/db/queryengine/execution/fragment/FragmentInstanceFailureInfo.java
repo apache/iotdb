@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,8 +37,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
 
 /**
  * This class is inspired by Trino <a
@@ -56,8 +58,8 @@ public class FragmentInstanceFailureInfo implements Serializable {
       FragmentInstanceFailureInfo cause,
       List<FragmentInstanceFailureInfo> suppressed,
       List<String> stack) {
-    requireNonNull(suppressed, "suppressed is null");
-    requireNonNull(stack, "stack is null");
+    requireNonNull(suppressed, DataNodeQueryMessages.EXCEPTION_SUPPRESSED_IS_NULL_F4CD280B);
+    requireNonNull(stack, DataNodeQueryMessages.EXCEPTION_STACK_IS_NULL_6844D421);
 
     this.message = message;
     this.cause = cause;
@@ -164,8 +166,6 @@ public class FragmentInstanceFailureInfo implements Serializable {
   public static FragmentInstanceFailureInfo deserialize(ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
     FragmentInstanceFailureInfo cause;
-    List<FragmentInstanceFailureInfo> suppressed = new ArrayList<>();
-    List<String> stack = new ArrayList<>();
     int flag = ReadWriteIOUtils.readInt(byteBuffer);
     if (flag == 0) {
       cause = null;
@@ -173,10 +173,12 @@ public class FragmentInstanceFailureInfo implements Serializable {
       cause = deserialize(byteBuffer);
     }
     int suppressedSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<FragmentInstanceFailureInfo> suppressed = new ArrayList<>(suppressedSize);
     for (int i = 0; i < suppressedSize; i++) {
       suppressed.add(deserialize(byteBuffer));
     }
     int stackSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> stack = new ArrayList<>(stackSize);
     for (int i = 0; i < stackSize; i++) {
       stack.add(ReadWriteIOUtils.readString(byteBuffer));
     }

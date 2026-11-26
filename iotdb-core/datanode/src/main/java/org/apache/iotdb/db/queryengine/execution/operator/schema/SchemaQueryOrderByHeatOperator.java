@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -42,8 +43,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
@@ -63,7 +64,9 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   private int currentIndex = 0;
 
   public SchemaQueryOrderByHeatOperator(OperatorContext operatorContext, List<Operator> operators) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
+    this.operatorContext =
+        requireNonNull(
+            operatorContext, DataNodeSchemaMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
     this.operators = operators;
     this.showTimeSeriesResult = new ArrayList<>();
     this.lastQueryResult = new ArrayList<>();

@@ -27,12 +27,13 @@ public class BackFloatTVList extends QuickFloatTVList {
   }
 
   @Override
-  public synchronized void sort() {
+  public synchronized int sort() {
     if (!sorted) {
       policy.backwardSort(timestamps, rowCount);
       policy.clearTmp();
     }
     sorted = true;
     seqRowCount = rowCount;
+    return rowCount;
   }
 }

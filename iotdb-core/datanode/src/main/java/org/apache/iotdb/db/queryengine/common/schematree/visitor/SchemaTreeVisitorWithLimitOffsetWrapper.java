@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.ArrayList;
 import java.util.List;

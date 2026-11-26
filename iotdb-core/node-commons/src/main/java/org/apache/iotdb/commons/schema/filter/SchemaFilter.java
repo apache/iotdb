@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.filter;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
@@ -33,6 +34,7 @@ import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -41,7 +43,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class SchemaFilter {
+public abstract class SchemaFilter implements Accountable {
 
   public static void serialize(final SchemaFilter schemaFilter, final ByteBuffer byteBuffer) {
     if (schemaFilter == null) {
@@ -97,7 +99,7 @@ public abstract class SchemaFilter {
       case COMPARISON:
         return new ComparisonFilter(byteBuffer);
       default:
-        throw new IllegalArgumentException("Unsupported schema filter type: " + type);
+        throw new IllegalArgumentException(SchemaMessages.UNSUPPORTED_SCHEMA_FILTER_TYPE + type);
     }
   }
 
@@ -118,6 +120,9 @@ public abstract class SchemaFilter {
       final List<SchemaFilter> result,
       final SchemaFilter schemaFilter,
       final SchemaFilterType filterType) {
+    if (schemaFilter == null) {
+      return;
+    }
     if (schemaFilter.getSchemaFilterType().equals(filterType)) {
       result.add(schemaFilter);
     }

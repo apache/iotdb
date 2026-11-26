@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -49,6 +51,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
@@ -106,7 +109,10 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactionWriter.startMeasurement(
         TsFileConstant.TIME_COLUMN_ID,
-        new AlignedChunkWriterImpl(measurementSchemas.remove(0), measurementSchemas),
+        new AlignedChunkWriterImpl(
+            measurementSchemas.remove(0),
+            measurementSchemas,
+            EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter())),
         subTaskId);
     compactFiles();
     compactionWriter.endMeasurement(subTaskId);
@@ -171,7 +177,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
             new ChunkMetadataElement(
                 alignedChunkMetadataList.get(i),
                 i == alignedChunkMetadataList.size() - 1,
-                fileElement));
+                fileElement,
+                measurementSchemas));
       }
     }
   }
@@ -240,7 +247,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
       // get time modifications of this file
       List<ModEntry> timeModifications =
-          getModificationsFromCache(resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          getModificationsFromCache(
+              resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER, !ignoreAllNullRows);
       // get value modifications of this file
       List<List<ModEntry>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
@@ -253,7 +261,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                     valueModifications.add(null);
                   } else {
                     valueModifications.add(
-                        getModificationsFromCache(resource, deviceId, x.getMeasurementUid()));
+                        getModificationsFromCache(
+                            resource, deviceId, x.getMeasurementUid(), !ignoreAllNullRows));
                   }
                 } catch (IllegalPathException e) {
                   throw new RuntimeException(e);
@@ -269,13 +278,25 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
   private boolean isValueChunkDataTypeMatchSchema(
       List<IChunkMetadata> chunkMetadataListOfOneValueColumn) {
+    boolean needAlter = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
       if (chunkMetadata == null) {
         continue;
       }
       String measurement = chunkMetadata.getMeasurementUid();
       IMeasurementSchema schema = measurementSchemaMap.get(measurement);
-      return schema.getType() == chunkMetadata.getDataType();
+      if (!needAlter) {
+        // Since all chunks in chunkMetadataListOfOneValueColumn share the same dataType, perform
+        // the compatibility check and early-return only on the first non-null chunk.
+        if (!MetadataUtils.canAlter(chunkMetadata.getDataType(), schema.getType())) {
+          return false;
+        }
+        if (schema.getType() == chunkMetadata.getDataType()) {
+          return true;
+        }
+      }
+      needAlter = true;
+      chunkMetadata.setNewType(schema.getType());
     }
     return true;
   }
@@ -313,19 +334,34 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       valuePagesList.add(valuesPages);
     }
 
+    List<IChunkMetadata> valueChunkMetadataList =
+        ((AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
+            .getValueChunkMetadataList();
+
     // add aligned pages into page queue
     for (int i = 0; i < timePages.size(); i++) {
+      PageHeader timePageHeader = timePages.get(i).left;
       List<PageHeader> alignedPageHeaders = new ArrayList<>();
       List<ByteBuffer> alignedPageDatas = new ArrayList<>();
       for (int j = 0; j < valuePagesList.size(); j++) {
         if (valuePagesList.get(j) == null) {
+          // value chunk has been deleted completely
           alignedPageHeaders.add(null);
           alignedPageDatas.add(null);
           continue;
         }
         Pair<PageHeader, ByteBuffer> valuePage = valuePagesList.get(j).get(i);
-        alignedPageHeaders.add(valuePage == null ? null : valuePage.left);
-        alignedPageDatas.add(valuePage == null ? null : valuePage.right);
+        if (valuePage == null
+            || isValuePageFullyDeleted(valueChunkMetadataList.get(j), timePageHeader)) {
+          // A fully deleted value page is kept as an empty page (null header and data), so that
+          // it is written as an empty page when flushed directly and reads all null values when
+          // it is deserialized. Otherwise the deleted data would be revived in the target file.
+          alignedPageHeaders.add(null);
+          alignedPageDatas.add(null);
+          continue;
+        }
+        alignedPageHeaders.add(valuePage.left);
+        alignedPageDatas.add(valuePage.right);
       }
 
       AlignedPageElement alignedPageElement =
@@ -343,6 +379,16 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     chunkMetadataElement.clearChunks();
   }
 
+  private static boolean isValuePageFullyDeleted(
+      IChunkMetadata valueChunkMetadata, PageHeader timePageHeader) {
+    return valueChunkMetadata != null
+        && AlignedSeriesBatchCompactionUtils.checkIsModified(
+                timePageHeader.getStartTime(),
+                timePageHeader.getEndTime(),
+                valueChunkMetadata.getDeleteIntervalList())
+            == ModifiedStatus.ALL_DELETED;
+  }
+
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
@@ -358,7 +404,21 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         valueChunks.add(null);
         continue;
       }
-      valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
+      if (valueChunkMetadata.getNewType() != null) {
+        Chunk chunk =
+            readChunk(reader, (ChunkMetadata) valueChunkMetadata)
+                .rewrite(
+                    ((ChunkMetadata) valueChunkMetadata).getNewType(), chunkMetadataElement.chunk);
+        valueChunks.add(chunk);
+
+        ChunkMetadata chunkMetadata = (ChunkMetadata) valueChunkMetadata;
+        chunkMetadata.setTsDataType(valueChunkMetadata.getNewType());
+        Statistics<?> statistics = Statistics.getStatsByType(valueChunkMetadata.getNewType());
+        statistics.mergeStatistics(chunk.getChunkStatistic());
+        chunkMetadata.setStatistics(statistics);
+      } else {
+        valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
+      }
     }
     chunkMetadataElement.valueChunks = valueChunks;
     setForceDecoding(chunkMetadataElement);
@@ -413,8 +473,9 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
    * PARTIAL_DELETED means that there is data on this page been deleted. <br>
    * ALL_DELETED means that all data on this page has been deleted.
    *
-   * <p>Notice: If is aligned page, return ALL_DELETED if and only if all value pages are deleted.
-   * Return NONE_DELETED if and only if no data exists on all value pages is deleted
+   * <p>Notice: a fully deleted value page is assembled as an empty page in {@link
+   * #deserializeChunkIntoPageQueue}, so it is written as an empty page when flushed directly and
+   * reads all null values otherwise.
    */
   protected ModifiedStatus isPageModified(PageElement pageElement) {
     long startTime = pageElement.getStartTime();

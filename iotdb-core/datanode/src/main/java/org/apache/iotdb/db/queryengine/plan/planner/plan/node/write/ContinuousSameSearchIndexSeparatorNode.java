@@ -21,10 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
@@ -53,7 +54,8 @@ public class ContinuousSameSearchIndexSeparatorNode extends SearchNode implement
   @Override
   public SearchNode merge(List<SearchNode> searchNodes) {
     throw new UnsupportedOperationException(
-        "ContinuousSameSearchIndexSeparatorNode not support merge");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_NOT_SUPPORT_MERGE_FD194976);
   }
 
   @Override
@@ -82,7 +84,8 @@ public class ContinuousSameSearchIndexSeparatorNode extends SearchNode implement
   // region all operations below are unsupported
 
   private static final String UNSUPPORTED_MESSAGE =
-      "ContinuousSameSearchIndexSeparatorNode not support this operation";
+      DataNodeQueryMessages
+          .MESSAGE_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_NOT_SUPPORT_THIS_OPERATION_CC9BC84B;
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {

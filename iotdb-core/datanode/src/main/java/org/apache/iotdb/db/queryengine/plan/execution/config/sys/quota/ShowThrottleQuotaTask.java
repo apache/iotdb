@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -34,8 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.BytesUtils;
@@ -149,7 +150,7 @@ public class ShowThrottleQuotaTask implements IConfigTask {
       case REQUEST_SIZE:
         return "";
       default:
-        throw new IllegalArgumentException("Wrong request type");
+        throw new IllegalArgumentException(DataNodeQueryMessages.WRONG_REQUEST_TYPE);
     }
   }
 
@@ -178,7 +179,7 @@ public class ShowThrottleQuotaTask implements IConfigTask {
               + toTimeUnit(timedQuota.getTimeUnit());
         }
       default:
-        throw new IllegalArgumentException("Wrong request type");
+        throw new IllegalArgumentException(DataNodeQueryMessages.WRONG_REQUEST_TYPE);
     }
   }
 
@@ -193,7 +194,7 @@ public class ShowThrottleQuotaTask implements IConfigTask {
       case IoTDBConstant.DAY:
         return IoTDBConstant.DAY_UNIT;
       default:
-        throw new IllegalArgumentException("Wrong unit type");
+        throw new IllegalArgumentException(DataNodeQueryMessages.WRONG_UNIT_TYPE);
     }
   }
 }

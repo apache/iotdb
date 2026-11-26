@@ -20,4 +20,20 @@
 package org.apache.iotdb.pipe.api.event;
 
 /** This interface is used to abstract events in collaboration tasks. */
-public interface Event {}
+public interface Event {
+
+  /** Whether this event carries internal control flow rather than user data. */
+  default boolean isControlEvent() {
+    return false;
+  }
+
+  /** Whether the processor must forward this event unchanged to preserve internal ordering. */
+  default boolean shouldSkipProcessing() {
+    return false;
+  }
+
+  /** Binds the event to its source instance. Events without source metadata may ignore this. */
+  default void bindSource(final long sourceId) {
+    // Do nothing by default.
+  }
+}

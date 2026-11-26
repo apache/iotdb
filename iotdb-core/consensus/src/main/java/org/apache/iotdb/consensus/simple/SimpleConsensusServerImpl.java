@@ -20,10 +20,10 @@
 package org.apache.iotdb.consensus.simple;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.io.File;
 
@@ -89,7 +89,7 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public synchronized void loadSnapshot(File latestSnapshotRootDir) {
-    stateMachine.loadSnapshot(latestSnapshotRootDir);
+  public synchronized boolean loadSnapshot(File latestSnapshotRootDir) {
+    return stateMachine.loadSnapshot(latestSnapshotRootDir);
   }
 }

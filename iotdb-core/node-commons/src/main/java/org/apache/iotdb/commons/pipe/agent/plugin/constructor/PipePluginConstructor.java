@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.constructor;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
@@ -63,21 +64,33 @@ public abstract class PipePluginConstructor {
   private PipePlugin reflect(String pluginName) {
     if (pluginMetaKeeper == null) {
       throw new PipeException(
-          "Failed to reflect PipePlugin instance, because PipePluginMetaKeeper is null.");
+          PipeMessages
+              .EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGINMETAKEEPER_NULL_0C9BD2E2);
     }
 
     if (pluginName == null) {
       throw new PipeException(
-          "Failed to reflect PipePlugin instance, because plugin name is null.");
+          PipeMessages
+              .EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PLUGIN_NAME_NULL_416BD04D);
     }
 
     final PipePluginMeta information = pluginMetaKeeper.getPipePluginMeta(pluginName);
     if (information == null) {
       String errorMessage =
           String.format(
-              "Failed to reflect PipePlugin instance, because "
-                  + "PipePlugin %s has not been registered.",
+              PipeMessages
+                  .MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_HAS_NOT_BEEN_REGISTERED_34B1267F,
               pluginName.toUpperCase());
+      LOGGER.warn(errorMessage);
+      throw new PipeException(errorMessage);
+    }
+    if (information.getPluginLoadingExceptionMessage() != null) {
+      final String errorMessage =
+          String.format(
+              PipeMessages
+                  .MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_FAILED_TO_LOAD_ARG_81A13C60,
+              pluginName.toUpperCase(),
+              information.getPluginLoadingExceptionMessage());
       LOGGER.warn(errorMessage);
       throw new PipeException(errorMessage);
     }
@@ -98,8 +111,11 @@ public abstract class PipePluginConstructor {
         | ClassNotFoundException e) {
       String errorMessage =
           String.format(
-              "Failed to reflect PipePlugin %s(%s) instance, because %s",
-              pluginName, information.getClassName(), e);
+              PipeMessages
+                  .MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_ARG_ARG_INSTANCE_BECAUSE_ARG_1F0896A9,
+              pluginName,
+              information.getClassName(),
+              e);
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
     }

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 public class KillQueryTask implements IConfigTask {
 
@@ -35,8 +35,9 @@ public class KillQueryTask implements IConfigTask {
     this.killQueryStatement = killQueryStatement;
   }
 
-  public KillQueryTask(KillQuery killQuery) {
+  public KillQueryTask(KillQuery killQuery, String username) {
     this.killQueryStatement = new KillQueryStatement(killQuery.getQueryId());
+    this.killQueryStatement.setAllowedUsername(username);
   }
 
   @Override

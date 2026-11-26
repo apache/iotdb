@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.db.exception.TsFileTimeseriesMetadataException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.apache.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.tsfile.file.IMetadataIndexEntry;
@@ -58,9 +59,9 @@ public class TsFileSelfCheckTool {
     try {
       timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
     } catch (Exception e) {
-      LOGGER.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+      LOGGER.error(DataNodeMiscMessages.ERROR_GETTING_TIMESERIES_METADATA);
       throw new TsFileTimeseriesMetadataException(
-          "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+          DataNodeMiscMessages.ERROR_GETTING_TIMESERIES_METADATA);
     }
     return timeseriesMetadataMap;
   }
@@ -80,7 +81,7 @@ public class TsFileSelfCheckTool {
    */
   public long check(String filename, boolean fastFinish)
       throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
-    LOGGER.info("file path: {}", filename);
+    LOGGER.info(DataNodeMiscMessages.FILE_PATH, filename);
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
     long res = -1;
@@ -90,9 +91,9 @@ public class TsFileSelfCheckTool {
     } catch (TsFileStatisticsMistakesException e) {
       throw e;
     } catch (Exception e) {
-      LOGGER.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+      LOGGER.error(DataNodeMiscMessages.ERROR_GETTING_TIMESERIES_METADATA);
       throw new TsFileTimeseriesMetadataException(
-          "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+          DataNodeMiscMessages.ERROR_GETTING_TIMESERIES_METADATA);
     } finally {
       reader.close();
     }

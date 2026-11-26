@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 public class FileCannotTransitToCompactingException extends Exception {
 
   public FileCannotTransitToCompactingException(TsFileResource f) {
     super(
-        String.format("TsFile %s cannot transit to COMPACTING. its status: %s", f, f.getStatus()));
+        String.format(
+            StorageEngineMessages.TSFILE_CANNOT_TRANSIT_TO_COMPACTING_FMT, f, f.getStatus()));
   }
 
   public FileCannotTransitToCompactingException() {}

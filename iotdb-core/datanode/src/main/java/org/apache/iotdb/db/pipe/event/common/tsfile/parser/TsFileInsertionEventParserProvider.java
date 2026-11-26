@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -40,6 +42,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_SCAN_VALUE;
+
 public class TsFileInsertionEventParserProvider {
 
   private final String pipeName;
@@ -53,7 +58,8 @@ public class TsFileInsertionEventParserProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
-  private final String userName;
+  private final IAuditEntity entity;
+  private final String tsFileParser;
 
   public TsFileInsertionEventParserProvider(
       final String pipeName,
@@ -64,8 +70,34 @@ public class TsFileInsertionEventParserProvider {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final String userName,
+      final IAuditEntity entity,
       final PipeTsFileInsertionEvent sourceEvent) {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        null);
+  }
+
+  public TsFileInsertionEventParserProvider(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeTsFileInsertionEvent sourceEvent,
+      final String tsFileParser) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.tsFile = tsFile;
@@ -74,11 +106,13 @@ public class TsFileInsertionEventParserProvider {
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.userName = userName;
+    this.entity = entity;
     this.sourceEvent = sourceEvent;
+    this.tsFileParser = tsFileParser;
   }
 
-  public TsFileInsertionEventParser provide() throws IOException {
+  public TsFileInsertionEventParser provide(final boolean isWithMod)
+      throws IOException, IllegalPathException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
@@ -93,8 +127,40 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          userName,
-          sourceEvent);
+          entity,
+          sourceEvent,
+          isWithMod);
+    }
+
+    if (EXTRACTOR_TSFILE_PARSER_QUERY_VALUE.equals(tsFileParser)) {
+      return new TsFileInsertionEventQueryParser(
+          pipeName,
+          creationTime,
+          tsFile,
+          treePattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          null,
+          isWithMod);
+    }
+
+    if (EXTRACTOR_TSFILE_PARSER_SCAN_VALUE.equals(tsFileParser)) {
+      return new TsFileInsertionEventScanParser(
+          pipeName,
+          creationTime,
+          tsFile,
+          treePattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          sourceEvent,
+          isWithMod);
     }
 
     // Use scan container to save memory
@@ -109,11 +175,14 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          sourceEvent,
+          isWithMod);
     }
 
-    if (treePattern instanceof IoTDBTreePattern
-        && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+    if (treePattern instanceof IoTDBTreePatternOperations
+        && !((IoTDBTreePatternOperations) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // If the pattern matches only one time series in one device, use query container here
       // because there is no timestamps merge overhead.
       //
@@ -128,7 +197,11 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          null,
+          false);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -144,7 +217,10 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          sourceEvent,
+          isWithMod);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -161,7 +237,10 @@ public class TsFileInsertionEventParserProvider {
             startTime,
             endTime,
             pipeTaskMeta,
-            sourceEvent)
+            entity,
+            sourceEvent.isSkipIfNoPrivileges(),
+            sourceEvent,
+            isWithMod)
         : new TsFileInsertionEventQueryParser(
             pipeName,
             creationTime,
@@ -171,7 +250,10 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            filteredDeviceIsAlignedMap);
+            entity,
+            sourceEvent.isSkipIfNoPrivileges(),
+            filteredDeviceIsAlignedMap,
+            isWithMod);
   }
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(

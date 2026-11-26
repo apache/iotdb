@@ -19,15 +19,20 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
 
 public abstract class BaseStateMachine implements IStateMachine, IStateMachine.EventApi {
 
@@ -36,12 +41,33 @@ public abstract class BaseStateMachine implements IStateMachine, IStateMachine.E
   protected FragmentInstance getFragmentInstance(IConsensusRequest request) {
     FragmentInstance instance;
     if (request instanceof ByteBufferConsensusRequest) {
-      instance = FragmentInstance.deserializeFrom(request.serializeToByteBuffer());
+      ByteBuffer payload = request.serializeToByteBuffer();
+      FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(payload);
+      UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+      UDFClassLoaderManager.QueryScope queryScope =
+          classLoaderManager == null
+              ? null
+              : classLoaderManager.openQueryScope(fragmentInstanceId.getFullId());
+      try {
+        instance =
+            queryScope == null
+                ? FragmentInstance.deserializeFrom(fragmentInstanceId, payload)
+                : classLoaderManager.withQueryScope(
+                    queryScope,
+                    () -> FragmentInstance.deserializeFrom(fragmentInstanceId, payload));
+        instance.attachUDFQueryScope(queryScope);
+      } catch (RuntimeException | Error e) {
+        if (classLoaderManager != null && queryScope != null) {
+          classLoaderManager.finalizeUDFQuery(queryScope);
+        }
+        throw e;
+      }
     } else if (request instanceof FragmentInstance) {
       instance = (FragmentInstance) request;
     } else {
-      logger.error("Unexpected IConsensusRequest : {}", request);
-      throw new IllegalArgumentException("Unexpected IConsensusRequest!");
+      logger.error(DataNodeMiscMessages.UNEXPECTED_CONSENSUS_REQUEST, request);
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages.UNEXPECTED_CONSENSUS_REQUEST_EXCEPTION);
     }
     return instance;
   }
@@ -58,8 +84,9 @@ public abstract class BaseStateMachine implements IStateMachine, IStateMachine.E
     } else if (request instanceof PlanNode) {
       node = (PlanNode) request;
     } else {
-      logger.error("Unexpected IConsensusRequest : {}", request);
-      throw new IllegalArgumentException("Unexpected IConsensusRequest!");
+      logger.error(DataNodeMiscMessages.UNEXPECTED_CONSENSUS_REQUEST, request);
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages.UNEXPECTED_CONSENSUS_REQUEST_EXCEPTION);
     }
     return node;
   }

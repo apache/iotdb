@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools.settle;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -52,7 +53,7 @@ public class TsFileSettleByCompactionTool {
   private static final String PORT_NAME = "port";
 
   private static final String FILE_PATH_ARGS = "f";
-  private static final String FILE_PATH_NAME = "file paths";
+  private static final String FILE_PATH_NAME = DataNodeMiscMessages.EXCEPTION_FILE_PATHS_8A252140;
 
   private static final String DEFAULT_HOST_VALUE = "127.0.0.1";
   private static final String DEFAULT_PORT_VALUE = "10730";
@@ -66,7 +67,7 @@ public class TsFileSettleByCompactionTool {
     try {
       commandLine = parser.parse(commandLineOptions, args);
     } catch (ParseException e) {
-      logger.info("Parse command line args failed: {}", e.getMessage());
+      logger.info(DataNodeMiscMessages.PARSE_COMMAND_LINE_FAILED, e.getMessage());
       return;
     }
 
@@ -86,9 +87,9 @@ public class TsFileSettleByCompactionTool {
       settleReq.setPaths(Arrays.asList(filePaths));
       TSStatus result = client.settle(settleReq);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        logger.info("Add Settle Compaction Task Successfully");
+        logger.info(DataNodeMiscMessages.ADD_SETTLE_COMPACTION_TASK_SUCCESS);
       } else {
-        logger.info("Add settle compaction task failed with status code: {}", result);
+        logger.info(DataNodeMiscMessages.ADD_SETTLE_COMPACTION_TASK_FAILED, result);
       }
     }
   }
@@ -99,7 +100,7 @@ public class TsFileSettleByCompactionTool {
         Option.builder(HOST_ARGS)
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name (optional, default 127.0.0.1")
+            .desc(DataNodeMiscMessages.EXCEPTION_HOST_NAME_OPTIONAL_DEFAULT_127_0_0_1_A3013008)
             .build();
     options.addOption(host);
 
@@ -116,7 +117,7 @@ public class TsFileSettleByCompactionTool {
             .argName(FILE_PATH_NAME)
             .hasArgs()
             .valueSeparator(' ')
-            .desc("File Paths (required)")
+            .desc(DataNodeMiscMessages.EXCEPTION_FILE_PATHS_REQUIRED_09CF75D5)
             .required()
             .build();
     options.addOption(filePaths);

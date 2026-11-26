@@ -21,4 +21,9 @@ package org.apache.iotdb.db.schemaengine.metric;
 
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
-public interface ISchemaEngineMetric extends IMetricSet {}
+public interface ISchemaEngineMetric extends IMetricSet {
+
+  void bindTableMetrics(String tableName);
+
+  void unbindTableMetrics(String tableName);
+}

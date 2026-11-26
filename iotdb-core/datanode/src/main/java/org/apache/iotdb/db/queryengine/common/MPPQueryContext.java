@@ -19,41 +19,97 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryIOContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.nio.file.Paths;
 import java.time.ZoneId;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongConsumer;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
  * info and so on.
  */
-public class MPPQueryContext {
+public class MPPQueryContext implements IAuditEntity {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MPPQueryContext.class);
+
   private String sql;
+  private String auditSqlString;
   private final QueryId queryId;
+
+  /** The type of explanation for a query. */
+  public enum ExplainType {
+    NONE,
+    EXPLAIN,
+    EXPLAIN_ANALYZE,
+  }
 
   // LocalQueryId is kept to adapt to the old client, it's unique in current datanode.
   // Now it's only be used by EXPLAIN ANALYZE to get queryExecution.
   private long localQueryId;
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
+
+  // Set by analyzers for write statements that persist UDF expressions in schema WAL.
+  private boolean udfForbidden;
+
+  /** the max executing time of query in ms. Unit: millisecond */
   private long timeOut;
+
+  // time unit is ms
   private long startTime;
+
+  private int queryAttemptId;
 
   private TEndPoint localDataBlockEndpoint;
   private TEndPoint localInternalEndpoint;
@@ -75,9 +131,19 @@ public class MPPQueryContext {
 
   private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
-  private boolean isExplainAnalyze = false;
+  // Determines the explanation mode for the query:
+  // - NONE: Normal query execution without explanation
+  // - EXPLAIN: Show the logical and physical query plan without execution
+  // - EXPLAIN_ANALYZE: Execute the query and collect detailed execution statistics
+  private ExplainType explainType = ExplainType.NONE;
+  private ExplainOutputFormat explainOutputFormat = ExplainOutputFormat.TEXT;
+  private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
+
+  private DeviceEntryIOContext deviceEntryIOContext;
+  private final AtomicBoolean deviceEntryDiskIOMetricsRecorded = new AtomicBoolean();
+  private boolean deviceEntrySpilled;
 
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
@@ -94,8 +160,56 @@ public class MPPQueryContext {
   private boolean releaseSchemaTreeAfterAnalyzing = true;
   private LongConsumer reserveMemoryForSchemaTreeFunc = null;
 
+  private boolean reservingMemoryForSchemaTree = false;
+
+  private boolean resultSetColumnMemoryTrackingEnabled = false;
+  private boolean alignByDeviceForResultSetColumnTracking = false;
+  private long seriesLimitForResultSetColumnTracking = 0;
+  private long seriesOffsetForResultSetColumnTracking = 0;
+  private long matchedSourceColumnsForResultSet = 0;
+  private long expandedSourceColumnsForResultSet = 0;
+  private long sourceColumnMemoryCostForResultSet = 0;
+  private long generatedResultSetColumns = 0;
+  private long generatedResultSetColumnMemoryCost = 0;
+  private long schemaFetchEstimatedMemoryCost = 0;
+  private long schemaFetchReservedMemoryCost = 0;
+  private long schemaFetchDeserializedColumnCount = 0;
+
   private boolean userQuery = false;
 
+  /**
+   * When true (e.g. SHOW QUERIES), operator and exchange memory may use fallback when pool is
+   * insufficient. Set from analysis via {@link #setNeedSetHighestPriority(boolean)}.
+   */
+  private boolean needSetHighestPriority = false;
+
+  private boolean debug = false;
+
+  private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
+
+  // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)
+  // Key: CTE table reference
+  // Value: Pair containing (max line length of the explain output, list of formatted explain lines)
+  // This ensures consistent formatting between the main query and its CTE sub-queries
+  private final Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
+      new LinkedHashMap<>();
+  // Tracks the materialization time cost (in nanoseconds) for each CTE to help optimize query
+  // planning
+  private final Map<NodeRef<Table>, Long> cteMaterializationCosts = new HashMap<>();
+
+  // Indicates whether this query context is for a sub-query triggered by the main query.
+  // Sub-queries are independent queries spawned from the main query (e.g., CTE sub-queries).
+  // When true, CTE materialization is skipped as it's handled by the main query context.
+  private boolean innerTriggeredQuery = false;
+
+  // Tables in the subquery
+  private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
+
+  private final Set<ExternalTsFileQueryResource> externalTsFileQueryResources =
+      ConcurrentHashMap.newKeySet();
+  private final AtomicInteger externalTsFileQueryResourceIndex = new AtomicInteger();
+
+  @TestOnly
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = ConcurrentHashMap.newKeySet();
@@ -103,18 +217,14 @@ public class MPPQueryContext {
         new NotThreadSafeMemoryReservationManager(queryId, this.getClass().getName());
   }
 
+  @TestOnly
   public MPPQueryContext(
       String sql,
       QueryId queryId,
       SessionInfo session,
       TEndPoint localDataBlockEndpoint,
       TEndPoint localInternalEndpoint) {
-    this(queryId);
-    this.sql = sql;
-    this.session = session;
-    this.localDataBlockEndpoint = localDataBlockEndpoint;
-    this.localInternalEndpoint = localInternalEndpoint;
-    this.initResultNodeContext();
+    this(sql, queryId, -1, session, localDataBlockEndpoint, localInternalEndpoint);
   }
 
   public MPPQueryContext(
@@ -126,6 +236,7 @@ public class MPPQueryContext {
       TEndPoint localInternalEndpoint) {
     this(queryId);
     this.sql = sql;
+    this.auditSqlString = sql;
     this.session = session;
     this.localQueryId = localQueryId;
     this.localDataBlockEndpoint = localDataBlockEndpoint;
@@ -141,8 +252,17 @@ public class MPPQueryContext {
     if (reserveMemoryForSchemaTreeFunc == null) {
       return;
     }
-    reserveMemoryForSchemaTreeFunc.accept(memoryCost);
+    schemaFetchEstimatedMemoryCost += memoryCost;
+    reservingMemoryForSchemaTree = true;
+    try {
+      reserveMemoryForSchemaTreeFunc.accept(memoryCost);
+    } catch (MemoryNotEnoughException e) {
+      throw enrichSchemaFetchMemoryNotEnoughException(e, memoryCost);
+    } finally {
+      reservingMemoryForSchemaTree = false;
+    }
     this.reservedMemoryCostForSchemaTree += memoryCost;
+    this.schemaFetchReservedMemoryCost += memoryCost;
   }
 
   public void setReleaseSchemaTreeAfterAnalyzing(boolean releaseSchemaTreeAfterAnalyzing) {
@@ -162,8 +282,20 @@ public class MPPQueryContext {
   }
 
   public void prepareForRetry() {
+    queryAttemptId++;
+    if (!isInnerTriggeredQuery()) {
+      cleanUpCte();
+    }
     this.initResultNodeContext();
     this.releaseAllMemoryReservedForFrontEnd();
+    this.resetResultSetColumnMemoryTracking();
+  }
+
+  private void cleanUpCte() {
+    cteQueries.clear();
+    cteExplainResults.clear();
+    cteMaterializationCosts.clear();
+    subQueryTables.clear();
   }
 
   private void initResultNodeContext() {
@@ -174,6 +306,64 @@ public class MPPQueryContext {
     return queryId;
   }
 
+  public int getQueryAttemptId() {
+    return queryAttemptId;
+  }
+
+  public ExternalTsFileQueryResource createExternalTsFileQueryResource(
+      String tableName,
+      List<String> tsFilePaths,
+      Map<Symbol, ColumnSchema> tableColumnSchema,
+      long deviceMetadataInfoSwapThreshold) {
+    int resourceIndex = externalTsFileQueryResourceIndex.getAndIncrement();
+    ExternalTsFileQueryResource externalTsFileQueryResource =
+        new ExternalTsFileQueryResource(
+            this,
+            Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
+                .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
+                .resolve(queryId.getId())
+                .resolve(String.valueOf(resourceIndex)),
+            tableName,
+            tsFilePaths,
+            tableColumnSchema,
+            deviceMetadataInfoSwapThreshold);
+    externalTsFileQueryResources.add(externalTsFileQueryResource);
+    return externalTsFileQueryResource;
+  }
+
+  public void releaseExternalTsFileQueryResources() {
+    if (externalTsFileQueryResources.isEmpty()) {
+      return;
+    }
+    for (ExternalTsFileQueryResource externalTsFileQueryResource : externalTsFileQueryResources) {
+      try {
+        // QueryExecution may finish before all FragmentInstances stop. Close only resources that
+        // have not been retained by runtime FragmentInstances.
+        externalTsFileQueryResource.closeByQueryExecution();
+      } catch (Exception e) {
+        LOGGER.warn(
+            DataNodeQueryMessages.MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978,
+            e);
+      }
+    }
+  }
+
+  public void removeExternalTsFileQueryResource(ExternalTsFileQueryResource resource) {
+    externalTsFileQueryResources.remove(resource);
+    deleteExternalTsFileQueryTmpRootIfEmpty();
+  }
+
+  private void deleteExternalTsFileQueryTmpRootIfEmpty() {
+    if (externalTsFileQueryResources.isEmpty()) {
+      FileUtils.deleteFileOrDirectory(
+          Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
+              .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
+              .resolve(queryId.getId())
+              .toFile(),
+          true);
+    }
+  }
+
   public long getLocalQueryId() {
     return localQueryId;
   }
@@ -182,16 +372,33 @@ public class MPPQueryContext {
     return queryType;
   }
 
+  /** the max executing time of query in ms. Unit: millisecond */
   public long getTimeOut() {
     return timeOut;
   }
 
+  /** the max executing time of query in ms. Unit: millisecond */
   public void setTimeOut(long timeOut) {
     this.timeOut = timeOut;
   }
 
+  public void checkTimeOut() {
+    long currentTime = System.currentTimeMillis();
+    if (currentTime - startTime >= timeOut) {
+      throw new QueryTimeoutRuntimeException(startTime, currentTime, timeOut);
+    }
+  }
+
   public void setQueryType(QueryType queryType) {
     this.queryType = queryType;
+  }
+
+  public boolean isUdfForbidden() {
+    return udfForbidden;
+  }
+
+  public void setUdfForbidden(boolean udfForbidden) {
+    this.udfForbidden = udfForbidden;
   }
 
   public ResultNodeContext getResultNodeContext() {
@@ -220,6 +427,21 @@ public class MPPQueryContext {
 
   public void setStartTime(long startTime) {
     this.startTime = startTime;
+  }
+
+  public DeviceEntryIOContext getOrCreateDeviceEntryIOContext() {
+    if (deviceEntryIOContext == null) {
+      deviceEntryIOContext = new DeviceEntryIOContext(this);
+    }
+    return deviceEntryIOContext;
+  }
+
+  public void setDeviceEntrySpilled() {
+    deviceEntrySpilled = true;
+  }
+
+  public boolean isDeviceEntrySpilled() {
+    return deviceEntrySpilled;
   }
 
   public void addFailedEndPoint(TEndPoint endPoint) {
@@ -274,12 +496,36 @@ public class MPPQueryContext {
     return session.getZoneId();
   }
 
-  public void setExplainAnalyze(boolean explainAnalyze) {
-    isExplainAnalyze = explainAnalyze;
+  public void setExplainType(ExplainType explainType) {
+    this.explainType = explainType;
+  }
+
+  public ExplainType getExplainType() {
+    return explainType;
+  }
+
+  public void setExplainOutputFormat(ExplainOutputFormat explainOutputFormat) {
+    this.explainOutputFormat = explainOutputFormat;
+  }
+
+  public ExplainOutputFormat getExplainOutputFormat() {
+    return explainOutputFormat;
   }
 
   public boolean isExplainAnalyze() {
-    return isExplainAnalyze;
+    return explainType == ExplainType.EXPLAIN_ANALYZE;
+  }
+
+  public boolean isExplain() {
+    return explainType == ExplainType.EXPLAIN;
+  }
+
+  public void setVerbose(boolean verbose) {
+    this.verbose = verbose;
+  }
+
+  public boolean isVerbose() {
+    return verbose;
   }
 
   public long getAnalyzeCost() {
@@ -321,6 +567,67 @@ public class MPPQueryContext {
 
   public long getDispatchCost() {
     return queryPlanStatistics.getDispatchCost();
+  }
+
+  public void recordDeviceEntryDiskIODuringFetchSchema(long bytes, long timeCost) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryDiskIODuringFetchSchema(bytes, timeCost);
+  }
+
+  public void recordDeviceEntryDiskIODuringDistributionPlan(long bytes, long timeCost) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryDiskIODuringDistributionPlan(bytes, timeCost);
+  }
+
+  public void recordDeviceEntryCount(long count) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryCount(count);
+  }
+
+  /** Records coordinator-side DeviceEntry spill IO metrics once when the query is released. */
+  public void recordDeviceEntryDiskIOMetricsOnRelease() {
+    if (queryPlanStatistics == null
+        || !deviceEntryDiskIOMetricsRecorded.compareAndSet(false, true)) {
+      return;
+    }
+    SeriesScanCostMetricSet.getInstance()
+        .recordDeviceEntryDiskIOMetrics(
+            queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringFetchSchema(),
+            queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringFetchSchema(),
+            queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringDistributionPlan(),
+            queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan());
+  }
+
+  public long getDiskIOSizeForDeviceEntryDuringFetchSchema() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringFetchSchema();
+  }
+
+  public long getDiskIOTimeCostForDeviceEntryDuringFetchSchema() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringFetchSchema();
+  }
+
+  public long getDiskIOSizeForDeviceEntryDuringDistributionPlan() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringDistributionPlan();
+  }
+
+  public long getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan();
+  }
+
+  public long getDeviceEntryCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDeviceEntryCount();
+  }
+
+  private QueryPlanStatistics getOrCreateQueryPlanStatistics() {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    return queryPlanStatistics;
   }
 
   public void setAnalyzeCost(long analyzeCost) {
@@ -372,11 +679,54 @@ public class MPPQueryContext {
    * single-threaded manner.
    */
   public void reserveMemoryForFrontEnd(final long bytes) {
-    this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+    try {
+      this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+    } catch (MemoryNotEnoughException e) {
+      if (reservingMemoryForSchemaTree) {
+        throw e;
+      }
+      throw enrichResultSetColumnMemoryNotEnoughException(e, bytes);
+    }
   }
 
   public void reserveMemoryForFrontEndImmediately() {
-    this.memoryReservationManager.reserveMemoryImmediately();
+    try {
+      this.memoryReservationManager.reserveMemoryImmediately();
+    } catch (MemoryNotEnoughException e) {
+      if (reservingMemoryForSchemaTree) {
+        throw e;
+      }
+      throw enrichResultSetColumnMemoryNotEnoughException(e, extractRequestedMemory(e));
+    }
+  }
+
+  public void reserveMemoryForTimePartitionSlots(final long bytes) {
+    try {
+      this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+    } catch (MemoryNotEnoughException e) {
+      long requestedBytes = bytes;
+      long freeBytes;
+      if (e instanceof OperatorMemoryNotEnoughException memoryFailure) {
+        requestedBytes = memoryFailure.getRequestedBytes();
+        freeBytes = memoryFailure.getFreeBytes();
+      } else {
+        freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+      }
+      throw new MemoryNotEnoughException(
+          String.format(
+              Locale.ROOT,
+              DataNodeQueryMessages
+                  .EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A,
+              formatBytes(requestedBytes),
+              formatBytes(freeBytes),
+              e.getMessage()));
+    }
+  }
+
+  public void finishResultSetColumnMemoryTracking() {
+    // Column expansion has finished. Later partition/planning reservations must not be diagnosed
+    // as excessive result columns just because this context still contains column statistics.
+    resultSetColumnMemoryTrackingEnabled = false;
   }
 
   public void releaseAllMemoryReservedForFrontEnd() {
@@ -385,6 +735,272 @@ public class MPPQueryContext {
 
   public void releaseMemoryReservedForFrontEnd(final long bytes) {
     this.memoryReservationManager.releaseMemoryCumulatively(bytes);
+  }
+
+  public void initResultSetColumnMemoryTracking(
+      long seriesLimit, long seriesOffset, boolean alignByDevice) {
+    resetResultSetColumnMemoryTracking();
+    resultSetColumnMemoryTrackingEnabled = true;
+    seriesLimitForResultSetColumnTracking = seriesLimit;
+    seriesOffsetForResultSetColumnTracking = seriesOffset;
+    alignByDeviceForResultSetColumnTracking = alignByDevice;
+  }
+
+  public void recordMatchedSourceColumnsForResultSet(long columnCount) {
+    if (resultSetColumnMemoryTrackingEnabled && columnCount > 0) {
+      matchedSourceColumnsForResultSet += columnCount;
+    }
+  }
+
+  public void recordExpandedSourceColumnForResultSet(long memoryCost) {
+    if (!resultSetColumnMemoryTrackingEnabled) {
+      return;
+    }
+    expandedSourceColumnsForResultSet++;
+    sourceColumnMemoryCostForResultSet += Math.max(memoryCost, 0);
+  }
+
+  public void recordGeneratedResultSetColumn(long memoryCost) {
+    if (!resultSetColumnMemoryTrackingEnabled) {
+      return;
+    }
+    generatedResultSetColumns++;
+    generatedResultSetColumnMemoryCost += Math.max(memoryCost, 0);
+  }
+
+  public void recordSchemaFetchDeserializedColumns(long columnCount) {
+    if (columnCount > 0) {
+      schemaFetchDeserializedColumnCount += columnCount;
+    }
+  }
+
+  private void resetResultSetColumnMemoryTracking() {
+    resultSetColumnMemoryTrackingEnabled = false;
+    alignByDeviceForResultSetColumnTracking = false;
+    seriesLimitForResultSetColumnTracking = 0;
+    seriesOffsetForResultSetColumnTracking = 0;
+    matchedSourceColumnsForResultSet = 0;
+    expandedSourceColumnsForResultSet = 0;
+    sourceColumnMemoryCostForResultSet = 0;
+    generatedResultSetColumns = 0;
+    generatedResultSetColumnMemoryCost = 0;
+    schemaFetchEstimatedMemoryCost = 0;
+    schemaFetchReservedMemoryCost = 0;
+    schemaFetchDeserializedColumnCount = 0;
+  }
+
+  MemoryNotEnoughException enrichResultSetColumnMemoryNotEnoughException(
+      MemoryNotEnoughException e, long requestedBytes) {
+    if (!resultSetColumnMemoryTrackingEnabled
+        || (matchedSourceColumnsForResultSet == 0
+            && expandedSourceColumnsForResultSet == 0
+            && generatedResultSetColumns == 0)) {
+      return e;
+    }
+
+    long freeBytes =
+        e instanceof OperatorMemoryNotEnoughException
+            ? ((OperatorMemoryNotEnoughException) e).getFreeBytes()
+            : LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    long failedReservationBytes =
+        e instanceof OperatorMemoryNotEnoughException
+            ? ((OperatorMemoryNotEnoughException) e).getRequestedBytes()
+            : requestedBytes;
+    long shortageBytes =
+        failedReservationBytes > 0 && failedReservationBytes > freeBytes
+            ? failedReservationBytes - freeBytes
+            : -1;
+    long exceededColumns = estimateExceededColumns(freeBytes, requestedBytes);
+    long columnEquivalentShortage =
+        exceededColumns > 0
+            ? 0
+            : estimateColumnEquivalentShortage(freeBytes, failedReservationBytes, requestedBytes);
+
+    return new MemoryNotEnoughException(
+        String.format(
+            Locale.ROOT,
+            DataNodeQueryMessages.RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH,
+            matchedSourceColumnsForResultSet,
+            expandedSourceColumnsForResultSet,
+            generatedResultSetColumns,
+            exceededColumns > 0
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY,
+                    exceededColumns)
+                : String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT,
+                    columnEquivalentShortage),
+            formatSeriesPaginationForDiagnostics(),
+            alignByDeviceForResultSetColumnTracking
+                ? ""
+                : DataNodeQueryMessages.USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS,
+            shortageBytes > 0
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.BY_AT_LEAST_MEMORY_SIZE,
+                    formatBytes(shortageBytes))
+                : DataNodeQueryMessages.FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL,
+            formatBytes(sourceColumnMemoryCostForResultSet),
+            formatBytes(generatedResultSetColumnMemoryCost),
+            formatBytes(failedReservationBytes),
+            formatBytes(freeBytes),
+            e.getMessage()));
+  }
+
+  private MemoryNotEnoughException enrichSchemaFetchMemoryNotEnoughException(
+      MemoryNotEnoughException e, long requestedBytes) {
+    long freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    if (!resultSetColumnMemoryTrackingEnabled && schemaFetchDeserializedColumnCount == 0) {
+      return e;
+    }
+
+    long shortageBytes =
+        requestedBytes > 0 && requestedBytes > freeBytes ? requestedBytes - freeBytes : -1;
+    long exceededColumns = estimateExceededSchemaFetchColumns(freeBytes, requestedBytes);
+
+    return new MemoryNotEnoughException(
+        String.format(
+            Locale.ROOT,
+            DataNodeQueryMessages.SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH,
+            schemaFetchDeserializedColumnCount,
+            exceededColumns > 0
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY,
+                    exceededColumns)
+                : "",
+            formatSeriesPaginationForDiagnostics(),
+            alignByDeviceForResultSetColumnTracking
+                ? ""
+                : DataNodeQueryMessages.USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS,
+            shortageBytes > 0
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.BY_AT_LEAST_MEMORY_SIZE,
+                    formatBytes(shortageBytes))
+                : DataNodeQueryMessages.FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL,
+            formatBytes(schemaFetchEstimatedMemoryCost),
+            formatBytes(schemaFetchReservedMemoryCost),
+            formatBytes(requestedBytes),
+            formatBytes(freeBytes),
+            e.getMessage()));
+  }
+
+  private long estimateExceededColumns(long freeBytes, long requestedBytes) {
+    long avgColumnMemory;
+    if (expandedSourceColumnsForResultSet > 0 && sourceColumnMemoryCostForResultSet > 0) {
+      avgColumnMemory =
+          Math.max(1, sourceColumnMemoryCostForResultSet / expandedSourceColumnsForResultSet);
+    } else if (requestedBytes > 0) {
+      avgColumnMemory = requestedBytes;
+    } else {
+      return -1;
+    }
+    long estimatedCapacity =
+        (sourceColumnMemoryCostForResultSet + Math.max(freeBytes, 0)) / avgColumnMemory;
+    long columnsToCompare =
+        Math.max(matchedSourceColumnsForResultSet, expandedSourceColumnsForResultSet + 1);
+    return Math.max(0, columnsToCompare - estimatedCapacity);
+  }
+
+  /** Converts a failed batch's memory deficit into an observed-column-size equivalent. */
+  private long estimateColumnEquivalentShortage(
+      long freeBytes, long failedReservationBytes, long requestedBytes) {
+    long avgColumnMemory;
+    if (generatedResultSetColumns > 0 && generatedResultSetColumnMemoryCost > 0) {
+      avgColumnMemory =
+          Math.max(1, divideCeil(generatedResultSetColumnMemoryCost, generatedResultSetColumns));
+    } else if (expandedSourceColumnsForResultSet > 0 && sourceColumnMemoryCostForResultSet > 0) {
+      avgColumnMemory =
+          Math.max(
+              1, divideCeil(sourceColumnMemoryCostForResultSet, expandedSourceColumnsForResultSet));
+    } else {
+      avgColumnMemory = Math.max(1, requestedBytes > 0 ? requestedBytes : failedReservationBytes);
+    }
+
+    // The failed allocation proves a shortage, even if memory was released before it was read.
+    long shortageBytes = Math.max(1, failedReservationBytes - freeBytes);
+    return divideCeil(shortageBytes, avgColumnMemory);
+  }
+
+  private long estimateExceededSchemaFetchColumns(long freeBytes, long requestedBytes) {
+    if (schemaFetchDeserializedColumnCount <= 0) {
+      return -1;
+    }
+
+    long avgColumnMemory;
+    long columnsToCompare = schemaFetchDeserializedColumnCount;
+    if (schemaFetchReservedMemoryCost > 0) {
+      avgColumnMemory =
+          Math.max(
+              1, divideCeil(schemaFetchReservedMemoryCost, schemaFetchDeserializedColumnCount));
+      if (requestedBytes > 0) {
+        columnsToCompare += Math.max(1, divideCeil(requestedBytes, avgColumnMemory));
+      }
+    } else if (requestedBytes > 0) {
+      avgColumnMemory = Math.max(1, divideCeil(requestedBytes, schemaFetchDeserializedColumnCount));
+    } else {
+      return -1;
+    }
+
+    long estimatedCapacity =
+        (schemaFetchReservedMemoryCost + Math.max(freeBytes, 0)) / avgColumnMemory;
+    return Math.max(0, columnsToCompare - estimatedCapacity);
+  }
+
+  private static long divideCeil(long dividend, long divisor) {
+    return dividend / divisor + (dividend % divisor == 0 ? 0 : 1);
+  }
+
+  private String formatSeriesPaginationForDiagnostics() {
+    return String.format(
+        Locale.ROOT,
+        DataNodeQueryMessages.SERIES_PAGINATION_FOR_DIAGNOSTICS,
+        seriesLimitForResultSetColumnTracking > 0
+            ? String.format(Locale.ROOT, "%,d", seriesLimitForResultSetColumnTracking)
+            : DataNodeQueryMessages.NOT_SET,
+        seriesOffsetForResultSetColumnTracking);
+  }
+
+  private static long extractRequestedMemory(MemoryNotEnoughException e) {
+    String message = e.getMessage();
+    if (message == null) {
+      return -1;
+    }
+    String marker = "the memory requested this time is ";
+    int start = message.indexOf(marker);
+    if (start < 0) {
+      return -1;
+    }
+    start += marker.length();
+    int end = message.indexOf('B', start);
+    if (end < 0) {
+      return -1;
+    }
+    try {
+      return Long.parseLong(message.substring(start, end));
+    } catch (NumberFormatException ignored) {
+      return -1;
+    }
+  }
+
+  private static String formatBytes(long bytes) {
+    if (bytes < 0) {
+      return DataNodeQueryMessages.UNKNOWN;
+    }
+    if (bytes < 1024) {
+      return bytes + " B";
+    }
+    double value = bytes;
+    String[] units = {"B", "KB", "MB", "GB", "TB"};
+    int unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex++;
+    }
+    return String.format(Locale.ROOT, "%.2f %s (%d B)", value, units[unitIndex], bytes);
   }
 
   public boolean useSampledAvgTimeseriesOperandMemCost() {
@@ -420,10 +1036,196 @@ public class MPPQueryContext {
   }
 
   public boolean isQuery() {
-    return queryType != QueryType.WRITE;
+    return queryType == QueryType.READ || queryType == QueryType.READ_WRITE;
   }
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
   }
+
+  public boolean needSetHighestPriority() {
+    return needSetHighestPriority;
+  }
+
+  public void setNeedSetHighestPriority(boolean needSetHighestPriority) {
+    this.needSetHighestPriority = needSetHighestPriority;
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
+  }
+
+  public boolean isInnerTriggeredQuery() {
+    return innerTriggeredQuery;
+  }
+
+  public void setInnerTriggeredQuery(boolean innerTriggeredQuery) {
+    this.innerTriggeredQuery = innerTriggeredQuery;
+  }
+
+  public void addCteMaterializationCost(Table table, long cost) {
+    cteMaterializationCosts.put(NodeRef.of(table), cost);
+  }
+
+  public Map<NodeRef<Table>, Long> getCteMaterializationCosts() {
+    return cteMaterializationCosts;
+  }
+
+  public void addCteQuery(Table table, Query query) {
+    cteQueries.put(NodeRef.of(table), query);
+  }
+
+  public Map<NodeRef<Table>, Query> getCteQueries() {
+    return cteQueries;
+  }
+
+  public CteDataStore getCteDataStore(Table table) {
+    Query query = cteQueries.get(NodeRef.of(table));
+    if (query == null) {
+      return null;
+    }
+    return query.getCteDataStore();
+  }
+
+  public void setCteQueries(Map<NodeRef<Table>, Query> cteQueries) {
+    this.cteQueries = cteQueries;
+  }
+
+  public void addSubQueryTables(Query query, List<Identifier> tables) {
+    subQueryTables.put(NodeRef.of(query), tables);
+  }
+
+  public List<Identifier> getTables(Query query) {
+    return subQueryTables.getOrDefault(NodeRef.of(query), ImmutableList.of());
+  }
+
+  public void addCteExplainResult(Table table, Pair<Integer, List<String>> cteExplainResult) {
+    cteExplainResults.put(NodeRef.of(table), cteExplainResult);
+  }
+
+  public Map<NodeRef<Table>, Pair<Integer, List<String>>> getCteExplainResults() {
+    return cteExplainResults;
+  }
+
+  // ================= Authentication Interfaces =========================
+
+  private AuditEventType auditEventType;
+
+  private AuditLogOperation auditLogOperation;
+
+  private List<PrivilegeType> privilegeTypeList;
+
+  private String databaseName;
+
+  private boolean result;
+
+  @Override
+  public long getUserId() {
+    return session.getUserId();
+  }
+
+  @Override
+  public String getUsername() {
+    return session.getUserName();
+  }
+
+  @Override
+  public boolean isInternalDatabaseSession() {
+    return session != null && session.isInternalDatabaseSession();
+  }
+
+  public boolean isInternalRpcSession() {
+    return session != null && session.isInternalRpcSession();
+  }
+
+  @Override
+  public String getCliHostname() {
+    if (session == null || session.getCliHostname() == null) {
+      return "UNKNOWN";
+    }
+    return session.getCliHostname();
+  }
+
+  @Override
+  public AuditEventType getAuditEventType() {
+    return auditEventType;
+  }
+
+  @Override
+  public IAuditEntity setAuditEventType(AuditEventType auditEventType) {
+    this.auditEventType = auditEventType;
+    return this;
+  }
+
+  @Override
+  public AuditLogOperation getAuditLogOperation() {
+    return auditLogOperation;
+  }
+
+  @Override
+  public IAuditEntity setAuditLogOperation(AuditLogOperation auditLogOperation) {
+    this.auditLogOperation = auditLogOperation;
+    return this;
+  }
+
+  @Override
+  public List<PrivilegeType> getPrivilegeTypes() {
+    return privilegeTypeList;
+  }
+
+  @Override
+  public String getPrivilegeTypeString() {
+    return privilegeTypeList.toString();
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeType(PrivilegeType privilegeType) {
+    this.privilegeTypeList = Collections.singletonList(privilegeType);
+    return this;
+  }
+
+  @Override
+  public IAuditEntity setPrivilegeTypes(List<PrivilegeType> privilegeTypes) {
+    this.privilegeTypeList = privilegeTypes;
+    return this;
+  }
+
+  @Override
+  public boolean getResult() {
+    return result;
+  }
+
+  @Override
+  public IAuditEntity setResult(boolean result) {
+    this.result = result;
+    return this;
+  }
+
+  @Override
+  public String getDatabase() {
+    return databaseName;
+  }
+
+  @Override
+  public IAuditEntity setDatabase(String database) {
+    this.databaseName = database;
+    return this;
+  }
+
+  @Override
+  public String getSqlString() {
+    return auditSqlString;
+  }
+
+  @Override
+  public IAuditEntity setSqlString(String sqlString) {
+    this.auditSqlString = sqlString;
+    return this;
+  }
+
+  // ================= Authentication Interfaces =========================
 }

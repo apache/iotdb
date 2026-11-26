@@ -21,10 +21,11 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -39,6 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.Activate
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.Objects;
+
 /**
  * This visitor translated some exceptions to pipe related {@link TSStatus} to help sender classify
  * them and apply different error handling tactics. Please DO NOT modify the exceptions returned by
@@ -49,6 +52,12 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
   public TSStatus visitNode(final StatementNode node, final Exception context) {
     if (context instanceof AccessDeniedException) {
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context instanceof IoTDBRuntimeException
+        && ((IoTDBRuntimeException) context).getErrorCode()
+            == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
@@ -130,7 +139,11 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
   private TSStatus visitGeneralActivateTemplate(
       final Statement activateTemplateStatement, final Exception context) {
     if (context instanceof MetadataException || context instanceof StatementAnalyzeException) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+      return (Objects.nonNull(context.getMessage())
+                  && context.getMessage().contains("has not been set any template")
+              ? new TSStatus(
+                  TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
+              : new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()))
           .setMessage(context.getMessage());
     } else if (isAutoCreateConflict(context)) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())

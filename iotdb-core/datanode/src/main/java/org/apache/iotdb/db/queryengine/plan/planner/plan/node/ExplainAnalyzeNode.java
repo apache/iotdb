@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -48,8 +52,8 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitExplainAnalyze(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitExplainAnalyze(this, context);
   }
 
   @Override
@@ -66,12 +70,14 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   // be no serialization and deserialization process.
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.EXPLAINANALYZENODE_SHOULD_NOT_BE_SERIALIZED);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.EXPLAINANALYZENODE_SHOULD_NOT_BE_SERIALIZED);
   }
 
   public boolean isVerbose() {

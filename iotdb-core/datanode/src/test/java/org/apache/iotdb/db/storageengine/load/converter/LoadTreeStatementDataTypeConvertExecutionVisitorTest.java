@@ -1,0 +1,1736 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.storageengine.load.converter;
+
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.IMetadataIndexEntry;
+import org.apache.tsfile.file.MetaMarker;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
+
+  private static final String DEVICE_0 = "root.sg.d0";
+  private static final String DEVICE_1 = "root.sg.d1";
+  private static final String DEVICE_2 = "root.sg.d2";
+  private static final String ALIGNED_DEVICE = "root.sg.ad0";
+  private static final int ROW_COUNT_PER_DEVICE = 2048;
+  private File tsFile;
+  private boolean isPipeMemoryManagementEnabled;
+  private long pipeMaxReaderChunkSize;
+
+  @Before
+  public void setUp() {
+    isPipeMemoryManagementEnabled = PipeConfigAccessor.getPipeMemoryManagementEnabled();
+    PipeConfigAccessor.setPipeMemoryManagementEnabled(false);
+    pipeMaxReaderChunkSize = CommonDescriptor.getInstance().getConfig().getPipeMaxReaderChunkSize();
+  }
+
+  @After
+  public void tearDown() {
+    PipeConfigAccessor.setPipeMemoryManagementEnabled(isPipeMemoryManagementEnabled);
+    CommonDescriptor.getInstance().getConfig().setPipeMaxReaderChunkSize(pipeMaxReaderChunkSize);
+    if (tsFile != null && tsFile.exists()) {
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testFallbackToQueryForRemainingDevicesWhenScanParserHitsCorruption()
+      throws Exception {
+    tsFile = new File("load-tree-query-fallback-corrupted.tsfile");
+    writeTsFile(tsFile);
+    corruptMeasurementChunk(tsFile, DEVICE_1, "s0");
+
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByDevice = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPoints(statement, pointCountByDevice);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertTrue("A partial load must retain its source", tsFile.exists());
+    final int loadedPointCountBeforeCorruption = pointCountByDevice.getOrDefault(DEVICE_0, 0);
+    final int loadedPointCountAfterFallback = pointCountByDevice.getOrDefault(DEVICE_2, 0);
+    Assert.assertTrue(loadedPointCountBeforeCorruption > 0);
+    Assert.assertEquals(loadedPointCountBeforeCorruption, loadedPointCountAfterFallback);
+  }
+
+  @Test
+  public void testFullyRecoveredQueryFallbackCanDeleteSource() throws Exception {
+    tsFile = new File("load-tree-query-fallback-recoverable-marker.tsfile");
+    final long groupMarkerOffset = writeTsFile(tsFile);
+    // Keep the first marker valid for the reader's encryption-header check. Indexed queries can
+    // recover every point without reading the second device's chunk-group marker.
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      reader.position(groupMarkerOffset);
+      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
+    }
+    try (final RandomAccessFile file = new RandomAccessFile(tsFile, "rw")) {
+      file.seek(groupMarkerOffset);
+      file.writeByte(0x7f);
+    }
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    for (final String device : Arrays.asList(DEVICE_0, DEVICE_1, DEVICE_2)) {
+      assertMeasurementLoadedCompletely(pointCountByTimeseries, device, 0);
+      assertMeasurementLoadedCompletely(pointCountByTimeseries, device, 1);
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  @Test
+  public void testFallbackRetainsSourceWhenFirstDeviceMetadataIsUnreadable() throws Exception {
+    assertFallbackRetainsSourceWhenMetadataIsUnreadable(DEVICE_0);
+  }
+
+  @Test
+  public void testFallbackRetainsSourceWhenLaterDeviceMetadataIsUnreadable() throws Exception {
+    assertFallbackRetainsSourceWhenMetadataIsUnreadable(DEVICE_1);
+  }
+
+  private void assertFallbackRetainsSourceWhenMetadataIsUnreadable(final String corruptedDevice)
+      throws Exception {
+    tsFile = File.createTempFile("load-tree-unreadable-metadata-", ".tsfile");
+    final long groupMarkerOffset = writeTsFile(tsFile);
+    final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(corruptedDevice);
+    final long measurementIndexEndOffsetPosition;
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      final MetadataIndexNode deviceIndex =
+          reader.readFileMetadata().getTableMetadataIndexNode(deviceId.getTableName());
+      Assert.assertEquals(MetadataIndexNodeType.LEAF_DEVICE, deviceIndex.getNodeType());
+      final Pair<IMetadataIndexEntry, Long> deviceEntry =
+          deviceIndex.getChildIndexEntry(deviceId, true);
+      Assert.assertNotNull(deviceEntry);
+      final MetadataIndexNode measurementIndex =
+          reader.readMetadataIndexNode(deviceEntry.left.getOffset(), deviceEntry.right, false);
+      Assert.assertEquals(MetadataIndexNodeType.LEAF_MEASUREMENT, measurementIndex.getNodeType());
+      measurementIndexEndOffsetPosition = deviceEntry.right - Long.BYTES - Byte.BYTES;
+    }
+    // Preserve the footer and device index, but make the measurement metadata read reach EOF.
+    try (final RandomAccessFile bytes = new RandomAccessFile(tsFile, "rw")) {
+      bytes.seek(measurementIndexEndOffsetPosition);
+      bytes.writeLong(bytes.length() + 1);
+    }
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      Assert.assertThrows(
+          IOException.class,
+          () -> reader.getDeviceTimeseriesMetadataWithoutChunkMetadata(deviceId));
+    }
+    corruptGroupMarker(tsFile, groupMarkerOffset);
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertTrue("Unreadable metadata must retain the source", tsFile.exists());
+    assertMeasurementLoadedCompletely(points, DEVICE_0, 0);
+    assertMeasurementLoadedCompletely(points, DEVICE_0, 1);
+  }
+
+  @Test
+  public void testFallbackResumesRepeatedNonAlignedDevicesAcrossChunkGroups() throws Exception {
+    assertFallbackResumesRepeatedDevices(false);
+  }
+
+  @Test
+  public void testFallbackResumesRepeatedAlignedDevicesAcrossChunkGroups() throws Exception {
+    assertFallbackResumesRepeatedDevices(true);
+  }
+
+  @Test
+  public void testFallbackRetainsMeasurementsSplitAcrossMetadataBatches() throws Exception {
+    tsFile = File.createTempFile("load-tree-metadata-batches-", ".tsfile");
+    final int measurementCount = 4001;
+    final List<IMeasurementSchema> schemas = new java.util.ArrayList<>();
+    for (int measurement = 0; measurement < measurementCount; measurement++) {
+      schemas.add(new MeasurementSchema("s" + measurement, TSDataType.INT64, TSEncoding.PLAIN));
+    }
+
+    final long secondGroupMarkerOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerAlignedTimeseries(new PartialPath(DEVICE_0), schemas);
+      writeWideAlignedRow(writer, schemas, 0);
+      writer.flush();
+      secondGroupMarkerOffset = writer.getIOWriter().getPos();
+      writeWideAlignedRow(writer, schemas, 1);
+    }
+    corruptGroupMarker(tsFile, secondGroupMarkerOffset);
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(measurementCount, points.size());
+    for (int measurement = 0; measurement < measurementCount; measurement++) {
+      final String path = DEVICE_0 + ".s" + measurement;
+      final Map<Long, Long> values = points.get(path);
+      Assert.assertNotNull(path, values);
+      Assert.assertEquals(path, 2, values.size());
+      Assert.assertEquals(Long.valueOf(measurement * 10_000L), values.get(0L));
+      Assert.assertEquals(Long.valueOf(measurement * 10_000L + 1), values.get(1L));
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  @Test
+  public void testFallbackDoesNotReplayMinimumTimestamp() throws Exception {
+    assertFallbackResumesExtremeTimestamps(Long.MIN_VALUE);
+  }
+
+  @Test
+  public void testFallbackResumesAtMaximumTimestamp() throws Exception {
+    assertFallbackResumesExtremeTimestamps(Long.MAX_VALUE - 1);
+  }
+
+  private void assertFallbackResumesExtremeTimestamps(final long firstTimestamp) throws Exception {
+    tsFile = File.createTempFile("load-tree-extreme-timestamps-", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN));
+    final long secondFlushOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerTimeseries(new Path(DEVICE_0), schemas);
+      writeRows(writer, schemas, DEVICE_0, firstTimestamp, 1, false);
+      writer.flush();
+      secondFlushOffset = writer.getIOWriter().getPos();
+      writeRows(writer, schemas, DEVICE_0, firstTimestamp + 1, 1, false);
+    }
+    corruptGroupMarker(tsFile, secondFlushOffset);
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    final Map<Long, Long> values = points.get(DEVICE_0 + ".s0");
+    Assert.assertNotNull(values);
+    Assert.assertEquals(2, values.size());
+    Assert.assertEquals(Long.valueOf(firstTimestamp), values.get(firstTimestamp));
+    Assert.assertEquals(Long.valueOf(firstTimestamp + 1), values.get(firstTimestamp + 1));
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  private void assertFallbackResumesRepeatedDevices(final boolean aligned) throws Exception {
+    tsFile = File.createTempFile("load-tree-repeated-devices-", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    final long secondFlushOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+        if (aligned) {
+          writer.registerAlignedTimeseries(device, schemas);
+        } else {
+          writer.registerTimeseries(new Path(device), schemas);
+        }
+        writeRows(writer, schemas, device, 0, 4, aligned);
+      }
+      writer.flush();
+      secondFlushOffset = writer.getIOWriter().getPos();
+      for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+        writeRows(writer, schemas, device, 4, 4, aligned);
+      }
+    }
+    corruptGroupMarker(tsFile, secondFlushOffset);
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+      for (int measurement = 0; measurement < 2; measurement++) {
+        final String path = device + ".s" + measurement;
+        final Map<Long, Long> values = points.get(path);
+        Assert.assertNotNull(path, values);
+        Assert.assertEquals(path, 8, values.size());
+        for (long timestamp = 0; timestamp < 8; timestamp++) {
+          Assert.assertEquals(
+              path, Long.valueOf(timestamp + measurement * 100), values.get(timestamp));
+        }
+      }
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  private static void corruptGroupMarker(final File tsFile, final long offset) throws Exception {
+    try (final RandomAccessFile file = new RandomAccessFile(tsFile, "rw")) {
+      file.seek(offset);
+      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, file.readByte());
+      file.seek(offset);
+      file.writeByte(0x7f);
+    }
+  }
+
+  private static void writeRows(
+      final TsFileWriter writer,
+      final List<IMeasurementSchema> schemas,
+      final String device,
+      final long firstTimestamp,
+      final int rowCount,
+      final boolean aligned)
+      throws Exception {
+    final Tablet tablet = new Tablet(device, schemas, rowCount);
+    for (int row = 0; row < rowCount; row++) {
+      tablet.addTimestamp(row, firstTimestamp + row);
+      for (int column = 0; column < schemas.size(); column++) {
+        tablet.addValue(row, column, firstTimestamp + row + column * 100);
+      }
+    }
+    if (aligned) {
+      writer.writeAligned(tablet);
+    } else {
+      writer.writeTree(tablet);
+    }
+  }
+
+  @Test
+  public void testFlushesPendingTabletsWhenIteratorFails() throws Exception {
+    tsFile = File.createTempFile("load-tree-pending-tablet", ".tsfile");
+    final List<IMeasurementSchema> schemaList =
+        Arrays.asList(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN));
+    final Tablet tablet = new Tablet(DEVICE_0, schemaList, 1);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("s0", 0, 1L);
+
+    final Map<String, Integer> pointCountByDevice = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPoints(statement, pointCountByDevice);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            file -> new ThrowingTabletIterator(file, tablet));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(1, pointCountByDevice.getOrDefault(DEVICE_0, 0).intValue());
+  }
+
+  @Test
+  public void testLoadScanParserUsesQueryMemoryPoolInsteadOfPipeMemory() throws Exception {
+    tsFile = new File("load-tree-parser-query-memory.tsfile");
+    writeTsFile(tsFile);
+
+    final long pipeMemoryBefore = PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
+    final LoadTsFileMemoryManager loadMemoryManager = LoadTsFileMemoryManager.getInstance();
+    final long loadMemoryBefore = loadMemoryManager.getUsedMemorySizeInBytes();
+
+    try (final LoadTreeTsFileTabletIterator tabletIterator =
+        new LoadTreeTsFileTabletIterator(tsFile, true)) {
+      Assert.assertTrue(tabletIterator.hasNext());
+      Assert.assertNotNull(tabletIterator.next());
+      Assert.assertTrue(loadMemoryManager.getUsedMemorySizeInBytes() > loadMemoryBefore);
+      Assert.assertEquals(
+          pipeMemoryBefore, PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes());
+    }
+
+    Assert.assertEquals(loadMemoryBefore, loadMemoryManager.getUsedMemorySizeInBytes());
+    Assert.assertEquals(
+        pipeMemoryBefore, PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testRecoversMeasurementsWhenScanFinishesWithoutTablet() throws Exception {
+    tsFile = new File("load-tree-query-fallback-empty-scan.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+
+    final TsFileInsertionEventScanParser emptyScanParser =
+        mock(TsFileInsertionEventScanParser.class);
+    when(emptyScanParser.toTabletWithIsAligneds()).thenReturn(Collections.emptyList());
+    when(emptyScanParser.getParsedPointCounts()).thenReturn(Collections.emptyMap());
+
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            file -> new LoadTreeTsFileTabletIterator(file, true, ignored -> emptyScanParser));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    assertBooleanSeriesData(
+        loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "1=false", "2=true", "3=false");
+    assertBooleanSeriesData(
+        loadedPointData, ALIGNED_DEVICE + ".s1", "0=false", "1=true", "2=false", "3=true");
+    Assert.assertEquals(2, loadedPointData.size());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
+  public void testRecoversPartiallyScannedAlignedDeviceAtNormalEof() throws Exception {
+    tsFile = new File("load-tree-query-fallback-partial-scan.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet partialTablet = new Tablet(ALIGNED_DEVICE, schemas, 1);
+    partialTablet.addTimestamp(0, 0);
+    partialTablet.addValue("s0", 0, true);
+
+    final TsFileInsertionEventScanParser partialScanParser =
+        mock(TsFileInsertionEventScanParser.class);
+    when(partialScanParser.toTabletWithIsAligneds())
+        .thenReturn(Collections.singletonList(new Pair<>(partialTablet, true)));
+    when(partialScanParser.getParsedPointCounts())
+        .thenReturn(
+            Collections.singletonMap(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE),
+                Collections.singletonMap("s0", 1L)));
+
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            file -> new LoadTreeTsFileTabletIterator(file, true, ignored -> partialScanParser));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    assertBooleanSeriesData(
+        loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "1=false", "2=true", "3=false");
+    assertBooleanSeriesData(
+        loadedPointData, ALIGNED_DEVICE + ".s1", "0=false", "1=true", "2=false", "3=true");
+    Assert.assertEquals(2, loadedPointData.size());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
+  public void testSplitFallbackResumesAfterAlreadyEmittedPoints() throws Exception {
+    tsFile = new File("load-tree-query-fallback-split-full-range.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet partialTablet = new Tablet(ALIGNED_DEVICE, schemas, 1);
+    partialTablet.addTimestamp(0, 0);
+    partialTablet.addValue("s0", 0, true);
+    partialTablet.addValue("s1", 0, false);
+
+    final TsFileInsertionEventScanParser partialScanParser =
+        mock(TsFileInsertionEventScanParser.class);
+    when(partialScanParser.toTabletWithIsAligneds())
+        .thenReturn(Collections.singletonList(new Pair<>(partialTablet, true)));
+    when(partialScanParser.getParsedPointCounts())
+        .thenReturn(
+            Collections.singletonMap(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE),
+                Map.of("s0", 1L, "s1", 1L)));
+
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            sourceFile ->
+                new LoadTreeTsFileTabletIterator(
+                    sourceFile,
+                    true,
+                    ignored -> partialScanParser,
+                    (queryFile, device, measurements, startTime, endTime, isWithMod) -> {
+                      if (measurements.size() > 1) {
+                        return createPartialThenThrowQueryParser(
+                            device.toString(), measurements, startTime);
+                      }
+                      return createBooleanQueryParser(
+                          device.toString(), measurements.get(0), startTime, endTime);
+                    }));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    assertBooleanSeriesData(
+        loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "1=false", "2=true", "3=false");
+    assertBooleanSeriesData(
+        loadedPointData, ALIGNED_DEVICE + ".s1", "0=false", "1=true", "2=false", "3=true");
+    Assert.assertEquals(2, loadedPointData.size());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
+  public void testIncompleteQueryFallbackFailsAndPreservesSource() throws Exception {
+    tsFile = new File("load-tree-query-fallback-incomplete.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet partialTablet = new Tablet(ALIGNED_DEVICE, schemas, 1);
+    partialTablet.addTimestamp(0, 0);
+    partialTablet.addValue("s0", 0, true);
+
+    final TsFileInsertionEventScanParser partialScanParser =
+        mock(TsFileInsertionEventScanParser.class);
+    when(partialScanParser.toTabletWithIsAligneds())
+        .thenReturn(Collections.singletonList(new Pair<>(partialTablet, true)));
+    when(partialScanParser.getParsedPointCounts())
+        .thenReturn(
+            Collections.singletonMap(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE),
+                Collections.singletonMap("s0", 1L)));
+
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            sourceFile ->
+                new LoadTreeTsFileTabletIterator(
+                    sourceFile,
+                    true,
+                    ignored -> partialScanParser,
+                    (queryFile, device, measurements, startTime, endTime, isWithMod) ->
+                        createBooleanQueryParser(
+                            device.toString(),
+                            measurements.get(0),
+                            startTime,
+                            endTime,
+                            measurements.get(0).equals("s0") ? 2 : Integer.MAX_VALUE)));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(
+        String.format(
+            StorageEngineMessages
+                .EXCEPTION_QUERY_FALLBACK_POINT_COUNT_MISMATCH_FOR_DEVICE_ARG_MEASUREMENT_ARG_EXPECTED_ARG_POINTS_BUT_RECOVERED_ARG_POINTS_0BEC4004,
+            ALIGNED_DEVICE,
+            "s0",
+            3,
+            2),
+        status.get().getMessage());
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "1=false", "2=true");
+    assertBooleanSeriesData(
+        loadedPointData, ALIGNED_DEVICE + ".s1", "0=false", "1=true", "2=false", "3=true");
+    Assert.assertEquals(2, loadedPointData.size());
+    Assert.assertTrue("Incomplete fallback must preserve the source TsFile.", tsFile.exists());
+  }
+
+  @Test
+  public void testFailedNormalEofFallbackKeepsSourceWhenDeleteAfterLoadIsEnabled()
+      throws Exception {
+    tsFile = new File("load-tree-query-fallback-failed-keeps-source.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet partialTablet = new Tablet(ALIGNED_DEVICE, schemas, 1);
+    partialTablet.addTimestamp(0, 2);
+    partialTablet.addValue("s0", 0, true);
+
+    final TsFileInsertionEventScanParser partialScanParser =
+        mock(TsFileInsertionEventScanParser.class);
+    when(partialScanParser.toTabletWithIsAligneds())
+        .thenReturn(Collections.singletonList(new Pair<>(partialTablet, true)));
+    when(partialScanParser.getParsedPointCounts())
+        .thenReturn(
+            Collections.singletonMap(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE),
+                Collections.singletonMap("s0", 1L)));
+
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            sourceFile ->
+                new LoadTreeTsFileTabletIterator(
+                    sourceFile,
+                    true,
+                    ignored -> partialScanParser,
+                    (queryFile, device, measurements, startTime, endTime, isWithMod) ->
+                        createThrowingQueryParser()));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertTrue("Failed fallback must preserve the source TsFile.", tsFile.exists());
+  }
+
+  @Test
+  public void testScanParserTracksAlignedPointCounts() throws Exception {
+    tsFile = new File("load-tree-aligned-scan-point-counts.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+
+    try (final TsFileInsertionEventScanParser parser =
+        new TsFileInsertionEventScanParser(
+            tsFile,
+            null,
+            null,
+            true,
+            LoadTsFileParserMemoryManager.getInstance(),
+            new TsFileInsertionEventScanParser.ScanOptions(
+                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true))) {
+      parser.toTabletWithIsAligneds().forEach(tabletWithIsAligned -> {});
+      final Map<String, Long> pointCounts =
+          parser
+              .getParsedPointCounts()
+              .get(IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE));
+      Assert.assertEquals(Long.valueOf(4), pointCounts.get("s0"));
+      Assert.assertEquals(Long.valueOf(4), pointCounts.get("s1"));
+    }
+  }
+
+  @Test
+  public void testScanParserTracksVisibleAlignedPointCountsWithMods() throws Exception {
+    tsFile = new File("load-tree-aligned-scan-visible-point-counts-with-mods.tsfile");
+    writeAlignedBooleanTsFileAcrossChunkGroups(tsFile);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 3, 3));
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s1"), 1, 1));
+    }
+
+    try (final TsFileInsertionEventScanParser parser =
+        new TsFileInsertionEventScanParser(
+            tsFile,
+            null,
+            null,
+            true,
+            LoadTsFileParserMemoryManager.getInstance(),
+            new TsFileInsertionEventScanParser.ScanOptions(
+                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true))) {
+      parser.toTabletWithIsAligneds().forEach(tabletWithIsAligned -> {});
+      final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE);
+      Assert.assertEquals(Long.valueOf(3), parser.getParsedPointCounts().get(device).get("s0"));
+      Assert.assertEquals(Long.valueOf(2), parser.getParsedPointCounts().get(device).get("s1"));
+      Assert.assertEquals(Long.valueOf(2), parser.getExpectedPointCounts().get(device).get("s0"));
+      Assert.assertEquals(Long.valueOf(1), parser.getExpectedPointCounts().get(device).get("s1"));
+    }
+  }
+
+  @Test
+  public void testCompleteModifiedAlignedScanDoesNotReplayDeletedChunks() throws Exception {
+    tsFile = new File("load-tree-aligned-scan-point-counts-with-mods.tsfile");
+    writeAlignedBooleanTsFileAcrossChunkGroups(tsFile);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 3, 3));
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s1"), 1, 1));
+    }
+
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            sourceFile ->
+                new LoadTreeTsFileTabletIterator(
+                    sourceFile,
+                    true,
+                    file ->
+                        new TsFileInsertionEventScanParser(
+                            file,
+                            null,
+                            null,
+                            true,
+                            LoadTsFileParserMemoryManager.getInstance(),
+                            new TsFileInsertionEventScanParser.ScanOptions(
+                                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true)),
+                    (file, device, measurements, startTime, endTime, isWithMod) ->
+                        createThrowingQueryParser()));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "1=false");
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s1", "2=false");
+    assertBooleanSeriesData(loadedPointData, "root.sg.intermediate.other", "10=true");
+    Assert.assertEquals(3, loadedPointData.size());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
+  public void testModifiedAlignedScanPreservesValueChunkOrderAfterSkippingDeletedChunk()
+      throws Exception {
+    tsFile = new File("load-tree-aligned-scan-skipped-value-chunk.tsfile");
+    writeAlignedBooleanTsFileWithMultipleChunksInGroup(tsFile);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 0, 0));
+    }
+
+    final List<Long> visibleTimestamps = new ArrayList<>();
+    try (final TsFileInsertionEventScanParser parser =
+        new TsFileInsertionEventScanParser(
+            tsFile,
+            null,
+            null,
+            true,
+            LoadTsFileParserMemoryManager.getInstance(),
+            new TsFileInsertionEventScanParser.ScanOptions(
+                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true))) {
+      for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+        final Tablet tablet = tabletWithIsAligned.getLeft();
+        for (int column = 0; column < tablet.getSchemas().size(); column++) {
+          if (!"s0".equals(tablet.getSchemas().get(column).getMeasurementName())) {
+            continue;
+          }
+          for (int row = 0; row < tablet.getRowSize(); row++) {
+            if (!tablet.isNull(row, column)) {
+              visibleTimestamps.add(tablet.getTimestamp(row));
+            }
+          }
+        }
+      }
+    }
+
+    Assert.assertEquals(Collections.singletonList(1L), visibleTimestamps);
+  }
+
+  @Test
+  public void testModifiedAlignedScanVerifiesPointCountsAboveLongCacheBoundary() throws Exception {
+    tsFile = File.createTempFile("load-tree-aligned-scan-large-point-counts-with-mods-", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerAlignedTimeseries(new PartialPath(ALIGNED_DEVICE), schemas);
+      writeRows(writer, schemas, ALIGNED_DEVICE, 0, 200, true);
+    }
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 0, 0));
+    }
+
+    final Map<String, Map<Long, Long>> loadedPoints = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, loadedPoints);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    final Map<Long, Long> modifiedSeries = loadedPoints.get(ALIGNED_DEVICE + ".s0");
+    Assert.assertEquals(199, modifiedSeries.size());
+    Assert.assertFalse(modifiedSeries.containsKey(0L));
+    Assert.assertEquals(200, loadedPoints.get(ALIGNED_DEVICE + ".s1").size());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
+  public void testModifiedAlignedQueryFallbackUsesVisiblePointCounts() throws Exception {
+    tsFile = new File("load-tree-query-fallback-aligned-mods.tsfile");
+    final long secondGroupOffset = writeAlignedBooleanTsFileAcrossChunkGroups(tsFile);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 1, 1));
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s1"), 1, 1));
+    }
+    corruptGroupMarker(tsFile, secondGroupOffset);
+
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "3=true");
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s1", "2=false");
+    assertBooleanSeriesData(loadedPointData, "root.sg.intermediate.other", "10=true");
+    Assert.assertEquals(3, loadedPointData.size());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
+  public void testEofFallbackFailsWhenNoPointsFollowLastEmittedTimestamp() throws Exception {
+    tsFile = new File("load-tree-query-fallback-eof-no-resumable-points.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet partialTablet = new Tablet(ALIGNED_DEVICE, schemas, 1);
+    partialTablet.addTimestamp(0, 3);
+    partialTablet.addValue("s0", 0, false);
+    partialTablet.addValue("s1", 0, true);
+
+    final TsFileInsertionEventScanParser partialScanParser =
+        mock(TsFileInsertionEventScanParser.class);
+    when(partialScanParser.toTabletWithIsAligneds())
+        .thenReturn(Collections.singletonList(new Pair<>(partialTablet, true)));
+    when(partialScanParser.getParsedPointCounts())
+        .thenReturn(
+            Collections.singletonMap(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE),
+                Map.of("s0", 1L, "s1", 1L)));
+
+    final List<Long> queryStartTimes = new ArrayList<>();
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            sourceFile ->
+                new LoadTreeTsFileTabletIterator(
+                    sourceFile,
+                    true,
+                    ignored -> partialScanParser,
+                    (queryFile, device, measurements, startTime, endTime, isWithMod) -> {
+                      queryStartTimes.add(startTime);
+                      return createEmptyQueryParser();
+                    }));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(Collections.singletonList(4L), queryStartTimes);
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s0", "3=false");
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s1", "3=true");
+    Assert.assertTrue("Failed boundary fallback must preserve the source TsFile.", tsFile.exists());
+  }
+
+  @Test
+  public void testEofFallbackFailsWhenDuplicateTimestampWouldBeSkipped() throws Exception {
+    tsFile = new File("load-tree-query-fallback-duplicate-timestamp.tsfile");
+    writeAlignedBooleanTsFileWithDuplicateTimestamp(tsFile);
+
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet partialTablet = new Tablet(ALIGNED_DEVICE, schemas, 1);
+    partialTablet.addTimestamp(0, 0);
+    partialTablet.addValue("s0", 0, true);
+
+    final TsFileInsertionEventScanParser partialScanParser =
+        mock(TsFileInsertionEventScanParser.class);
+    when(partialScanParser.toTabletWithIsAligneds())
+        .thenReturn(Collections.singletonList(new Pair<>(partialTablet, true)));
+    when(partialScanParser.getParsedPointCounts())
+        .thenReturn(
+            Collections.singletonMap(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE),
+                Collections.singletonMap("s0", 1L)));
+
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            sourceFile ->
+                new LoadTreeTsFileTabletIterator(sourceFile, true, ignored -> partialScanParser));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "1=true");
+    Assert.assertTrue(
+        "Incomplete duplicate-timestamp fallback must preserve the source TsFile.",
+        tsFile.exists());
+  }
+
+  @Test
+  public void testCorruptionFallbackFailsWhenNoPointsFollowLastEmittedTimestamp() throws Exception {
+    tsFile = new File("load-tree-query-fallback-corrupted-no-resumable-points.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet partialTablet = new Tablet(ALIGNED_DEVICE, schemas, 1);
+    partialTablet.addTimestamp(0, 3);
+    partialTablet.addValue("s0", 0, false);
+    partialTablet.addValue("s1", 0, true);
+
+    final TsFileInsertionEventScanParser partialScanParser =
+        mock(TsFileInsertionEventScanParser.class);
+    final Iterator<Pair<Tablet, Boolean>> partialScanIterator =
+        new Iterator<Pair<Tablet, Boolean>>() {
+          private boolean tabletReturned;
+
+          @Override
+          public boolean hasNext() {
+            if (!tabletReturned) {
+              return true;
+            }
+            throw new IllegalStateException("Forced scan failure after the last timestamp");
+          }
+
+          @Override
+          public Pair<Tablet, Boolean> next() {
+            if (tabletReturned) {
+              throw new java.util.NoSuchElementException();
+            }
+            tabletReturned = true;
+            return new Pair<>(partialTablet, true);
+          }
+        };
+    when(partialScanParser.toTabletWithIsAligneds()).thenReturn(() -> partialScanIterator);
+
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            sourceFile ->
+                new LoadTreeTsFileTabletIterator(sourceFile, true, ignored -> partialScanParser));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertTrue(
+        "Incomplete corruption fallback must preserve the source TsFile.", tsFile.exists());
+  }
+
+  @Test
+  public void testScanParserCountsAlignedPointsAcrossChunkGroupsAndNulls() throws Exception {
+    tsFile = new File("load-tree-aligned-scan-point-counts-multiple-chunk-groups.tsfile");
+    writeAlignedBooleanTsFileAcrossChunkGroups(tsFile);
+
+    try (final TsFileInsertionEventScanParser parser =
+        new TsFileInsertionEventScanParser(
+            tsFile,
+            null,
+            null,
+            true,
+            LoadTsFileParserMemoryManager.getInstance(),
+            new TsFileInsertionEventScanParser.ScanOptions(
+                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true))) {
+      parser.toTabletWithIsAligneds().forEach(tabletWithIsAligned -> {});
+      final Map<String, Long> pointCounts =
+          parser
+              .getParsedPointCounts()
+              .get(IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE));
+      Assert.assertEquals(Long.valueOf(3), pointCounts.get("s0"));
+      Assert.assertEquals(Long.valueOf(2), pointCounts.get("s1"));
+    }
+  }
+
+  @Test
+  public void testFallbackToQueryWhenFirstNonAlignedDeviceIsCorrupted() throws Exception {
+    tsFile = new File("load-tree-query-fallback-corrupted-first-non-aligned-device.tsfile");
+    writeTsFile(tsFile);
+    corruptMeasurementChunk(tsFile, DEVICE_0, "s0");
+
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+
+    Assert.assertTrue(
+        pointCountByTimeseries.getOrDefault(DEVICE_0 + ".s0", 0) < ROW_COUNT_PER_DEVICE);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_0, 1);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_1, 0);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_1, 1);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_2, 0);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_2, 1);
+  }
+
+  @Test
+  public void testFallbackDoesNotReloadCompletedMeasurementsOfCurrentNonAlignedDevice()
+      throws Exception {
+    tsFile = new File("load-tree-query-fallback-corrupted-current-non-aligned-device.tsfile");
+    writeTsFile(tsFile);
+    corruptMeasurementChunk(tsFile, DEVICE_1, "s1");
+
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_1, 0);
+    Assert.assertTrue(
+        pointCountByTimeseries.getOrDefault(DEVICE_1 + ".s1", 0) < ROW_COUNT_PER_DEVICE);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_2, 0);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_2, 1);
+  }
+
+  @Test
+  public void testFallbackToQueryForRemainingMeasurementsOfCurrentAlignedDevice() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setPipeMaxReaderChunkSize(0);
+
+    tsFile = new File("load-tree-query-fallback-corrupted-aligned-current-device.tsfile");
+    writeWideAlignedTsFile(tsFile, ALIGNED_DEVICE, 16);
+    corruptMeasurementChunk(tsFile, ALIGNED_DEVICE, "s8");
+    corruptMeasurementChunk(tsFile, ALIGNED_DEVICE, "s12");
+
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+
+    for (int measurementIndex = 0; measurementIndex < 8; ++measurementIndex) {
+      assertMeasurementLoadedCompletely(pointCountByTimeseries, ALIGNED_DEVICE, measurementIndex);
+    }
+    for (int measurementIndex : Arrays.asList(9, 10, 11, 13, 14, 15)) {
+      assertMeasurementLoadedCompletely(pointCountByTimeseries, ALIGNED_DEVICE, measurementIndex);
+    }
+
+    Assert.assertTrue(
+        pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s8", 0) < ROW_COUNT_PER_DEVICE);
+    Assert.assertTrue(
+        pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s12", 0) < ROW_COUNT_PER_DEVICE);
+  }
+
+  @Test
+  public void testPipeOutOfMemoryIsTemporaryUnavailable() throws Exception {
+    tsFile = File.createTempFile("oom", ".tsfile");
+
+    final LoadTreeConvertedInsertTabletStatementExceptionVisitor visitor =
+        new LoadTreeConvertedInsertTabletStatementExceptionVisitor();
+    final TSStatus status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            new IllegalStateException(
+                "wrapped memory pressure",
+                new PipeRuntimeOutOfMemoryCriticalException("pipe tablet memory is not enough")));
+
+    Assert.assertEquals(
+        TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(), status.getCode());
+    Assert.assertNotEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
+  }
+
+  private long writeTsFile(final File file) throws Exception {
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+
+    final List<IMeasurementSchema> schemaList =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+
+    final long secondGroupMarkerOffset;
+    try (final TsFileWriter writer = new TsFileWriter(file)) {
+      writeDevice(writer, schemaList, DEVICE_0, 0);
+      writer.flush();
+      secondGroupMarkerOffset = writer.getIOWriter().getPos();
+      writeDevice(writer, schemaList, DEVICE_1, 10_000);
+      writeDevice(writer, schemaList, DEVICE_2, 20_000);
+    }
+    return secondGroupMarkerOffset;
+  }
+
+  private void writeAlignedBooleanTsFile(final File file) throws Exception {
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+
+    final List<IMeasurementSchema> schemaList =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    try (final TsFileWriter writer = new TsFileWriter(file)) {
+      writer.registerAlignedTimeseries(new PartialPath(ALIGNED_DEVICE), schemaList);
+      final Tablet tablet = new Tablet(ALIGNED_DEVICE, schemaList, 4);
+      for (int row = 0; row < 4; ++row) {
+        tablet.addTimestamp(row, row);
+        tablet.addValue("s0", row, row % 2 == 0);
+        tablet.addValue("s1", row, row % 2 != 0);
+      }
+      writer.writeAligned(tablet);
+    }
+  }
+
+  private void writeAlignedBooleanTsFileWithMultipleChunksInGroup(final File file)
+      throws Exception {
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    try (final TsFileIOWriter writer = new TsFileIOWriter(file)) {
+      writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE));
+      for (int timestamp = 0; timestamp < 2; timestamp++) {
+        final AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemas);
+        chunkWriter.getTimeChunkWriter().write(timestamp);
+        chunkWriter.getValueChunkWriterByIndex(0).write(timestamp, timestamp == 0, false);
+        chunkWriter.getValueChunkWriterByIndex(1).write(timestamp, timestamp != 0, false);
+        chunkWriter.writeToFileWriter(writer);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+  }
+
+  private void writeAlignedBooleanTsFileWithDuplicateTimestamp(final File file) throws Exception {
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final boolean previousSetting =
+        TSFileDescriptor.getInstance().getConfig().isAllowNonDecreasingTimestamps();
+    try {
+      TSFileDescriptor.getInstance().getConfig().setAllowNonDecreasingTimestamps(true);
+      try (final TsFileWriter writer = new TsFileWriter(file)) {
+        writer.registerAlignedTimeseries(new PartialPath(ALIGNED_DEVICE), schemas);
+        final Tablet tablet = new Tablet(ALIGNED_DEVICE, schemas, 3);
+        tablet.addTimestamp(0, 0);
+        tablet.addTimestamp(1, 0);
+        tablet.addTimestamp(2, 1);
+        tablet.addValue("s0", 0, true);
+        tablet.addValue("s0", 1, false);
+        tablet.addValue("s0", 2, true);
+        tablet.addValue("s1", 2, false);
+        writer.writeAligned(tablet);
+      }
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setAllowNonDecreasingTimestamps(previousSetting);
+    }
+  }
+
+  private long writeAlignedBooleanTsFileAcrossChunkGroups(final File file) throws Exception {
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+
+    final List<IMeasurementSchema> alignedSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final List<IMeasurementSchema> otherSchemas =
+        Collections.singletonList(new MeasurementSchema("other", TSDataType.BOOLEAN));
+    final String otherDevice = "root.sg.intermediate";
+    try (final TsFileWriter writer = new TsFileWriter(file)) {
+      writer.registerAlignedTimeseries(new PartialPath(ALIGNED_DEVICE), alignedSchemas);
+      writer.registerTimeseries(new Path(otherDevice), otherSchemas);
+
+      final Tablet firstAlignedTablet = new Tablet(ALIGNED_DEVICE, alignedSchemas, 2);
+      firstAlignedTablet.addTimestamp(0, 0);
+      firstAlignedTablet.addValue("s0", 0, true);
+      firstAlignedTablet.addTimestamp(1, 1);
+      firstAlignedTablet.addValue("s0", 1, false);
+      firstAlignedTablet.addValue("s1", 1, true);
+      writer.writeAligned(firstAlignedTablet);
+
+      final Tablet otherTablet = new Tablet(otherDevice, otherSchemas, 1);
+      otherTablet.addTimestamp(0, 10);
+      otherTablet.addValue("other", 0, true);
+      writer.writeTree(otherTablet);
+      writer.flush();
+      final long secondGroupOffset = writer.getIOWriter().getPos();
+
+      final Tablet secondAlignedTablet = new Tablet(ALIGNED_DEVICE, alignedSchemas, 2);
+      secondAlignedTablet.addTimestamp(0, 2);
+      secondAlignedTablet.addValue("s1", 0, false);
+      secondAlignedTablet.addTimestamp(1, 3);
+      secondAlignedTablet.addValue("s0", 1, true);
+      writer.writeAligned(secondAlignedTablet);
+      return secondGroupOffset;
+    }
+  }
+
+  private static LoadTreeTsFileTabletIterator.QueryParser createThrowingQueryParser() {
+    return new LoadTreeTsFileTabletIterator.QueryParser() {
+      @Override
+      public Iterator<Pair<Tablet, Boolean>> iterator() {
+        return new Iterator<Pair<Tablet, Boolean>>() {
+          @Override
+          public boolean hasNext() {
+            throw new IllegalStateException("Forced query fallback failure");
+          }
+
+          @Override
+          public Pair<Tablet, Boolean> next() {
+            throw new java.util.NoSuchElementException();
+          }
+        };
+      }
+
+      @Override
+      public void close() {}
+    };
+  }
+
+  private static LoadTreeTsFileTabletIterator.QueryParser createEmptyQueryParser() {
+    return new LoadTreeTsFileTabletIterator.QueryParser() {
+      @Override
+      public Iterator<Pair<Tablet, Boolean>> iterator() {
+        return Collections.emptyIterator();
+      }
+
+      @Override
+      public void close() {}
+    };
+  }
+
+  private static LoadTreeTsFileTabletIterator.QueryParser createPartialThenThrowQueryParser(
+      final String device, final List<String> measurements, final long timestamp) {
+    final List<IMeasurementSchema> schemas = new ArrayList<>();
+    for (final String measurement : measurements) {
+      schemas.add(new MeasurementSchema(measurement, TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    }
+    final Tablet tablet = new Tablet(device, schemas, 1);
+    tablet.addTimestamp(0, timestamp);
+    for (final String measurement : measurements) {
+      tablet.addValue(measurement, 0, measurement.equals("s0") == (timestamp % 2 == 0));
+    }
+
+    return new LoadTreeTsFileTabletIterator.QueryParser() {
+      @Override
+      public Iterator<Pair<Tablet, Boolean>> iterator() {
+        return new Iterator<Pair<Tablet, Boolean>>() {
+          private int state;
+
+          @Override
+          public boolean hasNext() {
+            if (state == 0) {
+              return true;
+            }
+            if (state == 1) {
+              state++;
+              throw new IllegalStateException("Forced partial query fallback failure");
+            }
+            return false;
+          }
+
+          @Override
+          public Pair<Tablet, Boolean> next() {
+            if (state != 0) {
+              throw new java.util.NoSuchElementException();
+            }
+            state++;
+            return new Pair<>(tablet, true);
+          }
+        };
+      }
+
+      @Override
+      public void close() {}
+    };
+  }
+
+  private static LoadTreeTsFileTabletIterator.QueryParser createBooleanQueryParser(
+      final String device, final String measurement, final long startTime, final long endTime) {
+    return createBooleanQueryParser(device, measurement, startTime, endTime, Integer.MAX_VALUE);
+  }
+
+  private static LoadTreeTsFileTabletIterator.QueryParser createBooleanQueryParser(
+      final String device,
+      final String measurement,
+      final long startTime,
+      final long endTime,
+      final int maxPointCount) {
+    final List<IMeasurementSchema> schemas =
+        Collections.singletonList(
+            new MeasurementSchema(measurement, TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet tablet = new Tablet(device, schemas, 4);
+    int row = 0;
+    for (int timestamp = 0; timestamp < 4; timestamp++) {
+      if (timestamp < startTime || timestamp > endTime) {
+        continue;
+      }
+      if (row >= maxPointCount) {
+        break;
+      }
+      tablet.addTimestamp(row, timestamp);
+      tablet.addValue(measurement, row, measurement.equals("s0") == (timestamp % 2 == 0));
+      row++;
+    }
+
+    final Iterator<Pair<Tablet, Boolean>> tabletIterator =
+        row == 0
+            ? Collections.emptyIterator()
+            : Collections.singletonList(new Pair<>(tablet, true)).iterator();
+    return new LoadTreeTsFileTabletIterator.QueryParser() {
+      @Override
+      public Iterator<Pair<Tablet, Boolean>> iterator() {
+        return tabletIterator;
+      }
+
+      @Override
+      public void close() {}
+    };
+  }
+
+  private void writeWideAlignedTsFile(
+      final File file, final String device, final int measurementCount) throws Exception {
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+
+    final List<IMeasurementSchema> schemaList = new java.util.ArrayList<>();
+    for (int measurementIndex = 0; measurementIndex < measurementCount; ++measurementIndex) {
+      schemaList.add(
+          new MeasurementSchema("s" + measurementIndex, TSDataType.INT64, TSEncoding.PLAIN));
+    }
+
+    try (final TsFileWriter writer = new TsFileWriter(file)) {
+      writer.registerAlignedTimeseries(new PartialPath(device), schemaList);
+
+      final Tablet tablet = new Tablet(device, schemaList, ROW_COUNT_PER_DEVICE);
+      for (int row = 0; row < ROW_COUNT_PER_DEVICE; ++row) {
+        tablet.addTimestamp(row, row);
+        for (int measurementIndex = 0; measurementIndex < measurementCount; ++measurementIndex) {
+          tablet.addValue("s" + measurementIndex, row, (long) measurementIndex * 10_000 + row);
+        }
+      }
+      writer.writeAligned(tablet);
+    }
+  }
+
+  private void writeWideAlignedRow(
+      final TsFileWriter writer, final List<IMeasurementSchema> schemas, final long timestamp)
+      throws Exception {
+    final Tablet tablet = new Tablet(DEVICE_0, schemas, 1);
+    tablet.addTimestamp(0, timestamp);
+    for (int measurement = 0; measurement < schemas.size(); measurement++) {
+      tablet.addValue(0, measurement, measurement * 10_000L + timestamp);
+    }
+    writer.writeAligned(tablet);
+  }
+
+  private void writeDevice(
+      final TsFileWriter writer,
+      final List<IMeasurementSchema> schemaList,
+      final String device,
+      final long valueBase)
+      throws Exception {
+    writer.registerTimeseries(new Path(device), schemaList);
+
+    final Tablet tablet = new Tablet(device, schemaList, ROW_COUNT_PER_DEVICE);
+    for (int row = 0; row < ROW_COUNT_PER_DEVICE; ++row) {
+      tablet.addTimestamp(row, row);
+      tablet.addValue("s0", row, valueBase + row);
+      tablet.addValue("s1", row, valueBase + ROW_COUNT_PER_DEVICE + row);
+    }
+    writer.writeTree(tablet);
+  }
+
+  private void corruptMeasurementChunk(
+      final File file, final String device, final String measurement) throws Exception {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
+      final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
+      final List<IChunkMetadata> chunkMetadataList =
+          reader.getIChunkMetadataList(deviceId, measurement);
+      Assert.assertFalse(chunkMetadataList.isEmpty());
+
+      final long chunkHeaderOffset =
+          getTargetChunkMetadata(chunkMetadataList.get(0), measurement).getOffsetOfChunkHeader();
+      try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
+        randomAccessFile.seek(chunkHeaderOffset + 64);
+        randomAccessFile.write(new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
+      }
+    }
+  }
+
+  private IChunkMetadata getTargetChunkMetadata(
+      final IChunkMetadata chunkMetadata, final String measurement) {
+    if (!(chunkMetadata instanceof AbstractAlignedChunkMetadata)) {
+      return chunkMetadata;
+    }
+
+    final IChunkMetadata valueChunkMetadata =
+        ((AbstractAlignedChunkMetadata) chunkMetadata)
+            .getValueChunkMetadataList().stream()
+                .filter(Objects::nonNull)
+                .filter(metadata -> measurement.equals(metadata.getMeasurementUid()))
+                .findFirst()
+                .orElse(null);
+    Assert.assertNotNull(valueChunkMetadata);
+    return valueChunkMetadata;
+  }
+
+  private void assertMeasurementLoadedCompletely(
+      final Map<String, Integer> pointCountByTimeseries,
+      final String device,
+      final int measurementIndex) {
+    Assert.assertEquals(
+        ROW_COUNT_PER_DEVICE,
+        pointCountByTimeseries.getOrDefault(device + ".s" + measurementIndex, 0).intValue());
+  }
+
+  private boolean scanParserFails(final File file) throws Exception {
+    try (final TsFileInsertionEventScanParser parser =
+        new TsFileInsertionEventScanParser(
+            file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null, true)) {
+      parser.toTabletWithIsAligneds().forEach(tabletWithIsAligned -> {});
+      return false;
+    } catch (final Exception e) {
+      return true;
+    }
+  }
+
+  private static void collectLoadedLongPoints(
+      final Statement statement, final Map<String, Map<Long, Long>> points) {
+    Assert.assertTrue(statement instanceof InsertMultiTabletsStatement);
+    for (final InsertTabletStatement tablet :
+        ((InsertMultiTabletsStatement) statement).getInsertTabletStatementList()) {
+      for (int column = 0; column < tablet.getMeasurements().length; column++) {
+        final String path =
+            tablet.getDevicePath().getFullPath() + "." + tablet.getMeasurements()[column];
+        final Map<Long, Long> values = points.computeIfAbsent(path, key -> new HashMap<>());
+        for (int row = 0; row < tablet.getRowCount(); row++) {
+          if (!tablet.isNull(row, column)) {
+            final long timestamp = tablet.getTimes()[row];
+            Assert.assertNull(
+                "Duplicate point: " + path + " at " + timestamp,
+                values.put(timestamp, ((long[]) tablet.getColumns()[column])[row]));
+          }
+        }
+      }
+    }
+  }
+
+  private void collectLoadedPointData(
+      final Statement statement, final Map<String, List<String>> pointDataByTimeseries) {
+    Assert.assertTrue(statement instanceof InsertMultiTabletsStatement);
+    for (final InsertTabletStatement tablet :
+        ((InsertMultiTabletsStatement) statement).getInsertTabletStatementList()) {
+      for (int row = 0; row < tablet.getRowCount(); row++) {
+        for (int column = 0; column < tablet.getMeasurements().length; column++) {
+          final String measurement = tablet.getMeasurements()[column];
+          if (measurement != null && !tablet.isNull(row, column)) {
+            Assert.assertEquals(TSDataType.BOOLEAN, tablet.getDataType(column));
+            pointDataByTimeseries
+                .computeIfAbsent(
+                    tablet.getDevicePath().getFullPath() + "." + measurement,
+                    key -> new ArrayList<>())
+                .add(tablet.getTimes()[row] + "=" + ((boolean[]) tablet.getColumns()[column])[row]);
+          }
+        }
+      }
+    }
+  }
+
+  private static void assertBooleanSeriesData(
+      final Map<String, List<String>> pointDataByTimeseries,
+      final String timeseries,
+      final String... expectedPointData) {
+    Assert.assertEquals(
+        Arrays.asList(expectedPointData),
+        pointDataByTimeseries.getOrDefault(timeseries, Collections.emptyList()));
+  }
+
+  private void collectLoadedPointsByTimeseries(
+      final Statement statement, final Map<String, Integer> pointCountByTimeseries) {
+    Assert.assertTrue(statement instanceof InsertMultiTabletsStatement);
+    for (final InsertTabletStatement insertTabletStatement :
+        ((InsertMultiTabletsStatement) statement).getInsertTabletStatementList()) {
+      for (int row = 0; row < insertTabletStatement.getRowCount(); ++row) {
+        for (int column = 0; column < insertTabletStatement.getMeasurements().length; ++column) {
+          final String measurement = insertTabletStatement.getMeasurements()[column];
+          if (measurement == null || insertTabletStatement.isNull(row, column)) {
+            continue;
+          }
+          pointCountByTimeseries.merge(
+              insertTabletStatement.getDevicePath().getFullPath() + "." + measurement,
+              1,
+              Integer::sum);
+        }
+      }
+    }
+  }
+
+  private void collectLoadedPoints(
+      final Statement statement, final Map<String, Integer> pointCountByDevice) {
+    Assert.assertTrue(statement instanceof InsertMultiTabletsStatement);
+    for (final InsertTabletStatement insertTabletStatement :
+        ((InsertMultiTabletsStatement) statement).getInsertTabletStatementList()) {
+      pointCountByDevice.merge(
+          insertTabletStatement.getDevicePath().getFullPath(),
+          countNonNullPoints(insertTabletStatement),
+          Integer::sum);
+    }
+  }
+
+  private int countNonNullPoints(final InsertTabletStatement insertTabletStatement) {
+    int pointCount = 0;
+    for (int row = 0; row < insertTabletStatement.getRowCount(); ++row) {
+      for (int column = 0; column < insertTabletStatement.getMeasurements().length; ++column) {
+        if (insertTabletStatement.getMeasurements()[column] != null
+            && !insertTabletStatement.isNull(row, column)) {
+          ++pointCount;
+        }
+      }
+    }
+    return pointCount;
+  }
+
+  private static class PipeConfigAccessor {
+    private static boolean getPipeMemoryManagementEnabled() {
+      return CommonDescriptor.getInstance().getConfig().getPipeMemoryManagementEnabled();
+    }
+
+    private static void setPipeMemoryManagementEnabled(final boolean enabled) {
+      CommonDescriptor.getInstance().getConfig().setPipeMemoryManagementEnabled(enabled);
+    }
+  }
+
+  private static class ThrowingTabletIterator extends LoadTreeTsFileTabletIterator {
+    private final Pair<Tablet, Boolean> tabletWithIsAligned;
+    private boolean tabletAvailable = true;
+
+    private ThrowingTabletIterator(final File file, final Tablet tablet) {
+      super(file, true);
+      tabletWithIsAligned = new Pair<>(tablet, false);
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (tabletAvailable) {
+        return true;
+      }
+      throw new IllegalStateException("synthetic parser failure");
+    }
+
+    @Override
+    public Pair<Tablet, Boolean> next() {
+      if (!tabletAvailable) {
+        throw new IllegalStateException("synthetic parser failure");
+      }
+      tabletAvailable = false;
+      return tabletWithIsAligned;
+    }
+
+    @Override
+    public void close() {
+      // No parser resources are allocated by this test iterator.
+    }
+  }
+}

@@ -24,9 +24,10 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -86,8 +87,7 @@ public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements 
     // NON_TEMPLATE.
     throw new IllegalStateException(
         String.format(
-            "There should be a template mounted on any ancestor of the node [%s] usingTemplate.",
-            node.getFullPath()));
+            DataNodeSchemaMessages.TEMPLATE_SHOULD_MOUNTED_ON_ANCESTOR, node.getFullPath()));
   }
 
   @Override
@@ -107,11 +107,14 @@ public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements 
       if (skipPreDeletedSchema
           && nextMatchedNode.isMeasurement()
           && nextMatchedNode.getAsMeasurementMNode().isPreDeleted()) {
+        releaseSkippedNode(nextMatchedNode);
         nextMatchedNode = null;
       }
     }
     return true;
   }
+
+  protected abstract void releaseSkippedNode(final N node);
 
   @Override
   public N next() {

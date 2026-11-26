@@ -19,80 +19,48 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.meta;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.commons.executable.ReferenceCountedJarMetaKeeper;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 public class ConfigNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
 
-  protected final Map<String, String> jarNameToMd5Map;
-  protected final Map<String, Integer> jarNameToReferenceCountMap;
+  protected final ReferenceCountedJarMetaKeeper jarMetaKeeper;
 
   public ConfigNodePipePluginMetaKeeper() {
     super();
 
-    jarNameToMd5Map = new HashMap<>();
-    jarNameToReferenceCountMap = new HashMap<>();
+    jarMetaKeeper = new ReferenceCountedJarMetaKeeper();
   }
 
   public synchronized boolean containsJar(String jarName) {
-    return jarNameToMd5Map.containsKey(jarName);
+    return jarMetaKeeper.containsJar(jarName);
   }
 
   public synchronized boolean jarNameExistsAndMatchesMd5(String jarName, String md5) {
-    return jarNameToMd5Map.containsKey(jarName) && jarNameToMd5Map.get(jarName).equals(md5);
+    return jarMetaKeeper.jarNameExistsAndMatchesMd5(jarName, md5);
   }
 
   public synchronized void addJarNameAndMd5(String jarName, String md5) {
-    if (jarNameToReferenceCountMap.containsKey(jarName)) {
-      jarNameToReferenceCountMap.put(jarName, jarNameToReferenceCountMap.get(jarName) + 1);
-    } else {
-      jarNameToReferenceCountMap.put(jarName, 1);
-      jarNameToMd5Map.put(jarName, md5);
-    }
+    jarMetaKeeper.addReference(jarName, md5);
   }
 
   public synchronized void removeJarNameAndMd5IfPossible(String jarName) {
-    if (jarNameToReferenceCountMap.containsKey(jarName)) {
-      int count = jarNameToReferenceCountMap.get(jarName);
-      if (count == 1) {
-        jarNameToReferenceCountMap.remove(jarName);
-        jarNameToMd5Map.remove(jarName);
-      } else {
-        jarNameToReferenceCountMap.put(jarName, count - 1);
-      }
-    }
+    jarMetaKeeper.removeReference(jarName);
   }
 
   @Override
   public void processTakeSnapshot(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(jarNameToMd5Map.size(), outputStream);
-    for (Map.Entry<String, String> entry : jarNameToMd5Map.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-      ReadWriteIOUtils.write(jarNameToReferenceCountMap.get(entry.getKey()), outputStream);
-    }
+    jarMetaKeeper.serializeJarNameToMd5AndReferenceCount(outputStream);
 
     super.processTakeSnapshot(outputStream);
   }
 
   @Override
   public void processLoadSnapshot(InputStream inputStream) throws IOException {
-    jarNameToMd5Map.clear();
-    jarNameToReferenceCountMap.clear();
-
-    final int jarSize = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < jarSize; i++) {
-      final String jarName = ReadWriteIOUtils.readString(inputStream);
-      final String md5 = ReadWriteIOUtils.readString(inputStream);
-      final int count = ReadWriteIOUtils.readInt(inputStream);
-      jarNameToMd5Map.put(jarName, md5);
-      jarNameToReferenceCountMap.put(jarName, count);
-    }
+    jarMetaKeeper.deserializeJarNameToMd5AndReferenceCount(inputStream);
 
     super.processLoadSnapshot(inputStream);
   }

@@ -20,13 +20,15 @@
 package org.apache.iotdb.commons.exception.table;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TableAlreadyExistsException extends MetadataException {
 
   public TableAlreadyExistsException(final String database, final String tableName) {
     super(
-        String.format("Table '%s.%s' already exists.", database, tableName),
+        String.format(
+            CommonMessages.EXCEPTION_TABLE_ARG_ARG_ALREADY_EXISTS_D4BDF4B5, database, tableName),
         TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode());
   }
 }

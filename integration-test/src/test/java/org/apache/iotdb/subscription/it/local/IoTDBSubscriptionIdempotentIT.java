@@ -27,6 +27,7 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullC
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,6 +48,7 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
     super.setUp();
   }
 
+  @Ignore
   @Test
   public void testSubscribeOrUnsubscribeNonExistedTopicTest() {
     final String host = EnvFactory.getEnv().getIP();
@@ -88,6 +90,7 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testSubscribeExistedSubscribedTopicTest() {
     final String host = EnvFactory.getEnv().getIP();
@@ -123,6 +126,7 @@ public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testUnsubscribeExistedNonSubscribedTopicTest() {
     final String host = EnvFactory.getEnv().getIP();

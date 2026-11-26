@@ -26,7 +26,7 @@ tokens {
 }
 
 singleStatement
-    : statement EOF
+    : DEBUG? statement EOF
     ;
 
 
@@ -49,6 +49,8 @@ statement
     // Database Statement
     | useDatabaseStatement
     | showDatabasesStatement
+    | showCreateDatabaseStatement
+    | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
     | dropDbStatement
@@ -84,6 +86,13 @@ statement
     | dropFunctionStatement
     | createFunctionStatement
 
+    // ExternalService Statement
+    | createServiceStatement
+    | startServiceStatement
+    | stopServiceStatement
+    | dropServiceStatement
+    | showServiceStatement
+
     // Load Statement
     | loadTsFileStatement
 
@@ -93,15 +102,20 @@ statement
     | dropPipeStatement
     | startPipeStatement
     | stopPipeStatement
+    | showPipeMemoryStatement
     | showPipesStatement
+    | showReceiversStatement
+    | showCreatePipeStatement
     | createPipePluginStatement
     | dropPipePluginStatement
     | showPipePluginsStatement
 
     // Subscription Statement
     | createTopicStatement
+    | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
+    | showCreateTopicStatement
     | showSubscriptionsStatement
     | dropSubscriptionStatement
 
@@ -113,6 +127,7 @@ statement
     | showClusterStatement
     | showRegionsStatement
     | showDataNodesStatement
+    | showAvailableUrlsStatement
     | showConfigNodesStatement
     | showAINodesStatement
     | showClusterIdStatement
@@ -140,6 +155,7 @@ statement
     | killQueryStatement
     | loadConfigurationStatement
     | setConfigurationStatement
+    | showConfigurationStatement
     | showCurrentSqlDialectStatement
     | setSqlDialectStatement
     | showCurrentUserStatement
@@ -156,6 +172,8 @@ statement
     | grantUserRoleStatement
     | revokeUserRoleStatement
     | alterUserStatement
+    | alterUserAccountUnlockStatement
+    | renameUserStatement
     | listUserPrivilegeStatement
     | listRolePrivilegeStatement
     | listUserStatement
@@ -165,6 +183,19 @@ statement
     | createModelStatement
     | dropModelStatement
     | showModelsStatement
+    | showLoadedModelsStatement
+    | showAIDevicesStatement
+    | loadModelStatement
+    | unloadModelStatement
+
+    // Prepared Statement
+    | prepareStatement
+    | executeStatement
+    | executeImmediateStatement
+    | deallocateStatement
+
+    // Copy Statement
+    | copyToStatement
 
     // View, Trigger, CQ, Quota are not supported yet
     ;
@@ -177,6 +208,14 @@ useDatabaseStatement
 
 showDatabasesStatement
     : SHOW DATABASES (DETAILS)?
+    ;
+
+showCreateDatabaseStatement
+    : SHOW CREATE DATABASE database=identifier
+    ;
+
+countDatabasesStatement
+    : COUNT DATABASES
     ;
 
 createDbStatement
@@ -241,6 +280,7 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ALTER COLUMN (IF EXISTS)? column=identifier SET DATA TYPE new_type=type #alterColumnDataType
     ;
 
 commentStatement
@@ -359,6 +399,27 @@ showFunctionsStatement
     ;
 
 
+// -------------------------------------------- ExternalService Statement ----------------------------------------------------------
+createServiceStatement
+    : CREATE SERVICE serviceName=identifier
+        AS className=string
+    ;
+
+startServiceStatement
+    : START SERVICE serviceName=identifier
+    ;
+
+stopServiceStatement
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropServiceStatement
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+    ;
+
+showServiceStatement
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_VALUE)?
+    ;
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
@@ -468,6 +529,18 @@ showPipesStatement
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
+showPipeMemoryStatement
+    : SHOW PIPE MEMORY
+    ;
+
+showReceiversStatement
+    : SHOW RECEIVERS
+    ;
+
+showCreatePipeStatement
+    : SHOW CREATE PIPE pipeName=identifier
+    ;
+
 createPipePluginStatement
     : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=string uriClause
     ;
@@ -486,6 +559,10 @@ createTopicStatement
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
 
+alterTopicStatement
+    : ALTER TOPIC topicName=identifier topicAttributesClause
+    ;
+
 topicAttributesClause
     : WITH '(' topicAttributeClause (',' topicAttributeClause)* ')'
     ;
@@ -502,8 +579,12 @@ showTopicsStatement
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
     ;
 
+showCreateTopicStatement
+    : SHOW CREATE TOPIC topicName=identifier
+    ;
+
 showSubscriptionsStatement
-    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    : SHOW SUBSCRIPTIONS (DETAILS)? (ON topicName=identifier)?
     ;
 
 dropSubscriptionStatement
@@ -540,6 +621,10 @@ showDataNodesStatement
     : SHOW DATANODES
     ;
 
+showAvailableUrlsStatement
+    : SHOW AVAILABLE URLS
+    ;
+
 showConfigNodesStatement
     : SHOW CONFIGNODES
     ;
@@ -569,7 +654,7 @@ showSeriesSlotListStatement
     ;
 
 migrateRegionStatement
-    : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
+    : MIGRATE REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
 reconstructRegionStatement
@@ -632,7 +717,6 @@ showQueriesStatement
         limitOffsetClause
     ;
 
-
 killQueryStatement
     : KILL (QUERY queryId=string | ALL QUERIES)
     ;
@@ -650,6 +734,7 @@ clearCacheOptions
     : ATTRIBUTE
     | QUERY
     | ALL
+    | AUTH
     ;
 
 localOrClusterMode
@@ -676,11 +761,15 @@ showCurrentTimestampStatement
     : SHOW CURRENT_TIMESTAMP
     ;
 
+showConfigurationStatement
+    : SHOW (ALL)? CONFIGURATION (ON nodeId=INTEGER_VALUE)? (WITH DESC)?
+    ;
+
 
 // ------------------------------------------- Authority Statement -----------------------------------------------------
 
 createUserStatement
-    : CREATE USER userName=identifier password=string
+    : CREATE USER userName=usernameWithRoot password=string
     ;
 
 createRoleStatement
@@ -688,7 +777,7 @@ createRoleStatement
     ;
 
 dropUserStatement
-    : DROP USER userName=identifier
+    : DROP USER userName=usernameWithRoot
     ;
 
 dropRoleStatement
@@ -696,15 +785,32 @@ dropRoleStatement
     ;
 
 alterUserStatement
-    : ALTER USER userName=identifier SET PASSWORD password=string
+    : ALTER USER userName=usernameWithRoot SET PASSWORD password=string
+    ;
+
+alterUserAccountUnlockStatement
+    : ALTER USER userName=usernameWithRootWithOptionalHost ACCOUNT UNLOCK
+    ;
+
+usernameWithRoot
+    : ROOT
+    | identifier
+    ;
+
+usernameWithRootWithOptionalHost
+    : usernameWithRoot (AT_SIGN host=string)?
+    ;
+
+renameUserStatement
+    : ALTER USER username=usernameWithRoot RENAME TO newUsername=usernameWithRoot
     ;
 
 grantUserRoleStatement
-    : GRANT ROLE roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=usernameWithRoot
     ;
 
 revokeUserRoleStatement
-    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=usernameWithRoot
     ;
 
 
@@ -713,7 +819,7 @@ grantStatement
     ;
 
 listUserPrivilegeStatement
-    : LIST PRIVILEGES OF USER userName=identifier
+    : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
 listRolePrivilegeStatement
@@ -725,7 +831,7 @@ listUserStatement
     ;
 
 listRoleStatement
-    : LIST ROLE (OF USER userName=identifier)?
+    : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
 
@@ -756,6 +862,8 @@ objectScope
 systemPrivilege
     : MANAGE_USER
     | MANAGE_ROLE
+    | SYSTEM
+    | SECURITY
     ;
 
 objectPrivilege
@@ -805,11 +913,63 @@ showModelsStatement
     | SHOW MODELS modelId=identifier
     ;
 
+showLoadedModelsStatement
+    : SHOW LOADED MODELS
+    | SHOW LOADED MODELS deviceIdList=string
+    ;
+
+showAIDevicesStatement
+    : SHOW AI_DEVICES
+    ;
+
+loadModelStatement
+    : LOAD MODEL existingModelId=identifier TO DEVICES deviceIdList=string
+    ;
+
+unloadModelStatement
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=string
+    ;
+
+// ------------------------------------------- Prepared Statement ---------------------------------------------------------
+prepareStatement
+    : PREPARE statementName=identifier FROM sql=statement
+    ;
+
+executeStatement
+    : EXECUTE statementName=identifier (USING literalExpression (',' literalExpression)*)?
+    ;
+
+executeImmediateStatement
+    : EXECUTE IMMEDIATE sql=string (USING literalExpression (',' literalExpression)*)?
+    ;
+
+deallocateStatement
+    : DEALLOCATE PREPARE statementName=identifier
+    ;
+
+// ---------------------------------------- Copy Statement ---------------------------------------------------------
+copyToStatement
+    : COPY '(' query ')' TO fileName=string ((WITH)? copyToStatementOptions)?
+    | COPY tableName=qualifiedName ('(' tableColumns=identifierList ')')? TO fileName=string ((WITH)? copyToStatementOptions)?
+    ;
+
+copyToStatementOptions
+    : '(' copyToStatementOption (',' copyToStatementOption)* ')'
+    ;
+
+copyToStatementOption
+    : FORMAT identifier
+    | TABLE identifier
+    | TAGS '(' identifierList ')'
+    | TIME identifier
+    | MEMORY_THRESHOLD memory=INTEGER_VALUE
+    ;
+
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN query                                                #explain
-    | EXPLAIN ANALYZE VERBOSE? query                               #explainAnalyze
+    | EXPLAIN ('(' FORMAT identifier ')')? (query | copyToStatement | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | copyToStatement | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query
@@ -851,6 +1011,7 @@ fillClause
 fillMethod
     : LINEAR timeColumnClause? fillGroupClause?                                    #linearFill
     | PREVIOUS timeBoundClause? timeColumnClause? fillGroupClause?                 #previousFill
+    | NEXT timeBoundClause? timeColumnClause? fillGroupClause?                     #nextFill
     | CONSTANT literalExpression                                                   #valueFill
     ;
 
@@ -883,8 +1044,9 @@ rowCount
     ;
 
 queryTerm
-    : queryPrimary                                                                                #queryTermDefault
-    | left=queryTerm operator=(INTERSECT | UNION | EXCEPT) setQuantifier? right=queryTerm         #setOperation
+    : queryPrimary                                                                 #queryTermDefault
+    | left=queryTerm operator=INTERSECT setQuantifier? right=queryTerm             #setOperation
+    | left=queryTerm operator=(UNION | EXCEPT) setQuantifier? right=queryTerm      #setOperation
     ;
 
 queryPrimary
@@ -892,6 +1054,7 @@ queryPrimary
     | TABLE qualifiedName                  #table
     | VALUES expression (',' expression)*  #inlineTable
     | '(' queryNoWith ')'                  #subquery
+    | fromFirstQuerySpecification          #fromFirstQueryPrimary
     ;
 
 sortItem
@@ -907,8 +1070,18 @@ querySpecification
       (WINDOW windowDefinition (',' windowDefinition)*)?
     ;
 
+fromFirstQuerySpecification
+    : FROM relation (',' relation)*
+      (SELECT setQuantifier? selectItem (',' selectItem)*)?
+      (WHERE where=booleanExpression)?
+      (GROUP BY groupBy)?
+      (HAVING having=booleanExpression)?
+      (WINDOW windowDefinition (',' windowDefinition)*)?
+    ;
+
 groupBy
-    : setQuantifier? groupingElement (',' groupingElement)*
+    : ALL                                                                                         #allGroupBy
+    | setQuantifier? groupingElement (',' groupingElement)*                                       #explicitGroupBy
     ;
 
 groupingElement
@@ -943,7 +1116,7 @@ groupingSet
     ;
 
 namedQuery
-    : name=identifier (columnAliases)? AS '(' query ')'
+    : name=identifier (columnAliases)? AS MATERIALIZED? '(' query ')'
     ;
 
 setQuantifier
@@ -1129,6 +1302,7 @@ primaryExpression
     | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
+    | INTEGRAL '(' setQuantifier? expression ',' timeDuration (',' expression)? ')' over? #integralCall
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 
@@ -1346,28 +1520,28 @@ authorizationUser
 
 nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
-    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
+    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUDIT | AUTH | AUTHORIZATION | AVAILABLE
     | BEGIN | BERNOULLI | BOTH
-    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
-    | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
+    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COPY | COUNT | CURRENT
+    | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DEBUG | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
-    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
+    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORCEDLY | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR | HYPERPARAMETERS
-    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
+    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTEGRAL | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
+    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MEMORY | MEMORY_THRESHOLD | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
-    | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
-    | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
-    | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
-    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
+    | RANGE | READ | READONLY | RECEIVERS | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
+    | SERIESSLOTID | SERVICE | SERVICES | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
+    | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | STREAMS | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
+    | TABLES | TABLESAMPLE | TAG | TAGS | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
+    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | URLS | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
     | YEAR
@@ -1375,11 +1549,13 @@ nonReserved
     ;
 
 ABSENT: 'ABSENT';
+ACCOUNT: 'ACCOUNT';
 ADD: 'ADD';
 ADMIN: 'ADMIN';
 AFTER: 'AFTER';
 AINODE: 'AINODE';
 AINODES: 'AINODES';
+AI_DEVICES: 'AI_DEVICES';
 ALL: 'ALL';
 ALTER: 'ALTER';
 ANALYZE: 'ANALYZE';
@@ -1391,6 +1567,7 @@ ASC: 'ASC';
 ASOF: 'ASOF';
 AT: 'AT';
 ATTRIBUTE: 'ATTRIBUTE';
+AUTH: 'AUTH';
 AUTHORIZATION: 'AUTHORIZATION';
 BEGIN: 'BEGIN';
 BERNOULLI: 'BERNOULLI';
@@ -1427,6 +1604,7 @@ CONSTANT: 'CONSTANT';
 CONSTRAINT: 'CONSTRAINT';
 COUNT: 'COUNT';
 COPARTITION: 'COPARTITION';
+COPY: 'COPY';
 CREATE: 'CREATE';
 CROSS: 'CROSS';
 CUBE: 'CUBE';
@@ -1446,12 +1624,15 @@ DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';
 DATANODE: 'DATANODE';
 DATANODES: 'DATANODES';
+AVAILABLE: 'AVAILABLE';
+URLS: 'URLS';
 DATASET: 'DATASET';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';
 DATE_BIN_GAPFILL: 'DATE_BIN_GAPFILL';
 DAY: 'DAY' | 'D';
 DEALLOCATE: 'DEALLOCATE';
+DEBUG: 'DEBUG';
 DECLARE: 'DECLARE';
 DEFAULT: 'DEFAULT';
 DEFINE: 'DEFINE';
@@ -1495,6 +1676,7 @@ FIRST: 'FIRST';
 FLUSH: 'FLUSH';
 FOLLOWING: 'FOLLOWING';
 FOR: 'FOR';
+FORCEDLY: 'FORCEDLY';
 FORMAT: 'FORMAT';
 FROM: 'FROM';
 FULL: 'FULL';
@@ -1524,6 +1706,7 @@ INNER: 'INNER';
 INPUT: 'INPUT';
 INSERT: 'INSERT';
 INTERSECT: 'INTERSECT';
+INTEGRAL: 'INTEGRAL';
 INTERVAL: 'INTERVAL';
 INTO: 'INTO';
 INVOKER: 'INVOKER';
@@ -1556,6 +1739,7 @@ LINEAR: 'LINEAR';
 LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
+LOADED: 'LOADED';
 LOCAL: 'LOCAL';
 LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
@@ -1570,6 +1754,8 @@ MATCHES: 'MATCHES';
 MATCH_RECOGNIZE: 'MATCH_RECOGNIZE';
 MATERIALIZED: 'MATERIALIZED';
 MEASURES: 'MEASURES';
+MEMORY: 'MEMORY';
+MEMORY_THRESHOLD: 'MEMORY_THRESHOLD';
 METHOD: 'METHOD';
 MERGE: 'MERGE';
 MICROSECOND: 'US';
@@ -1643,6 +1829,7 @@ QUOTES: 'QUOTES';
 RANGE: 'RANGE';
 READ: 'READ';
 READONLY: 'READONLY';
+RECEIVERS: 'RECEIVERS';
 RECONSTRUCT: 'RECONSTRUCT';
 RECURSIVE: 'RECURSIVE';
 REFRESH: 'REFRESH';
@@ -1682,6 +1869,8 @@ SECURITY: 'SECURITY';
 SEEK: 'SEEK';
 SELECT: 'SELECT';
 SERIALIZABLE: 'SERIALIZABLE';
+SERVICE: 'SERVICE';
+SERVICES: 'SERVICES';
 SESSION: 'SESSION';
 SET: 'SET';
 SETS: 'SETS';
@@ -1694,6 +1883,8 @@ SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
+STREAM: 'STREAM';
+STREAMS: 'STREAMS';
 SUBSCRIPTION: 'SUBSCRIPTION';
 SUBSCRIPTIONS: 'SUBSCRIPTIONS';
 SUBSET: 'SUBSET';
@@ -1703,6 +1894,7 @@ TABLE: 'TABLE';
 TABLES: 'TABLES';
 TABLESAMPLE: 'TABLESAMPLE';
 TAG: 'TAG';
+TAGS: 'TAGS';
 TEXT: 'TEXT';
 TEXT_STRING: 'STRING';
 THEN: 'THEN';
@@ -1735,6 +1927,8 @@ UNCONDITIONAL: 'UNCONDITIONAL';
 UNION: 'UNION';
 UNIQUE: 'UNIQUE';
 UNKNOWN: 'UNKNOWN';
+UNLOAD: 'UNLOAD';
+UNLOCK: 'UNLOCK';
 UNMATCHED: 'UNMATCHED';
 UNNEST: 'UNNEST';
 UNTIL: 'UNTIL';
@@ -1768,7 +1962,9 @@ WRAPPER: 'WRAPPER';
 WRITE: 'WRITE';
 YEAR: 'YEAR' | 'Y';
 ZONE: 'ZONE';
+AUDIT: 'AUDIT';
 
+AT_SIGN: '@';
 EQ: '=';
 NEQ: '<>' | '!=';
 LT: '<';

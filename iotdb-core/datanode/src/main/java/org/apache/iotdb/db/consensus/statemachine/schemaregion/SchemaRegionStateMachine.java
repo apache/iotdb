@@ -22,16 +22,17 @@ package org.apache.iotdb.db.consensus.statemachine.schemaregion;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
@@ -73,8 +74,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void notifyLeaderChanged(final ConsensusGroupId groupId, final int newLeaderId) {
     if (newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
       logger.info(
-          "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
-              + "the new leader is [nodeId:{}]",
+          DataNodePipeMessages
+              .PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_FD783B3C,
           IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
           schemaRegion.getSchemaRegionId(),
           newLeaderId);
@@ -85,8 +86,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void notifyNotLeader() {
     final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     logger.info(
-        "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
-            + "start cleaning up related services.",
+        DataNodePipeMessages
+            .PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_12E06F99,
         dataNodeId,
         schemaRegion.getSchemaRegionId());
 
@@ -95,8 +96,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     GeneralRegionAttributeSecurityService.getInstance().stopBroadcast(schemaRegion);
 
     logger.info(
-        "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
-            + "all services on old leader are unavailable now.",
+        DataNodePipeMessages
+            .PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_3092822E,
         dataNodeId,
         schemaRegion.getSchemaRegionId());
   }
@@ -104,7 +105,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public void notifyLeaderReady() {
     logger.info(
-        "Current node [nodeId: {}] becomes schema region leader [regionId: {}]",
+        DataNodePipeMessages
+            .PIPE_LOG_CURRENT_NODE_NODEID_BECOMES_SCHEMA_REGION_LEADER_REGIONID_46C70A32,
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
         schemaRegion.getSchemaRegionId());
 
@@ -113,7 +115,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     GeneralRegionAttributeSecurityService.getInstance().startBroadcast(schemaRegion);
 
     logger.info(
-        "Current node [nodeId: {}] as schema region leader [regionId: {}] is ready to work",
+        DataNodePipeMessages
+            .PIPE_LOG_CURRENT_NODE_NODEID_AS_SCHEMA_REGION_LEADER_REGIONID_IS_F00BFAC5,
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
         schemaRegion.getSchemaRegionId());
   }
@@ -125,25 +128,49 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(final File snapshotDir) {
-    if (schemaRegion.createSnapshot(snapshotDir)
-        && PipeDataNodeAgent.runtime()
-            .schemaListener(schemaRegion.getSchemaRegionId())
-            .createSnapshot(snapshotDir)) {
-      listen2Snapshot4PipeListener(true);
+    if (!schemaRegion.createSnapshot(snapshotDir)) {
+      return false;
+    }
+
+    final SchemaRegionListeningQueue listener =
+        PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+    if (listener == null) {
       return true;
     }
-    return false;
+
+    if (!listener.createSnapshot(snapshotDir)) {
+      return false;
+    }
+    listen2Snapshot4PipeListener(true);
+    return true;
   }
 
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
-    schemaRegion.loadSnapshot(latestSnapshotRootDir);
-    PipeDataNodeAgent.runtime()
-        .schemaListener(schemaRegion.getSchemaRegionId())
-        .loadSnapshot(latestSnapshotRootDir);
-    // We recompute the snapshot for pipe listener when loading snapshot
-    // to recover the newest snapshot in cache
-    listen2Snapshot4PipeListener(false);
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
+    try {
+      // The boolean result must reflect whether the schema-region data was actually loaded, so
+      // callers (e.g. the AddPeer flow and the Ratis snapshot-install path) can detect a real
+      // failure instead of treating a fallback-to-empty load as success.
+      final boolean loadSucceeded = schemaRegion.loadSnapshot(latestSnapshotRootDir);
+      final SchemaRegionListeningQueue listener =
+          PipeDataNodeAgent.runtime()
+              .schemaListenerForSnapshotLoad(
+                  schemaRegion.getSchemaRegionId(), latestSnapshotRootDir);
+      if (listener != null) {
+        listener.loadSnapshot(latestSnapshotRootDir);
+        PipeDataNodeAgent.runtime().cleanupSchemaListenerIfUnused(schemaRegion.getSchemaRegionId());
+        // We recompute the snapshot for pipe listener when loading snapshot
+        // to recover the newest snapshot in cache
+        listen2Snapshot4PipeListener(false);
+      }
+      return loadSucceeded;
+    } catch (Exception e) {
+      logger.error(
+          DataNodePipeMessages.MESSAGE_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_9391AA27,
+          latestSnapshotRootDir,
+          e);
+      return false;
+    }
   }
 
   public void listen2Snapshot4PipeListener(final boolean isTmp) {
@@ -154,11 +181,15 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
                 .toString(),
             isTmp);
     final SchemaRegionListeningQueue listener =
-        PipeDataNodeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
+        PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+    if (listener == null) {
+      return;
+    }
     if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.get(0))) {
       if (listener.isOpened()) {
         logger.warn(
-            "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
+            DataNodePipeMessages
+                .PIPE_LOG_SCHEMA_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_64845A44,
             snapshotPaths);
       }
       return;
@@ -181,9 +212,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       final TSStatus result =
           ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        PipeDataNodeAgent.runtime()
-            .schemaListener(schemaRegion.getSchemaRegionId())
-            .tryListenToNode((PlanNode) request);
+        final SchemaRegionListeningQueue listener =
+            PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+        if (listener != null) {
+          listener.tryListenToNode((PlanNode) request);
+        }
       }
       return result;
     } catch (final IllegalArgumentException e) {
@@ -202,9 +235,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       return null;
     }
     logger.debug(
-        "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
+        DataNodePipeMessages
+            .PIPE_LOG_SCHEMAREGIONSTATEMACHINE_EXECUTE_READ_PLAN_FRAGMENTINSTANCE_F85A001F,
         schemaRegion.getSchemaRegionId(),
         fragmentInstance.getId());
-    return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
+    try {
+      return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
+    } finally {
+      fragmentInstance.closeUDFQueryScopeIfPresent();
+    }
   }
 }

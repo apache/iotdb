@@ -26,12 +26,12 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeHeartbeatEventMetrics;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import com.lmax.disruptor.RingBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +41,10 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatEvent.class);
 
-  private final String dataRegionId;
+  private final int dataRegionId;
+  private final boolean completionBarrier;
+  private long assignerEpoch = Long.MIN_VALUE;
+  private long dataGeneration = Long.MIN_VALUE;
 
   private long timePublished;
   private long timeAssigned;
@@ -52,33 +55,45 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   // The disruptor is usually nearly empty.
   private int disruptorSize;
 
-  private int extractorQueueTabletSize;
-  private int extractorQueueTsFileSize;
-  private int extractorQueueSize;
+  private int sourceQueueTabletSize;
+  private int sourceQueueTsFileSize;
+  private int sourceQueueSize;
 
-  private int connectorQueueTabletSize;
-  private int connectorQueueTsFileSize;
-  private int connectorQueueSize;
+  private int sinkQueueTabletSize;
+  private int sinkQueueTsFileSize;
+  private int sinkQueueSize;
 
   private final boolean shouldPrintMessage;
 
-  public PipeHeartbeatEvent(final String dataRegionId, final boolean shouldPrintMessage) {
-    super(null, 0, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
+  public PipeHeartbeatEvent(final int dataRegionId, final boolean shouldPrintMessage) {
+    this(dataRegionId, shouldPrintMessage, false);
+  }
+
+  public PipeHeartbeatEvent(
+      final int dataRegionId, final boolean shouldPrintMessage, final boolean completionBarrier) {
+    super(null, 0, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
+    this.completionBarrier = completionBarrier;
   }
 
   public PipeHeartbeatEvent(
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final String dataRegionId,
+      final int dataRegionId,
       final long timePublished,
-      final boolean shouldPrintMessage) {
+      final boolean shouldPrintMessage,
+      final boolean completionBarrier,
+      final long assignerEpoch,
+      final long dataGeneration,
+      final long sourceId) {
     super(
         pipeName,
         creationTime,
         pipeTaskMeta,
+        null,
+        null,
         null,
         null,
         null,
@@ -88,6 +103,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
+    this.completionBarrier = completionBarrier;
+    this.assignerEpoch = assignerEpoch;
+    this.dataGeneration = dataGeneration;
+    this.sourceId = sourceId;
+    if (completionBarrier && sourceId != Long.MIN_VALUE) {
+      addCompletionOnCommittedHook();
+    }
   }
 
   @Override
@@ -102,7 +124,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     // PipeName == null indicates that the event is the raw event at disruptor,
-    // not the event copied and passed to the extractor
+    // not the event copied and passed to the source
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeSinglePipeMetrics.getInstance()
           .decreaseHeartbeatEventCount(pipeName, creationTime);
@@ -125,14 +147,25 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
     // Here we ignore parameters `pattern`, `startTime`, and `endTime`.
     return new PipeHeartbeatEvent(
-        pipeName, creationTime, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        dataRegionId,
+        timePublished,
+        shouldPrintMessage,
+        completionBarrier,
+        assignerEpoch,
+        dataGeneration,
+        sourceId);
   }
 
   @Override
@@ -154,6 +187,63 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   public boolean isShouldPrintMessage() {
     return shouldPrintMessage;
+  }
+
+  public boolean isCompletionBarrier() {
+    return completionBarrier;
+  }
+
+  @Override
+  public boolean isControlEvent() {
+    return true;
+  }
+
+  @Override
+  public boolean shouldSkipProcessing() {
+    return completionBarrier;
+  }
+
+  public void bindCompletionBarrier(final long assignerEpoch, final long dataGeneration) {
+    if (completionBarrier) {
+      this.assignerEpoch = assignerEpoch;
+      this.dataGeneration = dataGeneration;
+    }
+  }
+
+  @Override
+  public void bindSource(final long sourceId) {
+    final boolean shouldAddCompletionHook =
+        completionBarrier
+            && pipeName != null
+            && this.sourceId == Long.MIN_VALUE
+            && sourceId != Long.MIN_VALUE;
+    super.bindSource(sourceId);
+    if (shouldAddCompletionHook) {
+      addCompletionOnCommittedHook();
+    }
+  }
+
+  private void addCompletionOnCommittedHook() {
+    addOnCommittedHook(
+        () ->
+            PipeDataNodeSinglePipeMetrics.getInstance()
+                .markDataRegionCompleted(
+                    pipeName,
+                    creationTime,
+                    dataRegionId,
+                    pipeTaskMeta,
+                    assignerEpoch,
+                    dataGeneration,
+                    sourceId,
+                    getCommitterKey()));
+  }
+
+  public long getAssignerEpoch() {
+    return assignerEpoch;
+  }
+
+  public long getDataGeneration() {
+    return dataGeneration;
   }
 
   /////////////////////////////// Delay Reporting ///////////////////////////////
@@ -196,7 +286,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   /////////////////////////////// Queue size Reporting ///////////////////////////////
 
-  public void recordDisruptorSize(final RingBuffer<?> ringBuffer) {
+  public void recordDisruptorSize(final RingBuffer ringBuffer) {
     if (shouldPrintMessage) {
       disruptorSize = ringBuffer.getBufferSize() - (int) ringBuffer.remainingCapacity();
     }
@@ -204,26 +294,26 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   public void recordExtractorQueueSize(final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
-      extractorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
-      extractorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
-      extractorQueueSize = pendingQueue.size();
+      sourceQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
+      sourceQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
+      sourceQueueSize = pendingQueue.size();
     }
   }
 
   public void recordConnectorQueueSize(final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
-      connectorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
-      connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
-      connectorQueueSize = pendingQueue.size();
+      sinkQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
+      sinkQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
+      sinkQueueSize = pendingQueue.size();
     }
   }
 
   /////////////////////////////// For Commit Ordering ///////////////////////////////
 
-  /** {@link PipeHeartbeatEvent}s do not need to be committed in order. */
+  /** Only completion barriers need ordered commit. Periodic heartbeats remain best-effort. */
   @Override
   public boolean needToCommit() {
-    return false;
+    return completionBarrier && Objects.nonNull(pipeName) && sourceId != Long.MIN_VALUE;
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -255,25 +345,33 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
     final String disruptorSizeMessage = Integer.toString(disruptorSize);
 
-    final String extractorQueueTabletSizeMessage =
-        timeAssigned != 0 ? Integer.toString(extractorQueueTabletSize) : unknownMessage;
-    final String extractorQueueTsFileSizeMessage =
-        timeAssigned != 0 ? Integer.toString(extractorQueueTsFileSize) : unknownMessage;
-    final String extractorQueueSizeMessage =
-        timeAssigned != 0 ? Integer.toString(extractorQueueSize) : unknownMessage;
+    final String sourceQueueTabletSizeMessage =
+        timeAssigned != 0 ? Integer.toString(sourceQueueTabletSize) : unknownMessage;
+    final String sourceQueueTsFileSizeMessage =
+        timeAssigned != 0 ? Integer.toString(sourceQueueTsFileSize) : unknownMessage;
+    final String sourceQueueSizeMessage =
+        timeAssigned != 0 ? Integer.toString(sourceQueueSize) : unknownMessage;
 
-    final String connectorQueueTabletSizeMessage =
-        timeProcessed != 0 ? Integer.toString(connectorQueueTabletSize) : unknownMessage;
-    final String connectorQueueTsFileSizeMessage =
-        timeProcessed != 0 ? Integer.toString(connectorQueueTsFileSize) : unknownMessage;
-    final String connectorQueueSizeMessage =
-        timeProcessed != 0 ? Integer.toString(connectorQueueSize) : unknownMessage;
+    final String sinkQueueTabletSizeMessage =
+        timeProcessed != 0 ? Integer.toString(sinkQueueTabletSize) : unknownMessage;
+    final String sinkQueueTsFileSizeMessage =
+        timeProcessed != 0 ? Integer.toString(sinkQueueTsFileSize) : unknownMessage;
+    final String sinkQueueSizeMessage =
+        timeProcessed != 0 ? Integer.toString(sinkQueueSize) : unknownMessage;
 
     return "PipeHeartbeatEvent{"
         + "pipeName='"
         + pipeName
         + "', dataRegionId="
         + dataRegionId
+        + ", completionBarrier="
+        + completionBarrier
+        + ", assignerEpoch="
+        + assignerEpoch
+        + ", dataGeneration="
+        + dataGeneration
+        + ", sourceId="
+        + sourceId
         + ", startTime="
         + startTimeMessage
         + ", publishedToAssigned="
@@ -286,18 +384,18 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + totalTimeMessage
         + ", disruptorSize="
         + disruptorSizeMessage
-        + ", extractorQueueTabletSize="
-        + extractorQueueTabletSizeMessage
-        + ", extractorQueueTsFileSize="
-        + extractorQueueTsFileSizeMessage
-        + ", extractorQueueSize="
-        + extractorQueueSizeMessage
-        + ", connectorQueueTabletSize="
-        + connectorQueueTabletSizeMessage
-        + ", connectorQueueTsFileSize="
-        + connectorQueueTsFileSizeMessage
-        + ", connectorQueueSize="
-        + connectorQueueSizeMessage
+        + ", sourceQueueTabletSize="
+        + sourceQueueTabletSizeMessage
+        + ", sourceQueueTsFileSize="
+        + sourceQueueTsFileSizeMessage
+        + ", sourceQueueSize="
+        + sourceQueueSizeMessage
+        + ", sinkQueueTabletSize="
+        + sinkQueueTabletSizeMessage
+        + ", sinkQueueTsFileSize="
+        + sinkQueueTsFileSizeMessage
+        + ", sinkQueueSize="
+        + sinkQueueSizeMessage
         + "}";
   }
 }

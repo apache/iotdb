@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
@@ -38,8 +41,9 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,6 +86,10 @@ public class ReadOnlyMemChunk {
   protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
+  protected final int MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE = 10 * MAX_NUMBER_OF_POINTS_IN_PAGE;
+
+  protected final int MAX_NUMBER_OF_FAKE_PAGE = 100;
+
   protected ReadOnlyMemChunk(QueryContext context) {
     this.context = context;
   }
@@ -104,13 +112,14 @@ public class ReadOnlyMemChunk {
         floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
       } catch (NumberFormatException e) {
         logger.warn(
-            "The format of MAX_POINT_NUMBER {}  is not correct."
-                + " Using default float precision.",
+            StorageEngineMessages
+                .STORAGE_LOG_THE_FORMAT_OF_MAX_POINT_NUMBER_IS_NOT_CORRECT_USING_DEFAULT_1B78AF69,
             props.get(Encoder.MAX_POINT_NUMBER));
       }
       if (floatPrecision < 0) {
         logger.warn(
-            "The MAX_POINT_NUMBER shouldn't be less than 0." + " Using default float precision {}.",
+            StorageEngineMessages
+                .STORAGE_LOG_THE_MAX_POINT_NUMBER_SHOULDN_T_BE_LESS_THAN_0_USING_DEFAULT_12745217,
             TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
         floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       }
@@ -120,7 +129,7 @@ public class ReadOnlyMemChunk {
     this.deletionList = deletionList;
     this.tvListQueryMap = tvListQueryMap;
     this.pageStatisticsList = new ArrayList<>();
-    this.context.addTVListToSet(tvListQueryMap);
+    this.context.addTVListToSet(tvListQueryMap.keySet());
   }
 
   public void sortTvLists() {
@@ -128,23 +137,31 @@ public class ReadOnlyMemChunk {
       TVList tvList = entry.getKey();
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
-        tvList.sort();
+        entry.setValue(tvList.sort());
+        tvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long tvListRamSize = tvList.calculateRamSize().getRamSize();
+            long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              tvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          tvList.unlockQueryList();
+        }
       }
     }
   }
 
-  public void initChunkMetaFromTvLists() {
+  public void initChunkMetaFromTvLists(Filter globalTimeFilter) {
     // create chunk statistics
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
-    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataType,
-            tvLists,
-            deletionList,
-            floatPrecision,
-            encoding,
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+    Type type = Type.fromTsDataType(dataType);
+    timeValuePairIterator = createMemPointIterator(Ordering.ASC, globalTimeFilter);
+    timeValuePairIterator.setStreamingQueryMemChunk(false);
     while (timeValuePairIterator.hasNextBatch()) {
       // statistics for current batch
       Statistics<? extends Serializable> pageStatistics = Statistics.getStatsByType(dataType);
@@ -152,56 +169,9 @@ public class ReadOnlyMemChunk {
 
       TsBlock tsBlock = timeValuePairIterator.nextBatch();
       if (!tsBlock.isEmpty()) {
-        switch (dataType) {
-          case BOOLEAN:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getBoolean(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getBoolean(i));
-            }
-            break;
-          case INT32:
-          case DATE:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getInt(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getInt(i));
-            }
-            break;
-          case INT64:
-          case TIMESTAMP:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getLong(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getLong(i));
-            }
-            break;
-          case FLOAT:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getFloat(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getFloat(i));
-            }
-            break;
-          case DOUBLE:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getDouble(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getDouble(i));
-            }
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getBinary(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getBinary(i));
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          type.update(chunkStatistics, tsBlock, 0, i);
+          type.update(pageStatistics, tsBlock, 0, i);
         }
       }
     }
@@ -212,6 +182,48 @@ public class ReadOnlyMemChunk {
     metaData.setChunkLoader(new MemChunkLoader(context, this));
     metaData.setVersion(Long.MAX_VALUE);
     cachedMetaData = metaData;
+  }
+
+  // To avoid loading too much data from disk when the time range is too large during query, we
+  // segment the data according to the time range and construct false statistics.
+  public void initChunkMetaFromTVListsWithFakeStatistics() {
+    long chunkStartTime = Long.MAX_VALUE;
+    long chunkEndTime = Long.MIN_VALUE;
+    long rowNum = 0;
+    for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
+      TVList tvList = entry.getKey();
+      chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
+      chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
+      rowNum += entry.getValue();
+    }
+    Statistics<? extends Serializable> chunkStatistics =
+        generateFakeStatistics(dataType, chunkStartTime, chunkEndTime);
+    cachedMetaData = new ChunkMetadata(measurementUid, dataType, null, null, 0, chunkStatistics);
+
+    int pageNum =
+        (int)
+            Math.min(
+                MAX_NUMBER_OF_FAKE_PAGE, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE));
+    for (long[] pageTimeRange :
+        MemChunkTimeRangeUtils.splitFakePageTimeRanges(chunkStartTime, chunkEndTime, pageNum)) {
+      long pageStartTime = pageTimeRange[0];
+      long pageEndTime = pageTimeRange[1];
+      pageStatisticsList.add(generateFakeStatistics(dataType, pageStartTime, pageEndTime));
+    }
+
+    cachedMetaData.setChunkLoader(new MemChunkLoader(context, this, true));
+    cachedMetaData.setVersion(Long.MAX_VALUE);
+    // By setting Modified to true, we can prevent these fake statistics from being used.
+    cachedMetaData.setModified(true);
+  }
+
+  protected Statistics<? extends Serializable> generateFakeStatistics(
+      TSDataType dataType, long startTime, long endTime) {
+    Statistics<? extends Serializable> stats = Statistics.getStatsByType(dataType);
+    stats.setStartTime(startTime);
+    stats.setEndTime(endTime);
+    stats.setCount(1);
+    return stats;
   }
 
   public TSDataType getDataType() {
@@ -226,13 +238,31 @@ public class ReadOnlyMemChunk {
     return cachedMetaData;
   }
 
+  public void setChunkMetadata(IChunkMetadata cachedMetaData) {
+    this.cachedMetaData = cachedMetaData;
+  }
+
   @TestOnly
   public IPointReader getPointReader() {
     for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
       TVList tvList = entry.getKey();
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.sort();
+        entry.setValue(tvList.sort());
+        tvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long tvListRamSize = tvList.calculateRamSize().getRamSize();
+            long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              tvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          tvList.unlockQueryList();
+        }
       }
     }
     TsBlock tsBlock = buildTsBlock();
@@ -251,45 +281,13 @@ public class ReadOnlyMemChunk {
 
   // read all data in memory chunk and write to tsblock
   private void writeValidValuesIntoTsBlock(TsBlockBuilder builder) throws IOException {
-    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            getDataType(),
-            tvLists,
-            deletionList,
-            floatPrecision,
-            encoding,
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+    MemPointIterator timeValuePairIterator = createMemPointIterator(Ordering.ASC, null);
+    Type type = Type.fromTsDataType(dataType);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
       builder.getTimeColumnBuilder().writeLong(tvPair.getTimestamp());
-      switch (dataType) {
-        case BOOLEAN:
-          builder.getColumnBuilder(0).writeBoolean(tvPair.getValue().getBoolean());
-          break;
-        case INT32:
-        case DATE:
-          builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
-          break;
-        case INT64:
-        case TIMESTAMP:
-          builder.getColumnBuilder(0).writeLong(tvPair.getValue().getLong());
-          break;
-        case FLOAT:
-          builder.getColumnBuilder(0).writeFloat(tvPair.getValue().getFloat());
-          break;
-        case DOUBLE:
-          builder.getColumnBuilder(0).writeDouble(tvPair.getValue().getDouble());
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-          builder.getColumnBuilder(0).writeBinary(tvPair.getValue().getBinary());
-          break;
-        default:
-          break;
-      }
+      type.write(builder.getColumnBuilder(0), tvPair.getValue());
       builder.declarePosition();
     }
   }
@@ -333,5 +331,25 @@ public class ReadOnlyMemChunk {
 
   public MemPointIterator getMemPointIterator() {
     return timeValuePairIterator;
+  }
+
+  public MemPointIterator createMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
+    List<TVList> tvLists = new ArrayList<>(tvListQueryMap.size());
+    List<Integer> tvListRowCounts = new ArrayList<>(tvListQueryMap.size());
+    for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
+      tvLists.add(entry.getKey());
+      tvListRowCounts.add(entry.getValue());
+    }
+    return MemPointIteratorFactory.create(
+        dataType,
+        tvLists,
+        tvListRowCounts,
+        scanOrder,
+        globalTimeFilter,
+        deletionList,
+        floatPrecision,
+        encoding,
+        MAX_NUMBER_OF_POINTS_IN_PAGE,
+        context);
   }
 }

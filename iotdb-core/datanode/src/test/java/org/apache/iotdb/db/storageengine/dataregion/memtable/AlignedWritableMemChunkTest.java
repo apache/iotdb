@@ -1,0 +1,291 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.storageengine.dataregion.memtable;
+
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class AlignedWritableMemChunkTest {
+
+  @Test
+  public void testTabletExtendsColumnsWithReorderingAndBitmaps() throws IOException {
+    IMeasurementSchema existing = new MeasurementSchema("existing", TSDataType.INT64);
+    IMeasurementSchema omitted = new MeasurementSchema("omitted", TSDataType.BOOLEAN);
+    IMeasurementSchema integer = new MeasurementSchema("integer", TSDataType.INT32);
+    IMeasurementSchema text = new MeasurementSchema("text", TSDataType.TEXT);
+    List<IMeasurementSchema> initialSchemas = Arrays.asList(existing, omitted);
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(new ArrayList<>(initialSchemas));
+    chunk.writeAlignedPoints(0, new Object[] {1L, true}, initialSchemas);
+    Binary binary = new Binary("value", TSFileConfig.STRING_CHARSET);
+    BitMap integerBitmap = new BitMap(3);
+    integerBitmap.mark(2);
+    BitMap textBitmap = new BitMap(3);
+    textBitmap.mark(1);
+    BitMap existingBitmap = new BitMap(3);
+    existingBitmap.mark(1);
+    chunk.writeAlignedTablet(
+        new long[] {-1, 1, 2},
+        new Object[] {
+          new long[] {0, 10, 20},
+          new int[] {0, 1, 2},
+          null,
+          new Binary[] {binary, binary, binary},
+          new int[] {0, 11, 12}
+        },
+        new BitMap[] {existingBitmap, null, null, textBitmap, integerBitmap},
+        Arrays.asList(existing, integer, null, text, integer),
+        1,
+        3,
+        null);
+
+    Assert.assertEquals(Arrays.asList(existing, omitted, integer, text), chunk.getSchemaList());
+    Assert.assertEquals(2, chunk.getMeasurementIndex("integer"));
+    Assert.assertEquals(3, chunk.getMeasurementIndex("text"));
+    AlignedTVList list = chunk.getWorkingTVList();
+    Assert.assertEquals(3, list.rowCount());
+    Assert.assertTrue(list.isNullValue(0, 2));
+    Assert.assertTrue(list.isNullValue(0, 3));
+    Assert.assertTrue(list.isNullValue(1, 1));
+    Assert.assertTrue(list.isNullValue(2, 1));
+    Assert.assertTrue(list.isNullValue(1, 0));
+    Assert.assertEquals(20L, list.getLongByValueIndex(2, 0));
+    Assert.assertEquals(11, list.getIntByValueIndex(1, 2));
+    Assert.assertTrue(list.isNullValue(2, 2));
+    Assert.assertTrue(list.isNullValue(1, 3));
+    Assert.assertEquals(binary, list.getBinaryByValueIndex(2, 3));
+
+    WALByteBufferForTest buffer =
+        new WALByteBufferForTest(ByteBuffer.allocate(chunk.serializedSize()));
+    chunk.serializeToWAL(buffer);
+    AlignedWritableMemChunk restored =
+        AlignedWritableMemChunk.deserialize(
+            new DataInputStream(new ByteArrayInputStream(buffer.getBuffer().array())));
+    Assert.assertEquals(chunk.getSchemaList(), restored.getSchemaList());
+    AlignedTVList restoredList = restored.getWorkingTVList();
+    for (int row = 0; row < list.rowCount(); row++) {
+      Assert.assertEquals(list.getTime(row), restoredList.getTime(row));
+      Assert.assertEquals(
+          list.getAlignedValue(row).toString(), restoredList.getAlignedValue(row).toString());
+    }
+    chunk.release();
+    restored.release();
+  }
+
+  @Test
+  public void testTabletWithoutExtensionReordersExistingColumnsAndBitmaps() {
+    IMeasurementSchema first = new MeasurementSchema("first", TSDataType.INT64);
+    IMeasurementSchema second = new MeasurementSchema("second", TSDataType.INT32);
+    IMeasurementSchema omitted = new MeasurementSchema("omitted", TSDataType.BOOLEAN);
+    List<IMeasurementSchema> schemas = new ArrayList<>(Arrays.asList(first, second, omitted));
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
+    chunk.writeAlignedPoints(0, new Object[] {1L, 2, true}, schemas);
+    AlignedTVList list = chunk.getWorkingTVList();
+    List<TSDataType> dataTypes = list.getTsDataTypes();
+    BitMap firstBitmap = new BitMap(3);
+    firstBitmap.mark(1);
+    BitMap secondBitmap = new BitMap(3);
+    secondBitmap.mark(2);
+    chunk.writeAlignedTablet(
+        new long[] {-1, 1, 2},
+        new Object[] {new int[] {0, 3, 4}, null, new long[] {0, 5, 6}, new int[] {0, 7, 8}},
+        new BitMap[] {null, null, firstBitmap, secondBitmap},
+        Arrays.asList(second, null, first, second),
+        1,
+        3,
+        null);
+
+    Assert.assertEquals(Arrays.asList(first, second, omitted), chunk.getSchemaList());
+    Assert.assertSame(dataTypes, list.getTsDataTypes());
+    Assert.assertEquals(3, dataTypes.size());
+    Assert.assertEquals(3, list.rowCount());
+    Assert.assertTrue(list.isNullValue(1, 0));
+    Assert.assertEquals(6L, list.getLongByValueIndex(2, 0));
+    Assert.assertEquals(7, list.getIntByValueIndex(1, 1));
+    Assert.assertTrue(list.isNullValue(2, 1));
+    Assert.assertTrue(list.isNullValue(1, 2));
+    Assert.assertTrue(list.isNullValue(2, 2));
+    chunk.release();
+  }
+
+  @Test
+  public void testPointsExtendColumnsAfterRemovalAndHandover() {
+    IMeasurementSchema original = new MeasurementSchema("original", TSDataType.INT64);
+    IMeasurementSchema added = new MeasurementSchema("added", TSDataType.INT32);
+    AlignedWritableMemChunk chunk =
+        new AlignedWritableMemChunk(new ArrayList<>(Collections.singletonList(original)));
+    chunk.writeAlignedPoints(0, new Object[] {1L}, Collections.singletonList(original));
+    chunk.removeColumn("original");
+    chunk.writeAlignedPoints(1, new Object[] {7, null, 2L}, Arrays.asList(added, null, original));
+
+    Assert.assertEquals(3, chunk.getSchemaList().size());
+    Assert.assertEquals(1, chunk.getMeasurementIndex("added"));
+    Assert.assertEquals(2, chunk.getMeasurementIndex("original"));
+    AlignedTVList list = chunk.getWorkingTVList();
+    Assert.assertTrue(list.isNullValue(0, 1));
+    Assert.assertTrue(list.isNullValue(0, 2));
+    Assert.assertEquals(7, list.getIntByValueIndex(1, 1));
+    Assert.assertEquals(2L, list.getLongByValueIndex(1, 2));
+    chunk.handoverAlignedTvList();
+
+    IMeasurementSchema afterHandover = new MeasurementSchema("after", TSDataType.DOUBLE);
+    chunk.writeAlignedPoints(
+        2, new Object[] {3.5, 3L, 8}, Arrays.asList(afterHandover, original, added));
+    Assert.assertEquals(3, chunk.getMeasurementIndex("after"));
+    Assert.assertEquals(3, chunk.getSortedList().get(0).getTsDataTypes().size());
+    Assert.assertEquals(4, chunk.getWorkingTVList().getTsDataTypes().size());
+    Assert.assertEquals(8, chunk.getWorkingTVList().getIntByValueIndex(0, 1));
+    Assert.assertEquals(3L, chunk.getWorkingTVList().getLongByValueIndex(0, 2));
+    Assert.assertEquals(3.5, chunk.getWorkingTVList().getDoubleByValueIndex(0, 3), 0);
+    chunk.release();
+  }
+
+  @Test
+  public void testWideTabletKeepsUnwrittenColumnsLazy() {
+    int columnCount = 10_000;
+    IMeasurementSchema existing = new MeasurementSchema("existing", TSDataType.INT64);
+    AlignedWritableMemChunk chunk =
+        new AlignedWritableMemChunk(new ArrayList<>(Collections.singletonList(existing)));
+    chunk.writeAlignedPoints(0, new Object[] {1L}, Collections.singletonList(existing));
+    List<IMeasurementSchema> incomingSchemas = new ArrayList<>(columnCount);
+    Object[] values = new Object[columnCount];
+    for (int column = 0; column < columnCount; column++) {
+      incomingSchemas.add(new MeasurementSchema("s" + column, TSDataType.INT64));
+    }
+    values[0] = new long[] {2L};
+    values[columnCount - 1] = new long[] {3L};
+    chunk.writeAlignedTablet(new long[] {1}, values, null, incomingSchemas, 0, 1, null);
+
+    AlignedTVList list = chunk.getWorkingTVList();
+    Assert.assertEquals(columnCount + 1, list.getTsDataTypes().size());
+    Assert.assertEquals(columnCount + 1, chunk.getSchemaList().size());
+    Assert.assertEquals(2, list.rowCount());
+    Assert.assertEquals(2L, list.getLongByValueIndex(1, 1));
+    Assert.assertEquals(3L, list.getLongByValueIndex(1, columnCount));
+    for (int column = 1; column <= columnCount; column++) {
+      Assert.assertTrue(list.isNullValue(0, column));
+      Assert.assertEquals(column, chunk.getMeasurementIndex("s" + (column - 1)));
+      if (column > 1 && column < columnCount) {
+        Assert.assertNull(list.getValues().get(column).get(0));
+        Assert.assertTrue(list.isNullValue(1, column));
+      }
+    }
+    chunk.writeAlignedPoints(
+        2,
+        new Object[] {4L, 5L},
+        Arrays.asList(incomingSchemas.get(columnCount - 1), incomingSchemas.get(0)));
+    Assert.assertEquals(columnCount + 1, chunk.getSchemaList().size());
+    Assert.assertEquals(5L, list.getLongByValueIndex(2, 1));
+    Assert.assertEquals(4L, list.getLongByValueIndex(2, columnCount));
+    chunk.release();
+  }
+
+  @Test
+  public void testEncodeRestoresSharedMaxNumberOfPointsInChunk() {
+    IMeasurementSchema text = new MeasurementSchema("text", TSDataType.TEXT);
+    AlignedWritableMemChunk chunk =
+        new AlignedWritableMemChunk(new ArrayList<>(Collections.singletonList(text)));
+    Binary value = new Binary(new byte[1024]);
+    for (int i = 0; i < 10; i++) {
+      chunk.writeAlignedPoints(i, new Object[] {value}, Collections.singletonList(text));
+    }
+    chunk.initWorkingListForFlushIfNecessary(chunk.getWorkingTVList(), false);
+
+    long originalMaxNumberOfPointsInChunk = 100_000L;
+    BatchEncodeInfo encodeInfo =
+        new BatchEncodeInfo(0, 0, 0, 2048, originalMaxNumberOfPointsInChunk, 4096);
+    LinkedBlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    chunk.encode(ioTaskQueue, encodeInfo, new long[2048], false);
+
+    // The per-chunk point cap computed from the largest column must not leak into the shared
+    // BatchEncodeInfo used by the following devices of the same flush task.
+    Assert.assertEquals(originalMaxNumberOfPointsInChunk, encodeInfo.maxNumberOfPointsInChunk);
+    Assert.assertTrue(ioTaskQueue.size() > 1);
+    chunk.release();
+  }
+
+  @Test
+  public void testEncodeFlushesPendingPageBeforeSealingAtChunkCap() {
+    int originalThreshold = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
+    // A positive threshold selects the single-TVLIST iterator path. Keep it above the row count so
+    // the points stay in the working TVList instead of being handed over to sortedList, which
+    // would switch to the multi-list iterator that flushes pages on its own.
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(100_000);
+    AlignedWritableMemChunk chunk = null;
+    try {
+      IMeasurementSchema schema = new MeasurementSchema("s0", TSDataType.INT64);
+      List<IMeasurementSchema> schemas = Collections.singletonList(schema);
+      chunk = new AlignedWritableMemChunk(new ArrayList<>(schemas));
+      int rowCount = 2400;
+      for (int i = 0; i < rowCount; i++) {
+        chunk.writeAlignedPoints(i, new Object[] {(long) i}, schemas);
+      }
+      chunk.sortTvListForFlush();
+
+      BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+      // The 1500-point chunk cap is not a multiple of the 1000-point page cap, so the second chunk
+      // is sealed in the middle of a page. This is what target_chunk_size narrowing produces for
+      // wide TEXT columns: min(target_chunk_point_num, target_chunk_size / avg point size).
+      BatchEncodeInfo encodeInfo = new BatchEncodeInfo(0, 0, 0, 1000, 1500, 10_000_000L);
+      chunk.encode(ioTaskQueue, encodeInfo, new long[1000], false);
+
+      long totalTimePoints = 0;
+      for (Object encodedChunk : ioTaskQueue) {
+        AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) encodedChunk;
+        long timePoints = chunkWriter.getTimeChunkWriter().getStatistics().getCount();
+        totalTimePoints += timePoints;
+        for (int column = 0; column < chunkWriter.getValueChunkWriterList().size(); column++) {
+          Assert.assertEquals(
+              "the time and value chunks of one aligned chunk must contain the same points",
+              timePoints,
+              chunkWriter.getValueChunkWriterByIndex(column).getStatistics().getCount());
+        }
+      }
+      Assert.assertEquals(rowCount, totalTimePoints);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(originalThreshold);
+      if (chunk != null) {
+        chunk.release();
+      }
+    }
+  }
+}

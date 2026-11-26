@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.AbstractConsumeAllOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.AbstractConsumeAllOperator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -34,7 +35,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 /**
  * This operator is used to horizontally concatenate TsBlocks with the same timestamp column.
@@ -59,7 +60,9 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
       OperatorContext operatorContext, List<Operator> children, List<TSDataType> dataTypes) {
     super(operatorContext, children);
     checkArgument(
-        !children.isEmpty(), "child size of VerticallyConcatOperator should be larger than 0");
+        !children.isEmpty(),
+        DataNodeQueryMessages
+            .EXCEPTION_CHILD_SIZE_OF_VERTICALLYCONCATOPERATOR_SHOULD_BE_LARGER_THAN_0_14A2513A);
     this.inputIndex = new int[this.inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
   }

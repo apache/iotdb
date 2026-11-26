@@ -20,21 +20,25 @@
 package org.apache.iotdb.db.it.alignbydevice;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.experimental.categories.Category;
 
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBOrderByWithAlignByDevice2IT extends IoTDBOrderByWithAlignByDeviceIT {
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDegreeOfParallelism(4);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

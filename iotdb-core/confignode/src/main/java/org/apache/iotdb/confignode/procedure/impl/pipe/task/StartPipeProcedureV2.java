@@ -20,13 +20,18 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -37,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 
 public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
@@ -44,6 +50,8 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(StartPipeProcedureV2.class);
 
   private String pipeName;
+  private boolean isTableModel;
+  private boolean isTableModelSet;
 
   public StartPipeProcedureV2() {
     super();
@@ -54,6 +62,13 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     this.pipeName = pipeName;
   }
 
+  public StartPipeProcedureV2(String pipeName, boolean isTableModel) throws PipeException {
+    super();
+    this.pipeName = pipeName;
+    this.isTableModel = isTableModel;
+    this.isTableModelSet = true;
+  }
+
   @Override
   protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.START_PIPE;
@@ -61,32 +76,41 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("StartPipeProcedureV2: executeFromValidateTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.STARTPIPEPROCEDUREV2_EXECUTEFROMVALIDATETASK, pipeName);
+
+    if (isTableModelSet) {
+      pipeTaskInfo.get().checkBeforeStartPipe(pipeName, isTableModel);
+      return !pipeTaskInfo.get().isPipeRunning(pipeName, isTableModel)
+          || pipeTaskInfo.get().isStoppedByRuntimeException(pipeName, isTableModel);
+    }
 
     pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
-
     return !pipeTaskInfo.get().isPipeRunning(pipeName)
         || pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("StartPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.STARTPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK, pipeName);
     // Do nothing
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("StartPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
+    LOGGER.info(
+        ProcedureMessages.STARTPIPEPROCEDUREV2_EXECUTEFROMWRITECONFIGNODECONSENSUS, pipeName);
 
     TSStatus response;
     try {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING));
+              .write(
+                  isTableModelSet
+                      ? new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING, isTableModel)
+                      : new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -97,13 +121,40 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
-    LOGGER.info("StartPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
+    LOGGER.info(ProcedureMessages.STARTPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
-    final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
+    final long exceptionsClearTime = System.currentTimeMillis();
+    final boolean isStoppedByRuntimeException =
+        isTableModelSet
+            ? pipeTaskInfo.get().isStoppedByRuntimeException(pipeName, isTableModel)
+            : pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
+    final boolean hadPendingPipeMetaExceptions =
+        pipeTaskInfo.get().hasPendingPipeMetaExceptionPersistence();
+    if (hadPendingPipeMetaExceptions) {
+      persistPendingPipeMetaExceptions(env);
+    }
+    final PipeMeta pipeMeta =
+        isTableModelSet
+            ? pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel)
+            : pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    // A previous attempt may already have recorded a runtime stop before a failed consensus write
+    // or procedure recovery. Persist that state without treating a STOPPED meta push as a start.
+    if (pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING) {
+      if (!hadPendingPipeMetaExceptions) {
+        writePipeMetaChangesToConfigNodeConsensus(env);
+      }
+      return;
+    }
+    final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
+    final Map<Integer, TPushPipeMetaResp> respMap =
+        pushSinglePipeMetaToDataNodes(pipeStaticMeta, env);
+    if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap, pipeStaticMeta)) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
+    }
+    final String exceptionMessage = parsePushPipeMetaExceptionForPipe(pipeName, respMap);
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
-          "Failed to start pipe {}, details: {}, metadata will be synchronized later.",
+          ProcedureMessages.FAILED_TO_START_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
           pipeName,
           exceptionMessage);
       return;
@@ -111,33 +162,50 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     // Clear exceptions and set isStoppedByRuntimeException to false if the pipe is
     // started successfully on all data nodes
-    pipeTaskInfo.get().clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(pipeName);
+    if (isTableModelSet) {
+      pipeTaskInfo
+          .get()
+          .clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(
+              pipeName, isTableModel, exceptionsClearTime);
+    } else {
+      pipeTaskInfo
+          .get()
+          .clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(pipeName, exceptionsClearTime);
+    }
+
+    if (isStoppedByRuntimeException) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
+    }
   }
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("StartPipeProcedureV2: rollbackFromValidateTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.STARTPIPEPROCEDUREV2_ROLLBACKFROMVALIDATETASK, pipeName);
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("StartPipeProcedureV2: rollbackFromCalculateInfoForTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.STARTPIPEPROCEDUREV2_ROLLBACKFROMCALCULATEINFOFORTASK, pipeName);
     // Do nothing
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("StartPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})", pipeName);
+    LOGGER.info(
+        ProcedureMessages.STARTPIPEPROCEDUREV2_ROLLBACKFROMWRITECONFIGNODECONSENSUS, pipeName);
 
     TSStatus response;
     try {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new SetPipeStatusPlanV2(pipeName, PipeStatus.STOPPED));
+              .write(
+                  isTableModelSet
+                      ? new SetPipeStatusPlanV2(pipeName, PipeStatus.STOPPED, isTableModel)
+                      : new SetPipeStatusPlanV2(pipeName, PipeStatus.STOPPED));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -148,14 +216,14 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
-    LOGGER.info("StartPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
+    LOGGER.info(ProcedureMessages.STARTPIPEPROCEDUREV2_ROLLBACKFROMOPERATEONDATANODES, pipeName);
 
     // Push all pipe metas to datanode, may be time-consuming
     final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
-          "Failed to rollback start pipe {}, details: {}, metadata will be synchronized later.",
+          ProcedureMessages.FAILED_TO_ROLLBACK_START_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED,
           pipeName,
           exceptionMessage);
     }
@@ -166,12 +234,19 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.START_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
+    if (isTableModelSet) {
+      ReadWriteIOUtils.write(isTableModel, stream);
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
+    isTableModelSet = byteBuffer.hasRemaining();
+    if (isTableModelSet) {
+      isTableModel = ReadWriteIOUtils.readBool(byteBuffer);
+    }
   }
 
   @Override
@@ -184,13 +259,16 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     StartPipeProcedureV2 that = (StartPipeProcedureV2) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
+        && isTableModel == that.isTableModel
+        && isTableModelSet == that.isTableModelSet
         && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), pipeName, isTableModel, isTableModelSet);
   }
 }

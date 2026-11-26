@@ -31,7 +31,8 @@ public class SequentialSelectionStrategy implements EndpointSelectionStrategy {
   private int currentIndex = 0;
 
   @Override
-  public TEndPoint selectNext(List<TEndPoint> availableEndpoints, Set<TEndPoint> triedEndpoints) {
+  public synchronized TEndPoint selectNext(
+      List<TEndPoint> availableEndpoints, Set<TEndPoint> triedEndpoints) {
     if (availableEndpoints == null || availableEndpoints.isEmpty()) {
       return null;
     }
@@ -52,7 +53,7 @@ public class SequentialSelectionStrategy implements EndpointSelectionStrategy {
   }
 
   @Override
-  public void reset() {
+  public synchronized void reset() {
     currentIndex = 0;
   }
 

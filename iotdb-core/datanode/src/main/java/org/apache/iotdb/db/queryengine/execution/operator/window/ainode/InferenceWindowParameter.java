@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window.ainode;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -57,7 +58,8 @@ public abstract class InferenceWindowParameter {
     } else if (windowType == InferenceWindowType.COUNT) {
       return CountInferenceWindowParameter.deserialize(byteBuffer);
     } else {
-      throw new SemanticException("Unsupported inference window type: " + windowType);
+      throw new SemanticException(
+          DataNodeQueryMessages.UNSUPPORTED_INFERENCE_WINDOW_TYPE + windowType);
     }
   }
 }

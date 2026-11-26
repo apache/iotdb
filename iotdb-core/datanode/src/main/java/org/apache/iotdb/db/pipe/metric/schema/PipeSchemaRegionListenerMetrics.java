@@ -21,14 +21,14 @@ package org.apache.iotdb.db.pipe.metric.schema;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +50,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::createMetrics);
   }
@@ -70,12 +70,11 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::deregister);
-    if (!listeningQueueMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe schema region listener metrics, listening queue map not empty");
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the queues registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final Integer schemaRegionId) {
@@ -92,20 +91,18 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(
-      @NonNull final SchemaRegionListeningQueue schemaRegionListeningQueue,
-      final Integer schemaRegionId) {
+  public synchronized void register(
+      final SchemaRegionListeningQueue schemaRegionListeningQueue, final Integer schemaRegionId) {
     listeningQueueMap.putIfAbsent(schemaRegionId, schemaRegionListeningQueue);
     if (Objects.nonNull(metricService)) {
       createMetrics(schemaRegionId);
     }
   }
 
-  public void deregister(final Integer schemaRegionId) {
+  public synchronized void deregister(final Integer schemaRegionId) {
     if (!listeningQueueMap.containsKey(schemaRegionId)) {
       LOGGER.warn(
-          "Failed to deregister schema region listener metrics, SchemaRegionListeningQueue({}) does not exist",
-          schemaRegionId);
+          DataNodePipeMessages.FAILED_TO_DEREGISTER_SCHEMA_REGION_LISTENER_METRICS, schemaRegionId);
       return;
     }
     if (Objects.nonNull(metricService)) {

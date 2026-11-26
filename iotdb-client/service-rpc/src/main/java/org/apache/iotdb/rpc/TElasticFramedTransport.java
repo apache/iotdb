@@ -19,11 +19,23 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.TConfiguration;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.apache.thrift.transport.layered.TFramedTransport;
+
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLHandshakeException;
+
+import java.io.EOFException;
+import java.io.IOException;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 // https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
 public class TElasticFramedTransport extends TTransport {
@@ -31,9 +43,8 @@ public class TElasticFramedTransport extends TTransport {
   public static class Factory extends TTransportFactory {
 
     /**
-     * It is used to prevent the size of the parsing package from being too large and allocating the
-     * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
-     * reading.
+     * Maximum size of a frame on the wire. Uncompressed writes are checked before buffering;
+     * compressed writes are checked after compression.
      */
     protected final int thriftMaxFrameSize;
 
@@ -63,7 +74,7 @@ public class TElasticFramedTransport extends TTransport {
     }
 
     @Override
-    public TTransport getTransport(TTransport trans) {
+    public TTransport getTransport(TTransport trans) throws TTransportException {
       return new TElasticFramedTransport(
           trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     }
@@ -73,13 +84,58 @@ public class TElasticFramedTransport extends TTransport {
       TTransport underlying,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean copyBinary) {
+      boolean copyBinary)
+      throws TTransportException {
+    this(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, Integer.MAX_VALUE);
+  }
+
+  protected TElasticFramedTransport(
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary,
+      int maxReusableBufferSize)
+      throws TTransportException {
     this.underlying = underlying;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.copyBinary = copyBinary;
-    readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
-    writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+    alignUnderlyingConfiguration();
+    try {
+      readBuffer =
+          new AutoScalingBufferReadTransport(thriftDefaultBufferSize, maxReusableBufferSize);
+      writeBuffer =
+          new AutoScalingBufferWriteTransport(
+              Math.min(
+                  thriftDefaultBufferSize,
+                  Math.min(thriftMaxFrameSize, AutoResizingBuffer.MAX_ARRAY_SIZE)),
+              maxReusableBufferSize);
+    } catch (IOException e) {
+      closeAllocatedBuffers();
+      throw new TTransportException(e);
+    }
+  }
+
+  private void alignUnderlyingConfiguration() throws TTransportException {
+    TConfiguration configuration = underlying.getConfiguration();
+    if (configuration == null) {
+      return;
+    }
+    long maxMessageSize = (long) thriftMaxFrameSize + Integer.BYTES;
+    if (maxMessageSize > Integer.MAX_VALUE) {
+      throw new TTransportException(
+          TTransportException.MESSAGE_SIZE_LIMIT,
+          String.format(
+              RpcMessages
+                  .EXCEPTION_FRAME_SIZE_ARG_EXCEEDS_THE_MAXIMUM_SUPPORTED_MESSAGE_SIZE_E83C0952,
+              thriftMaxFrameSize));
+    }
+    if (configuration.getMaxFrameSize() < thriftMaxFrameSize) {
+      configuration.setMaxFrameSize(thriftMaxFrameSize);
+    }
+    if (configuration.getMaxMessageSize() < maxMessageSize) {
+      configuration.setMaxMessageSize((int) maxMessageSize);
+    }
   }
 
   protected final int thriftDefaultBufferSize;
@@ -103,7 +159,20 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void close() {
-    underlying.close();
+    try {
+      underlying.close();
+    } finally {
+      closeAllocatedBuffers();
+    }
+  }
+
+  protected void closeAllocatedBuffers() {
+    if (readBuffer != null) {
+      readBuffer.close();
+    }
+    if (writeBuffer != null) {
+      writeBuffer.close();
+    }
   }
 
   @Override
@@ -113,48 +182,159 @@ public class TElasticFramedTransport extends TTransport {
       return got;
     }
 
-    // Read another frame of data
-    readFrame();
+    try {
+      // Read another frame of data
+      readFrame();
+    } catch (TTransportException e) {
+      // Adding this workaround to avoid the Connection reset error log printed.
+      if (e.getCause() instanceof SocketException && e.getMessage().contains("Connection reset")) {
+        throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+      }
+      // There is a bug fixed in Thrift 0.15. Some unnecessary error logs may be printed.
+      // See https://issues.apache.org/jira/browse/THRIFT-5411 and
+      // https://github.com/apache/thrift/commit/be20ad7e08fab200391e3eab41acde9da2a4fd07
+      // Adding this workaround to avoid the problem.
+      if (e.getCause() instanceof SocketTimeoutException) {
+        throw new TTransportException(TTransportException.TIMED_OUT, e.getCause());
+      }
+      if (e.getCause() instanceof SSLHandshakeException) {
+        // There is an unsolved JDK bug https://bugs.openjdk.org/browse/JDK-8221218.
+        // Adding this workaround to avoid the error log printed.
+        if (e.getMessage()
+            .contains("Insufficient buffer remaining for AEAD cipher fragment (2).")) {
+          throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+        }
+        // When client with SSL shutdown due to time out. Some unnecessary error logs may be
+        // printed.
+        // Adding this workaround to avoid the problem.
+        if (e.getCause().getCause() != null && e.getCause().getCause() instanceof EOFException) {
+          throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+        }
+      }
+
+      if (e.getCause() instanceof SSLException
+          && e.getMessage().contains("Unsupported or unrecognized SSL message")) {
+        SocketAddress remoteAddress = null;
+        if (underlying instanceof TSocket) {
+          remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+        }
+        throw new TTransportException(
+            TTransportException.CORRUPTED_DATA,
+            String.format(
+                RpcMessages.NON_SSL_TO_SSL_PORT,
+                remoteAddress == null
+                    ? RpcMessages.EMPTY_MESSAGE
+                    : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress));
+      }
+      throw e;
+    }
     return readBuffer.read(buf, off, len);
   }
 
   protected void readFrame() throws TTransportException {
+    // Discard the previous frame's budget before reading the next frame header and payload.
+    resetMessageSizeAndConsumedBytes();
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
+    validateFrame(size);
+    readBuffer.fill(underlying, size);
+    // Bind subsequent protocol reads to the current frame size.
+    resetMessageSizeAndConsumedBytes(size);
+  }
 
-    if (size < 0) {
-      close();
-      throw new TTransportException(
-          TTransportException.CORRUPTED_DATA, "Read a negative frame size (" + size + ")!");
-    }
+  protected void validateFrame(int size) throws TTransportException {
+    final int HTTP_GET_SIGNATURE = 0x47455420; // "GET "
+    final int HTTP_POST_SIGNATURE = 0x504F5354; // "POST"
+    final int TLS_MIN_VERSION = 0x160300;
+    final int TLS_MAX_VERSION = 0x160303;
+    final int TLS_LENGTH_HIGH_MAX = 0x02;
 
-    if (size > thriftMaxFrameSize) {
-      close();
-      if (size == 1195725856L || size == 1347375956L) {
-        // if someone sends HTTP GET/POST to this port, the size will be read as the following
-        throw new TTransportException(
-            TTransportException.CORRUPTED_DATA,
-            "Singular frame size ("
-                + size
-                + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, please confirm that you are using the right port");
-      } else {
-        throw new TTransportException(
-            TTransportException.CORRUPTED_DATA,
-            "Frame size (" + size + ") larger than protect max size (" + thriftMaxFrameSize + ")!");
+    FrameError error = null;
+    if (size == HTTP_GET_SIGNATURE || size == HTTP_POST_SIGNATURE) {
+      error = FrameError.HTTP_REQUEST;
+    } else {
+      int high24 = size >>> 8;
+      if (high24 >= TLS_MIN_VERSION
+          && high24 <= TLS_MAX_VERSION
+          && (i32buf[3] & 0xFF) <= TLS_LENGTH_HIGH_MAX) {
+        error = FrameError.TLS_REQUEST;
+      } else if (size < 0) {
+        error = FrameError.NEGATIVE_FRAME_SIZE;
+      } else if (size > thriftMaxFrameSize) {
+        error = FrameError.FRAME_SIZE_EXCEEDED;
       }
     }
-    readBuffer.fill(underlying, size);
+
+    if (error == null) {
+      return;
+    }
+
+    SocketAddress remoteAddress = null;
+    if (underlying instanceof TSocket) {
+      remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+    }
+    String remoteInfo =
+        (remoteAddress == null)
+            ? RpcMessages.EMPTY_MESSAGE
+            : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
+    close();
+
+    error.throwException(size, remoteInfo, thriftMaxFrameSize);
+  }
+
+  private enum FrameError {
+    HTTP_REQUEST(RpcMessages.FRAME_ERROR_HTTP_REQUEST),
+    TLS_REQUEST(RpcMessages.FRAME_ERROR_TLS_REQUEST),
+    NEGATIVE_FRAME_SIZE(RpcMessages.FRAME_ERROR_NEGATIVE_FRAME_SIZE),
+    FRAME_SIZE_EXCEEDED(RpcMessages.FRAME_ERROR_FRAME_SIZE_EXCEEDED),
+    STRING_LENGTH_EXCEEDED(RpcMessages.FRAME_ERROR_STRING_LENGTH_EXCEEDED),
+    INSUFFICIENT_FRAME_DATA(
+        RpcMessages.EXCEPTION_REQUIRED_READ_SIZE_ARG_EXCEEDS_REMAINING_FRAME_SIZE_ARG_ARG_9C0541EE);
+
+    private final String messageFormat;
+
+    FrameError(String messageFormat) {
+      this.messageFormat = messageFormat;
+    }
+
+    void throwException(long size, String remoteInfo, int maxSize) throws TTransportException {
+      String message =
+          (this == FRAME_SIZE_EXCEEDED
+                  || this == STRING_LENGTH_EXCEEDED
+                  || this == INSUFFICIENT_FRAME_DATA)
+              ? String.format(messageFormat, size, maxSize, remoteInfo)
+              : String.format(messageFormat, size, remoteInfo);
+      throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
+    }
+  }
+
+  protected void checkWriteFrameSize(int size) throws TTransportException {
+    if (size <= thriftMaxFrameSize) {
+      return;
+    }
+    SocketAddress remoteAddress = null;
+    if (underlying instanceof TSocket) {
+      remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+    }
+    String remoteInfo = (remoteAddress == null) ? "" : " to " + remoteAddress;
+    String message =
+        String.format(
+            FrameError.FRAME_SIZE_EXCEEDED.messageFormat, size, thriftMaxFrameSize, remoteInfo);
+    close();
+    throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
   }
 
   @Override
   public void flush() throws TTransportException {
     int length = writeBuffer.getPos();
+    checkWriteFrameSize(length);
     TFramedTransport.encodeFrameSize(length, i32buf);
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuffer(), 0, length);
-    writeBuffer.reset();
-    if (length > thriftDefaultBufferSize) {
-      writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
+    try {
+      writeBuffer.resetAndResize();
+    } catch (IOException e) {
+      throw new TTransportException(e);
     }
     underlying.flush();
   }
@@ -171,13 +351,85 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void checkReadBytesAvailable(long numBytes) throws TTransportException {
-    // do nothing now.
-    // here we can do some checkm, e.g., see whether the memory is enough.
+    // RPC messages are flushed as complete frames. Container checks pass their minimum encoded
+    // size here, before generated code allocates the container. Compare it with actual buffered
+    // data, not just the configured frame cap. Use readBuffer directly because copyBinary makes
+    // this transport's getBytesRemainingInBuffer() return -1.
+    int remaining = readBuffer.getBytesRemainingInBuffer();
+    FrameError error;
+    int limit;
+    if (numBytes >= thriftMaxFrameSize) {
+      error = FrameError.STRING_LENGTH_EXCEEDED;
+      limit = thriftMaxFrameSize;
+    } else if (numBytes > remaining) {
+      error = FrameError.INSUFFICIENT_FRAME_DATA;
+      limit = remaining;
+    } else {
+      return;
+    }
+    SocketAddress remoteAddress = null;
+    if (underlying instanceof TSocket) {
+      remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+    }
+    String remoteInfo =
+        (remoteAddress == null)
+            ? RpcMessages.EMPTY_MESSAGE
+            : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
+    close();
+    error.throwException(numBytes, remoteInfo, limit);
   }
 
   @Override
-  public void write(byte[] buf, int off, int len) {
-    writeBuffer.write(buf, off, len);
+  public void resetMessageSizeAndConsumedBytes(long newSize) throws TTransportException {
+    underlying.resetMessageSizeAndConsumedBytes(newSize);
+  }
+
+  @Override
+  public void write(byte[] buf, int off, int len) throws TTransportException {
+    if (writeBuffer.tryWriteWithinCapacity(buf, off, len)) {
+      return;
+    }
+    long size = (long) writeBuffer.getPos() + len;
+    int maxSize = getMaxWriteBufferSize();
+    if (size > maxSize) {
+      // Thrift serializes the whole request before flush. Reject it before growing the buffer so
+      // an oversized request cannot keep allocating and retain the caller's query memory.
+      // TSocket.close() clears its socket, so retain the destination before invalidating it.
+      SocketAddress remoteAddress = null;
+      if (underlying instanceof TSocket socket && socket.getSocket() != null) {
+        remoteAddress = socket.getSocket().getRemoteSocketAddress();
+      }
+      close();
+      String message;
+      if (remoteAddress == null) {
+        message =
+            String.format(
+                maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
+                    ? RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA
+                    : RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9,
+                size,
+                maxSize);
+      } else {
+        message =
+            String.format(
+                maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
+                    ? RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C
+                    : RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898,
+                size,
+                maxSize,
+                remoteAddress);
+      }
+      throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
+    }
+    writeBuffer.write(buf, off, len, maxSize);
+  }
+
+  protected int getMaxWriteBufferSize() {
+    return Math.min(thriftMaxFrameSize, AutoResizingBuffer.MAX_ARRAY_SIZE);
   }
 
   public TTransport getSocket() {

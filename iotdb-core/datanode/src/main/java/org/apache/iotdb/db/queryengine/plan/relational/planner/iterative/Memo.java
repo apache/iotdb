@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
+import org.apache.ratis.thirdparty.com.google.common.collect.HashMultiset;
+import org.apache.ratis.thirdparty.com.google.common.collect.Multiset;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,10 +34,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Plans.resolveGroupReferences;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 /**
  * Stores a plan in a form that's efficient to mutate locally (i.e. without having to do full
@@ -88,7 +90,10 @@ public class Memo {
   }
 
   private Group getGroup(int group) {
-    checkArgument(groups.containsKey(group), "Invalid group: %s", group);
+    checkArgument(
+        groups.containsKey(group),
+        DataNodeQueryMessages.EXCEPTION_INVALID_GROUP_COLON_ARG_C0BAD253,
+        group);
     return groups.get(group);
   }
 
@@ -114,7 +119,8 @@ public class Memo {
 
     checkArgument(
         new HashSet<>(old.getOutputSymbols()).equals(new HashSet<>(node.getOutputSymbols())),
-        "%s: transformed expression doesn't produce same outputs: %s vs %s",
+        DataNodeQueryMessages
+            .EXCEPTION_ARG_COLON_TRANSFORMED_EXPRESSION_DOESN_QUOTE_T_PRODUCE_SAME_OUTPUTS_COLON_ARG_VS_F9BAF138,
         reason,
         old.getOutputSymbols(),
         node.getOutputSymbols());
@@ -154,7 +160,9 @@ public class Memo {
 
     for (int group : references) {
       Group childGroup = groups.get(group);
-      checkState(childGroup.incomingReferences.remove(fromGroup), "Reference to remove not found");
+      checkState(
+          childGroup.incomingReferences.remove(fromGroup),
+          DataNodeQueryMessages.EXCEPTION_REFERENCE_TO_REMOVE_NOT_FOUND_2EB93289);
 
       if (childGroup.incomingReferences.isEmpty()) {
         deleteGroup(group);
@@ -172,7 +180,7 @@ public class Memo {
   private void deleteGroup(int group) {
     checkArgument(
         getGroup(group).incomingReferences.isEmpty(),
-        "Cannot delete group that has incoming references");
+        DataNodeQueryMessages.EXCEPTION_CANNOT_DELETE_GROUP_THAT_HAS_INCOMING_REFERENCES_83C9D700);
     PlanNode deletedNode = groups.remove(group).membership;
     decrementReferenceCounts(deletedNode, group);
   }
@@ -225,7 +233,8 @@ public class Memo {
     private PlanCostEstimate cost;*/
 
     private Group(PlanNode member) {
-      this.membership = requireNonNull(member, "member is null");
+      this.membership =
+          requireNonNull(member, DataNodeQueryMessages.EXCEPTION_MEMBER_IS_NULL_466D8670);
     }
   }
 }

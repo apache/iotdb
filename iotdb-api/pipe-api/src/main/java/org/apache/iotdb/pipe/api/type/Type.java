@@ -49,7 +49,10 @@ public enum Type {
   BLOB((byte) 10),
 
   /* STRING */
-  STRING((byte) 11);
+  STRING((byte) 11),
+
+  /* OBJECT */
+  OBJECT((byte) 12);
 
   private final byte dataType;
 

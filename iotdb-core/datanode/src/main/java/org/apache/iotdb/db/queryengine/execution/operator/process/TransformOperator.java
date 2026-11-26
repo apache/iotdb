@@ -19,26 +19,27 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.builder.EvaluationDAGBuilder;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.TsBlockInputDataSet;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -46,6 +47,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -54,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class TransformOperator implements ProcessOperator {
 
@@ -98,9 +101,11 @@ public class TransformOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
-    // use DriverTaskID().getFullId() to ensure that udtfQueryId for each TransformOperator is
-    // unique
-    this.udtfQueryId = operatorContext.getDriverContext().getDriverTaskID().getFullId();
+    // One driver can contain multiple TransformOperators, each owning its UDF resources.
+    this.udtfQueryId =
+        operatorContext.getDriverContext().getDriverTaskID().getFullId()
+            + "_"
+            + operatorContext.getOperatorId();
 
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
@@ -131,27 +136,20 @@ public class TransformOperator implements ProcessOperator {
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
       Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    UDFManagementService.getInstance().acquireLock();
-    try {
-      // This statement must be surrounded by the registration lock.
-      UDFClassLoaderManager.getInstance().initializeUDFQuery(udtfQueryId);
-      // UDF executors will be initialized at the same time
-      transformers =
-          new EvaluationDAGBuilder(
-                  udtfQueryId,
-                  inputLayer,
-                  inputLocations,
-                  outputExpressions,
-                  expressionTypes,
-                  udtfContext,
-                  udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
-              .buildLayerMemoryAssigner()
-              .bindInputLayerColumnIndexWithExpression()
-              .buildResultColumnPointReaders()
-              .getOutputReaders();
-    } finally {
-      UDFManagementService.getInstance().releaseLock();
-    }
+    // UDF executors will be initialized at the same time
+    transformers =
+        new EvaluationDAGBuilder(
+                udtfQueryId,
+                inputLayer,
+                inputLocations,
+                outputExpressions,
+                expressionTypes,
+                udtfContext,
+                udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
+            .buildLayerMemoryAssigner()
+            .bindInputLayerColumnIndexWithExpression()
+            .buildResultColumnPointReaders()
+            .getOutputReaders();
   }
 
   protected YieldableState iterateAllColumnsToNextValid() throws Exception {
@@ -225,6 +223,7 @@ public class TransformOperator implements ProcessOperator {
   @Override
   public TsBlock next() throws Exception {
 
+    long start = System.nanoTime();
     try {
       YieldableState yieldableState = iterateAllColumnsToNextValid();
       if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -236,9 +235,10 @@ public class TransformOperator implements ProcessOperator {
       final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
       final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
       final int columnCount = columnBuilders.length;
-
-      int rowCount = 0;
-      while (!timeHeap.isEmpty()) {
+      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+      while (!timeHeap.isEmpty()
+          && !tsBlockBuilder.isFull()
+          && System.nanoTime() - start < maxRuntime) {
         final long currentTime = timeHeap.pollFirst();
 
         // time
@@ -253,25 +253,26 @@ public class TransformOperator implements ProcessOperator {
             }
             timeHeap.add(currentTime);
 
-            tsBlockBuilder.declarePositions(rowCount);
             return tsBlockBuilder.build();
           }
         }
 
         prepareEachColumn(columnCount);
 
-        ++rowCount;
+        tsBlockBuilder.declarePosition();
 
         yieldableState = iterateAllColumnsToNextValid();
         if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
-          tsBlockBuilder.declarePositions(rowCount);
           return tsBlockBuilder.build();
         }
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
 
-      tsBlockBuilder.declarePositions(rowCount);
+      if (tsBlockBuilder.isEmpty()) {
+        return null;
+      }
+
       return tsBlockBuilder.build();
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -280,7 +281,7 @@ public class TransformOperator implements ProcessOperator {
 
   protected void prepareTsBlockBuilder(TsBlockBuilder tsBlockBuilder) {
     if (outputDataTypes == null) {
-      outputDataTypes = new ArrayList<>();
+      outputDataTypes = new ArrayList<>(transformers.length);
       for (LayerReader reader : transformers) {
         outputDataTypes.add(reader.getDataTypes()[0]);
       }
@@ -323,34 +324,18 @@ public class TransformOperator implements ProcessOperator {
     if (valueColumn.isNull(currentIndex)) {
       writer.appendNull();
     } else {
-      TSDataType type = transformers[index].getDataTypes()[0];
-      switch (type) {
-        case INT32:
-        case DATE:
-          writer.writeInt(valueColumn.getInt(currentIndex));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          writer.writeLong(valueColumn.getLong(currentIndex));
-          break;
-        case FLOAT:
-          writer.writeFloat(valueColumn.getFloat(currentIndex));
-          break;
-        case DOUBLE:
-          writer.writeDouble(valueColumn.getDouble(currentIndex));
-          break;
-        case BOOLEAN:
-          writer.writeBoolean(valueColumn.getBoolean(currentIndex));
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          writer.writeBinary(valueColumn.getBinary(currentIndex));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", type));
+      final TSDataType dataType = transformers[index].getDataTypes()[0];
+      final Type type;
+      try {
+        type = Type.fromTsDataType(dataType);
+      } catch (final UnsupportedOperationException ignored) {
+        throw new UnSupportedDataTypeException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348, dataType));
       }
+      TypeServices.Transformation.TRANSFORM_COLUMN_VALUE_WRITER_SERVICE
+          .call(type)
+          .write(writer, valueColumn, currentIndex);
     }
 
     shouldIterateReadersToNextValid[index] = true;

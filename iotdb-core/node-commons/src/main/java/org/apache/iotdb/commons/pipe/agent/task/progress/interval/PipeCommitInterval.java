@@ -20,9 +20,11 @@
 package org.apache.iotdb.commons.pipe.agent.task.progress.interval;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.interval.Interval;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -40,8 +42,9 @@ public class PipeCommitInterval extends Interval<PipeCommitInterval> {
       final PipeTaskMeta pipeTaskMeta) {
     super(start, end);
     this.pipeTaskMeta = pipeTaskMeta;
-    this.currentIndex = currentIndex;
-    this.onCommittedHooks = onCommittedHooks;
+    this.currentIndex =
+        Objects.nonNull(currentIndex) ? currentIndex : MinimumProgressIndex.INSTANCE;
+    this.onCommittedHooks = new ArrayList<>(onCommittedHooks);
   }
 
   @Override

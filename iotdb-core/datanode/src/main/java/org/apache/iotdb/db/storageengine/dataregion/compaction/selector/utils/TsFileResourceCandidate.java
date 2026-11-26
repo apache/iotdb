@@ -100,7 +100,12 @@ public class TsFileResourceCandidate {
           deviceTimeIndex = new ArrayDeviceTimeIndex();
           return;
         }
-        deviceTimeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
+        deviceTimeIndex =
+            CompactionUtils.buildDeviceTimeIndex(
+                resource,
+                compactionScheduleContext == null
+                    ? IDeviceID.Deserializer.DEFAULT_DESERIALIZER
+                    : compactionScheduleContext.getCachedDeviceIdDeserializer());
       } finally {
         resource.readUnlock();
       }

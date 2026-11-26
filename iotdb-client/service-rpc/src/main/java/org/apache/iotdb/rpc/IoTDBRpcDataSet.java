@@ -20,19 +20,21 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 
 import org.apache.thrift.TException;
-import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.PublicBAOS;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -53,6 +55,7 @@ public class IoTDBRpcDataSet {
 
   private final String sql;
   private boolean isClosed = false;
+  private boolean explicitlyClosed = false;
   private IClientRPCService.Iface client;
   private final List<String> columnNameList; // no deduplication
   private final List<String> columnTypeList; // no deduplication
@@ -83,6 +86,8 @@ public class IoTDBRpcDataSet {
   private int queryResultIndex; // the index of bytebuffer in queryResult
   private int tsBlockSize; // the size of current tsBlock
   private int tsBlockIndex; // the row index in current tsBlock
+  // the fragment of a TsBlock that is partially received; null if there is no pending fragment
+  private ResultFragmentBuffer fragmentBuffer;
   private final ZoneId zoneId;
   private final String timeFormat;
 
@@ -110,6 +115,53 @@ public class IoTDBRpcDataSet {
       int timeFactor,
       boolean tableModel,
       List<Integer> columnIndex2TsBlockColumnIndexList) {
+    this(
+        sql,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        ignoreTimeStamp,
+        moreData,
+        queryId,
+        statementId,
+        client,
+        sessionId,
+        queryResult,
+        fetchSize,
+        timeout,
+        zoneId,
+        timeFormat,
+        timeFactor,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
+  }
+
+  @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
+  public IoTDBRpcDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      boolean moreData,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      int fetchSize,
+      long timeout,
+      ZoneId zoneId,
+      String timeFormat,
+      int timeFactor,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength) {
     this.sessionId = sessionId;
     this.statementId = statementId;
     // only used for tree model, table model this field will always be true
@@ -183,12 +235,13 @@ public class IoTDBRpcDataSet {
       }
     }
 
-    this.queryResult = queryResult;
+    this.queryResult = new ArrayList<>();
+    this.queryResultIndex = 0;
     this.queryResultSize = 0;
     if (queryResult != null) {
-      queryResultSize = queryResult.size();
+      addResponse(queryResult, offsetSet, offset, totalLength);
+      this.queryResultSize = this.queryResult.size();
     }
-    this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
     this.zoneId = zoneId;
@@ -199,14 +252,21 @@ public class IoTDBRpcDataSet {
     if (columnIndex2TsBlockColumnIndexList.size() != this.columnNameList.size()) {
       throw new IllegalArgumentException(
           String.format(
-              "Size of columnIndex2TsBlockColumnIndexList %s doesn't equal to size of columnNameList %s.",
-              columnIndex2TsBlockColumnIndexList.size(), this.columnNameList.size()));
+              RpcMessages
+                  .EXCEPTION_SIZE_COLUMNINDEX2TSBLOCKCOLUMNINDEXLIST_ARG_DOESN_T_EQUAL_SIZE_COLUMNNAMELIST_ARG_F1209A2B,
+              columnIndex2TsBlockColumnIndexList.size(),
+              this.columnNameList.size()));
     }
     this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
   }
 
   public void close() throws StatementExecutionException, TException {
+    close(true);
+  }
+
+  private void close(boolean explicitlyClosed) throws StatementExecutionException, TException {
     if (isClosed) {
+      this.explicitlyClosed = this.explicitlyClosed || explicitlyClosed;
       return;
     }
     if (client != null) {
@@ -217,17 +277,21 @@ public class IoTDBRpcDataSet {
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
       } catch (StatementExecutionException e) {
-        throw new StatementExecutionException(
-            "Error occurs for close operation in server side because ", e);
+        throw new StatementExecutionException(RpcMessages.CLOSE_OPERATION_SERVER_ERROR, e);
       } catch (TException e) {
-        throw new TException("Error occurs when connecting to server for close operation ", e);
+        throw new TException(RpcMessages.CLOSE_OPERATION_CONNECTION_ERROR, e);
       }
     }
     client = null;
     isClosed = true;
+    fragmentBuffer = null;
+    this.explicitlyClosed = explicitlyClosed;
   }
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
+    if (explicitlyClosed) {
+      throw new IoTDBConnectionException(RpcMessages.DATASET_ALREADY_CLOSED);
+    }
     if (hasCachedBlock()) {
       lastReadWasNull = false;
       constructOneRow();
@@ -239,48 +303,147 @@ public class IoTDBRpcDataSet {
       return true;
     }
 
-    if (moreData && fetchResults() && hasCachedByteBuffer()) {
+    // one oversized TsBlock may need several fetch RPCs before it is fully assembled
+    while (moreData && !hasCachedByteBuffer()) {
+      if (!fetchResults()) {
+        break;
+      }
+    }
+    if (hasCachedByteBuffer()) {
       constructOneTsBlock();
       constructOneRow();
       return true;
     } else {
       try {
-        close();
+        close(false);
         return false;
       } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot close dataset, because of network connection: {} ", e);
+        throw new IoTDBConnectionException(RpcMessages.CANNOT_CLOSE_DATASET, e);
       }
     }
   }
 
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
     if (isClosed) {
-      throw new IoTDBConnectionException("This DataSet is already closed");
+      throw new IoTDBConnectionException(RpcMessages.DATASET_ALREADY_CLOSED);
     }
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
     req.setStatementId(statementId);
     req.setTimeout(timeout);
+    // a new client always sets offset (0 if nothing pending), which enables bounded-payload
+    // responses on the server
+    req.setOffset(fragmentBuffer == null ? 0 : fragmentBuffer.getNextOffset());
     try {
       TSFetchResultsResp resp = client.fetchResultsV2(req);
       RpcUtils.verifySuccess(resp.getStatus());
       moreData = resp.moreData;
       if (!resp.hasResultSet) {
-        close();
+        close(false);
       } else {
-        queryResult = resp.getQueryResult();
+        queryResult = new ArrayList<>();
         queryResultIndex = 0;
-        queryResultSize = 0;
-        if (queryResult != null) {
-          queryResultSize = queryResult.size();
-        }
+        addResponse(resp.getQueryResult(), resp.isSetOffset(), resp.offset, resp.totalLength);
+        queryResultSize = queryResult.size();
         this.tsBlockSize = 0;
         this.tsBlockIndex = -1;
       }
       return resp.hasResultSet;
     } catch (TException e) {
       throw new IoTDBConnectionException(
-          "Cannot fetch result from server, because of network connection: {} ", e);
+          RpcMessages.EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326,
+          e);
+    }
+  }
+
+  /**
+   * Adds the blocks of one response to {@link #queryResult}, reassembling the fragment that ends
+   * the response before the block is consumed.
+   */
+  private void addResponse(
+      List<ByteBuffer> blocks, boolean offsetSet, int nextOffset, int totalLength) {
+    if (blocks == null || blocks.isEmpty()) {
+      return;
+    }
+    int blockIndex = 0;
+
+    if (fragmentBuffer != null) {
+      fragmentBuffer.append(blocks.get(blockIndex++));
+      if (offsetSet && blockIndex == blocks.size()) {
+        fragmentBuffer.updateOffset(nextOffset);
+        return;
+      }
+      queryResult.add(fragmentBuffer.toByteBuffer());
+      fragmentBuffer = null;
+    }
+
+    int lastCompleteBlockIndex = offsetSet ? blocks.size() - 1 : blocks.size();
+    while (blockIndex < lastCompleteBlockIndex) {
+      queryResult.add(blocks.get(blockIndex++));
+    }
+
+    if (offsetSet) {
+      if (totalLength <= 0) {
+        throw new IllegalArgumentException(
+            RpcMessages
+                .EXCEPTION_MISSING_TOTALLENGTH_FOR_THE_FIRST_FRAGMENT_OF_A_CHUNKED_TSBLOCK_1D11374F);
+      }
+      fragmentBuffer = new ResultFragmentBuffer(totalLength);
+      fragmentBuffer.append(blocks.get(blockIndex));
+      fragmentBuffer.updateOffset(nextOffset);
+    }
+  }
+
+  /** Accumulates the fragments of one oversized serialized TsBlock until it is complete. */
+  private static class ResultFragmentBuffer {
+
+    private final PublicBAOS buffer;
+    private final int totalLength;
+    private int nextOffset;
+
+    private ResultFragmentBuffer(int totalLength) {
+      this.buffer = new PublicBAOS(totalLength);
+      this.totalLength = totalLength;
+    }
+
+    private int getNextOffset() {
+      return nextOffset;
+    }
+
+    private void append(ByteBuffer fragment) {
+      if (!fragment.hasRemaining()) {
+        throw new IllegalArgumentException(
+            RpcMessages
+                .EXCEPTION_EMPTY_FRAGMENT_RECEIVED_WHEN_ASSEMBLING_A_CHUNKED_QUERY_RESULT_03A0EF39);
+      }
+      // a fragment may be a slice of a larger buffer, so honor arrayOffset and position
+      buffer.write(
+          fragment.array(), fragment.arrayOffset() + fragment.position(), fragment.remaining());
+    }
+
+    private void updateOffset(int nextOffset) {
+      // the accumulated buffer only grows with non-empty fragments, so this also rejects a
+      // non-increasing offset
+      if (nextOffset != buffer.size()) {
+        throw new IllegalArgumentException(
+            String.format(
+                RpcMessages
+                    .EXCEPTION_FRAGMENT_OFFSET_ARG_DOES_NOT_MATCH_THE_ACCUMULATED_LENGTH_ARG_1EB45347,
+                nextOffset,
+                buffer.size()));
+      }
+      this.nextOffset = nextOffset;
+    }
+
+    private ByteBuffer toByteBuffer() {
+      if (buffer.size() != totalLength) {
+        throw new IllegalArgumentException(
+            String.format(
+                RpcMessages
+                    .EXCEPTION_ASSEMBLED_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_THE_TOTAL_LENGTH_ARG_925DCB15,
+                buffer.size(),
+                totalLength));
+      }
+      return ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size());
     }
   }
 
@@ -328,9 +491,16 @@ public class IoTDBRpcDataSet {
     return getBooleanByTsBlockColumnIndex(getTsBlockColumnIndexForColumnName(columnName));
   }
 
+  // A negative tsBlockColumnIndex denotes the tree-model time pseudo-column. Only getLong,
+  // getString and getObject can serve it; the strictly-typed getters reject it here so that
+  // callers see a StatementExecutionException instead of an ArrayIndexOutOfBoundsException
+  // escaping from TsBlock.getColumn(-1).
   private boolean getBooleanByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException(RpcMessages.CANNOT_READ_BOOLEAN_FROM_TIME_COLUMN);
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(tsBlockColumnIndex).getBoolean(tsBlockIndex);
@@ -351,6 +521,9 @@ public class IoTDBRpcDataSet {
   private double getDoubleByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException(RpcMessages.CANNOT_READ_DOUBLE_FROM_TIME_COLUMN);
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(tsBlockColumnIndex).getDouble(tsBlockIndex);
@@ -371,6 +544,9 @@ public class IoTDBRpcDataSet {
   private float getFloatByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException(RpcMessages.CANNOT_READ_FLOAT_FROM_TIME_COLUMN);
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(tsBlockColumnIndex).getFloat(tsBlockIndex);
@@ -391,6 +567,9 @@ public class IoTDBRpcDataSet {
   private int getIntByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException(RpcMessages.CANNOT_READ_INT32_FROM_TIME_COLUMN);
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       TSDataType type = curTsBlock.getColumn(tsBlockColumnIndex).getDataType();
@@ -449,6 +628,9 @@ public class IoTDBRpcDataSet {
   private Binary getBinaryTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException(RpcMessages.CANNOT_READ_BINARY_FROM_TIME_COLUMN);
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex);
@@ -474,34 +656,10 @@ public class IoTDBRpcDataSet {
       return null;
     }
     lastReadWasNull = false;
-    TSDataType tsDataType = getDataTypeByTsBlockColumnIndex(tsBlockColumnIndex);
-    switch (tsDataType) {
-      case BOOLEAN:
-      case INT32:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-        return curTsBlock.getColumn(tsBlockColumnIndex).getObject(tsBlockIndex);
-      case TIMESTAMP:
-        long timestamp =
-            (tsBlockColumnIndex == -1
-                ? curTsBlock.getTimeByIndex(tsBlockIndex)
-                : curTsBlock.getColumn(tsBlockColumnIndex).getLong(tsBlockIndex));
-        return convertToTimestamp(timestamp, timeFactor);
-      case TEXT:
-      case STRING:
-        return curTsBlock
-            .getColumn(tsBlockColumnIndex)
-            .getBinary(tsBlockIndex)
-            .getStringValue(TSFileConfig.STRING_CHARSET);
-      case BLOB:
-        return BytesUtils.parseBlobByteArrayToString(
-            curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex).getValues());
-      case DATE:
-        return DateUtils.formatDate(curTsBlock.getColumn(tsBlockColumnIndex).getInt(tsBlockIndex));
-      default:
-        return null;
-    }
+    Type type = Type.fromTsDataType(getDataTypeByTsBlockColumnIndex(tsBlockColumnIndex));
+    return TypeServices.RPC_OBJECT_READER_SERVICE
+        .call(type)
+        .read(type, getColumnByTsBlockColumnIndex(tsBlockColumnIndex), tsBlockIndex, timeFactor);
   }
 
   public String getString(int columnIndex) throws StatementExecutionException {
@@ -524,44 +682,22 @@ public class IoTDBRpcDataSet {
       return null;
     }
     lastReadWasNull = false;
-    return getString(tsBlockColumnIndex, getDataTypeByTsBlockColumnIndex(tsBlockColumnIndex));
+    Type type = Type.fromTsDataType(getDataTypeByTsBlockColumnIndex(tsBlockColumnIndex));
+    return TypeServices.RPC_STRING_READER_SERVICE
+        .call(type)
+        .read(
+            type,
+            getColumnByTsBlockColumnIndex(tsBlockColumnIndex),
+            tsBlockIndex,
+            timeFormat,
+            timePrecision,
+            zoneId);
   }
 
-  private String getString(int index, TSDataType tsDataType) {
-    switch (tsDataType) {
-      case BOOLEAN:
-        return String.valueOf(curTsBlock.getColumn(index).getBoolean(tsBlockIndex));
-      case INT32:
-        return String.valueOf(curTsBlock.getColumn(index).getInt(tsBlockIndex));
-      case INT64:
-        return String.valueOf(
-            (index == -1
-                ? curTsBlock.getTimeByIndex(tsBlockIndex)
-                : curTsBlock.getColumn(index).getLong(tsBlockIndex)));
-      case TIMESTAMP:
-        long timestamp =
-            (index == -1
-                ? curTsBlock.getTimeByIndex(tsBlockIndex)
-                : curTsBlock.getColumn(index).getLong(tsBlockIndex));
-        return RpcUtils.formatDatetime(timeFormat, timePrecision, timestamp, zoneId);
-      case FLOAT:
-        return String.valueOf(curTsBlock.getColumn(index).getFloat(tsBlockIndex));
-      case DOUBLE:
-        return String.valueOf(curTsBlock.getColumn(index).getDouble(tsBlockIndex));
-      case TEXT:
-      case STRING:
-        return curTsBlock
-            .getColumn(index)
-            .getBinary(tsBlockIndex)
-            .getStringValue(TSFileConfig.STRING_CHARSET);
-      case BLOB:
-        return BytesUtils.parseBlobByteArrayToString(
-            curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
-      case DATE:
-        return DateUtils.formatDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
-      default:
-        return null;
-    }
+  private Column getColumnByTsBlockColumnIndex(int tsBlockColumnIndex) {
+    return tsBlockColumnIndex == -1
+        ? curTsBlock.getTimeColumn()
+        : curTsBlock.getColumn(tsBlockColumnIndex);
   }
 
   public Timestamp getTimestamp(int columnIndex) throws StatementExecutionException {
@@ -612,11 +748,11 @@ public class IoTDBRpcDataSet {
 
   public String findColumnNameByIndex(int columnIndex) throws StatementExecutionException {
     if (columnIndex <= 0) {
-      throw new StatementExecutionException("column index should start from 1");
+      throw new StatementExecutionException(RpcMessages.COLUMN_INDEX_SHOULD_START_FROM_1);
     }
     if (columnIndex > columnNameList.size()) {
       throw new StatementExecutionException(
-          String.format("column index %d out of range %d", columnIndex, columnNameList.size()));
+          String.format(RpcMessages.COLUMN_INDEX_OUT_OF_RANGE, columnIndex, columnNameList.size()));
     }
     return columnNameList.get(columnIndex - 1);
   }
@@ -625,7 +761,7 @@ public class IoTDBRpcDataSet {
   private int getTsBlockColumnIndexForColumnName(String columnName) {
     Integer index = columnName2TsBlockColumnIndexMap.get(columnName);
     if (index == null) {
-      throw new IllegalArgumentException("Unknown column name: " + columnName);
+      throw new IllegalArgumentException(RpcMessages.UNKNOWN_COLUMN_NAME + columnName);
     }
     return index;
   }
@@ -635,11 +771,14 @@ public class IoTDBRpcDataSet {
   }
 
   public void checkRecord() throws StatementExecutionException {
+    if (explicitlyClosed) {
+      throw new StatementExecutionException(RpcMessages.DATASET_ALREADY_CLOSED);
+    }
     if (queryResultIndex > queryResultSize
         || tsBlockIndex >= tsBlockSize
         || queryResult == null
         || curTsBlock == null) {
-      throw new StatementExecutionException("No record remains");
+      throw new StatementExecutionException(RpcMessages.NO_RECORD_REMAINS);
     }
   }
 

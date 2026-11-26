@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
@@ -30,11 +31,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -42,27 +42,31 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class ShowPipeTask implements IConfigTask {
 
   private final ShowPipesStatement showPipesStatement;
+  private final String userName;
 
-  public ShowPipeTask(final ShowPipesStatement showPipesStatement) {
+  public ShowPipeTask(final ShowPipesStatement showPipesStatement, final String userName) {
     this.showPipesStatement = showPipesStatement;
+    this.userName = userName;
   }
 
-  public ShowPipeTask(final ShowPipes node) {
+  public ShowPipeTask(final ShowPipes node, final String userName) {
     showPipesStatement = new ShowPipesStatement();
     showPipesStatement.setPipeName(node.getPipeName());
     showPipesStatement.setWhereClause(node.hasWhereClause());
     showPipesStatement.setTableModel(true);
+    this.userName = userName;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showPipes(showPipesStatement);
+    return configTaskExecutor.showPipes(showPipesStatement, userName);
   }
 
   public static void buildTSBlock(
@@ -126,6 +130,19 @@ public class ShowPipeTask implements IConfigTask {
                   tPipeInfo.isSetEstimatedRemainingTime()
                       ? String.format("%.2f", remainingTime)
                       : "Unknown",
+                  TSFileConfig.STRING_CHARSET));
+      if (tPipeInfo.isSetIsDegraded()) {
+        builder.getColumnBuilder(9).writeBoolean(tPipeInfo.isIsDegraded());
+      } else {
+        builder.getColumnBuilder(9).appendNull();
+      }
+      builder
+          .getColumnBuilder(10)
+          .writeBinary(
+              new Binary(
+                  tPipeInfo.isSetRecentFailures()
+                      ? new TreeMap<>(tPipeInfo.getRecentFailures()).toString()
+                      : "{}",
                   TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }

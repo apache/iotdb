@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -64,7 +65,7 @@ public class IoTDBLastQueryWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete timeseries root.sg1.d1.s2");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s1 where time <= 27");
     } catch (Exception e) {
       e.printStackTrace();
@@ -125,7 +126,8 @@ public class IoTDBLastQueryWithDeletionIT {
                 "40,root.sg1.d2.s2,40,INT32",
                 "30,root.sg1.d2.s3,30,INT64",
                 "30,root.sg1.d2.s4,false,BOOLEAN",
-                "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
+                "40,root.sg1.d2.s5,non_aligned_test40,TEXT",
+                "-40,root.sg1.d2.s6,40.0,DOUBLE"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();

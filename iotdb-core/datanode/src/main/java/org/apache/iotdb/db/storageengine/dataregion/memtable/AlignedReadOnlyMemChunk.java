@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
-import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
@@ -39,9 +40,10 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
@@ -49,7 +51,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private final String timeChunkName;
@@ -75,7 +76,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   // When we select two of time series [s1, s3], the column index list should be [0, 2]
   private final List<Integer> columnIndexList;
 
-  private MemPointIterator timeValuePairIterator;
+  // Only used when StreamingQueryMemChunk is configured as false
+  private MemPointIterator nonStreamingTimeValuePairIterator;
 
   /**
    * The constructor for Aligned type.
@@ -106,7 +108,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.valueStatisticsList = new ArrayList<>();
     this.alignedTvListQueryMap = alignedTvListQueryMap;
     this.columnIndexList = columnIndexList;
-    this.context.addTVListToSet(alignedTvListQueryMap);
+    this.context.addTVListToSet(alignedTvListQueryMap.keySet());
   }
 
   @Override
@@ -115,42 +117,52 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       AlignedTVList alignedTvList = (AlignedTVList) entry.getKey();
       int queryRowCount = entry.getValue();
       if (!alignedTvList.isSorted() && queryRowCount > alignedTvList.seqRowCount()) {
-        alignedTvList.sort();
+        // sort() returns the current row count
+        // TVList may grow between prepareTvListMapForQuery and actual query execution(now).
+        // The queryRowCount recorded here is only a snapshot taken during prepareTvListMapForQuery
+        // phase.
+        // Additional written rows that are not covered by the original queryRowCount can be
+        // involved in current sort operation.
+        // We must update queryRowCount here, otherwise, it may be used later to build
+        // BitMaps, causing bitmap array size mismatch and possible out of bound.
+        entry.setValue(alignedTvList.sort());
+        alignedTvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery =
+              (FragmentInstanceContext) alignedTvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
+            long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              alignedTvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          alignedTvList.unlockQueryList();
+        }
       }
     }
   }
 
   @Override
-  public void initChunkMetaFromTvLists() {
+  public void initChunkMetaFromTvLists(Filter globalTimeFilter) {
     // init chunk meta
     Statistics<? extends Serializable> chunkTimeStatistics =
         Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
         new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, chunkTimeStatistics);
     Statistics<? extends Serializable>[] chunkValueStatistics = new Statistics[dataTypes.size()];
+    Type[] valueTypes = new Type[dataTypes.size()];
     for (int column = 0; column < dataTypes.size(); column++) {
+      valueTypes[column] = Type.fromTsDataType(dataTypes.get(column));
       chunkValueStatistics[column] = Statistics.getStatsByType(dataTypes.get(column));
     }
 
-    // create MergeSortAlignedTVListIterator
-    List<AlignedTVList> alignedTvLists =
-        alignedTvListQueryMap.keySet().stream()
-            .map(x -> (AlignedTVList) x)
-            .collect(Collectors.toList());
+    nonStreamingTimeValuePairIterator = createMemPointIterator(Ordering.ASC, globalTimeFilter);
+    nonStreamingTimeValuePairIterator.setStreamingQueryMemChunk(false);
 
-    timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataTypes,
-            columnIndexList,
-            alignedTvLists,
-            timeColumnDeletion,
-            valueColumnsDeletionList,
-            floatPrecision,
-            encodingList,
-            context.isIgnoreAllNullRows(),
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
-
-    while (timeValuePairIterator.hasNextBatch()) {
+    while (nonStreamingTimeValuePairIterator.hasNextBatch()) {
       // create pageTimeStatistics and pageValueStatistics for new page
       Statistics<? extends Serializable> pageTimeStatistics =
           Statistics.getStatsByType(TSDataType.VECTOR);
@@ -163,7 +175,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       }
       valueStatisticsList.add(pageValueStatistics);
 
-      TsBlock tsBlock = timeValuePairIterator.nextBatch();
+      TsBlock tsBlock = nonStreamingTimeValuePairIterator.nextBatch();
       // time column
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         pageTimeStatistics.update(tsBlock.getTimeByIndex(i));
@@ -171,81 +183,14 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       }
       // value columns
       for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-        Statistics<? extends Serializable> pageValueStats =
-            Statistics.getStatsByType(dataTypes.get(column));
-        switch (dataTypes.get(column)) {
-          case BOOLEAN:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              if (tsBlock.getColumn(column).isNull(i)) {
-                continue;
-              }
-              pageValueStats.update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
-              chunkValueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
-            }
-            break;
-          case INT32:
-          case DATE:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              if (tsBlock.getColumn(column).isNull(i)) {
-                continue;
-              }
-              pageValueStats.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
-              chunkValueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
-            }
-            break;
-          case INT64:
-          case TIMESTAMP:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              if (tsBlock.getColumn(column).isNull(i)) {
-                continue;
-              }
-              pageValueStats.update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
-              chunkValueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
-            }
-            break;
-          case FLOAT:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              if (tsBlock.getColumn(column).isNull(i)) {
-                continue;
-              }
-              pageValueStats.update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
-              chunkValueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
-            }
-            break;
-          case DOUBLE:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              if (tsBlock.getColumn(column).isNull(i)) {
-                continue;
-              }
-              pageValueStats.update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
-              chunkValueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
-            }
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              if (tsBlock.getColumn(column).isNull(i)) {
-                continue;
-              }
-              pageValueStats.update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
-              chunkValueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataTypes.get(column)));
+        Statistics<? extends Serializable> pageValueStats = pageValueStatistics[column];
+        Type valueType = valueTypes[column];
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          if (tsBlock.getColumn(column).isNull(i)) {
+            continue;
+          }
+          valueType.update(pageValueStats, tsBlock, column, i);
+          valueType.update(chunkValueStatistics[column], tsBlock, column, i);
         }
         pageValueStatistics[column] = pageValueStats.isEmpty() ? null : pageValueStats;
       }
@@ -278,6 +223,80 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     cachedMetaData = alignedChunkMetadata;
   }
 
+  // To avoid loading too much data from disk when the time range is too large during query, we
+  // segment the data according to the time range and construct false statistics.
+  @Override
+  public void initChunkMetaFromTVListsWithFakeStatistics() {
+
+    long chunkStartTime = Long.MAX_VALUE;
+    long chunkEndTime = Long.MIN_VALUE;
+    long rowNum = 0;
+    for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
+      TVList tvList = entry.getKey();
+      chunkStartTime = Math.min(chunkStartTime, tvList.getMinTime());
+      chunkEndTime = Math.max(chunkEndTime, tvList.getMaxTime());
+      rowNum += entry.getValue();
+    }
+
+    int pageNum =
+        (int)
+            Math.min(
+                MAX_NUMBER_OF_FAKE_PAGE, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE));
+    for (long[] pageTimeRange :
+        MemChunkTimeRangeUtils.splitFakePageTimeRanges(chunkStartTime, chunkEndTime, pageNum)) {
+      long pageStartTime = pageTimeRange[0];
+      long pageEndTime = pageTimeRange[1];
+
+      Statistics<? extends Serializable>[] pageValueStatistics = new Statistics[dataTypes.size()];
+      for (int column = 0; column < dataTypes.size(); column++) {
+        pageValueStatistics[column] =
+            generateFakeStatistics(dataTypes.get(column), pageStartTime, pageEndTime);
+      }
+      valueStatisticsList.add(pageValueStatistics);
+      Statistics<? extends Serializable> pageTimeStatistics =
+          generateFakeStatistics(TSDataType.VECTOR, pageStartTime, pageEndTime);
+      timeStatisticsList.add(pageTimeStatistics);
+    }
+
+    Statistics<? extends Serializable>[] chunkValueStatistics = new Statistics[dataTypes.size()];
+    for (int column = 0; column < dataTypes.size(); column++) {
+      chunkValueStatistics[column] =
+          generateFakeStatistics(dataTypes.get(column), chunkStartTime, chunkEndTime);
+    }
+
+    // init chunk meta
+    Statistics<? extends Serializable> chunkTimeStatistics =
+        generateFakeStatistics(TSDataType.VECTOR, chunkStartTime, chunkEndTime);
+    IChunkMetadata timeChunkMetadata =
+        new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, chunkTimeStatistics);
+    timeChunkMetadata.setModified(true);
+
+    // value columns
+    List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
+    for (int column = 0; column < dataTypes.size(); column++) {
+      IChunkMetadata valueChunkMetadata =
+          new ChunkMetadata(
+              valueChunkNames.get(column),
+              dataTypes.get(column),
+              null,
+              null,
+              0,
+              chunkValueStatistics[column]);
+      valueChunkMetadata.setModified(true);
+      valueChunkMetadataList.add(valueChunkMetadata);
+    }
+
+    IChunkMetadata alignedChunkMetadata =
+        context.isIgnoreAllNullRows()
+            ? new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList)
+            : new TableDeviceChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
+    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this, true));
+    alignedChunkMetadata.setVersion(Long.MAX_VALUE);
+    // By setting Modified to true, we can prevent these fake statistics from being used.
+    alignedChunkMetadata.setModified(true);
+    cachedMetaData = alignedChunkMetadata;
+  }
+
   private int count() {
     int count = 0;
     for (TVList list : alignedTvListQueryMap.keySet()) {
@@ -294,10 +313,25 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   @Override
   public IPointReader getPointReader() {
     for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
-      AlignedTVList tvList = (AlignedTVList) entry.getKey();
+      AlignedTVList alignedTvList = (AlignedTVList) entry.getKey();
       int queryLength = entry.getValue();
-      if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.sort();
+      if (!alignedTvList.isSorted() && queryLength > alignedTvList.seqRowCount()) {
+        entry.setValue(alignedTvList.sort());
+        alignedTvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery =
+              (FragmentInstanceContext) alignedTvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
+            long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              alignedTvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          alignedTvList.unlockQueryList();
+        }
       }
     }
     TsBlock tsBlock = buildTsBlock();
@@ -315,21 +349,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   }
 
   private void writeValidValuesIntoTsBlock(TsBlockBuilder builder) throws IOException {
-    List<AlignedTVList> alignedTvLists =
-        alignedTvListQueryMap.keySet().stream()
-            .map(x -> (AlignedTVList) x)
-            .collect(Collectors.toList());
-    MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(
-            dataTypes,
-            columnIndexList,
-            alignedTvLists,
-            timeColumnDeletion,
-            valueColumnsDeletionList,
-            floatPrecision,
-            encodingList,
-            context.isIgnoreAllNullRows(),
-            MAX_NUMBER_OF_POINTS_IN_PAGE);
+    MemPointIterator timeValuePairIterator = createMemPointIterator(Ordering.ASC, null);
+    Type[] valueTypes = new Type[dataTypes.size()];
+    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      valueTypes[columnIndex] = Type.fromTsDataType(dataTypes.get(columnIndex));
+    }
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
@@ -343,33 +367,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           builder.getColumnBuilder(columnIndex).appendNull();
           continue;
         }
-        ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
-        switch (dataTypes.get(columnIndex)) {
-          case BOOLEAN:
-            valueBuilder.writeBoolean(values[columnIndex].getBoolean());
-            break;
-          case INT32:
-          case DATE:
-            valueBuilder.writeInt(values[columnIndex].getInt());
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueBuilder.writeLong(values[columnIndex].getLong());
-            break;
-          case FLOAT:
-            valueBuilder.writeFloat(values[columnIndex].getFloat());
-            break;
-          case DOUBLE:
-            valueBuilder.writeDouble(values[columnIndex].getDouble());
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            valueBuilder.writeBinary(values[columnIndex].getBinary());
-            break;
-          default:
-            break;
-        }
+        valueTypes[columnIndex].writeObject(
+            builder.getColumnBuilder(columnIndex), values[columnIndex].getValue());
       }
       builder.declarePosition();
     }
@@ -404,7 +403,32 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     return valueStatisticsList;
   }
 
+  @Override
   public MemPointIterator getMemPointIterator() {
-    return timeValuePairIterator;
+    return nonStreamingTimeValuePairIterator;
+  }
+
+  @Override
+  public MemPointIterator createMemPointIterator(Ordering scanOrder, Filter globalTimeFilter) {
+    List<AlignedTVList> tvLists = new ArrayList<>(alignedTvListQueryMap.size());
+    List<Integer> tvListRowCounts = new ArrayList<>(alignedTvListQueryMap.size());
+    for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
+      tvLists.add((AlignedTVList) entry.getKey());
+      tvListRowCounts.add(entry.getValue());
+    }
+    return MemPointIteratorFactory.create(
+        dataTypes,
+        columnIndexList,
+        tvLists,
+        tvListRowCounts,
+        scanOrder,
+        globalTimeFilter,
+        timeColumnDeletion,
+        valueColumnsDeletionList,
+        floatPrecision,
+        encodingList,
+        context.isIgnoreAllNullRows(),
+        MAX_NUMBER_OF_POINTS_IN_PAGE,
+        context);
   }
 }

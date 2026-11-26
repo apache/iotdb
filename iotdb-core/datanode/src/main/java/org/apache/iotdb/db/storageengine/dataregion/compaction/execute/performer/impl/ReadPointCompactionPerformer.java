@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
@@ -43,8 +45,11 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -83,6 +88,9 @@ public class ReadPointCompactionPerformer
 
   protected List<TsFileResource> targetFiles = Collections.emptyList();
 
+  private EncryptParameter encryptParameter;
+
+  @TestOnly
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -90,15 +98,45 @@ public class ReadPointCompactionPerformer
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.targetFiles = targetFiles;
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
+  public ReadPointCompactionPerformer(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      List<TsFileResource> targetFiles,
+      EncryptParameter encryptParameter) {
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
+    this.targetFiles = targetFiles;
+    this.encryptParameter = encryptParameter;
+  }
+
+  @TestOnly
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
-  public ReadPointCompactionPerformer() {}
+  public ReadPointCompactionPerformer(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      EncryptParameter encryptParameter) {
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
+    this.encryptParameter = encryptParameter;
+  }
+
+  @TestOnly
+  public ReadPointCompactionPerformer() {
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
+  }
+
+  public ReadPointCompactionPerformer(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+  }
 
   @SuppressWarnings("squid:S2095") // Do not close device iterator
   @Override
@@ -113,12 +151,16 @@ public class ReadPointCompactionPerformer
     summary.setTemporalFileNum(targetFiles.size());
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
+      compactionWriter.setCompactionTaskSummary(summary);
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
-              seqFiles, unseqFiles, deviceIterator.getReaderMap());
+              seqFiles,
+              unseqFiles,
+              deviceIterator.getReaderMap(),
+              deviceIterator.getDeprecatedTableSchemaMap());
       compactionWriter.setSchemaForAllTargetFile(schemas);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
@@ -141,7 +183,11 @@ public class ReadPointCompactionPerformer
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
 
     } finally {
-      QueryResourceManager.getInstance().endQuery(queryId);
+      try {
+        fragmentInstanceContext.getQueryChunkReaders().close();
+      } finally {
+        QueryResourceManager.getInstance().endQuery(queryId);
+      }
     }
   }
 
@@ -157,6 +203,10 @@ public class ReadPointCompactionPerformer
   @Override
   public void setSummary(CompactionTaskSummary summary) {
     this.summary = summary;
+  }
+
+  public EncryptParameter getEncryptParameter() {
+    return encryptParameter;
   }
 
   private void compactAlignedSeries(
@@ -177,7 +227,7 @@ public class ReadPointCompactionPerformer
             .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList());
 
-    fragmentInstanceContext.setIgnoreAllNullRows(device.getTableName().startsWith("root."));
+    fragmentInstanceContext.setIgnoreAllNullRows(!deviceIterator.isTableModel());
     IDataBlockReader dataBlockReader =
         constructReader(
             device,
@@ -191,10 +241,13 @@ public class ReadPointCompactionPerformer
     if (dataBlockReader.hasNextBatch()) {
       // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
-      measurementSchemas.add(0, timeSchema);
       compactionWriter.startMeasurement(
           TsFileConstant.TIME_COLUMN_ID,
-          new AlignedChunkWriterImpl(measurementSchemas.remove(0), measurementSchemas),
+          encryptParameter ->
+              new AlignedChunkWriterImpl(
+                  timeSchema,
+                  measurementSchemas,
+                  EncryptUtils.getEncryptParameter(encryptParameter)),
           0);
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
@@ -271,6 +324,7 @@ public class ReadPointCompactionPerformer
     } else {
       seriesPath = new NonAlignedFullPath(deviceId, measurementSchemas.get(0));
     }
+
     return new SeriesDataBlockReader(
         seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true);
   }
@@ -303,10 +357,11 @@ public class ReadPointCompactionPerformer
       throws IOException {
     if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
       // cross space
-      return new ReadPointCrossCompactionWriter(targetFileResources, seqFileResources);
+      return new ReadPointCrossCompactionWriter(
+          targetFileResources, seqFileResources, encryptParameter);
     } else {
       // inner space
-      return new ReadPointInnerCompactionWriter(targetFileResources);
+      return new ReadPointInnerCompactionWriter(targetFileResources, encryptParameter);
     }
   }
 
@@ -314,7 +369,9 @@ public class ReadPointCompactionPerformer
     if (Thread.interrupted() || summary.isCancel()) {
       throw new InterruptedException(
           String.format(
-              "[Compaction] compaction for target file %s abort", targetFiles.toString()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_COMPACTION_COMPACTION_FOR_TARGET_FILE_S_ABORT_46ECFF41,
+              targetFiles.toString()));
     }
   }
 

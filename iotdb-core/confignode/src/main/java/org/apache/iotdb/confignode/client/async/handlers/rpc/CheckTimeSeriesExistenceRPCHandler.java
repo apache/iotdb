@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -30,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
 public class CheckTimeSeriesExistenceRPCHandler
@@ -54,12 +56,19 @@ public class CheckTimeSeriesExistenceRPCHandler
     responseMap.put(requestId, response);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully check timeseries existence on DataNode: {}", targetNode);
+      LOGGER.info(
+          ConfigNodeMessages.SUCCESSFULLY_CHECK_TIMESERIES_EXISTENCE_ON_DATANODE, targetNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       nodeLocationMap.remove(requestId);
-      LOGGER.error("Failed to check timeseries existence on DataNode {}, {}", targetNode, tsStatus);
+      LOGGER.error(
+          ConfigNodeMessages.FAILED_TO_CHECK_TIMESERIES_EXISTENCE_ON_DATANODE,
+          targetNode,
+          tsStatus);
     } else {
-      LOGGER.error("Failed to check timeseries existence on DataNode {}, {}", targetNode, tsStatus);
+      LOGGER.error(
+          ConfigNodeMessages.FAILED_TO_CHECK_TIMESERIES_EXISTENCE_ON_DATANODE,
+          targetNode,
+          tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -67,19 +76,19 @@ public class CheckTimeSeriesExistenceRPCHandler
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Check timeseries existence error on DataNode: {id="
-            + targetNode.getDataNodeId()
-            + ", internalEndPoint="
-            + targetNode.getInternalEndPoint()
-            + "}"
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_CHECK_TIMESERIES_EXISTENCE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_D2A3135E,
+            Objects.toString(targetNode.getDataNodeId()),
+            Objects.toString(targetNode.getInternalEndPoint()),
+            Objects.toString(e.getMessage()));
     LOGGER.error(errorMsg);
 
-    countDownLatch.countDown();
     TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
     resp.setStatus(
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
     responseMap.put(requestId, resp);
+    countDownLatch.countDown();
   }
 }

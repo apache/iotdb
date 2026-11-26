@@ -22,20 +22,20 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,35 +47,43 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
-public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
-  @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+public class IoTDBPipePermissionIT extends AbstractPipeTableModelSharedClusterIT {
 
-    // TODO: delete ratis configurations
+  private static final int PIPE_META_HEARTBEAT_INTERVAL_SECONDS = 3;
+  // Observe a configured metadata heartbeat plus a 2 s margin, and flush once midway. Configure
+  // both clusters explicitly so changes to server/template defaults cannot shorten this coverage.
+  private static final long UNAUTHORIZED_TRANSFER_OBSERVATION_SECONDS =
+      PIPE_META_HEARTBEAT_INTERVAL_SECONDS + 2L;
+
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
     senderEnv
         .getConfig()
         .getCommonConfig()
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(PIPE_META_HEARTBEAT_INTERVAL_SECONDS)
         .setAutoCreateSchemaEnabled(false)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(PIPE_META_HEARTBEAT_INTERVAL_SECONDS)
         .setAutoCreateSchemaEnabled(false)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -86,18 +94,23 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setDataReplicationFactor(2)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment(3, 3);
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
   }
 
+  @Override
+  protected CompletableFuture<Void> initializeClusters() {
+    return CompletableFuture.allOf(
+        CompletableFuture.runAsync(senderEnv::initClusterEnvironment),
+        CompletableFuture.runAsync(() -> receiverEnv.initClusterEnvironment(3, 3)));
+  }
+
+  // A source user sees only its own pipe and transfers schema/rows only after the required grants.
   @Test
   public void testSourcePermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        senderEnv, "create user `thulab` 'passwD@123456'", null)) {
-      return;
-    }
+    final String databaseName = "permission_source";
+    final String grantedDatabaseName = "permission_source_grant";
+    TestUtils.executeNonQuery(senderEnv, "create user `thulab` 'passwD@123456'", null);
 
     // Shall fail if username is specified without password
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -173,7 +186,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       fail("Alter pipe shall not fail if user and password are specified");
     }
 
-    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", databaseName);
 
     // Shall not be transferred
     TestUtils.assertDataAlwaysOnEnv(
@@ -181,20 +194,19 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "count databases",
         "count,",
         Collections.singleton("1,"),
+        UNAUTHORIZED_TRANSFER_OBSERVATION_SECONDS,
         "information_schema");
 
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(
+        databaseName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab");
 
-    TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test1", grantedDatabaseName);
 
-    // Shall not be transferred
+    // Shall be transferred
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "show tables from test1",
+        "show tables from " + grantedDatabaseName,
         "TableName,TTL(ms),",
         Collections.singleton("test1,INF,"),
         "information_schema");
@@ -209,32 +221,34 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     }
 
     // Write some data
-    if (!TableModelUtils.insertData("test", "test", 0, 100, senderEnv)) {
-      return;
-    }
+    TableModelUtils.insertData(databaseName, "test", 0, 100, senderEnv);
 
     try {
-      TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(receiverEnv, "test", databaseName);
     } catch (final Exception | Error ignore) {
       // Ignore because the db/table may be transferred because sender user may see these
     }
 
     // Exception, block here
-    TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, receiverEnv);
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        TableModelUtils.getQueryCountSql("test"),
+        "_col0,",
+        Collections.singleton("0,"),
+        UNAUTHORIZED_TRANSFER_OBSERVATION_SECONDS,
+        databaseName);
 
     // Grant SELECT privilege
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        "test",
+    TestUtils.executeNonQueries(
+        databaseName,
         BaseEnv.TABLE_SQL_DIALECT,
         senderEnv,
         Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"),
-        null)) {
-      return;
-    }
+        null);
 
     // Will finally pass
     TableModelUtils.assertCountData(
-        "test",
+        databaseName,
         "test",
         100,
         receiverEnv,
@@ -242,8 +256,41 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         });
+
+    // test showing pipe
+    // Create another pipe, user is root
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe a2c"
+                  + " with source ("
+                  + "'inclusion'='all',"
+                  + "'capture.tree'='true',"
+                  + "'capture.table'='true')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail("Create pipe without user shall succeed if use the current session");
+    }
+
+    // A user shall only see its own pipe
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Assert.assertEquals(
+          1,
+          client
+              .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName("thulab"))
+              .pipeInfoList
+              .size());
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
   }
 
+  // Receiver grants unblock queued rows; skipif excludes a second database until it is authorized.
   @Test
   public void testReceiverPermission() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -253,33 +300,31 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "create user testUser 'passwD@123456'", null)) {
-        return;
-      }
+      TestUtils.executeNonQuery(receiverEnv, "create user testUser 'passwD@123456'", null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      final String dbName = "test";
+      final String dbName = "permission_receiver";
       final String tbName = "test";
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.capture.tree", "false");
-      extractorAttributes.put("extractor.capture.table", "true");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.capture.tree", "false");
+      sourceAttributes.put("source.capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.user", "testUser");
-      connectorAttributes.put("connector.password", "passwD@123456");
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.user", "testUser");
+      sinkAttributes.put("sink.password", "passwD@123456");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -291,9 +336,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, tbName, dbName);
 
       // Write some data
-      if (!TableModelUtils.insertData(dbName, tbName, 0, 100, senderEnv)) {
-        return;
-      }
+      TableModelUtils.insertData(dbName, tbName, 0, 100, senderEnv);
 
       // Shall not be transferred
       TestUtils.assertDataAlwaysOnEnv(
@@ -301,16 +344,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.singleton("information_schema,INF,null,null,null,"),
-          (String) null);
+          "information_schema");
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      TestUtils.executeNonQuery(
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
-          "grant insert,create on database test to user testUser",
-          null)) {
-        return;
-      }
+          "grant insert,create on database " + dbName + " to user testUser",
+          null);
 
       // Will finally pass
       TableModelUtils.assertCountData(
@@ -332,29 +373,42 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         fail(e.getMessage());
       }
 
-      final String dbName2 = "test2";
+      final String dbName2 = "permission_receiver_skip";
+      TableModelUtils.createDataBaseAndTable(senderEnv, tbName, dbName2);
 
       // Write some data
-      if (!TableModelUtils.insertData(dbName2, tbName, 0, 100, senderEnv)) {
-        return;
-      }
+      TableModelUtils.insertData(dbName2, tbName, 0, 100, senderEnv);
+
+      TestUtils.executeNonQuery(null, "table", senderEnv, "drop pipe testPipe", null);
+
+      sourceAttributes.put("start-time", "100");
+      sourceAttributes.put("database-name", dbName2);
+      sinkAttributes.put("skipif", "no-privileges");
+      final TSStatus create =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), create.getCode());
 
       // Shall not be transferred
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("2,"), (String) null);
+          receiverEnv,
+          "count databases",
+          "count,",
+          Collections.singleton("2,"),
+          "information_schema");
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      TestUtils.executeNonQuery(
           "information_schema",
           BaseEnv.TABLE_SQL_DIALECT,
           receiverEnv,
-          "grant insert,create on database test2 to user testUser",
-          null)) {
-        return;
-      }
+          "grant insert,create on database " + dbName2 + " to user testUser",
+          null);
 
-      if (!TableModelUtils.insertData(dbName2, tbName, 100, 200, senderEnv)) {
-        return;
-      }
+      TableModelUtils.createDataBaseAndTable(receiverEnv, tbName, dbName2);
+      TableModelUtils.insertData(dbName2, tbName, 100, 200, senderEnv);
 
       // Will finally pass
       TableModelUtils.assertCountData(

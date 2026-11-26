@@ -20,19 +20,22 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.commons.service.TrustedChannelAuditServerEventHandler;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService.Processor;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
@@ -48,30 +51,41 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MPPDataExchangeService.class);
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
   private final MPPDataExchangeManager mppDataExchangeManager;
   private final ExecutorService executorService;
 
   private MPPDataExchangeService() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    executorService =
-        IoTDBThreadPoolFactory.newThreadPool(
-            config.getMppDataExchangeCorePoolSize(),
-            config.getMppDataExchangeMaxPoolSize(),
-            config.getMppDataExchangeKeepAliveTimeInMs(),
-            TimeUnit.MILLISECONDS,
-            // TODO: Use a priority queue.
-            new LinkedBlockingQueue<>(),
-            new IoTThreadFactory(ThreadName.MPP_DATA_EXCHANGE_TASK_EXECUTOR.getName()),
-            ThreadName.MPP_DATA_EXCHANGE_TASK_EXECUTOR.getName());
+    MPPDataExchangeClientManager clients = new MPPDataExchangeClientManager();
+    executorService = createExchangeExecutor(clients);
     this.mppDataExchangeManager =
         new MPPDataExchangeManager(
-            new LocalMemoryManager(),
-            new TsBlockSerdeFactory(),
-            executorService,
-            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
-                .createClientManager(
-                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
-    LOGGER.info("MPPDataExchangeManager init successfully");
+            new LocalMemoryManager(), new TsBlockSerdeFactory(), executorService, clients);
+    LOGGER.info(DataNodeQueryMessages.MPPDATAEXCHANGEMANAGER_INIT_SUCCESSFULLY);
+  }
+
+  static ExecutorService createExchangeExecutor(MPPDataExchangeClientManager clients) {
+    String name = ThreadName.MPP_DATA_EXCHANGE_TASK_EXECUTOR.getName();
+    return new WrappedThreadPoolExecutor(
+        config.getMppDataExchangeCorePoolSize(),
+        config.getMppDataExchangeMaxPoolSize(),
+        config.getMppDataExchangeKeepAliveTimeInMs(),
+        TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<>(),
+        new IoTThreadFactory(name),
+        name) {
+      @Override
+      protected void terminated() {
+        // Queued notifications can still borrow clients while shutdown drains the exchange workers.
+        try {
+          clients.close();
+        } finally {
+          super.terminated();
+        }
+      }
+    };
   }
 
   @Override
@@ -87,19 +101,37 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       thriftServiceThread =
-          new ThriftServiceThread(
-              processor,
-              getID().getName(),
-              ThreadName.MPP_DATA_EXCHANGE_RPC_PROCESSOR.getName(),
-              getBindIP(),
-              getBindPort(),
-              config.getRpcMaxConcurrentClientNum(),
-              config.getThriftServerAwaitTimeForStopService(),
-              new MPPDataExchangeServiceThriftHandler(),
-              config.isRpcThriftCompressionEnable(),
-              DeepCopyRpcTransportFactory.INSTANCE);
+          commonConfig.isEnableInternalSSL()
+              ? new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.MPP_DATA_EXCHANGE_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpcMaxConcurrentClientNum(),
+                  config.getThriftServerAwaitTimeForStopService(),
+                  new TrustedChannelAuditServerEventHandler(
+                      new MPPDataExchangeServiceThriftHandler(),
+                      new TEndPoint(getBindIP(), getBindPort()),
+                      DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary),
+                  config.isRpcThriftCompressionEnable(),
+                  commonConfig.getKeyStorePath(),
+                  commonConfig.getKeyStorePwd(),
+                  commonConfig.getTrustStorePath(),
+                  commonConfig.getTrustStorePwd(),
+                  DeepCopyRpcTransportFactory.INSTANCE)
+              : new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.MPP_DATA_EXCHANGE_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpcMaxConcurrentClientNum(),
+                  config.getThriftServerAwaitTimeForStopService(),
+                  new MPPDataExchangeServiceThriftHandler(),
+                  config.isRpcThriftCompressionEnable(),
+                  DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

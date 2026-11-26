@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -35,9 +37,11 @@ import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.TableChunkReader;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.LongConsumer;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_ALIGNED_DISK;
 
@@ -91,31 +95,57 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                   timeChunkMetadata.getStatistics(),
                   context);
       List<Chunk> valueChunkList = new ArrayList<>();
-      for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-        valueChunkList.add(
-            valueChunkMetadata == null
-                ? null
-                : ChunkCache.getInstance()
-                    .get(
-                        new ChunkCache.ChunkCacheKey(
-                            resource.getTsFilePath(),
-                            resource.getTsFileID(),
-                            valueChunkMetadata.getOffsetOfChunkHeader(),
-                            resource.isClosed()),
-                        valueChunkMetadata.getDeleteIntervalList(),
-                        valueChunkMetadata.getStatistics(),
-                        context));
+      try {
+        for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+          Chunk chunk =
+              valueChunkMetadata == null
+                  ? null
+                  : ChunkCache.getInstance()
+                      .get(
+                          new ChunkCache.ChunkCacheKey(
+                              resource.getTsFilePath(),
+                              resource.getTsFileID(),
+                              valueChunkMetadata.getOffsetOfChunkHeader(),
+                              resource.isClosed()),
+                          valueChunkMetadata.getDeleteIntervalList(),
+                          valueChunkMetadata.getStatistics(),
+                          context);
+          final TsFileID tsFileID = getTsFileID();
+          if (chunk != null
+              && tsFileID.regionId > 0
+              && chunkMetaData.getDataType() == TSDataType.OBJECT) {
+            chunk
+                .getHeader()
+                .setReplaceDecoder(
+                    decoder -> ObjectTypeUtils.getReplaceDecoder(decoder, tsFileID.regionId));
+          }
+          valueChunkList.add(chunk);
+        }
+        LongConsumer filterRowsRecorder =
+            this.context.getQueryStatistics()::addFilteredRowsOfPageLevel;
+        long t2 = System.nanoTime();
+        IChunkReader chunkReader =
+            ignoreAllNullRows
+                ? new AlignedChunkReader(
+                    timeChunk, valueChunkList, globalTimeFilter, filterRowsRecorder)
+                : new TableChunkReader(
+                    timeChunk, valueChunkList, globalTimeFilter, filterRowsRecorder);
+        if (timeChunk.getEncryptParam() != null && timeChunk.getEncryptParam().isTdePageAead()) {
+          context.getQueryChunkReaders().retain(chunkReader, chunkReader.loadPageReaderList());
+        }
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
+
+        return chunkReader;
+      } catch (IOException | RuntimeException | Error failure) {
+        timeChunk.close();
+        for (Chunk valueChunk : valueChunkList) {
+          if (valueChunk != null) {
+            valueChunk.close();
+          }
+        }
+        throw failure;
       }
-
-      long t2 = System.nanoTime();
-      IChunkReader chunkReader =
-          ignoreAllNullRows
-              ? new AlignedChunkReader(timeChunk, valueChunkList, globalTimeFilter)
-              : new TableChunkReader(timeChunk, valueChunkList, globalTimeFilter);
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
-
-      return chunkReader;
     } finally {
       long time = System.nanoTime() - t1;
       context.getQueryStatistics().getConstructAlignedChunkReadersDiskCount().getAndAdd(1);
@@ -125,5 +155,9 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
   public TsFileID getTsFileID() {
     return resource.getTsFileID();
+  }
+
+  public File getTsFile() {
+    return resource.getTsFile();
   }
 }

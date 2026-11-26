@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 public class MigrateRegionTask implements IConfigTask {
 
@@ -41,7 +41,7 @@ public class MigrateRegionTask implements IConfigTask {
   public MigrateRegionTask(MigrateRegion migrateRegion) {
     this.statement =
         new MigrateRegionStatement(
-            migrateRegion.getRegionId(), migrateRegion.getFromId(), migrateRegion.getToId());
+            migrateRegion.getRegionIds(), migrateRegion.getFromId(), migrateRegion.getToId());
     this.model = Model.TABLE;
   }
 

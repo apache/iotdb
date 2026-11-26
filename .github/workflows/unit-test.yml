@@ -7,20 +7,28 @@ on:
   push:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
       - "rc/*"
     paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "docs/**"
+      - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   pull_request:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
       - "rc/*"
-      - 'force_ci/**'
+      - "force_ci/**"
     paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "docs/**"
+      - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -39,20 +47,22 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 17 ]
-        os: [ ubuntu-latest, windows-latest ]
-        it_task: [ 'others', 'datanode' ]
+        java: [17]
+        os: [ubuntu-latest, windows-latest]
+        it_task: ["others", "datanode"]
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -60,7 +70,14 @@ jobs:
       - name: Test Datanode Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'datanode'}}
-        run: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true
+        # forkCount=4 runs up to 4 surefire JVMs in parallel. reuseForks=false
+        # is left on (set in iotdb-core/datanode/pom.xml) so each test class
+        # still gets a fresh JVM — only cross-fork parallelism changes.
+        # The pom already wires <workingDirectory>...fork_${surefire.forkNumber}
+        # for filesystem isolation; datanode UTs do no socket binding (grep'd:
+        # zero ServerSocket / bind() / TServer.serve() calls in tests), so
+        # cross-fork resource conflicts are not a concern.
+        run: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true -DforkCount=4
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}

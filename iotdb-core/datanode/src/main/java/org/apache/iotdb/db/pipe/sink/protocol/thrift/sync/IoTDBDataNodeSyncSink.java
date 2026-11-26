@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSslSyncSink;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -42,30 +43,36 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
             useSSL,
             Objects.nonNull(trustStorePath) ? IoTDBConfig.addDataHomeDir(trustStorePath) : null,
             trustStorePwd,
+            Objects.nonNull(keyStorePath) ? IoTDBConfig.addDataHomeDir(keyStorePath) : null,
+            keyStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
-            username,
+            userEntity,
             password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             validateTsFile,
-            shouldMarkAsPipeRequest);
+            shouldMarkAsPipeRequest,
+            skipIfNoPrivileges);
     return clientManager;
   }
 }

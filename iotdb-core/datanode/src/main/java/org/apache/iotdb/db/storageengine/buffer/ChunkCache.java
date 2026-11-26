@@ -20,21 +20,23 @@
 package org.apache.iotdb.db.storageengine.buffer;
 
 import org.apache.iotdb.commons.exception.IoTDBIORuntimeException;
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
+import org.apache.iotdb.commons.external.caffeine.cache.RemovalCause;
+import org.apache.iotdb.commons.external.caffeine.cache.Weigher;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.ChunkCacheMetrics;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -83,7 +85,8 @@ public class ChunkCache {
 
   private ChunkCache() {
     if (CACHE_ENABLE) {
-      LOGGER.info("ChunkCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+      LOGGER.info(
+          StorageEngineMessages.CHUNK_CACHE_SIZE, CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
@@ -93,6 +96,14 @@ public class ChunkCache {
                     (key, chunk) ->
                         (int) (key.getRetainedSizeInBytes() + chunk.getRetainedSizeInBytes()))
             .recordStats()
+            .removalListener(
+                (ChunkCacheKey key, Chunk chunk, RemovalCause cause) -> {
+                  if (chunk != null) {
+                    synchronized (chunk) {
+                      chunk.close();
+                    }
+                  }
+                })
             .build();
 
     // add metrics
@@ -119,7 +130,8 @@ public class ChunkCache {
         false,
         emptyConsumer,
         emptyConsumer,
-        emptyConsumer);
+        emptyConsumer,
+        false);
   }
 
   public Chunk get(
@@ -141,7 +153,8 @@ public class ChunkCache {
         queryContext.isDebug(),
         ioSizeRecorder,
         cacheHitAdder,
-        cacheMissAdder);
+        cacheMissAdder,
+        queryContext.isExternalTsFileScan());
   }
 
   private Chunk get(
@@ -151,23 +164,33 @@ public class ChunkCache {
       boolean debug,
       LongConsumer ioSizeRecorder,
       LongConsumer cacheHitAdder,
-      LongConsumer cacheMissAdder)
+      LongConsumer cacheMissAdder,
+      boolean externalTsFile)
       throws IOException {
     long startTime = System.nanoTime();
-    ChunkLoader chunkLoader = new ChunkLoader(ioSizeRecorder);
+    ChunkLoader chunkLoader = new ChunkLoader(ioSizeRecorder, externalTsFile);
     try {
-      if (!CACHE_ENABLE) {
-        Chunk chunk = chunkLoader.apply(chunkCacheKey);
-        return constructChunk(chunk, timeRangeList, chunkStatistic);
+      if (!CACHE_ENABLE || externalTsFile) {
+        try (Chunk chunk = chunkLoader.apply(chunkCacheKey)) {
+          return constructChunk(chunk, timeRangeList, chunkStatistic);
+        }
       }
 
       Chunk chunk = lruCache.get(chunkCacheKey, chunkLoader);
 
       if (debug) {
-        DEBUG_LOGGER.info("get chunk from cache whose key is: {}", chunkCacheKey);
+        DEBUG_LOGGER.info(StorageEngineMessages.GET_CHUNK_FROM_CACHE, chunkCacheKey);
       }
 
-      return constructChunk(chunk, timeRangeList, chunkStatistic);
+      synchronized (chunk) {
+        if (chunk.getEncryptParam() == null || !chunk.getEncryptParam().isDestroyed()) {
+          return constructChunk(chunk, timeRangeList, chunkStatistic);
+        }
+      }
+      // Eviction can race with a cache hit. Reload instead of retaining a closed parameter.
+      try (Chunk reloaded = chunkLoader.apply(chunkCacheKey)) {
+        return constructChunk(reloaded, timeRangeList, chunkStatistic);
+      }
     } catch (IoTDBIORuntimeException e) {
       throw e.getCause();
     } finally {
@@ -295,9 +318,11 @@ public class ChunkCache {
 
     private boolean cacheMiss = false;
     private final LongConsumer ioSizeRecorder;
+    private final boolean externalTsFile;
 
-    private ChunkLoader(LongConsumer ioSizeRecorder) {
+    private ChunkLoader(LongConsumer ioSizeRecorder, boolean externalTsFile) {
       this.ioSizeRecorder = ioSizeRecorder;
+      this.externalTsFile = externalTsFile;
     }
 
     @Override
@@ -308,7 +333,7 @@ public class ChunkCache {
         cacheMiss = true;
         TsFileSequenceReader reader =
             FileReaderManager.getInstance()
-                .get(key.getFilePath(), key.tsFileID, key.closed, ioSizeRecorder);
+                .get(key.getFilePath(), key.tsFileID, key.closed, ioSizeRecorder, externalTsFile);
         Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader, ioSizeRecorder);
         // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
         chunk.getHeader().setMeasurementID(null);

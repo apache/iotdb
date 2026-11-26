@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementException;
@@ -46,6 +48,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
+import static org.apache.iotdb.db.protocol.thrift.OperationType.DISPATCH_FRAGMENT_INSTANCE;
 
 public class ErrorHandlingUtils {
 
@@ -54,23 +57,27 @@ public class ErrorHandlingUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(ErrorHandlingUtils.class);
 
   private static final String INFO_PARSING_SQL_ERROR =
-      "Error occurred while parsing SQL to physical plan: ";
-  private static final String INFO_QUERY_PROCESS_ERROR = "Error occurred in read process: ";
+      DataNodeMiscMessages.MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59;
+  private static final String INFO_QUERY_PROCESS_ERROR =
+      DataNodeMiscMessages.MESSAGE_ERROR_OCCURRED_IN_READ_PROCESS_COLON_CD184195;
   private static final String INFO_NOT_ALLOWED_IN_BATCH_ERROR =
-      "The read statement is not allowed in batch: ";
+      DataNodeMiscMessages.MESSAGE_THE_READ_STATEMENT_IS_NOT_ALLOWED_IN_BATCH_COLON_D6A3D5EB;
 
-  private static final String ERROR_OPERATION_LOG = "Status code: {}, operation: {} failed";
+  private static final String ERROR_OPERATION_LOG = DataNodeMiscMessages.ERROR_OPERATION_LOG;
+  private static final String EXCEPTION_PATTERN =
+      DataNodeMiscMessages
+          .MESSAGE_LEFT_BRACKET_ARG_RIGHT_BRACKET_EXCEPTION_OCCURRED_COLON_ARG_FAILED_DOT_909D8FFA;
 
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
-    String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
+    String message = String.format(EXCEPTION_PATTERN, statusCode, operation);
     if (e instanceof IOException || e instanceof NullPointerException) {
       LOGGER.error(ERROR_OPERATION_LOG, statusCode, operation, e);
     } else {
       LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     }
     if (e instanceof SemanticException) {
-      Throwable rootCause = getRootCause(e);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
       if (e.getCause() instanceof IoTDBException) {
         return RpcUtils.getStatus(
             ((IoTDBException) e.getCause()).getErrorCode(), rootCause.getMessage());
@@ -87,50 +94,71 @@ public class ErrorHandlingUtils {
     return onNpeOrUnexpectedException(e, operation.getName(), statusCode);
   }
 
-  public static Throwable getRootCause(Throwable e) {
-    while (e.getCause() != null) {
-      e = e.getCause();
-    }
-    return e;
+  public static TSStatus onThriftFrameOversizeException(Throwable t) {
+    TSStatus status =
+        new TSStatus(TSStatusCode.THRIFT_FRAME_OVERSIZE.getStatusCode()).setNeedRetry(false);
+    String message =
+        String.format(EXCEPTION_PATTERN, status, DISPATCH_FRAGMENT_INSTANCE)
+            + ErrorHandlingCommonUtils.getRootCause(t).getMessage();
+    LOGGER.warn(message);
+    return status.setMessage(message);
   }
 
   public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
-      // ignore logging sg not ready exception
-      if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
-        String message =
-            String.format(
-                "Status code: %s, Query Statement: %s failed because %s",
-                status.getCode(), operation, status.getMessage());
-        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
-            || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
-            || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
-            || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
-            || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()
-            || status.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
-            || status.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
-            || status.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()
-            || status.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
-            || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
-            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode()
-            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
-            || status.getCode() == TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode()
-            || status.getCode() == TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
-          LOGGER.info(message);
-        } else {
-          LOGGER.warn(message, e);
-        }
-      }
+      String message =
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_STATUS_CODE_ARG_QUERY_STATEMENT_ARG_FAILED_BECAUSE_ARG_3BC781BF,
+              status.getCode(),
+              operation,
+              status.getMessage());
+      logQueryException(LOGGER, message, status.getCode(), e);
       status.setNeedRetry(needRetry(status));
       return status;
     } else {
       return onNpeOrUnexpectedException(e, operation, statusCode);
+    }
+  }
+
+  /** Logs expected query errors without stack traces and retains traces for unexpected errors. */
+  public static void logQueryException(Logger logger, String message, int statusCode, Exception e) {
+    // ignore logging sg not ready exception
+    if (statusCode == TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
+      return;
+    }
+    if (statusCode == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.NO_PERMISSION.getStatusCode()
+        || (statusCode >= TSStatusCode.LBAC_ACCESS_DENIED.getStatusCode()
+            && statusCode <= TSStatusCode.INVALID_LABEL_VALUE.getStatusCode())
+        || statusCode == TSStatusCode.ILLEGAL_PATH.getStatusCode()
+        || statusCode == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
+        || statusCode == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
+        || statusCode == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()
+        || statusCode == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
+        || statusCode == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
+        || statusCode == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()
+        || statusCode == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
+        || statusCode == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
+        || statusCode == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode()
+        || statusCode == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
+        || statusCode == TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode()
+        || statusCode == TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
+        || statusCode == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+        || statusCode == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.QUERY_TIMEOUT.getStatusCode()
+        || statusCode == TSStatusCode.CANNOT_READ_TSFILE.getStatusCode()
+        || statusCode == TSStatusCode.COPY_TO_WRITE_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.METADATA_LEASE_FENCED.getStatusCode()
+        || statusCode == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()) {
+      logger.info(message);
+    } else {
+      logger.warn(message, e);
     }
   }
 
@@ -143,7 +171,7 @@ public class ErrorHandlingUtils {
   }
 
   private static TSStatus tryCatchQueryException(Exception e) {
-    Throwable rootCause = getRootCause(e);
+    Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
       return RpcUtils.getStatus(TSStatusCode.STORAGE_ENGINE_NOT_READY, rootCause.getMessage());
@@ -151,7 +179,7 @@ public class ErrorHandlingUtils {
 
     Throwable t = e instanceof ExecutionException ? e.getCause() : e;
     if (t instanceof QueryTimeoutRuntimeException) {
-      return RpcUtils.getStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT, rootCause.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.QUERY_TIMEOUT, rootCause.getMessage());
     } else if (t instanceof ParseCancellationException) {
       return RpcUtils.getStatus(
           TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + rootCause.getMessage());
@@ -177,6 +205,13 @@ public class ErrorHandlingUtils {
       if (t.getCause() instanceof IoTDBException) {
         return RpcUtils.getStatus(
             ((IoTDBException) t.getCause()).getErrorCode(), rootCause.getMessage());
+      }
+      // A SemanticException is reported as SEMANTIC_ERROR whatever code it carries, except
+      // TABLE_IN_PRE_DELETE, which the client needs in order to tell a table that is being deleted
+      // from an ordinary semantic error.
+      if (((SemanticException) t).getErrorCode()
+          == TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode()) {
+        return RpcUtils.getStatus(TSStatusCode.TABLE_IN_PRE_DELETE, rootCause.getMessage());
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     } else if (t instanceof IoTDBRuntimeException) {
@@ -208,7 +243,8 @@ public class ErrorHandlingUtils {
   }
 
   private static TSStatus tryCatchNonQueryException(Exception e) {
-    String message = "Exception occurred while processing non-read. ";
+    String message =
+        DataNodeMiscMessages.EXCEPTION_EXCEPTION_OCCURRED_WHILE_PROCESSING_NON_READ_2EEBCBDC;
     if (e instanceof BatchProcessException) {
       BatchProcessException batchException = (BatchProcessException) e;
       // ignore logging sg not ready exception
@@ -220,7 +256,7 @@ public class ErrorHandlingUtils {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
     } else if (e instanceof IoTDBException) {
-      Throwable rootCause = getRootCause(e);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
       // ignore logging sg not ready exception
       if (!(rootCause instanceof StorageGroupNotReadyException)) {
         LOGGER.warn(message, e);
@@ -234,7 +270,10 @@ public class ErrorHandlingUtils {
     TSStatusCode statusCode = TSStatusCode.representOf(errorCode);
     String message =
         String.format(
-            "[%s] Exception occurred: %s failed. %s", statusCode, operation, e.getMessage());
+            DataNodeMiscMessages.EXCEPTION_ARG_EXCEPTION_OCCURRED_ARG_FAILED_ARG_16CE5428,
+            statusCode,
+            operation,
+            e.getMessage());
     LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     TSStatus status = RpcUtils.getStatus(errorCode, message);
     status.setNeedRetry(needRetry(status));

@@ -19,30 +19,35 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.TableFunctionProcessorMatcher;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.udf.api.relational.EmptyTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -58,10 +63,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableFunctionProcessor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.udf.api.type.Type.DOUBLE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -226,6 +227,246 @@ public class TableFunctionTest {
     assertPlan(planTester.getFragmentPlan(5), tableScan);
   }
 
+  private static final String NESTED_SESSION_SQL =
+      "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+          + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+          + "PARTITION BY (tag3, tag2, tag1) ORDER BY time, GAP => 2m)";
+
+  private static Consumer<TableFunctionProcessorMatcher.Builder> sessionMatcher(
+      String windowStart, String windowEnd, long gap) {
+    return builder ->
+        builder
+            .name("session")
+            .properOutputs(windowStart, windowEnd)
+            .requiredSymbols("time")
+            .handle(new MapTableFunctionHandle.Builder().addProperty("GAP", gap).build());
+  }
+
+  private static PlanMatchPattern scanAllColumns() {
+    return tableScan(
+        "testdb.table1",
+        ImmutableList.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
+        ImmutableSet.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
+  }
+
+  private static List<PlanMatchPattern.Ordering> orderBy(String... fields) {
+    ImmutableList.Builder<PlanMatchPattern.Ordering> result = ImmutableList.builder();
+    for (String field : fields) {
+      result.add(sort(field, ASCENDING, LAST));
+    }
+    return result.build();
+  }
+
+  @Test
+  public void testNestedSetSemanticPermutedPartitionsKeepBothGroups() {
+    PlanTester planTester = new PlanTester();
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(NESTED_SESSION_SQL);
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // PARTITION BY columns are the same set in a different order and ORDER BY matches, so both
+    // grouping nodes survive: the outer keeps its declared order, the inner keeps its own.
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                outer,
+                group(
+                    orderBy("tag3", "tag2", "tag1", "time"),
+                    3,
+                    tableFunctionProcessor(
+                        inner,
+                        group(orderBy("tag1", "tag2", "tag3", "time"), 3, scanAllColumns()))))));
+    // Both levels are split per region; only cross-region devices need a merged stream.
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(outer, tableFunctionProcessor(inner, scanAllColumns())));
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        tableFunctionProcessor(outer, tableFunctionProcessor(inner, scanAllColumns())));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(
+            outer,
+            tableFunctionProcessor(
+                inner,
+                mergeSort(orderBy("tag3", "tag2", "tag1", "time"), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(4), scanAllColumns());
+    assertPlan(planTester.getFragmentPlan(5), scanAllColumns());
+  }
+
+  @Test
+  public void testNestedSetSemanticReorderedSubsetFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+            + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+            + "PARTITION BY (tag2, tag1) ORDER BY time, GAP => 2m)";
+    planTester.createPlan(sql);
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // A reordered strict subset must not reuse the inner partitioning: one outer partition can
+    // span several inner ones, which a fan-in does not keep contiguous. The outer function stays
+    // single-instance above a full merge sort, as before this optimization.
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                outer,
+                mergeSort(orderBy("tag2", "tag1", "time"), exchange(), exchange(), exchange()))));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        sort(orderBy("tag2", "tag1", "time"), tableFunctionProcessor(inner, scanAllColumns())));
+  }
+
+  @Test
+  public void testNestedSetSemanticDifferentOrderByKeepsOuterGroup() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+            + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+            + "PARTITION BY (tag3, tag2, tag1) ORDER BY s1, GAP => 2m)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // Only the partition prefix has to be clustered: the outer group re-establishes its s1 order
+    // inside every partition, so a different ORDER BY does not degrade it to a full sort.
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                outer,
+                group(
+                    orderBy("tag3", "tag2", "tag1", "s1"),
+                    3,
+                    tableFunctionProcessor(
+                        inner,
+                        group(orderBy("tag1", "tag2", "tag3", "time"), 3, scanAllColumns()))))));
+    // Both levels are still split per region.
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+  }
+
+  @Test
+  public void testNestedSetSemanticGlobalOrderByDeclaredOrder() {
+    PlanTester planTester = new PlanTester();
+    planTester.createPlan(NESTED_SESSION_SQL + " ORDER BY tag3, tag2, tag1, time");
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // The requested global order equals the outer declared order, so no per-region sort is needed
+    // and the cross-region merge uses exactly that order.
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            mergeSort(
+                orderBy("tag3", "tag2", "tag1", "time"), exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(outer, tableFunctionProcessor(inner, scanAllColumns())));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(
+            outer,
+            tableFunctionProcessor(
+                inner,
+                mergeSort(orderBy("tag3", "tag2", "tag1", "time"), exchange(), exchange()))));
+  }
+
+  @Test
+  public void testNestedSetSemanticGlobalOrderByPermutesPartitionColumns() {
+    PlanTester planTester = new PlanTester();
+    // The global order permutes the partition columns again; the distributed planner must prove it
+    // by rewriting grouping/device comparators instead of reusing the TVF declared order.
+    planTester.createPlan(NESTED_SESSION_SQL + " ORDER BY tag2, tag3, tag1, time");
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            mergeSort(
+                orderBy("tag2", "tag3", "tag1", "time"), exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(outer, tableFunctionProcessor(inner, scanAllColumns())));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(
+            outer,
+            tableFunctionProcessor(
+                inner,
+                mergeSort(orderBy("tag2", "tag3", "tag1", "time"), exchange(), exchange()))));
+  }
+
+  @Test
+  public void testThreeLevelNestedSetSemanticPermutedPartitions() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+            + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+            + "PARTITION BY (tag3, tag2, tag1) ORDER BY time, GAP => 2m)) "
+            + "PARTITION BY (tag2, tag1, tag3) ORDER BY time, GAP => 3m)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    Consumer<TableFunctionProcessorMatcher.Builder> outerMost =
+        sessionMatcher("window_start", "window_end", 180_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> middle =
+        sessionMatcher("window_start_0", "window_end_1", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_2", "window_end_3", 60_000L);
+    // Every level lists the same PARTITION BY columns in a different order, so all three groups
+    // survive and are executed in parallel per region.
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                outerMost,
+                group(
+                    orderBy("tag2", "tag1", "tag3", "time"),
+                    3,
+                    tableFunctionProcessor(
+                        middle,
+                        group(
+                            orderBy("tag3", "tag2", "tag1", "time"),
+                            3,
+                            tableFunctionProcessor(
+                                inner,
+                                group(
+                                    orderBy("tag1", "tag2", "tag3", "time"),
+                                    3,
+                                    scanAllColumns()))))))));
+    // Every level is split per region; only cross-region devices need a merged stream.
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(
+            outerMost,
+            tableFunctionProcessor(middle, tableFunctionProcessor(inner, scanAllColumns()))));
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        tableFunctionProcessor(
+            outerMost,
+            tableFunctionProcessor(middle, tableFunctionProcessor(inner, scanAllColumns()))));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(
+            outerMost,
+            tableFunctionProcessor(
+                middle,
+                tableFunctionProcessor(
+                    inner,
+                    mergeSort(orderBy("tag2", "tag1", "tag3", "time"), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(4), scanAllColumns());
+    assertPlan(planTester.getFragmentPlan(5), scanAllColumns());
+  }
+
   @Test
   public void testLeafFunction() {
     PlanTester planTester = new PlanTester();
@@ -357,7 +598,7 @@ public class TableFunctionTest {
 
     String sql =
         "SELECT * FROM FORECAST("
-            + "input => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "targets => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
             + "model_id => 'timer_xl')";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
 
@@ -372,13 +613,12 @@ public class TableFunctionTest {
                 .handle(
                     new ForecastTableFunction.ForecastTableFunctionHandle(
                         false,
-                        1440,
+                        2880,
                         "timer_xl",
                         Collections.emptyMap(),
                         96,
                         DEFAULT_OUTPUT_START_TIME,
                         DEFAULT_OUTPUT_INTERVAL,
-                        new TEndPoint("127.0.0.1", 10810),
                         Collections.singletonList(DOUBLE)));
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
@@ -387,9 +627,8 @@ public class TableFunctionTest {
         anyTree(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(
+                sort(
                     ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
-                    0,
                     topK(
                         1440,
                         ImmutableList.of(sort("time_0", DESCENDING, LAST)),
@@ -400,7 +639,7 @@ public class TableFunctionTest {
     /*
      *   └──OutputNode
      *         └──TableFunctionProcessor
-     *               └──GroupNode
+     *               └──SortNode
      *                   └──TableScan
      */
     assertPlan(
@@ -408,7 +647,7 @@ public class TableFunctionTest {
         output(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
+                sort(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), tableScan))));
   }
 
   @Test
@@ -418,7 +657,7 @@ public class TableFunctionTest {
 
     String sql =
         "SELECT * FROM FORECAST("
-            + "input => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "targets => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
             + "model_id => 'timer_xl', timecol=>'TiME')";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
 
@@ -433,13 +672,12 @@ public class TableFunctionTest {
                 .handle(
                     new ForecastTableFunction.ForecastTableFunctionHandle(
                         false,
-                        1440,
+                        2880,
                         "timer_xl",
                         Collections.emptyMap(),
                         96,
                         DEFAULT_OUTPUT_START_TIME,
                         DEFAULT_OUTPUT_INTERVAL,
-                        new TEndPoint("127.0.0.1", 10810),
                         Collections.singletonList(DOUBLE)));
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
@@ -448,9 +686,8 @@ public class TableFunctionTest {
         anyTree(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(
+                sort(
                     ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
-                    0,
                     topK(
                         1440,
                         ImmutableList.of(sort("time_0", DESCENDING, LAST)),
@@ -461,7 +698,7 @@ public class TableFunctionTest {
     /*
      *   └──OutputNode
      *         └──TableFunctionProcessor
-     *               └──GroupNode
+     *               └──SortNode
      *                   └──TableScan
      */
     assertPlan(
@@ -469,7 +706,7 @@ public class TableFunctionTest {
         output(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
+                sort(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), tableScan))));
   }
 
   @Test
@@ -484,6 +721,376 @@ public class TableFunctionTest {
       fail();
     } catch (SemanticException e) {
       assertEquals("TIMECOL should never be null or empty.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testFFTFunction() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM FFT("
+            + "DATA => table1 PARTITION BY tag1 ORDER BY time, "
+            + "SAMPLE_INTERVAL => 1s, "
+            + "N => 4, "
+            + "NORM => 'ortho')";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableMap.<String, String>builder()
+                .put("time", "time")
+                .put("tag1_0", "tag1")
+                .put("s1", "s1")
+                .put("s2", "s2")
+                .put("s3", "s3")
+                .buildOrThrow());
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("fft")
+                .properOutputs(
+                    "tag1",
+                    "frequency_index",
+                    "frequency",
+                    "s1_real",
+                    "s1_imag",
+                    "s2_real",
+                    "s2_imag",
+                    "s3_real",
+                    "s3_imag")
+                .requiredSymbols("time", "tag1_0", "s1", "s2", "s3")
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty(FFTTableFunction.SAMPLE_INTERVAL_PARAMETER_NAME, 1000L)
+                        .addProperty(
+                            FFTTableFunction.SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME, true)
+                        .addProperty(FFTTableFunction.N_PARAMETER_NAME, 4L)
+                        .addProperty(FFTTableFunction.NORM_PARAMETER_NAME, "ortho")
+                        .addProperty("__FFT_PARTITION_TYPES", "STRING")
+                        .addProperty("__FFT_VALUE_TYPES", "INT64,INT64,DOUBLE")
+                        .addProperty("__FFT_VALUE_NAMES", "czE=,czI=,czM=")
+                        .build());
+
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                tableFunctionMatcher, mergeSort(exchange(), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan));
+  }
+
+  @Test
+  public void testFFTDefaultArguments() {
+    PlanTester planTester = new PlanTester();
+    String sql = "SELECT * FROM TABLE(FFT(DATA => TABLE(table1) ORDER BY time))";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableMap.<String, String>builder()
+                .put("time", "time")
+                .put("s1", "s1")
+                .put("s2", "s2")
+                .put("s3", "s3")
+                .buildOrThrow());
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("fft")
+                .properOutputs(
+                    "frequency_index",
+                    "frequency",
+                    "s1_real",
+                    "s1_imag",
+                    "s2_real",
+                    "s2_imag",
+                    "s3_real",
+                    "s3_imag")
+                .requiredSymbols("time", "s1", "s2", "s3")
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty(
+                            FFTTableFunction.SAMPLE_INTERVAL_PARAMETER_NAME, Long.MIN_VALUE)
+                        .addProperty(
+                            FFTTableFunction.SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME, false)
+                        .addProperty(FFTTableFunction.N_PARAMETER_NAME, -1L)
+                        .addProperty(FFTTableFunction.NORM_PARAMETER_NAME, "backward")
+                        .addProperty("__FFT_PARTITION_TYPES", "")
+                        .addProperty("__FFT_VALUE_TYPES", "INT64,INT64,DOUBLE")
+                        .addProperty("__FFT_VALUE_NAMES", "czE=,czI=,czM=")
+                        .build());
+
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                tableFunctionMatcher, mergeSort(exchange(), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan));
+  }
+
+  @Test
+  public void testFFTWithSpecifiedTimeColumn() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM FFT("
+            + "DATA => (SELECT time AS event_time, tag1, s1 FROM table1) "
+            + "PARTITION BY tag1 ORDER BY event_time, "
+            + "TIMECOL => 'event_time', "
+            + "SAMPLE_INTERVAL => 1s, "
+            + "N => 4)";
+
+    planTester.createPlan(sql);
+  }
+
+  @Test
+  public void testFFTPositionalArgumentsKeepExistingOrder() {
+    PlanTester planTester = new PlanTester();
+    String sql = "SELECT * FROM TABLE(FFT(TABLE(table1) ORDER BY time, 1s, 4, 'ortho'))";
+
+    planTester.createPlan(sql);
+  }
+
+  @Test
+  public void testFFTRejectsInvalidArguments() {
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1, SAMPLE_INTERVAL => 1ms)",
+        "Table argument with set semantics requires an ORDER BY clause.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time DESC, SAMPLE_INTERVAL => 1ms)",
+        "The ORDER BY clause of the DATA argument must be in ascending order.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY s1, SAMPLE_INTERVAL => 1ms)",
+        "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, SAMPLE_INTERVAL => 1)",
+        "The SAMPLE_INTERVAL argument of FFT must be a duration literal.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, N => 0)",
+        "Invalid scalar argument N, should be a positive value");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, N => 65537)",
+        "FFT transform length N must not exceed 65536.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, NORM => 'bad')",
+        "Invalid NORM value for FFT. Supported values are backward, forward and ortho.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => (SELECT time, tag1 FROM table1) PARTITION BY tag1 ORDER BY time)",
+        "No numeric columns found for FFT calculation.");
+  }
+
+  @Test
+  public void testSampleSizeInt32Range() {
+    analyzeSQL(
+        "SELECT * FROM TABLE(SAMPLE(DATA => TABLE(table1), N => 10))",
+        TEST_MATADATA,
+        QUERY_CONTEXT);
+    assertAnalyzeFails(
+        "SELECT * FROM TABLE(SAMPLE(DATA => TABLE(table1), N => 4294967297))",
+        "Invalid scalar argument 'N'. Value out of range for INT32");
+  }
+
+  private void assertAnalyzeFails(String sql, String message) {
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(message, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testM4TimeWindowMode() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM M4("
+            + "DATA => table1 PARTITION BY tag1 ORDER BY time, "
+            + "TIMECOL => 'time', "
+            + "SIZE => 1h)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableMap.<String, String>builder()
+                .put("time", "time")
+                .put("tag1", "tag1")
+                .put("tag2", "tag2")
+                .put("tag3", "tag3")
+                .put("attr1", "attr1")
+                .put("attr2", "attr2")
+                .put("s1", "s1")
+                .put("s2", "s2")
+                .put("s3", "s3")
+                .buildOrThrow());
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("m4")
+                .properOutputs(
+                    "window_start",
+                    "window_end",
+                    "m4_tag1",
+                    "m4_tag2_time",
+                    "m4_tag2",
+                    "m4_tag3_time",
+                    "m4_tag3",
+                    "m4_attr1_time",
+                    "m4_attr1",
+                    "m4_attr2_time",
+                    "m4_attr2",
+                    "m4_s1_time",
+                    "m4_s1",
+                    "m4_s2_time",
+                    "m4_s2",
+                    "m4_s3_time",
+                    "m4_s3")
+                .requiredSymbols("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3")
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("SIZE", 3600000L)
+                        .addProperty("SLIDE", 3600000L)
+                        .addProperty("ORIGIN", 0L)
+                        .addProperty("__M4_WINDOW_MODE", true)
+                        .addProperty("__M4_PARTITION_TYPES", "STRING")
+                        .addProperty(
+                            "__M4_PARTICIPANT_TYPES",
+                            "STRING,STRING,STRING,STRING,INT64,INT64,DOUBLE")
+                        .build());
+
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+  }
+
+  @Test
+  public void testM4CountWindowMode() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM M4("
+            + "DATA => table1 PARTITION BY tag1 ORDER BY time, "
+            + "TIMECOL => 'time', "
+            + "SIZE => 5)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableMap.<String, String>builder()
+                .put("time", "time")
+                .put("tag1", "tag1")
+                .put("tag2", "tag2")
+                .put("tag3", "tag3")
+                .put("attr1", "attr1")
+                .put("attr2", "attr2")
+                .put("s1", "s1")
+                .put("s2", "s2")
+                .put("s3", "s3")
+                .buildOrThrow());
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("m4")
+                .properOutputs(
+                    "window_index",
+                    "m4_tag1",
+                    "m4_tag2_time",
+                    "m4_tag2",
+                    "m4_tag3_time",
+                    "m4_tag3",
+                    "m4_attr1_time",
+                    "m4_attr1",
+                    "m4_attr2_time",
+                    "m4_attr2",
+                    "m4_s1_time",
+                    "m4_s1",
+                    "m4_s2_time",
+                    "m4_s2",
+                    "m4_s3_time",
+                    "m4_s3")
+                .requiredSymbols("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3")
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("SIZE", 5L)
+                        .addProperty("SLIDE", 5L)
+                        .addProperty("__M4_WINDOW_MODE", false)
+                        .addProperty("__M4_PARTITION_TYPES", "STRING")
+                        .addProperty(
+                            "__M4_PARTICIPANT_TYPES",
+                            "STRING,STRING,STRING,STRING,INT64,INT64,DOUBLE")
+                        .build());
+
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+  }
+
+  @Test
+  public void testM4MissingOrderBy() {
+    String sql = "SELECT * FROM M4(DATA => table1 PARTITION BY tag1, TIMECOL => 'time', SIZE => 5)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          "Table argument with set semantics requires an ORDER BY clause.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testM4CountWindowRejectsOrigin() {
+    String sql =
+        "SELECT * FROM M4(DATA => table1 PARTITION BY tag1 ORDER BY time, TIMECOL => 'time', SIZE => 5, ORIGIN => 1970-01-01T00:00:00.000+00:00)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals("The ORIGIN argument is only supported in time window mode.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testM4RejectsMismatchedSlideMode() {
+    String sql =
+        "SELECT * FROM M4(DATA => table1 PARTITION BY tag1 ORDER BY time, TIMECOL => 'time', SIZE => 1h, SLIDE => 5)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          "The SLIDE argument must have the same window mode as the SIZE argument.",
+          e.getMessage());
+    }
+
+    sql =
+        "SELECT * FROM M4(DATA => table1 PARTITION BY tag1 ORDER BY time, TIMECOL => 'time', SIZE => 5, SLIDE => 1h)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          "The SLIDE argument must have the same window mode as the SIZE argument.",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testM4RejectsDescendingOrderBy() {
+    String sql =
+        "SELECT * FROM M4(DATA => table1 PARTITION BY tag1 ORDER BY time DESC, TIMECOL => 'time', SIZE => 1h)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          "The ORDER BY clause of the DATA argument must be in ascending order.", e.getMessage());
     }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.query.view.recent;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -26,9 +27,10 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.apache.tsfile.read.common.RowRecord;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,9 +40,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 
 @RunWith(Parameterized.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -102,8 +101,6 @@ public class IoTDBTableViewQueryIT {
   };
 
   protected static String[] createTableSqls = {
-    "CREATE DATABASE " + DATABASE_NAME,
-    "USE " + DATABASE_NAME,
     "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
     "CREATE VIEW view2 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) as root.db.battery.**",
     "CREATE VIEW view3 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) with (ttl=1) as root.db.battery.**",
@@ -137,32 +134,59 @@ public class IoTDBTableViewQueryIT {
 
   private final boolean aligned;
   private final boolean flush;
+  private final String databaseName;
+  private final String treeDatabaseName;
 
   public IoTDBTableViewQueryIT(boolean aligned, boolean flush) {
     this.aligned = aligned;
     this.flush = flush;
+    // Isolate both models so parameter cases can share the cluster without reusing fixture state.
+    databaseName =
+        DATABASE_NAME + (aligned ? "_aligned" : "_non_aligned") + (flush ? "_flushed" : "_memory");
+    treeDatabaseName = "root." + databaseName;
   }
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareData(aligned ? createTreeAlignedDataSqls : createTreeNonAlignedDataSqls);
-    if (flush) {
-      prepareData(new String[] {"flush"});
-    }
-    prepareTableData(createTableSqls);
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @Before
+  public void prepareData() throws Exception {
+    // Reuse the tree session for schema, writes and the optional flush of this case's source.
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE " + treeDatabaseName);
+      for (String sql : aligned ? createTreeAlignedDataSqls : createTreeNonAlignedDataSqls) {
+        session.executeNonQueryStatement(sql.replace("root.db.", treeDatabaseName + "."));
+      }
+      if (flush) {
+        // A global flush would also flush another case's source intended to stay in memory.
+        session.executeNonQueryStatement("FLUSH " + treeDatabaseName);
+      }
+    }
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE " + databaseName);
+      session.executeNonQueryStatement("USE " + databaseName);
+      for (String sql : createTableSqls) {
+        session.executeNonQueryStatement(sql.replace("root.db.", treeDatabaseName + "."));
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Compare tree-backed views with a physical table for aligned/non-aligned, flushed/memory
+  // fixtures; nulls, TTL, filters, fills, joins and aggregations must keep the same results.
   @Test
   public void test() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      // All comparisons use this case's database, so select it only once per session.
+      session.executeNonQueryStatement("USE " + databaseName);
       compareQueryResults(session, "select * from view1", "select * from table1", true);
       compareQueryResults(
           session,
@@ -175,15 +199,16 @@ public class IoTDBTableViewQueryIT {
           "select current from view1 where time > 1",
           "select current from table1 where time > 1" + (aligned ? "" : " and current is not null"),
           true);
+      // FILL runs before an outer ORDER BY, so give both sources the same ordered input.
       compareQueryResults(
           session,
-          "select * from view1 fill method linear",
-          "select * from table1 fill method linear",
+          "select * from (select * from view1 order by battery, time) fill method linear",
+          "select * from (select * from table1 order by battery, time) fill method linear",
           true);
       compareQueryResults(
           session,
-          "select * from view1 fill method previous",
-          "select * from table1 fill method previous",
+          "select * from (select * from view1 order by battery, time) fill method previous",
+          "select * from (select * from table1 order by battery, time) fill method previous",
           true);
       compareQueryResults(
           session,
@@ -339,7 +364,7 @@ public class IoTDBTableViewQueryIT {
           true);
       // empty result
       compareQueryResults(
-          session, "select * from view3 limit 1", "select * from table1 limit 0", true);
+          session, "select * from view3 limit 1", "select * from table1 where battery = 'b'", true);
 
       // not exists
       compareQueryResults(
@@ -349,8 +374,8 @@ public class IoTDBTableViewQueryIT {
           false);
       compareQueryResults(
           session,
-          "select * from (select time, battery as device1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from view2 where battery = 'b') as t2 using(time)",
-          "select * from (select time, battery as device1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from table1 where battery = 'b') as t2 using(time)",
+          "select * from (select time, battery as battery1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as battery2 from view2 where battery = 'b') as t2 using(time)",
+          "select * from (select time, battery as battery1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as battery2 from table1 where battery = 'b') as t2 using(time)",
           true);
       compareQueryResults(
           session,
@@ -380,6 +405,54 @@ public class IoTDBTableViewQueryIT {
           "select count(distinct battery) from view4 where battery = 'b1'",
           "select count(distinct battery) from table1 where battery = 'b1'",
           true);
+
+      compareQueryResults(
+          session,
+          "select count(time) from view1 where time > 604800000",
+          "select count(time) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(battery),count(time) from view1 where time > 604800000",
+          "select count(battery),count(time) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(battery),count(time),count(current) from view1 where time > 604800000",
+          "select count(battery),count(time),count(current) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select distinct battery from view1 where time > 604800000",
+          "select distinct battery from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 where time > 604800000 group by battery",
+          "select count(current) from table1 where time > 604800000 group by battery",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 group by date_bin(2ms,time)",
+          "select count(current) from table1 group by date_bin(2ms,time)",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 group by battery,date_bin(2ms,time)",
+          "select count(current) from table1 group by battery,date_bin(2ms,time)",
+          true);
+
+      compareQueryResults(
+          session,
+          "select last(columns(*)) from view1 group by battery,date_bin(2ms,time)",
+          "select last(columns(*)) from table1 group by battery,date_bin(2ms,time)",
+          true);
     }
   }
 
@@ -387,7 +460,6 @@ public class IoTDBTableViewQueryIT {
       ITableSession session, String sql1, String sql2, boolean sort) throws Exception {
     List<String> records1 = new ArrayList<>();
     List<String> records2 = new ArrayList<>();
-    session.executeNonQueryStatement("USE " + DATABASE_NAME);
     SessionDataSet sessionDataSet = session.executeQueryStatement(sql1);
     while (sessionDataSet.hasNext()) {
       RowRecord record = sessionDataSet.next();

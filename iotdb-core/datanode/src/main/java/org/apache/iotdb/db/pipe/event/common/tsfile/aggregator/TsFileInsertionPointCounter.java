@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.aggregator;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -169,7 +170,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
         tsFileSequenceReader.close();
       }
     } catch (final IOException e) {
-      LOGGER.warn("Failed to close TsFileSequenceReader", e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_TSFILESEQUENCEREADER, e);
     }
   }
 }

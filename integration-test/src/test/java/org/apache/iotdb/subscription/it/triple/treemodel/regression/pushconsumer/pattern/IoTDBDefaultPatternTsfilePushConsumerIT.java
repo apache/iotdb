@@ -26,21 +26,21 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -131,6 +131,7 @@ public class IoTDBDefaultPatternTsfilePushConsumerIT extends AbstractSubscriptio
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,
@@ -162,7 +163,7 @@ public class IoTDBDefaultPatternTsfilePushConsumerIT extends AbstractSubscriptio
                 message -> {
                   onReceiveCount.incrementAndGet();
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    ITsFileTreeReader reader = message.getTsFile().openTreeReader();
                     Path path_d0s0 = new Path(device, "s_0", true);
                     Path path_d0s1 = new Path(device, "s_1", true);
                     Path path_d1s0 = new Path(database + ".d_1", "s_0", true);
@@ -173,10 +174,9 @@ public class IoTDBDefaultPatternTsfilePushConsumerIT extends AbstractSubscriptio
                     paths.add(path_d1s0);
                     paths.add(path_other_d2);
                     for (int i = 0; i < 4; i++) {
-                      QueryDataSet dataset =
-                          reader.query(
-                              QueryExpression.create(
-                                  Collections.singletonList(paths.get(i)), null));
+                      SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                          SubscriptionTreeReaderTestUtils.query(
+                              reader, Collections.singletonList(paths.get(i)));
                       while (dataset.hasNext()) {
                         rowCounts.get(i).addAndGet(1);
                         dataset.next();

@@ -20,13 +20,15 @@
 package org.apache.iotdb.db.exception.metadata.view;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 
 public class ViewNotExistException extends MetadataException {
 
-  private static final String VIEW_NOT_EXIST_WRONG_MESSAGE = "View [%s] does not exist";
+  private static final String VIEW_NOT_EXIST_WRONG_MESSAGE =
+      DataNodeSchemaMessages.VIEW_NOT_EXIST_WRONG_MESSAGE;
 
   public ViewNotExistException(String path) {
     super(
@@ -40,7 +42,9 @@ public class ViewNotExistException extends MetadataException {
             VIEW_NOT_EXIST_WRONG_MESSAGE,
             paths.size() == 1
                 ? paths.get(0)
-                : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
+                : paths.get(0)
+                    + DataNodeSchemaMessages.PATH_LIST_ELLIPSIS_SEPARATOR
+                    + paths.get(paths.size() - 1)),
         TSStatusCode.PATH_NOT_EXIST.getStatusCode());
   }
 }

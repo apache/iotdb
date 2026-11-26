@@ -19,10 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -32,12 +41,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class LoadTsFile extends Statement {
 
-  private final String filePath;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LoadTsFile.class);
+
+  private static final long FILE_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(File.class);
+
+  private String filePath;
 
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
@@ -46,6 +61,7 @@ public class LoadTsFile extends Statement {
   private long tabletConversionThresholdBytes;
   private boolean autoCreateDatabase;
   private boolean verify;
+  private boolean autoCreateSchema;
   private boolean isAsyncLoad = false;
 
   private boolean isGeneratedByPipe = false;
@@ -56,26 +72,50 @@ public class LoadTsFile extends Statement {
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
   private List<Boolean> isTableModel;
+  private boolean needDecode4TimeColumn;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
-    super(location);
-    this.filePath = requireNonNull(filePath, "filePath is null");
+    this(location, filePath, loadAttributes, true, true);
+  }
 
-    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+  public static LoadTsFile createUnchecked(
+      NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    return new LoadTsFile(location, filePath, loadAttributes, false, true);
+  }
+
+  public static LoadTsFile createForPipe(
+      NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    return new LoadTsFile(location, filePath, loadAttributes, false, false);
+  }
+
+  private LoadTsFile(
+      NodeLocation location,
+      String filePath,
+      Map<String, String> loadAttributes,
+      boolean validateSourcePath,
+      boolean validateInternalDataDir) {
+    super(location);
+    this.filePath =
+        requireNonNull(filePath, DataNodeQueryMessages.EXCEPTION_FILEPATH_IS_NULL_84CE8A66);
+
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
     this.tabletConversionThresholdBytes =
         IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.verify = true;
+    this.autoCreateSchema = true;
 
     this.loadAttributes = loadAttributes == null ? Collections.emptyMap() : loadAttributes;
     initAttributes();
 
     try {
+      LoadTsFileStatement.validateLoadTsFilePath(filePath);
       this.tsFiles =
-          org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
-              new File(filePath));
+          validateInternalDataDir
+              ? LoadTsFileStatement.processTsFile(new File(filePath), validateSourcePath)
+              : LoadTsFileStatement.processTsFileForPipe(new File(filePath));
       this.resources = new ArrayList<>();
       this.writePointCountList = new ArrayList<>();
       this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
@@ -126,6 +166,10 @@ public class LoadTsFile extends Statement {
     return verify;
   }
 
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
+  }
+
   public int getDatabaseLevel() {
     return databaseLevel;
   }
@@ -159,6 +203,14 @@ public class LoadTsFile extends Statement {
     this.isTableModel = isTableModel;
   }
 
+  public boolean isNeedDecode4TimeColumn() {
+    return needDecode4TimeColumn;
+  }
+
+  public void enableNeedDecode4TimeColumn() {
+    this.needDecode4TimeColumn = true;
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
   }
@@ -188,6 +240,8 @@ public class LoadTsFile extends Statement {
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.autoCreateSchema =
+        LoadTsFileConfigurator.parseOrGetDefaultAutoCreateSchema(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
   }
 
@@ -233,8 +287,68 @@ public class LoadTsFile extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLoadTsFile(this, context);
+  public boolean shouldSplit() {
+    final int splitThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
+    return tsFiles.size() > splitThreshold && !isAsyncLoad;
+  }
+
+  /**
+   * Splits the current LoadTsFile statement into multiple sub-statements, each handling a batch of
+   * TsFiles. Used to limit resource consumption during statement analysis, etc.
+   *
+   * @return the list of sub-statements
+   */
+  @Override
+  public List<LoadTsFile> getSubStatements() {
+    final int batchSize =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileSubStatementBatchSize();
+    final int totalBatches = (tsFiles.size() + batchSize - 1) / batchSize; // Ceiling division
+    final List<LoadTsFile> subStatements = new ArrayList<>(totalBatches);
+
+    for (int i = 0; i < tsFiles.size(); i += batchSize) {
+      final int endIndex = Math.min(i + batchSize, tsFiles.size());
+      final List<File> batchFiles = tsFiles.subList(i, endIndex);
+
+      // Use the first file's path for the sub-statement
+      final String filePath = batchFiles.get(0).getAbsolutePath();
+      final Map<String, String> properties = this.loadAttributes;
+
+      final LoadTsFile subStatement =
+          isGeneratedByPipe
+              ? LoadTsFile.createForPipe(getLocation().orElse(null), filePath, properties)
+              : LoadTsFile.createUnchecked(getLocation().orElse(null), filePath, properties);
+
+      // Copy all configuration properties
+      subStatement.databaseLevel = this.databaseLevel;
+      subStatement.database = this.database;
+      subStatement.verify = this.verify;
+      subStatement.autoCreateSchema = this.autoCreateSchema;
+      subStatement.deleteAfterLoad = this.deleteAfterLoad;
+      subStatement.convertOnTypeMismatch = this.convertOnTypeMismatch;
+      subStatement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
+      subStatement.autoCreateDatabase = this.autoCreateDatabase;
+      subStatement.isAsyncLoad = this.isAsyncLoad;
+      subStatement.isGeneratedByPipe = this.isGeneratedByPipe;
+
+      // Set all files in the batch
+      subStatement.tsFiles = new ArrayList<>(batchFiles);
+      subStatement.resources = new ArrayList<>(batchFiles.size());
+      subStatement.writePointCountList = new ArrayList<>(batchFiles.size());
+      subStatement.isTableModel = new ArrayList<>(batchFiles.size());
+      for (int j = 0; j < batchFiles.size(); j++) {
+        subStatement.isTableModel.add(true);
+      }
+
+      subStatements.add(subStatement);
+    }
+
+    return subStatements;
+  }
+
+  @Override
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitLoadTsFile(this, context);
   }
 
   @Override
@@ -266,5 +380,33 @@ public class LoadTsFile extends Statement {
         .add("filePath", filePath)
         .add("loadAttributes", loadAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(filePath);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOfMap(loadAttributes);
+    if (tsFiles != null) {
+      size += RamUsageEstimator.shallowSizeOf(tsFiles);
+      for (File file : tsFiles) {
+        if (file != null) {
+          size += FILE_INSTANCE_SIZE;
+        }
+      }
+    }
+    if (resources != null) {
+      size += RamUsageEstimator.shallowSizeOf(resources);
+      for (TsFileResource resource : resources) {
+        if (resource != null) {
+          size += resource.calculateRamSize();
+        }
+      }
+    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfLongList(writePointCountList);
+    size += RamUsageEstimator.shallowSizeOf(isTableModel);
+    return size;
   }
 }

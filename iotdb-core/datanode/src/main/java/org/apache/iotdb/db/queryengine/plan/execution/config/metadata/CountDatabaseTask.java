@@ -28,8 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
@@ -54,10 +54,10 @@ public class CountDatabaseTask implements IConfigTask {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(storageGroupNum);
     builder.declarePosition();
-    ColumnHeader storageGroupColumnHeader =
+    ColumnHeader databaseColumnHeader =
         new ColumnHeader(IoTDBConstant.COLUMN_COUNT, TSDataType.INT32);
     DatasetHeader datasetHeader =
-        new DatasetHeader(Collections.singletonList(storageGroupColumnHeader), true);
+        new DatasetHeader(Collections.singletonList(databaseColumnHeader), true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

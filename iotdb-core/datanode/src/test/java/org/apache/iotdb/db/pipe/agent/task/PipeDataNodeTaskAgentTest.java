@@ -1,0 +1,831 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.pipe.agent.task;
+
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskManager;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.awaitility.Awaitility;
+import org.junit.Assert;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.powermock.reflect.Whitebox;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+
+public class PipeDataNodeTaskAgentTest {
+
+  private static final int LOCAL_NODE_ID = 1;
+  private static final int REGION_ID = 7;
+
+  @Test
+  public void testRatisDetectsPipeDataInsertionOption() throws Exception {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+
+      Assert.assertTrue(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "schema")));
+      Assert.assertTrue(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.delete")));
+      Assert.assertFalse(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.insert")));
+      Assert.assertFalse(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.insert,data.delete")));
+      for (final Map<String, String> attributes :
+          List.of(
+              Map.<String, String>of(),
+              Map.of("inclusion", "schema"),
+              Map.of("inclusion", "data.delete"),
+              Map.of("source.inclusion", "data.insert.extra"),
+              Map.of("inclusion", "all", "inclusion.exclusion", "data.insert.extra"))) {
+        Assert.assertEquals(
+            attributes.toString(),
+            !DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                    new PipeParameters(attributes))
+                .getLeft(),
+            PipeDataNodeAgent.isPipeDataInsertionEnabled(attributes));
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
+
+  @Test
+  public void testRatisDoesNotRestoreCompletedSubscriptionBroker() {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    final String group = "ratis-completed-snapshot";
+    final PipeDataNodeTaskAgent taskAgent =
+        new PipeDataNodeTaskAgent() {
+          @Override
+          protected boolean isShutdown() {
+            return false;
+          }
+        };
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+      final PipeMeta meta =
+          new PipeMeta(
+              new PipeStaticMeta(
+                  PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX + "topic." + group,
+                  1L,
+                  new HashMap<>(
+                      Map.of(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, "true")),
+                  new HashMap<>(),
+                  new HashMap<>(
+                      Map.of(
+                          PipeSinkConstant.SINK_CONSUMER_GROUP_KEY,
+                          group,
+                          PipeSinkConstant.SINK_TOPIC_KEY,
+                          "topic"))),
+              new PipeRuntimeMeta());
+      meta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+
+      Assert.assertNull(taskAgent.handleSinglePipeMetaChanges(meta));
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+      Assert.assertTrue(taskAgent.handlePipeMetaChanges(Collections.singletonList(meta)).isEmpty());
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+    } finally {
+      SubscriptionAgent.broker().dropBroker(group);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
+
+  @Test
+  public void testEmptyPartialMetadataKeepsExistingPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta existing = newEmptyPipeMeta("existing", 1L);
+    addEmptyPipe(agent, existing);
+
+    Assert.assertEquals(
+        Collections.emptyList(), agent.handleMultiPipeMetaChanges(Collections.emptyList()));
+
+    Assert.assertSame(existing, keeper.getPipeMeta(existing.getStaticMeta()));
+  }
+
+  @Test
+  public void testPartialMetadataUpdatesOnlyRequestedPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta existing = newEmptyPipeMeta("existing", 1L);
+    final PipeMeta unrelated = newEmptyPipeMeta("unrelated", 2L);
+    addEmptyPipe(agent, existing);
+    addEmptyPipe(agent, unrelated);
+    final PipeMeta updated = newEmptyPipeMeta("existing", 1L);
+    updated.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(updated)));
+
+    Assert.assertEquals(PipeStatus.RUNNING, existing.getRuntimeMeta().getStatus().get());
+    Assert.assertSame(unrelated, keeper.getPipeMeta(unrelated.getStaticMeta()));
+    Assert.assertEquals(PipeStatus.STOPPED, unrelated.getRuntimeMeta().getStatus().get());
+  }
+
+  @Test
+  public void testPartialDropKeepsUnrelatedPipeAndFullSnapshotStillRemovesIt() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta existing = newEmptyPipeMeta("existing", 1L);
+    final PipeMeta unrelated = newEmptyPipeMeta("unrelated", 2L);
+    addEmptyPipe(agent, existing);
+    addEmptyPipe(agent, unrelated);
+    final PipeMeta dropped = newEmptyPipeMeta("existing", 1L);
+    dropped.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(dropped)));
+
+    Assert.assertNull(keeper.getPipeMeta(existing.getStaticMeta()));
+    Assert.assertSame(unrelated, keeper.getPipeMeta(unrelated.getStaticMeta()));
+    Assert.assertTrue(agent.handlePipeMetaChanges(Collections.emptyList()).isEmpty());
+    Assert.assertTrue(keeper.isEmpty());
+  }
+
+  @Test
+  public void testPartialStaleDropDoesNotRemoveNewerPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta current = newEmptyPipeMeta("existing", 3L);
+    addEmptyPipe(agent, current);
+    final PipeMeta staleDropped = newEmptyPipeMeta("existing", 1L);
+    staleDropped.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(staleDropped)));
+
+    Assert.assertSame(current, keeper.getPipeMeta(current.getStaticMeta()));
+  }
+
+  @Test
+  public void testPartialPreDeleteDoesNotRemoveExistingPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta current = newEmptyPipeMeta("existing", 3L);
+    addEmptyPipe(agent, current);
+    final PipeMeta preDelete = newEmptyPipeMeta("existing", 4L);
+    preDelete.getRuntimeMeta().getStatus().set(PipeStatus.PRE_DELETE);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(preDelete)));
+
+    Assert.assertSame(current, keeper.getPipeMeta(current.getStaticMeta()));
+  }
+
+  @Test
+  public void testPartialAlterKeepsReplacementAndUnrelatedPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta existing = newEmptyPipeMeta("existing", 1L);
+    final PipeMeta unrelated = newEmptyPipeMeta("unrelated", 2L);
+    addEmptyPipe(agent, existing);
+    addEmptyPipe(agent, unrelated);
+    final PipeMeta dropped = newEmptyPipeMeta("existing", 1L);
+    dropped.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+    final PipeMeta replacement = newEmptyPipeMeta("existing", 3L);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Arrays.asList(dropped, replacement)));
+
+    Assert.assertEquals(
+        3L, keeper.getPipeMeta(replacement.getStaticMeta()).getStaticMeta().getCreationTime());
+    Assert.assertSame(unrelated, keeper.getPipeMeta(unrelated.getStaticMeta()));
+    Assert.assertEquals(2, keeper.getPipeMetaCount());
+  }
+
+  private void addEmptyPipe(final PipeDataNodeTaskAgent agent, final PipeMeta meta)
+      throws Exception {
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeTaskManager manager = getField(agent, "pipeTaskManager");
+    keeper.addPipeMeta(meta);
+    manager.addPipeTasks(meta.getStaticMeta(), Collections.emptyMap());
+  }
+
+  private static PipeDataNodeTaskAgent newActiveTaskAgent() {
+    return new PipeDataNodeTaskAgent() {
+      @Override
+      protected boolean isShutdown() {
+        return false;
+      }
+    };
+  }
+
+  private static PipeMeta newEmptyPipeMeta(final String name, final long creationTime)
+      throws IOException {
+    return PipeMeta.deserialize4TaskAgent(
+        new PipeMeta(
+                new PipeStaticMeta(
+                    name,
+                    creationTime,
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap()),
+                new PipeRuntimeMeta())
+            .serialize());
+  }
+
+  @Test
+  public void testGetPipeTaskProgressIndexReportsMissingTaskMeta() throws Exception {
+    final PipeDataNodeTaskAgent taskAgent = new PipeDataNodeTaskAgent();
+    final Field pipeMetaKeeperField = PipeTaskAgent.class.getDeclaredField("pipeMetaKeeper");
+    pipeMetaKeeperField.setAccessible(true);
+    final PipeMetaKeeper pipeMetaKeeper = (PipeMetaKeeper) pipeMetaKeeperField.get(taskAgent);
+
+    final String pipeName = PipeStaticMeta.CONSENSUS_PIPE_PREFIX + "DataRegion[7]_1_2";
+    pipeMetaKeeper.addPipeMeta(
+        new PipeMeta(
+            new PipeStaticMeta(pipeName, 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta()));
+
+    final PipeException exception =
+        Assert.assertThrows(
+            PipeException.class, () -> taskAgent.getPipeTaskProgressIndex(pipeName, REGION_ID));
+    Assert.assertTrue(exception.getMessage().contains(pipeName));
+    Assert.assertTrue(exception.getMessage().contains(String.valueOf(REGION_ID)));
+  }
+
+  @Test
+  public void testCreateMemoryCheckStillRunsWhenNoPipeTasksNeedToBeCreated() throws Exception {
+    final boolean originalPipeEnableMemoryCheck =
+        CommonDescriptor.getInstance().getConfig().isPipeEnableMemoryChecked();
+    final long originalPipeInsertNodeQueueMemory =
+        CommonDescriptor.getInstance().getConfig().getPipeInsertNodeQueueMemory();
+    final double originalPipeTotalFloatingMemoryProportion =
+        CommonDescriptor.getInstance().getConfig().getPipeTotalFloatingMemoryProportion();
+
+    try {
+      CommonDescriptor.getInstance().getConfig().setIsPipeEnableMemoryChecked(true);
+      CommonDescriptor.getInstance().getConfig().setPipeInsertNodeQueueMemory(1);
+      CommonDescriptor.getInstance().getConfig().setPipeTotalFloatingMemoryProportion(0);
+
+      Assert.assertThrows(
+          PipeException.class,
+          () ->
+              PipeDataNodeAgent.task()
+                  .calculateMemoryUsage(
+                      new PipeMeta(
+                          new PipeStaticMeta(
+                              "p", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+                          new PipeRuntimeMeta())));
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setIsPipeEnableMemoryChecked(originalPipeEnableMemoryCheck);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeInsertNodeQueueMemory(originalPipeInsertNodeQueueMemory);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeTotalFloatingMemoryProportion(originalPipeTotalFloatingMemoryProportion);
+    }
+  }
+
+  @Test
+  public void testSinkCriticalExceptionIsPropagatedOnlyWithinItsPipe() throws Exception {
+    final PipeDataNodeTaskAgent taskAgent = new PipeDataNodeTaskAgent();
+    final PipeMetaKeeper pipeMetaKeeper = getField(taskAgent, "pipeMetaKeeper");
+    final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+
+    final PipeTaskMeta failedTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final PipeTaskMeta failedPipeSecondTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final ConcurrentMap<Integer, PipeTaskMeta> failedPipeTaskMetaMap = new ConcurrentHashMap<>();
+    failedPipeTaskMetaMap.put(REGION_ID, failedTaskMeta);
+    failedPipeTaskMetaMap.put(REGION_ID + 1, failedPipeSecondTaskMeta);
+    final PipeMeta failedPipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta("failedPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(failedPipeTaskMetaMap));
+    failedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+
+    final PipeTaskMeta unaffectedTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final ConcurrentMap<Integer, PipeTaskMeta> unaffectedPipeTaskMetaMap =
+        new ConcurrentHashMap<>();
+    unaffectedPipeTaskMetaMap.put(REGION_ID, unaffectedTaskMeta);
+    final PipeMeta unaffectedPipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                "unaffectedPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(unaffectedPipeTaskMetaMap));
+    unaffectedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+
+    pipeMetaKeeper.addPipeMeta(failedPipeMeta);
+    pipeMetaKeeper.addPipeMeta(unaffectedPipeMeta);
+
+    final PipeRuntimeSinkCriticalException exception =
+        new PipeRuntimeSinkCriticalException("sink failure", 1L);
+    taskAgent.stopAllPipesWithCriticalExceptionAndTrackException(failedTaskMeta, exception);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () ->
+                PipeStatus.STOPPED.equals(failedPipeMeta.getRuntimeMeta().getStatus().get())
+                    && failedPipeSecondTaskMeta.containsExceptionMessage(exception));
+
+    Assert.assertEquals(PipeStatus.RUNNING, unaffectedPipeMeta.getRuntimeMeta().getStatus().get());
+    Assert.assertFalse(unaffectedTaskMeta.hasExceptionMessages());
+  }
+
+  @Test
+  public void testExplicitPipeIdentityDoesNotFallBackToTaskMeta() throws Exception {
+    final PipeDataNodeTaskAgent taskAgent = new PipeDataNodeTaskAgent();
+    final PipeMetaKeeper pipeMetaKeeper = getField(taskAgent, "pipeMetaKeeper");
+    final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+
+    final PipeTaskMeta taskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final ConcurrentMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
+    taskMetaMap.put(REGION_ID, taskMeta);
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                "existingPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(taskMetaMap));
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    pipeMetaKeeper.addPipeMeta(pipeMeta);
+
+    taskAgent.stopAllPipesWithCriticalExceptionAndTrackException(
+        "existingPipe",
+        Long.MIN_VALUE,
+        taskMeta,
+        new PipeRuntimeCriticalException("stale pipe identity", 1L));
+
+    Awaitility.await()
+        .during(500, TimeUnit.MILLISECONDS)
+        .atMost(2, TimeUnit.SECONDS)
+        .until(
+            () ->
+                PipeStatus.RUNNING.equals(pipeMeta.getRuntimeMeta().getStatus().get())
+                    && !taskMeta.hasExceptionMessages());
+  }
+
+  @Test
+  public void testDetachedTaskMetaMustIdentifyOnePipeUniquely() throws Exception {
+    final PipeDataNodeTaskAgent taskAgent = new PipeDataNodeTaskAgent();
+    final PipeMetaKeeper pipeMetaKeeper = getField(taskAgent, "pipeMetaKeeper");
+    final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+
+    final PipeTaskMeta firstTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final PipeTaskMeta secondTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final ConcurrentMap<Integer, PipeTaskMeta> firstTaskMetaMap = new ConcurrentHashMap<>();
+    firstTaskMetaMap.put(REGION_ID, firstTaskMeta);
+    final ConcurrentMap<Integer, PipeTaskMeta> secondTaskMetaMap = new ConcurrentHashMap<>();
+    secondTaskMetaMap.put(REGION_ID, secondTaskMeta);
+    final PipeMeta firstPipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta("firstPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(firstTaskMetaMap));
+    final PipeMeta secondPipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta("secondPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(secondTaskMetaMap));
+    firstPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    secondPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    pipeMetaKeeper.addPipeMeta(firstPipeMeta);
+    pipeMetaKeeper.addPipeMeta(secondPipeMeta);
+
+    final PipeTaskMeta detachedTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    taskAgent.stopAllPipesWithCriticalExceptionAndTrackException(
+        detachedTaskMeta, new PipeRuntimeCriticalException("ambiguous task meta", 1L));
+
+    Awaitility.await().atMost(30, TimeUnit.SECONDS).until(detachedTaskMeta::hasExceptionMessages);
+    pipeMetaKeeper.acquireWriteLock();
+    pipeMetaKeeper.releaseWriteLock();
+
+    Assert.assertEquals(PipeStatus.RUNNING, firstPipeMeta.getRuntimeMeta().getStatus().get());
+    Assert.assertEquals(PipeStatus.RUNNING, secondPipeMeta.getRuntimeMeta().getStatus().get());
+    Assert.assertFalse(firstTaskMeta.hasExceptionMessages());
+    Assert.assertFalse(secondTaskMeta.hasExceptionMessages());
+  }
+
+  @Test
+  public void testDetachedTaskMetaIsRecordedOnIdentifiedPipe() throws Exception {
+    final PipeDataNodeTaskAgent taskAgent = new PipeDataNodeTaskAgent();
+    final PipeMetaKeeper pipeMetaKeeper = getField(taskAgent, "pipeMetaKeeper");
+    final PipeTaskManager pipeTaskManager = getField(taskAgent, "pipeTaskManager");
+    final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+
+    final PipeTaskMeta localTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final ConcurrentMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
+    taskMetaMap.put(REGION_ID, localTaskMeta);
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                "detachedPipe", 2L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(taskMetaMap));
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    pipeMetaKeeper.addPipeMeta(pipeMeta);
+    pipeTaskManager.addPipeTasks(pipeMeta.getStaticMeta(), Collections.emptyMap());
+
+    final PipeTaskMeta detachedTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final PipeRuntimeCriticalException exception =
+        new PipeRuntimeCriticalException("detached failure", 2L);
+    taskAgent.stopAllPipesWithCriticalExceptionAndTrackException(
+        "detachedPipe", 2L, detachedTaskMeta, exception);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () ->
+                PipeStatus.STOPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
+                    && localTaskMeta.containsExceptionMessage(exception));
+    Assert.assertTrue(pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException());
+  }
+
+  @Test
+  public void testCriticalExceptionWithNullTaskMetaStopsIdentifiedPipe() throws Exception {
+    final PipeDataNodeTaskAgent taskAgent = new PipeDataNodeTaskAgent();
+    final PipeMetaKeeper pipeMetaKeeper = getField(taskAgent, "pipeMetaKeeper");
+
+    final PipeMeta failedPipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                "nullTaskMetaPipe", 3L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta());
+    failedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    final PipeMeta unaffectedPipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                "stillRunningPipe", 3L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta());
+    unaffectedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    pipeMetaKeeper.addPipeMeta(failedPipeMeta);
+    pipeMetaKeeper.addPipeMeta(unaffectedPipeMeta);
+
+    final PipeRuntimeSinkCriticalException exception =
+        new PipeRuntimeSinkCriticalException("null task meta failure", 3L);
+    taskAgent.stopAllPipesWithCriticalExceptionAndTrackException(
+        "nullTaskMetaPipe", 3L, null, exception);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () ->
+                PipeStatus.STOPPED.equals(failedPipeMeta.getRuntimeMeta().getStatus().get())
+                    && failedPipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException());
+    Assert.assertEquals(PipeStatus.RUNNING, unaffectedPipeMeta.getRuntimeMeta().getStatus().get());
+  }
+
+  @Test
+  public void testCarryOverCommittedProgressForResumeAlter() {
+    final PipeStaticMeta oldStaticMeta = createStaticMeta(1, false);
+    final PipeStaticMeta updatedStaticMeta = createStaticMeta(2, false);
+    final PipeMeta localOldPipeMeta =
+        createPipeMeta(oldStaticMeta, new SimpleProgressIndex(1, 20L), LOCAL_NODE_ID);
+    final PipeMeta updatedPipeMeta =
+        createPipeMeta(updatedStaticMeta, new SimpleProgressIndex(1, 10L), LOCAL_NODE_ID);
+
+    PipeDataNodeTaskAgent.carryOverLocalProgressIndexForAlter(
+        oldStaticMeta,
+        localOldPipeMeta,
+        updatedPipeMeta,
+        LOCAL_NODE_ID,
+        (staticMeta, regionId) -> regionId == REGION_ID);
+
+    Assert.assertEquals(
+        new SimpleProgressIndex(1, 20L),
+        updatedPipeMeta
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .get(REGION_ID)
+            .getProgressIndex());
+  }
+
+  @Test
+  public void testCarryOverDoesNotOverrideCoordinatorProgress() {
+    final PipeStaticMeta oldStaticMeta = createStaticMeta(1, false);
+    final PipeStaticMeta updatedStaticMeta = createStaticMeta(2, false);
+    final PipeMeta localOldPipeMeta =
+        createPipeMeta(oldStaticMeta, new SimpleProgressIndex(1, 10L), LOCAL_NODE_ID);
+    final PipeMeta updatedPipeMeta =
+        createPipeMeta(updatedStaticMeta, new SimpleProgressIndex(1, 20L), LOCAL_NODE_ID);
+
+    PipeDataNodeTaskAgent.carryOverLocalProgressIndexForAlter(
+        oldStaticMeta,
+        localOldPipeMeta,
+        updatedPipeMeta,
+        LOCAL_NODE_ID,
+        (staticMeta, regionId) -> true);
+
+    Assert.assertEquals(
+        new SimpleProgressIndex(1, 20L),
+        updatedPipeMeta
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .get(REGION_ID)
+            .getProgressIndex());
+  }
+
+  @Test
+  public void testCarryOverDoesNotOverrideProgressResetOnModeChange() {
+    final PipeStaticMeta oldStaticMeta = createStaticMeta(1, false);
+    final PipeStaticMeta updatedStaticMeta = createStaticMeta(2, true);
+    final PipeMeta localOldPipeMeta =
+        createPipeMeta(oldStaticMeta, new SimpleProgressIndex(1, 20L), LOCAL_NODE_ID);
+    final PipeMeta updatedPipeMeta =
+        createPipeMeta(updatedStaticMeta, MinimumProgressIndex.INSTANCE, LOCAL_NODE_ID);
+
+    PipeDataNodeTaskAgent.carryOverLocalProgressIndexForAlter(
+        oldStaticMeta,
+        localOldPipeMeta,
+        updatedPipeMeta,
+        LOCAL_NODE_ID,
+        (staticMeta, regionId) -> true);
+
+    Assert.assertSame(
+        MinimumProgressIndex.INSTANCE,
+        updatedPipeMeta
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .get(REGION_ID)
+            .getProgressIndex());
+  }
+
+  @Test
+  public void testCarryOverRequiresStableLeaderAndLocalTask() {
+    final PipeStaticMeta oldStaticMeta = createStaticMeta(1, false);
+    final PipeStaticMeta updatedStaticMeta = createStaticMeta(2, false);
+    final PipeMeta localOldPipeMeta =
+        createPipeMeta(oldStaticMeta, new SimpleProgressIndex(1, 20L), LOCAL_NODE_ID);
+
+    final PipeMeta localOldPipeMetaWithLeaderChange =
+        createPipeMeta(oldStaticMeta, new SimpleProgressIndex(1, 20L), 2);
+    final PipeMeta updatedWithOldLeaderChange =
+        createPipeMeta(updatedStaticMeta, new SimpleProgressIndex(1, 10L), LOCAL_NODE_ID);
+    PipeDataNodeTaskAgent.carryOverLocalProgressIndexForAlter(
+        oldStaticMeta,
+        localOldPipeMetaWithLeaderChange,
+        updatedWithOldLeaderChange,
+        LOCAL_NODE_ID,
+        (staticMeta, regionId) -> true);
+    Assert.assertEquals(
+        new SimpleProgressIndex(1, 10L),
+        updatedWithOldLeaderChange
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .get(REGION_ID)
+            .getProgressIndex());
+
+    final PipeMeta updatedWithLeaderChange =
+        createPipeMeta(updatedStaticMeta, new SimpleProgressIndex(1, 10L), 2);
+    PipeDataNodeTaskAgent.carryOverLocalProgressIndexForAlter(
+        oldStaticMeta,
+        localOldPipeMeta,
+        updatedWithLeaderChange,
+        LOCAL_NODE_ID,
+        (staticMeta, regionId) -> true);
+    Assert.assertEquals(
+        new SimpleProgressIndex(1, 10L),
+        updatedWithLeaderChange
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .get(REGION_ID)
+            .getProgressIndex());
+
+    final PipeMeta updatedWithoutLocalTask =
+        createPipeMeta(updatedStaticMeta, new SimpleProgressIndex(1, 10L), LOCAL_NODE_ID);
+    PipeDataNodeTaskAgent.carryOverLocalProgressIndexForAlter(
+        oldStaticMeta,
+        localOldPipeMeta,
+        updatedWithoutLocalTask,
+        LOCAL_NODE_ID,
+        (staticMeta, regionId) -> false);
+    Assert.assertEquals(
+        new SimpleProgressIndex(1, 10L),
+        updatedWithoutLocalTask
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .get(REGION_ID)
+            .getProgressIndex());
+  }
+
+  /**
+   * A task that fails to start is dropped and unregistered, so the following meta sync creates it
+   * again.
+   */
+  @Test
+  public void testFailedTaskStartIsRolledBackForRetry() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeTaskManager manager = getField(agent, "pipeTaskManager");
+
+    final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    final PipeTaskMeta taskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final ConcurrentMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
+    taskMetaMap.put(REGION_ID, taskMeta);
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                "failedStartPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(taskMetaMap));
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    keeper.addPipeMeta(pipeMeta);
+
+    final PipeTask failedTask = Mockito.mock(PipeTask.class);
+    Mockito.doThrow(new PipeException("failed to start the sink")).when(failedTask).start();
+    manager.addPipeTask(pipeMeta.getStaticMeta(), REGION_ID, failedTask);
+
+    final Method startPipeTask =
+        PipeTaskAgent.class.getDeclaredMethod("startPipeTask", int.class, PipeStaticMeta.class);
+    startPipeTask.setAccessible(true);
+    startPipeTask.invoke(agent, REGION_ID, pipeMeta.getStaticMeta());
+
+    Mockito.verify(failedTask).drop();
+    Assert.assertNull(manager.getPipeTask(pipeMeta.getStaticMeta(), REGION_ID));
+    Assert.assertNull(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().get(REGION_ID));
+    Assert.assertEquals(PipeStatus.RUNNING, pipeMeta.getRuntimeMeta().getStatus().get());
+  }
+
+  @Test
+  public void testFailedSubscriptionTaskStartDoesNotReportZeroLocalTasks() throws Exception {
+    final CommonConfig originalConfig =
+        Whitebox.getInternalState(SubscriptionConfig.class, "COMMON_CONFIG");
+    final CommonConfig enabledConfig = Mockito.spy(originalConfig);
+    Mockito.doReturn(true).when(enabledConfig).getSubscriptionEnabled();
+    final PipeTask task = Mockito.mock(PipeTask.class);
+    Mockito.doThrow(new IllegalStateException()).doNothing().when(task).start();
+    final PipeDataNodeTaskAgent agent =
+        new PipeDataNodeTaskAgent() {
+          @Override
+          protected boolean isShutdown() {
+            return false;
+          }
+
+          @Override
+          protected void createPipeTask(
+              final int regionId, final PipeStaticMeta staticMeta, final PipeTaskMeta taskMeta) {
+            pipeMetaKeeper
+                .getPipeMeta(staticMeta)
+                .getRuntimeMeta()
+                .getConsensusGroupId2TaskMetaMap()
+                .put(regionId, taskMeta);
+            pipeTaskManager.addPipeTask(staticMeta, regionId, task);
+          }
+        };
+    final String pipeName = PipeStaticMeta.generateSubscriptionPipeName("snapshot", "group");
+    final PipeStaticMeta staticMeta =
+        new PipeStaticMeta(pipeName, 1L, new HashMap<>(), new HashMap<>(), new HashMap<>());
+    final PipeMeta localMeta = new PipeMeta(staticMeta, new PipeRuntimeMeta());
+    localMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    keeper.addPipeMeta(localMeta);
+
+    final PipeMeta coordinatorMeta =
+        createPipeMeta(
+            staticMeta,
+            MinimumProgressIndex.INSTANCE,
+            IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+    coordinatorMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    Whitebox.setInternalState(SubscriptionConfig.class, "COMMON_CONFIG", enabledConfig);
+    try {
+      Assert.assertTrue(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+      Assert.assertNull(agent.handleSinglePipeMetaChanges(coordinatorMeta));
+      Mockito.verify(task).drop();
+      Assert.assertTrue(localMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().isEmpty());
+      Assert.assertFalse(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+
+      Assert.assertNull(agent.handleSinglePipeMetaChanges(coordinatorMeta));
+      Mockito.verify(task, Mockito.times(2)).start();
+      Assert.assertFalse(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+
+      final PipeMeta noAssignments = new PipeMeta(staticMeta, new PipeRuntimeMeta());
+      noAssignments.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+      Assert.assertNull(agent.handleSinglePipeMetaChanges(noAssignments));
+      Assert.assertTrue(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+    } finally {
+      Whitebox.setInternalState(SubscriptionConfig.class, "COMMON_CONFIG", originalConfig);
+    }
+  }
+
+  @Test
+  public void testIsRunningSubscriptionPipeWithoutLocalTasksChecksExpectedRegions()
+      throws Exception {
+    final java.util.concurrent.atomic.AtomicReference<java.util.Set<Integer>> expectedRegions =
+        new java.util.concurrent.atomic.AtomicReference<>(Collections.singleton(REGION_ID));
+    final PipeDataNodeTaskAgent agent =
+        new PipeDataNodeTaskAgent() {
+          @Override
+          java.util.Set<Integer> getExpectedDataRegionIds(final PipeMeta pipeMeta) {
+            return expectedRegions.get();
+          }
+        };
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+
+    final String pipeName = "__subscription.snapshot_topic_group";
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(pipeName, 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta());
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    keeper.addPipeMeta(pipeMeta);
+
+    // No local PipeTask exists, but a local DataRegion is still expected (e.g., task creation
+    // failed): must NOT report zero local tasks / completion.
+    Assert.assertFalse(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+
+    // Only when both local PipeTasks and expected local DataRegions are empty does it return true.
+    expectedRegions.set(Collections.emptySet());
+    Assert.assertTrue(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+  }
+
+  private PipeStaticMeta createStaticMeta(final long creationTime, final boolean historyEnabled) {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(
+        PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY, Boolean.toString(historyEnabled));
+    return new PipeStaticMeta(
+        String.valueOf('p'), creationTime, sourceAttributes, new HashMap<>(), new HashMap<>());
+  }
+
+  private PipeMeta createPipeMeta(
+      final PipeStaticMeta staticMeta, final ProgressIndex progressIndex, final int leaderId) {
+    final ConcurrentMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
+    taskMetaMap.put(REGION_ID, new PipeTaskMeta(progressIndex, leaderId));
+    return new PipeMeta(staticMeta, new PipeRuntimeMeta(taskMetaMap));
+  }
+
+  @SuppressWarnings("unchecked")
+  private <T> T getField(final PipeDataNodeTaskAgent taskAgent, final String fieldName)
+      throws ReflectiveOperationException {
+    final Field field = PipeTaskAgent.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return (T) field.get(taskAgent);
+  }
+}

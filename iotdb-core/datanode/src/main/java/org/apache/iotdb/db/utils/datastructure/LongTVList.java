@@ -27,9 +27,9 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -60,6 +60,15 @@ public abstract class LongTVList extends TVList {
       default:
         return new TimLongTVList();
     }
+  }
+
+  @Override
+  public synchronized TVList cloneForFlushSort() {
+    LongTVList cloneList = LongTVList.newList();
+    cloneAs(cloneList);
+    cloneList.bitMap = this.bitMap;
+    cloneList.values = this.values;
+    return cloneList;
   }
 
   @Override
@@ -136,13 +145,14 @@ public abstract class LongTVList extends TVList {
   @Override
   public TimeValuePair getTimeValuePair(int index) {
     return new TimeValuePair(
-        getTime(index), TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
+        getTime(index), Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(getLong(index)));
   }
 
   @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
-    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
+    return new TimeValuePair(
+        time, Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(getLong(index)));
   }
 
   @Override

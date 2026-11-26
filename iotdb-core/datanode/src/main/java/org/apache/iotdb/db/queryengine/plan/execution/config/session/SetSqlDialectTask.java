@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 public class SetSqlDialectTask implements IConfigTask {
-  private final IClientSession.SqlDialect sqlDialect;
+  private final SqlDialect sqlDialect;
 
-  public SetSqlDialectTask(IClientSession.SqlDialect sqlDialect) {
+  public SetSqlDialectTask(SqlDialect sqlDialect) {
     this.sqlDialect = sqlDialect;
   }
 

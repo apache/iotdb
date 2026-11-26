@@ -24,9 +24,13 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.receiver.TwoStageAggregateReceiver;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class IoTDBDataNodeReceiverAgent extends IoTDBReceiverAgent {
 
   private final ThreadLocal<IoTDBReceiver> receiverThreadLocal = new ThreadLocal<>();
+  private final Map<String, IoTDBReceiver> receiverMap = new ConcurrentHashMap<>();
 
   @Override
   protected void initConstructors() {
@@ -37,17 +41,25 @@ public class IoTDBDataNodeReceiverAgent extends IoTDBReceiverAgent {
   }
 
   @Override
-  protected IoTDBReceiver getReceiverWithSpecifiedClient(final String ignore) {
-    return receiverThreadLocal.get();
+  protected IoTDBReceiver getReceiverWithSpecifiedClient(final String key) {
+    return key == null ? receiverThreadLocal.get() : receiverMap.get(key);
   }
 
   @Override
-  protected void setReceiverWithSpecifiedClient(final String ignore, final IoTDBReceiver receiver) {
-    receiverThreadLocal.set(receiver);
+  protected void setReceiverWithSpecifiedClient(final String key, final IoTDBReceiver receiver) {
+    if (key == null) {
+      receiverThreadLocal.set(receiver);
+    } else {
+      receiverMap.put(key, receiver);
+    }
   }
 
   @Override
-  protected void removeReceiverWithSpecifiedClient(final String ignore) {
-    receiverThreadLocal.remove();
+  protected void removeReceiverWithSpecifiedClient(final String key) {
+    if (key == null) {
+      receiverThreadLocal.remove();
+    } else {
+      receiverMap.remove(key);
+    }
   }
 }

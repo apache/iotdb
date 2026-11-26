@@ -20,7 +20,7 @@ package org.apache.iotdb.commons.path.fa.dfa.transition;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.util.List;
 

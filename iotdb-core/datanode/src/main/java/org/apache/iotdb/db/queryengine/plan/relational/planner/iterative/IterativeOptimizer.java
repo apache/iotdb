@@ -19,45 +19,48 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative;
 
+import org.apache.iotdb.calc.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Match;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.QueryPlanOptimizerStatistics;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.AdaptivePlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Match;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.session.Session;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import io.airlift.units.Duration;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.lang.System.nanoTime;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.stream.Collectors.joining;
+import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.rpc.TSStatusCode.OPTIMIZER_TIMEOUT;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class IterativeOptimizer implements AdaptivePlanOptimizer {
   private static final Logger LOG = LoggerFactory.getLogger(IterativeOptimizer.class);
@@ -80,10 +83,14 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
       Predicate<Session> useLegacyRules,
       List<PlanOptimizer> legacyRules,
       Set<Rule<?>> newRules) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
-    this.stats = requireNonNull(stats, "stats is null");
-    this.useLegacyRules = requireNonNull(useLegacyRules, "useLegacyRules is null");
-    this.rules = requireNonNull(newRules, "rules is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
+    this.stats = requireNonNull(stats, DataNodeQueryMessages.EXCEPTION_STATS_IS_NULL_D3627E6A);
+    this.useLegacyRules =
+        requireNonNull(
+            useLegacyRules, DataNodeQueryMessages.EXCEPTION_USELEGACYRULES_IS_NULL_0AD13CAB);
+    this.rules = requireNonNull(newRules, DataNodeQueryMessages.EXCEPTION_RULES_IS_NULL_DF243716);
     this.legacyRules = ImmutableList.copyOf(legacyRules);
     this.ruleIndex = RuleIndex.builder().register(newRules).build();
 
@@ -206,7 +213,8 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
         result = rule.apply(match.capture(nodeCapture), match.captures(), ruleContext(context));
 
         if (LOG.isDebugEnabled() && !result.isEmpty()) {
-          LOG.debug("Rule: %s\nBefore:\n%s\nAfter:\n%s", rule.getClass().getName(), "", "");
+          LOG.debug(
+              DataNodeQueryMessages.RULE_S_BEFORE_S_AFTER_S, rule.getClass().getName(), "", "");
         }
         duration = nanoTime() - start;
       } catch (RuntimeException e) {
@@ -231,7 +239,9 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
     for (PlanNode child : expression.getChildren()) {
       checkArgument(
           child instanceof GroupReference,
-          "Expected child to be a group reference. Found: " + child.getClass().getName());
+          DataNodeQueryMessages
+                  .EXCEPTION_EXPECTED_CHILD_TO_BE_A_GROUP_REFERENCE_DOT_FOUND_COLON_EC01971C
+              + child.getClass().getName());
 
       if (exploreGroup(((GroupReference) child).getGroupId(), context, changedPlanNodeIds)) {
         progress = true;
@@ -318,7 +328,9 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
         SessionInfo sessionInfo,
         WarningCollector warningCollector) {
       checkArgument(
-          timeoutInMilliseconds >= 0, "Timeout has to be a non-negative number [milliseconds]");
+          timeoutInMilliseconds >= 0,
+          DataNodeQueryMessages
+              .EXCEPTION_TIMEOUT_HAS_TO_BE_A_NON_MINUS_NEGATIVE_NUMBER_LEFT_BRACKET_MILLISECONDS_RIGHT_BR_5201D8B3);
 
       this.memo = memo;
       this.lookup = lookup;
@@ -335,26 +347,31 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
       if (NANOSECONDS.toMillis(nanoTime() - startTimeInNanos) >= timeoutInMilliseconds) {
         String message =
             format(
-                OPTIMIZER_TIMEOUT.getStatusCode()
-                    + ": The optimizer exhausted the time limit of %d ms",
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_ARG_THE_OPTIMIZER_EXHAUSTED_THE_TIME_LIMIT_OF_ARG_D_MS_454EB946,
+                    Objects.toString(OPTIMIZER_TIMEOUT.getStatusCode())),
                 timeoutInMilliseconds);
         List<QueryPlanOptimizerStatistics> topRulesByTime =
             iterativeOptimizerStatsCollector.getTopRuleStats(5);
         if (topRulesByTime.isEmpty()) {
-          message += ": no rules invoked";
+          message += DataNodeQueryMessages.EXCEPTION_NO_RULES_INVOKED_8E11FD30;
         } else {
           message +=
-              ": Top rules: "
-                  + topRulesByTime.stream()
-                      .map(
-                          ruleStats ->
-                              format(
-                                  "%s: %s ms, %s invocations, %s applications",
-                                  ruleStats.rule(),
-                                  NANOSECONDS.toMillis(ruleStats.totalTime()),
-                                  ruleStats.invocations(),
-                                  ruleStats.applied()))
-                      .collect(joining(",\n\t\t", "{\n\t\t", " }"));
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_TOP_RULES_ARG_31C182D1,
+                  Objects.toString(
+                      topRulesByTime.stream()
+                          .map(
+                              ruleStats ->
+                                  format(
+                                      DataNodeQueryMessages
+                                          .EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84,
+                                      ruleStats.rule(),
+                                      NANOSECONDS.toMillis(ruleStats.totalTime()),
+                                      ruleStats.invocations(),
+                                      ruleStats.applied()))
+                          .collect(joining(",\n\t\t", "{\n\t\t", " }"))));
         }
         throw new RuntimeException(message);
       }

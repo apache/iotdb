@@ -25,20 +25,27 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
+import org.apache.iotdb.confignode.procedure.ProcedureWithPendingCleanup;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.ModFileDeletionProgress;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -47,12 +54,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Map;
 
-public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState> {
+public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState>
+    implements ProcedureWithPendingCleanup {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableProcedure.class);
+
+  private final ModFileDeletionProgress modProgress =
+      new ModFileDeletionProgress(
+          this::getProcId, () -> !isFinished() && getCurrentState() == DropTableState.DELETE_DATA);
 
   public DropTableProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -66,10 +79,35 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     super(database, tableName, queryId, isGeneratedByPipe);
   }
 
-  // Not used
+  public String getDropProgress() {
+    if (isFinished()) {
+      return getState().name();
+    }
+    final DropTableState state = getCurrentState();
+    return state == null ? getState().name() : state.name();
+  }
+
+  public TDropTableModProgress getModFileProgress() {
+    return modProgress.snapshot();
+  }
+
+  public void updateModFileProgress() {
+    modProgress.update();
+  }
+
+  @Override
+  public boolean hasPendingCleanup() {
+    return modProgress.hasPendingCleanup();
+  }
+
+  @Override
+  public void retryPendingCleanup() {
+    updateModFileProgress();
+  }
+
   @Override
   protected String getActionMessage() {
-    return null;
+    return ProcedureMessages.MESSAGE_DROP_TABLE_F5849AD7;
   }
 
   @Override
@@ -79,34 +117,49 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     try {
       switch (state) {
         case CHECK_AND_INVALIDATE_TABLE:
-          LOGGER.info("Check and invalidate table {}.{} when dropping table", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.CHECK_AND_INVALIDATE_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
           checkAndPreDeleteTable(env);
           break;
-        case INVALIDATE_CACHE:
+        case PRE_DELETE:
           LOGGER.info(
-              "Invalidating cache for table {}.{} when dropping table", database, tableName);
-          invalidateCache(env);
+              ProcedureMessages.PRE_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE, database, tableName);
+          preDelete(env);
           break;
         case DELETE_DATA:
-          LOGGER.info("Deleting data for table {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.DELETING_DATA_FOR_TABLE, database, tableName);
           deleteData(env);
           break;
         case DELETE_DEVICES:
-          LOGGER.info("Deleting devices for table {}.{} when dropping table", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.DELETING_DEVICES_FOR_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
           deleteSchema(env);
           break;
         case DROP_TABLE:
-          LOGGER.info("Dropping table {}.{} on configNode", database, tableName);
+          LOGGER.info(ProcedureMessages.DROPPING_TABLE_ON_CONFIGNODE, database, tableName);
           dropTable(env);
+          break;
+        case COMMIT_DELETE:
+          LOGGER.info(
+              ProcedureMessages.COMMIT_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
+          // A DataNode that misses this commit keeps the table in its pre-delete state, which only
+          // a later read of that table repairs. Retry until every reachable DataNode acks.
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized DropTableState " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_DROPTABLESTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DropTable-{}.{}-{} costs {}ms",
+          ProcedureMessages.DROPTABLE_COSTS_MS,
           database,
           tableName,
           state,
@@ -123,34 +176,41 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
             env,
             LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(DropTableState.INVALIDATE_CACHE);
+      setNextState(DropTableState.PRE_DELETE);
+      table = new PreDeleteTsTable(tableName);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
-  private void invalidateCache(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateTableCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_TABLE_CACHE,
-            new TInvalidateTableCacheReq(database, tableName),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
-      // All dataNodes must clear the related schemaEngine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaEngine cache of table {}.{}", database, tableName);
-        setFailure(
-            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
-        return;
-      }
-    }
+  private void preDelete(final ConfigNodeProcedureEnv env) {
+    TInvalidateTableCacheReq req = new TInvalidateTableCacheReq(database, tableName);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> broadCastInvalidateCache(req, targets));
 
+    if (!proceeded) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE, database, tableName);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
+      return;
+    }
     setNextState(
         this instanceof DropViewProcedure ? DropTableState.DROP_TABLE : DropTableState.DELETE_DATA);
+  }
+
+  private Map<Integer, TSStatus> broadCastInvalidateCache(
+      final TInvalidateTableCacheReq req, final Map<Integer, TDataNodeLocation> targets) {
+    final DataNodeAsyncRequestContext<TInvalidateTableCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.PRE_DELETE_TABLE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
@@ -158,18 +218,26 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
         env.getConfigManager().getRelatedDataRegionGroup4TableModel(database);
 
     if (!relatedDataRegionGroup.isEmpty()) {
+      modProgress.setRegionCount(relatedDataRegionGroup.size());
+      modProgress.trackRegionReplicas(relatedDataRegionGroup);
       new TableRegionTaskExecutor<>(
-              "delete data for drop table",
+              ProcedureMessages.MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E,
               env,
               relatedDataRegionGroup,
               CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
-              ((dataNodeLocation, consensusGroupIdList) ->
-                  new TDeleteDataOrDevicesForDropTableReq(
-                      new ArrayList<>(consensusGroupIdList), tableName)))
+              ((dataNodeLocation, consensusGroupIdList) -> {
+                modProgress.trackRegions(dataNodeLocation, consensusGroupIdList);
+                return new TDeleteDataOrDevicesForDropTableReq(
+                        new ArrayList<>(consensusGroupIdList), tableName)
+                    .setProcedureId(getProcId())
+                    .setTrackModFileProgress(true);
+              }))
           .execute();
+      modProgress.finish(() -> setNextState(DropTableState.DELETE_DEVICES));
+    } else {
+      modProgress.finishWithoutModFiles();
+      setNextState(DropTableState.DELETE_DEVICES);
     }
-
-    setNextState(DropTableState.DELETE_DEVICES);
   }
 
   private void deleteSchema(final ConfigNodeProcedureEnv env) {
@@ -178,7 +246,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
     if (!relatedSchemaRegionGroup.isEmpty()) {
       new TableRegionTaskExecutor<>(
-              "delete devices for drop table",
+              ProcedureMessages.MESSAGE_DELETE_DEVICES_FOR_DROP_TABLE_A4F6E84E,
               env,
               relatedSchemaRegionGroup,
               CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE,
@@ -202,19 +270,42 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
+    } else {
+      setNextState(DropTableState.COMMIT_DELETE);
+    }
+  }
+
+  /**
+   * The data is deleted logically once DELETE_DATA has completed: the deletion is applied to every
+   * data region, and only the physical removal of the mod files continues in the background. The
+   * procedure is therefore not rolled back once it has moved on to DELETE_DEVICES. A view holds no
+   * data and goes straight to DROP_TABLE, see {@link DropViewProcedure}.
+   */
+  @Override
+  protected boolean isRollbackSupported(final DropTableState state) {
+    switch (state) {
+      case CHECK_AND_INVALIDATE_TABLE:
+      case PRE_DELETE:
+      case DELETE_DATA:
+        return true;
+      default:
+        return false;
     }
   }
 
   @Override
-  protected boolean isRollbackSupported(final DropTableState state) {
-    return false;
-  }
-
-  @Override
-  protected void rollbackState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState dropTableState)
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final DropTableState state)
       throws IOException, InterruptedException, ProcedureException {
-    // Do nothing
+    if (state == DropTableState.PRE_DELETE) {
+      final TSStatus status =
+          SchemaUtils.executeInConsensusLayer(
+              new RollbackPreDeleteTablePlan(database, tableName), env, LOGGER);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new ProcedureException(
+            String.format(ProcedureMessages.ROLLBACK_PRE_DELETE_TABLE_FAILED, database, tableName));
+      }
+    }
+    // CHECK_AND_INVALIDATE_TABLE: consensus plan failed so no state changed, nothing to revert
   }
 
   @Override
@@ -239,6 +330,15 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
             ? ProcedureType.PIPE_ENRICHED_DROP_TABLE_PROCEDURE.getTypeCode()
             : ProcedureType.DROP_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
+    modProgress.serialize(stream);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer buffer) {
+    super.deserialize(buffer);
+    if (!(this instanceof DropViewProcedure)) {
+      modProgress.deserialize(buffer);
+    }
   }
 
   protected void innerSerialize(final DataOutputStream stream) throws IOException {

@@ -55,7 +55,7 @@ public class IoTDBReplaceFunctionIT {
         "CREATE TIMESERIES root.sg.s8 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg.s9 WITH DATATYPE=STRING, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg.s10 WITH DATATYPE=BLOB, ENCODING=PLAIN",
-        "INSERT INTO root.sg(timestamp,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd','abcd')",
+        "INSERT INTO root.sg(timestamp,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'61626364')",
         "INSERT INTO root.sg(timestamp,s1) values(2, 'test\\\\')",
         "INSERT INTO root.sg(timestamp,s1) values(3, 'abcd\\\\')",
         "INSERT INTO root.sg(timestamp,s9) values(2, 'test\\\\')",

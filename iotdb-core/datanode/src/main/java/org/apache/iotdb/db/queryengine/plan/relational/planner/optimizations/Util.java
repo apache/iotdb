@@ -19,21 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
@@ -43,11 +44,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 public class Util {
   private Util() {}
@@ -72,7 +73,8 @@ public class Util {
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
       checkState(
           !originalAggregation.getOrderingScheme().isPresent(),
-          "Aggregate with ORDER BY does not support partial aggregation");
+          DataNodeQueryMessages
+              .EXCEPTION_AGGREGATE_WITH_ORDER_BY_DOES_NOT_SUPPORT_PARTIAL_AGGREGATION_D5BDD21F);
       intermediateAggregation.put(
           intermediateSymbol,
           new AggregationNode.Aggregation(
@@ -144,7 +146,8 @@ public class Util {
 
       checkState(
           !originalAggregation.getOrderingScheme().isPresent(),
-          "Aggregate with ORDER BY does not support partial aggregation");
+          DataNodeQueryMessages
+              .EXCEPTION_AGGREGATE_WITH_ORDER_BY_DOES_NOT_SUPPORT_PARTIAL_AGGREGATION_D5BDD21F);
       intermediateAggregation.put(
           intermediateSymbol,
           new AggregationNode.Aggregation(
@@ -211,6 +214,7 @@ public class Util {
                 node.getGroupIdSymbol(),
                 aggregationTreeDeviceViewScanNode.getTreeDBName(),
                 aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap());
+    node.copyDeviceEntryDataSetTo(rightResult);
 
     return new Pair<>(
         new AggregationNode(

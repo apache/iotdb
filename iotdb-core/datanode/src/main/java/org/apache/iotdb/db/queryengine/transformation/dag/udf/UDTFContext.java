@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.calc.service.AbstractTemporaryQueryDataFileService;
+import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -50,9 +50,8 @@ public class UDTFContext {
         executor.beforeDestroy();
       }
     } finally {
-      UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
       // close and delete UDF temp files
-      TemporaryQueryDataFileService.getInstance().deregister(queryId);
+      AbstractTemporaryQueryDataFileService.getInstance().deregister(queryId);
     }
   }
 

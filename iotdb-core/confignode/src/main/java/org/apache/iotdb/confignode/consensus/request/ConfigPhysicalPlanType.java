@@ -30,6 +30,8 @@ public enum ConfigPhysicalPlanType {
   UpdateVersionInfo((short) 2),
   UpdateClusterId((short) 3),
 
+  UpdateNodeStatus((short) 4),
+
   /** DataNode. */
   RegisterDataNode((short) 100),
   GetDataNodeConfiguration((short) 101),
@@ -71,6 +73,7 @@ public enum ConfigPhysicalPlanType {
   CountTimeSlotList((short) 310),
   AddRegionLocation((short) 311),
   RemoveRegionLocation((short) 312),
+  GetRegionGroupsByTime((short) 313),
 
   /** Partition. */
   GetSchemaPartition((short) 400),
@@ -113,6 +116,7 @@ public enum ConfigPhysicalPlanType {
   // For version after and equal 1.2
   CreateUser((short) 621),
   CreateRole((short) 622),
+  @Deprecated
   DropUser((short) 623),
   DropRole((short) 624),
   GrantRole((short) 625),
@@ -121,6 +125,7 @@ public enum ConfigPhysicalPlanType {
   RevokeUser((short) 628),
   RevokeRole((short) 629),
   RevokeRoleFromUser((short) 630),
+  @Deprecated
   UpdateUser((short) 631),
   ListUser((short) 632),
   ListRole((short) 633),
@@ -131,11 +136,15 @@ public enum ConfigPhysicalPlanType {
   @Deprecated
   ListRoleUsers((short) 637),
   CreateUserWithRawPassword((short) 638),
+  UpdateUserMaxSession((short) 639),
+  UpdateUserMinSession((short) 640),
 
   /** Table Author */
   RCreateUser((short) 641),
   RCreateRole((short) 642),
+  @Deprecated
   RUpdateUser((short) 643),
+  @Deprecated
   RDropUser((short) 644),
   RDropRole((short) 645),
   RGrantUserRole((short) 646),
@@ -164,6 +173,9 @@ public enum ConfigPhysicalPlanType {
   RListRole((short) 670),
   RListUserPrivilege((short) 671),
   RListRolePrivilege((short) 672),
+  RUpdateUserMaxSession((short) 673),
+  RUpdateUserMinSession((short) 674),
+  RAccountUnlock((short) 675),
 
   /** Function. */
   CreateFunction((short) 700),
@@ -220,6 +232,10 @@ public enum ConfigPhysicalPlanType {
   PreDeleteViewColumn((short) 875),
   PreDeleteView((short) 876),
   RenameViewColumn((short) 877),
+  AlterColumnDataType((short) 878),
+  PreAlterColumnDataType((short) 879),
+  RollbackPreDeleteTable((short) 880),
+  SetTableColumnProperties((short) 881),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
@@ -283,6 +299,7 @@ public enum ConfigPhysicalPlanType {
   ShowPipeV2((short) 1503),
   AlterPipeV2((short) 1504),
   OperateMultiplePipesV2((short) 1505),
+  SetPipeStatusWithStoppedByRuntimeExceptionV2((short) 1506),
 
   /** Pipe Runtime. */
   PipeHandleLeaderChange((short) 1600),
@@ -297,6 +314,8 @@ public enum ConfigPhysicalPlanType {
   PipeSetTTL((short) 1705),
   PipeCreateTableOrView((short) 1706),
   PipeDeleteDevices((short) 1707),
+  PipeAlterEncodingCompressor((short) 1708),
+  PipeAlterTimeSeries((short) 1709),
 
   /** Subscription */
   CreateTopic((short) 1800),
@@ -310,6 +329,33 @@ public enum ConfigPhysicalPlanType {
   ConsumerGroupHandleMetaChange((short) 1901),
 
   ShowSubscription((short) 2000),
+
+  CommitProgressHandleMetaChange((short) 2001),
+
+  // Authority version after and equal 2.0
+  DropUserV2((short) 2100),
+  UpdateUserV2((short) 2101),
+  RUpdateUserV2((short) 2102),
+  RDropUserV2((short) 2103),
+  RenameUser((short) 2104),
+  RRenameUser((short) 2105),
+  AccountUnlock((short) 2106),
+  EnableUserTotp((short) 2107),
+  ResetUserTotp((short) 2108),
+  DisableUserTotp((short) 2109),
+  REnableUserTotp((short) 2110),
+  RResetUserTotp((short) 2111),
+  RDisableUserTotp((short) 2112),
+  CreateUserWithTotp((short) 2113),
+  RCreateUserWithTotp((short) 2114),
+
+  EnableSeparationOfAdminPowers((short) 2200),
+
+  CreateExternalService((short) 2301),
+  StartExternalService((short) 2302),
+  StopExternalService((short) 2303),
+  DropExternalService((short) 2304),
+  ShowExternalService((short) 2305),
 
   /** Test Only. */
   TestOnly((short) 30000),

@@ -23,10 +23,13 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimePartitionProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -35,43 +38,50 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvi
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -80,6 +90,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_END_TIME_KEY;
@@ -92,12 +103,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_STRICT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_DEFAULT_VALUE;
@@ -105,20 +112,19 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_SNAPSHOT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivileges;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class PipeHistoricalDataRegionTsFileAndDeletionSource
     implements PipeHistoricalDataRegionSource {
@@ -126,12 +132,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileAndDeletionSource.class);
 
-  private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
-
-  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
-
   private String pipeName;
   private long creationTime;
+  private String pipeNameWithCreationTime;
+  private String tsFileDedupScopeID;
 
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
@@ -145,18 +149,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private boolean isTableModel;
   private boolean isDbNameCoveredByPattern = false;
 
-  private boolean isHistoricalExtractorEnabled = false;
+  private boolean isHistoricalSourceEnabled = false;
   private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
   private boolean sloppyPattern; // true to disable pattern filter after extraction
+  private boolean shouldOrderHistoricalTsFileByQueryPriority =
+      EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_DEFAULT_VALUE;
 
   private Pair<Boolean, Boolean> listeningOptionPair;
   private boolean shouldExtractInsertion;
   private boolean shouldExtractDeletion;
   private boolean shouldTransferModFile; // Whether to transfer mods
+  private String tsFileParser;
+  protected String userId;
   protected String userName;
+  protected String cliHostname;
   protected boolean skipIfNoPrivileges = true;
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
@@ -166,7 +175,19 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private volatile boolean hasBeenStarted = false;
 
   private Queue<PersistentResource> pendingQueue;
-  private final Set<TsFileResource> filteredTsFileResources = new HashSet<>();
+  private final Map<TsFileResource, Set<String>> filteredTsFileResources2TableNames =
+      new HashMap<>();
+  private final Set<TsFileResource> resourcesWithPinnedTsFile = new HashSet<>();
+  private final Set<TsFileResource> resourcesWithPinnedModFile = new HashSet<>();
+  private final Map<PersistentResource, Long> pendingResource2ReplicateIndexForIoTV2 =
+      new HashMap<>();
+  private final Set<PersistentResource> historicalProgressReportResources = new HashSet<>();
+  private ProgressIndex maxHistoricalProgressIndex = MinimumProgressIndex.INSTANCE;
+  private ProgressIndex maxSuppliedHistoricalProgressReportIndex = MinimumProgressIndex.INSTANCE;
+  private ProgressIndex pendingHistoricalProgressIndexToReport;
+  private boolean shouldReportMaxHistoricalProgressIndex = false;
+  private int extractedHistoricalTsFileCount = 0;
+  private int extractedHistoricalDeletionCount = 0;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -179,6 +200,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       // compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
     }
+
+    shouldOrderHistoricalTsFileByQueryPriority =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY,
+                SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY),
+            EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_DEFAULT_VALUE);
 
     if (parameters.hasAnyAttributes(EXTRACTOR_MODE_STRICT_KEY, SOURCE_MODE_STRICT_KEY)) {
       final boolean isStrictMode =
@@ -210,19 +238,30 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         if (!sloppyOptionSet.isEmpty()) {
           throw new PipeParameterNotValidException(
               String.format(
-                  "Parameters in set %s are not allowed in 'history.loose-range'",
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_HISTORY_LOOSE_RANGE_0F685D5C,
                   sloppyOptionSet));
         }
       }
     }
+
+    // Historical data extraction is enabled in the following cases:
+    // 1. System restarts the pipe. If the pipe is restarted but historical data extraction is not
+    // enabled, the pipe will lose some historical data.
+    // 2. Historical extraction is enabled by the user or by default.
+    isHistoricalSourceEnabled =
+        parameters.getBooleanOrDefault(
+                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
+                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
+            || parameters.getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
 
     if (parameters.hasAnyAttributes(
         SOURCE_START_TIME_KEY,
         EXTRACTOR_START_TIME_KEY,
         SOURCE_END_TIME_KEY,
         EXTRACTOR_END_TIME_KEY)) {
-      isHistoricalExtractorEnabled = true;
-
       try {
         historicalDataExtractionStartTime =
             parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
@@ -237,7 +276,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
           throw new PipeParameterNotValidException(
               String.format(
-                  "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_S_S_S_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_S_S_S_0B9726E1,
                   SOURCE_START_TIME_KEY,
                   EXTRACTOR_START_TIME_KEY,
                   historicalDataExtractionStartTime,
@@ -256,18 +296,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return;
     }
 
-    // Historical data extraction is enabled in the following cases:
-    // 1. System restarts the pipe. If the pipe is restarted but historical data extraction is not
-    // enabled, the pipe will lose some historical data.
-    // 2. User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
-    // enabling the historical data extraction, which may affect the realtime data extraction.
-    isHistoricalExtractorEnabled =
-        parameters.getBooleanOrDefault(
-                SystemConstant.RESTART_KEY, SystemConstant.RESTART_DEFAULT_VALUE)
-            || parameters.getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
-
     try {
       historicalDataExtractionStartTime =
           parameters.hasAnyAttributes(
@@ -285,7 +313,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_S_S_S_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_S_S_S_0B9726E1,
                 EXTRACTOR_HISTORY_START_TIME_KEY,
                 SOURCE_HISTORY_START_TIME_KEY,
                 historicalDataExtractionStartTime,
@@ -305,31 +334,42 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       throws IllegalPathException {
     shouldExtractInsertion = listeningOptionPair.getLeft();
     shouldExtractDeletion = listeningOptionPair.getRight();
-    // Do nothing if extract deletion
-    if (!shouldExtractInsertion) {
-      return;
-    }
+    shouldOrderHistoricalTsFileByQueryPriority =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY,
+                SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY),
+            EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_DEFAULT_VALUE);
 
-    final PipeTaskSourceRuntimeEnvironment environment =
-        (PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
 
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
-    pipeTaskMeta = environment.getPipeTaskMeta();
-    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      startIndex =
-          tryToExtractLocalProgressIndexForIoTV2(environment.getPipeTaskMeta().getProgressIndex());
-    } else {
-      startIndex = environment.getPipeTaskMeta().getProgressIndex();
+    pipeNameWithCreationTime =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+    if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
+      pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
+      if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+        startIndex = tryToExtractLocalProgressIndexForIoTV2(pipeTaskMeta.getProgressIndex());
+      } else {
+        startIndex = pipeTaskMeta.getProgressIndex();
+      }
     }
 
     dataRegionId = environment.getRegionId();
-    synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-      DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
-    }
+    tsFileDedupScopeID =
+        pipeName
+            + "_"
+            + dataRegionId
+            + "_"
+            + creationTime
+            + "_"
+            + Integer.toHexString(System.identityHashCode(environment));
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    tsFileParser =
+        parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -362,39 +402,40 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                   listeningOptionPair.getRight());
     }
 
-    if (parameters.hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {
-      shouldTerminatePipeOnAllHistoricalEventsConsumed =
-          parameters.getBooleanOrDefault(
-              Arrays.asList(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY),
-              EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE);
-    } else {
-      final String extractorModeValue =
-          parameters.getStringOrDefault(
-              Arrays.asList(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY), EXTRACTOR_MODE_DEFAULT_VALUE);
-      shouldTerminatePipeOnAllHistoricalEventsConsumed =
-          extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_SNAPSHOT_VALUE)
-              || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
-    }
+    shouldTerminatePipeOnAllHistoricalEventsConsumed = PipeTaskAgent.isSnapshotMode(parameters);
 
+    userId =
+        parameters.getStringOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            "-1");
     userName =
         parameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
             PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    cliHostname =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+            PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
-    isForwardingPipeRequests =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-            PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    final boolean isDoubleLiving = PipeSourceConstant.isDoubleLiving(parameters);
+    if (isDoubleLiving) {
+      isForwardingPipeRequests = false;
+    } else {
+      isForwardingPipeRequests =
+          parameters.getBooleanOrDefault(
+              PipeSourceConstant.FORWARDING_PIPE_REQUESTS_KEYS,
+              PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    }
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, username: {}, skip if no privileges: {}, is forwarding pipe requests: {}",
+          DataNodePipeMessages.PIPE_HISTORICAL_DATA_EXTRACTION_TIME_RANGE_START,
           pipeName,
           dataRegionId,
           DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
@@ -417,41 +458,72 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
    *
    * @return recoverProgressIndex dedicated in local DataNodeId or origin for fallback.
    */
-  private ProgressIndex tryToExtractLocalProgressIndexForIoTV2(ProgressIndex origin) {
-    // There are only 2 cases:
-    // 1. origin is RecoverProgressIndex
-    if (origin instanceof RecoverProgressIndex) {
-      RecoverProgressIndex toBeTransformed = (RecoverProgressIndex) origin;
-      return extractRecoverProgressIndex(toBeTransformed);
+  private ProgressIndex tryToExtractLocalProgressIndexForIoTV2(final ProgressIndex origin) {
+    return tryToExtractLocalProgressIndexForIoTV2(origin, true);
+  }
+
+  private ProgressIndex tryToExtractLocalProgressIndexForIoTV2(
+      final ProgressIndex origin, final boolean shouldWarnUnexpectedType) {
+    if (Objects.isNull(origin)) {
+      return MinimumProgressIndex.INSTANCE;
     }
-    // 2. origin is HybridProgressIndex
-    else if (origin instanceof HybridProgressIndex) {
-      HybridProgressIndex toBeTransformed = (HybridProgressIndex) origin;
-      // if hybridProgressIndex contains recoverProgressIndex, which is what we expected.
-      if (toBeTransformed
-          .getType2Index()
-          .containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
-        // 2.1. transform recoverProgressIndex
-        RecoverProgressIndex specificToBeTransformed =
-            (RecoverProgressIndex)
-                toBeTransformed
-                    .getType2Index()
-                    .get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType());
-        return extractRecoverProgressIndex(specificToBeTransformed);
+
+    if (origin instanceof StateProgressIndex) {
+      final StateProgressIndex stateProgressIndex = (StateProgressIndex) origin;
+      return new StateProgressIndex(
+          stateProgressIndex.getVersion(),
+          stateProgressIndex.getState(),
+          tryToExtractLocalProgressIndexForIoTV2(
+              stateProgressIndex.getInnerProgressIndex(), shouldWarnUnexpectedType));
+    }
+
+    if (origin instanceof RecoverProgressIndex) {
+      return extractRecoverProgressIndex((RecoverProgressIndex) origin);
+    }
+
+    if (origin instanceof TimePartitionProgressIndex) {
+      return new TimePartitionProgressIndex(
+          ((TimePartitionProgressIndex) origin)
+              .getTimePartitionId2ProgressIndex().entrySet().stream()
+                  .collect(
+                      Collectors.toMap(
+                          Map.Entry::getKey,
+                          entry ->
+                              tryToExtractLocalProgressIndexForIoTV2(entry.getValue(), false))));
+    }
+
+    if (origin instanceof HybridProgressIndex) {
+      final Map<Short, ProgressIndex> type2Index = ((HybridProgressIndex) origin).getType2Index();
+      ProgressIndex result = null;
+      if (type2Index.containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
+        result =
+            extractRecoverProgressIndex(
+                (RecoverProgressIndex)
+                    type2Index.get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType()));
       }
-      // if hybridProgressIndex doesn't contain recoverProgressIndex, which is not what we expected,
-      // fallback.
-      return origin;
-    } else {
-      // fallback
+      if (type2Index.containsKey(ProgressIndexType.TIME_PARTITION_PROGRESS_INDEX.getType())) {
+        final ProgressIndex timePartitionProgressIndex =
+            tryToExtractLocalProgressIndexForIoTV2(
+                type2Index.get(ProgressIndexType.TIME_PARTITION_PROGRESS_INDEX.getType()), false);
+        result =
+            Objects.isNull(result)
+                ? timePartitionProgressIndex
+                : result.updateToMinimumEqualOrIsAfterProgressIndex(timePartitionProgressIndex);
+      }
+      if (Objects.nonNull(result)) {
+        return result;
+      }
+    }
+
+    if (shouldWarnUnexpectedType) {
       LOGGER.warn(
-          "Pipe {}@{}: unexpected ProgressIndex type {}, fallback to origin {}.",
+          DataNodePipeMessages.PIPE_UNEXPECTED_PROGRESSINDEX_TYPE_FALLBACK_TO_ORIGIN,
           pipeName,
           dataRegionId,
           origin.getType(),
           origin);
-      return origin;
     }
+    return origin;
   }
 
   private ProgressIndex extractRecoverProgressIndex(RecoverProgressIndex toBeTransformed) {
@@ -467,18 +539,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   @Override
   public synchronized void start() {
-    if (!shouldExtractInsertion) {
+    if (!shouldExtractInsertion && !shouldExtractDeletion) {
       hasBeenStarted = true;
       return;
     }
     if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
       LOGGER.info(
-          "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
-          pipeName,
-          dataRegionId);
+          DataNodePipeMessages.PIPE_FAILED_TO_START_TO_EXTRACT_HISTORICAL, pipeName, dataRegionId);
       return;
     }
     hasBeenStarted = true;
+    extractedHistoricalTsFileCount = 0;
+    extractedHistoricalDeletionCount = 0;
+    maxHistoricalProgressIndex = MinimumProgressIndex.INSTANCE;
+    maxSuppliedHistoricalProgressReportIndex = MinimumProgressIndex.INSTANCE;
+    pendingHistoricalProgressIndexToReport = null;
+    shouldReportMaxHistoricalProgressIndex = false;
+    historicalProgressReportResources.clear();
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
@@ -488,49 +565,213 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
 
     final long startHistoricalExtractionTime = System.currentTimeMillis();
+    final TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    List<TsFileResource> sequenceTsFileResourceSnapshot = Collections.emptyList();
+    List<TsFileResource> unsequenceTsFileResourceSnapshot = Collections.emptyList();
+    List<DeletionResource> deletionResourceSnapshot = Collections.emptyList();
     dataRegion.writeLock(
-        "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
+        DataNodePipeMessages
+            .MESSAGE_PIPE_START_TO_EXTRACT_HISTORICAL_TSFILE_AND_DELETION_IF_USES_IOTCONSENSUSV2_C1603968);
     try {
-      List<PersistentResource> originalResourceList = new ArrayList<>();
-
+      if (dataRegion.isDeleted()) {
+        pendingQueue = new ArrayDeque<>();
+        return;
+      }
       if (shouldExtractInsertion) {
         flushTsFilesForExtraction(dataRegion);
-        extractTsFiles(dataRegion, startHistoricalExtractionTime, originalResourceList);
+        tsFileManager.readLock();
+        try {
+          final Pair<List<TsFileResource>, List<TsFileResource>> snapshot =
+              tsFileManager.getAllTsFileListForQuery(null, null);
+          sequenceTsFileResourceSnapshot = snapshot.left;
+          unsequenceTsFileResourceSnapshot = snapshot.right;
+        } finally {
+          tsFileManager.readUnlock();
+        }
       }
       if (shouldExtractDeletion) {
-        Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
-            .ifPresent(manager -> extractDeletions(manager, originalResourceList));
+        deletionResourceSnapshot =
+            Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
+                .map(DeletionResourceManager::getAllDeletionResources)
+                .orElse(Collections.emptyList());
       }
-
-      // Sort tsFileResource and deletionResource
-      long startTime = System.currentTimeMillis();
-      LOGGER.info("Pipe {}@{}: start to sort all extracted resources", pipeName, dataRegionId);
-      originalResourceList.sort(
-          (o1, o2) ->
-              startIndex instanceof TimeWindowStateProgressIndex
-                  ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
-                  : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
-      pendingQueue = new ArrayDeque<>(originalResourceList);
-
-      LOGGER.info(
-          "Pipe {}@{}: finish to sort all extracted resources, took {} ms",
-          pipeName,
-          dataRegionId,
-          System.currentTimeMillis() - startTime);
     } finally {
       dataRegion.writeUnlock();
     }
+
+    final List<PersistentResource> originalResourceList = new ArrayList<>();
+    if (shouldExtractInsertion) {
+      extractTsFiles(
+          tsFileManager,
+          sequenceTsFileResourceSnapshot,
+          unsequenceTsFileResourceSnapshot,
+          startHistoricalExtractionTime,
+          originalResourceList);
+    }
+    if (shouldExtractDeletion) {
+      extractDeletions(deletionResourceSnapshot, originalResourceList);
+    }
+
+    // Sort tsFileResource and deletionResource
+    long startTime = System.currentTimeMillis();
+    LOGGER.info(
+        DataNodePipeMessages.PIPE_START_TO_SORT_ALL_EXTRACTED_RESOURCES, pipeName, dataRegionId);
+    if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
+      prepareResourcesForHistoricalTsFileQueryPriorityOrder(originalResourceList);
+    }
+    sortExtractedResources(originalResourceList);
+    if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
+      prepareProgressReportResourcesForHistoricalTsFileQueryPriorityOrder(originalResourceList);
+    }
+    pendingQueue = new ArrayDeque<>(originalResourceList);
+    PipeTerminateEvent.initializeHistoricalTransferSummary(
+        pipeName,
+        creationTime,
+        dataRegionId,
+        extractedHistoricalTsFileCount,
+        extractedHistoricalDeletionCount);
+
+    LOGGER.info(
+        DataNodePipeMessages.PIPE_FINISH_TO_SORT_ALL_EXTRACTED_RESOURCES,
+        pipeName,
+        dataRegionId,
+        System.currentTimeMillis() - startTime);
+  }
+
+  private boolean shouldUseHistoricalTsFileQueryPriorityOrder() {
+    // Deletion resources only carry progressIndex. Keep the old progressIndex order when deletions
+    // are extracted together with TsFiles so insertion/deletion ordering semantics are unchanged.
+    return shouldOrderHistoricalTsFileByQueryPriority
+        && shouldExtractInsertion
+        && !shouldExtractDeletion;
+  }
+
+  private void prepareResourcesForHistoricalTsFileQueryPriorityOrder(
+      final List<PersistentResource> resourceList) {
+    // Query-priority order is intentionally not compatible with progressIndex order, so only
+    // selected historical TsFiles should participate in query-order progress reports.
+    resourceList.removeIf(
+        resource ->
+            resource instanceof TsFileResource
+                && !filteredTsFileResources2TableNames.containsKey(resource));
+    updateMaxHistoricalProgressIndex(resourceList);
+    shouldReportMaxHistoricalProgressIndex = !resourceList.isEmpty();
+  }
+
+  private void prepareProgressReportResourcesForHistoricalTsFileQueryPriorityOrder(
+      final List<PersistentResource> resourceList) {
+    historicalProgressReportResources.clear();
+    final Map<Long, List<ProgressIndex>> timePartitionId2RemainingMinimalProgressIndexes =
+        new HashMap<>();
+    for (int i = resourceList.size() - 1; i >= 0; --i) {
+      final PersistentResource resource = resourceList.get(i);
+      if (!(resource instanceof TsFileResource)) {
+        continue;
+      }
+
+      final ProgressIndex progressIndex = resource.getProgressIndex();
+      if (Objects.isNull(progressIndex)) {
+        continue;
+      }
+
+      final List<ProgressIndex> remainingMinimalProgressIndexes =
+          timePartitionId2RemainingMinimalProgressIndexes.computeIfAbsent(
+              ((TsFileResource) resource).getTimePartition(), ignored -> new ArrayList<>());
+      // A query-priority report is persisted as a time-partition-scoped progress index. Recovery
+      // only uses it to cover TsFiles from the same partition, so it does not rely on any global
+      // ordering guarantee between partitions. A numerically larger progress in partition A cannot
+      // skip an untransferred resource in partition B.
+      if (remainingMinimalProgressIndexes.stream().noneMatch(progressIndex::isEqualOrAfter)) {
+        historicalProgressReportResources.add(resource);
+      }
+      updateRemainingMinimalProgressIndexes(remainingMinimalProgressIndexes, progressIndex);
+    }
+  }
+
+  private void updateRemainingMinimalProgressIndexes(
+      final List<ProgressIndex> remainingMinimalProgressIndexes,
+      final ProgressIndex progressIndex) {
+    if (remainingMinimalProgressIndexes.stream().anyMatch(progressIndex::isEqualOrAfter)) {
+      return;
+    }
+
+    // Keep only suffix minimal progress indexes. They are sufficient to test whether a new
+    // progress index covers any remaining resource.
+    remainingMinimalProgressIndexes.removeIf(
+        minimalProgressIndex -> minimalProgressIndex.isEqualOrAfter(progressIndex));
+    remainingMinimalProgressIndexes.add(progressIndex);
+  }
+
+  private void updateMaxHistoricalProgressIndex(final List<PersistentResource> resourceList) {
+    for (final PersistentResource resource : resourceList) {
+      final ProgressIndex progressIndex = resource.getProgressIndex();
+      if (Objects.nonNull(progressIndex)) {
+        maxHistoricalProgressIndex =
+            maxHistoricalProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+      }
+    }
+  }
+
+  private void sortExtractedResources(final List<PersistentResource> resourceList) {
+    if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
+      // Send TsFiles from lower query/compaction priority to higher priority. For duplicated
+      // points, covered files are loaded first on the receiver and covering files are loaded later
+      // to preserve overwrite semantics.
+      resourceList.sort(
+          (o1, o2) ->
+              o1 instanceof TsFileResource && o2 instanceof TsFileResource
+                  ? compareTsFileResourcesByQueryPriority((TsFileResource) o1, (TsFileResource) o2)
+                  : comparePersistentResourcesByProgressIndex(o1, o2));
+      return;
+    }
+
+    resourceList.sort(
+        (o1, o2) ->
+            Objects.nonNull(getTimeWindowStateProgressIndex(startIndex))
+                ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
+                : comparePersistentResourcesByProgressIndex(o1, o2));
+  }
+
+  private int comparePersistentResourcesByProgressIndex(
+      final PersistentResource resource1, final PersistentResource resource2) {
+    return resource1.getProgressIndex().topologicalCompareTo(resource2.getProgressIndex());
+  }
+
+  private int compareTsFileResourcesByQueryPriority(
+      final TsFileResource resource1, final TsFileResource resource2) {
+    int result =
+        new MergeReaderPriority(
+                resource1.getTsFileID().timestamp, resource1.getVersion(), 0, resource1.isSeq())
+            .compareTo(
+                new MergeReaderPriority(
+                    resource2.getTsFileID().timestamp,
+                    resource2.getVersion(),
+                    0,
+                    resource2.isSeq()));
+    if (result != 0) {
+      return result;
+    }
+
+    result =
+        Long.compare(
+            resource1.getTsFileID().compactionVersion, resource2.getTsFileID().compactionVersion);
+    if (result != 0) {
+      return result;
+    }
+
+    return resource1.getTsFilePath().compareTo(resource2.getTsFilePath());
   }
 
   private void flushTsFilesForExtraction(DataRegion dataRegion) {
-    LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
+    LOGGER.info(DataNodePipeMessages.PIPE_START_TO_FLUSH_DATA_REGION, pipeName, dataRegionId);
 
     // Consider the scenario: a consensus pipe comes to the same region, followed by another pipe
     // **immediately**, the latter pipe will skip the flush operation.
     // Since a large number of consensus pipes are not created at the same time, resulting in no
     // serious waiting for locks. Therefore, the flush operation is always performed for the
     // consensus pipe, and the lastFlushed timestamp is not updated here.
-    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        || shouldUseHistoricalTsFileQueryPriorityOrder()) {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     } else {
       dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -538,112 +779,369 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private void extractTsFiles(
-      final DataRegion dataRegion,
+      final TsFileManager tsFileManager,
+      final List<TsFileResource> sequenceTsFileResourceSnapshot,
+      final List<TsFileResource> unsequenceTsFileResourceSnapshot,
       final long startHistoricalExtractionTime,
       final List<PersistentResource> originalResourceList) {
-    final TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    final int originalSequenceTsFileCount = sequenceTsFileResourceSnapshot.size();
+    final int originalUnSequenceTsFileCount = unsequenceTsFileResourceSnapshot.size();
+    LOGGER.info(
+        DataNodePipeMessages.PIPE_START_TO_EXTRACT_HISTORICAL_TSFILE_ORIGINAL,
+        pipeName,
+        dataRegionId,
+        originalSequenceTsFileCount,
+        originalUnSequenceTsFileCount,
+        startIndex);
+
+    final Map<Long, TsFileResourcesByPartition> snapshotsByPartition = new TreeMap<>();
+    sequenceTsFileResourceSnapshot.forEach(
+        resource ->
+            snapshotsByPartition
+                .computeIfAbsent(
+                    resource.getTimePartition(), ignored -> new TsFileResourcesByPartition())
+                .sequenceResources
+                .add(resource));
+    unsequenceTsFileResourceSnapshot.forEach(
+        resource ->
+            snapshotsByPartition
+                .computeIfAbsent(
+                    resource.getTimePartition(), ignored -> new TsFileResourcesByPartition())
+                .unsequenceResources
+                .add(resource));
+
+    final Map<Long, TsFilePartitionExtractionResult> resultsByPartition = new TreeMap<>();
+    TsFilePartitionExtractionResult currentResult = null;
+    try {
+      for (Map.Entry<Long, TsFileResourcesByPartition> entry : snapshotsByPartition.entrySet()) {
+        final long timePartition = entry.getKey();
+        currentResult = extractTsFilesInPartition(entry.getValue());
+        if (!currentResult.snapshotInvalid
+            && !isTsFilePartitionSnapshotCurrent(tsFileManager, timePartition, entry.getValue())) {
+          currentResult.snapshotInvalid = true;
+        }
+
+        if (currentResult.snapshotInvalid) {
+          final Exception unpinException = unpinTsFilesInPartition(currentResult);
+          if (unpinException != null) {
+            currentResult = null;
+            throw new PipeException(unpinException.getMessage(), unpinException);
+          }
+          currentResult = null;
+
+          final TsFileResourcesByPartition refreshedResources = new TsFileResourcesByPartition();
+          tsFileManager.readLock();
+          try {
+            final Pair<List<TsFileResource>, List<TsFileResource>> refreshedSnapshot =
+                tsFileManager.getAllTsFileListForQuery(
+                    Collections.singletonList(timePartition), null);
+            refreshedResources.sequenceResources.addAll(refreshedSnapshot.left);
+            refreshedResources.unsequenceResources.addAll(refreshedSnapshot.right);
+          } finally {
+            tsFileManager.readUnlock();
+          }
+
+          currentResult = extractTsFilesInPartition(refreshedResources);
+          if (!currentResult.snapshotInvalid
+              && !isTsFilePartitionSnapshotCurrent(
+                  tsFileManager, timePartition, refreshedResources)) {
+            currentResult.snapshotInvalid = true;
+          }
+          if (currentResult.snapshotInvalid) {
+            final Exception retryUnpinException = unpinTsFilesInPartition(currentResult);
+            currentResult = null;
+            if (retryUnpinException != null) {
+              throw new PipeException(retryUnpinException.getMessage(), retryUnpinException);
+            }
+            throw new PipeException(
+                String.format(
+                    DataNodePipeMessages
+                        .EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3,
+                    pipeName,
+                    creationTime,
+                    timePartition));
+          }
+        }
+        resultsByPartition.put(timePartition, currentResult);
+        currentResult = null;
+      }
+    } catch (final RuntimeException | Error e) {
+      if (currentResult != null) {
+        final Exception unpinException = unpinTsFilesInPartition(currentResult);
+        if (unpinException != null) {
+          e.addSuppressed(unpinException);
+        }
+      }
+      for (TsFilePartitionExtractionResult result : resultsByPartition.values()) {
+        final Exception unpinException = unpinTsFilesInPartition(result);
+        if (unpinException != null) {
+          e.addSuppressed(unpinException);
+        }
+      }
+      throw e;
+    }
+
+    final List<TsFileResource> extractedSequenceResources = new ArrayList<>();
+    final List<TsFileResource> extractedUnsequenceResources = new ArrayList<>();
+    final HistoricalTsFileExtractionStatistics statistics =
+        new HistoricalTsFileExtractionStatistics();
+    int selectedSequenceTsFileCount = 0;
+    int selectedUnSequenceTsFileCount = 0;
+    for (TsFilePartitionExtractionResult result : resultsByPartition.values()) {
+      extractedSequenceResources.addAll(result.resources.sequenceResources);
+      extractedUnsequenceResources.addAll(result.resources.unsequenceResources);
+      filteredTsFileResources2TableNames.putAll(result.filteredResources2TableNames);
+      selectedSequenceTsFileCount += result.selectedSequenceTsFileCount;
+      selectedUnSequenceTsFileCount += result.selectedUnsequenceTsFileCount;
+      statistics.add(result.statistics);
+    }
+    originalResourceList.addAll(extractedSequenceResources);
+    originalResourceList.addAll(extractedUnsequenceResources);
+    extractedHistoricalTsFileCount = filteredTsFileResources2TableNames.size();
+
+    LOGGER.info(
+        DataNodePipeMessages.PIPE_FINISH_TO_EXTRACT_HISTORICAL_TSFILE_EXTRACTED,
+        pipeName,
+        dataRegionId,
+        selectedSequenceTsFileCount,
+        originalSequenceTsFileCount,
+        selectedUnSequenceTsFileCount,
+        originalUnSequenceTsFileCount,
+        filteredTsFileResources2TableNames.size(),
+        originalSequenceTsFileCount + originalUnSequenceTsFileCount,
+        System.currentTimeMillis() - startHistoricalExtractionTime);
+    LOGGER.info(
+        DataNodePipeMessages
+            .MESSAGE_PIPE_ARG_ARG_HISTORICAL_TSFILE_SELECTION_SUMMARY_SELECTED_BY_PROGRESS_UNCOVERED_ARG_7B74E18D,
+        pipeName,
+        dataRegionId,
+        statistics.selectedByProgressUncoveredCount,
+        statistics.selectedByUnclosedOrClosingCount,
+        statistics.filteredByTimeOrPathCount,
+        statistics.filteredByTimeCount,
+        statistics.filteredByPathCount,
+        statistics.skippedCoveredCount,
+        statistics.skippedDeletedCount,
+        statistics.skippedGeneratedByPipeCount,
+        statistics.pinFailedCount);
+  }
+
+  private TsFilePartitionExtractionResult extractTsFilesInPartition(
+      final TsFileResourcesByPartition resources) {
+    final TsFilePartitionExtractionResult result = new TsFilePartitionExtractionResult(resources);
+    try {
+      for (TsFileResource resource : resources.sequenceResources) {
+        extractTsFileResource(resource, true, result);
+      }
+      for (TsFileResource resource : resources.unsequenceResources) {
+        extractTsFileResource(resource, false, result);
+      }
+      return result;
+    } catch (final RuntimeException | Error e) {
+      final Exception unpinException = unpinTsFilesInPartition(result);
+      if (unpinException != null) {
+        e.addSuppressed(unpinException);
+      }
+      throw e;
+    }
+  }
+
+  private void extractTsFileResource(
+      final TsFileResource resource,
+      final boolean isSequence,
+      final TsFilePartitionExtractionResult result) {
+    boolean resourceReadLockAcquired = false;
+    try {
+      resource.readLock();
+      resourceReadLockAcquired = true;
+
+      final boolean wasUnclosed = !resource.isClosed();
+      if (!shouldExtractTsFileResource(resource, result.statistics)) {
+        return;
+      }
+
+      final Set<String> tableNames =
+          wasUnclosed
+              ? null
+              : isModelDetected && isTableModel
+                  ? resource.getDevices().stream()
+                      .map(IDeviceID::getTableName)
+                      .collect(Collectors.toSet())
+                  : Collections.emptySet();
+      if (isSequence) {
+        ++result.selectedSequenceTsFileCount;
+      } else {
+        ++result.selectedUnsequenceTsFileCount;
+      }
+
+      try {
+        final boolean modFilePinned =
+            PipeDataNodeResourceManager.tsfile()
+                .pinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime);
+        resourcesWithPinnedTsFile.add(resource);
+        if (modFilePinned) {
+          resourcesWithPinnedModFile.add(resource);
+        }
+        result.filteredResources2TableNames.put(resource, tableNames);
+      } catch (final IOException e) {
+        ++result.statistics.pinFailedCount;
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_FAILED_TO_PIN_TSFILERESOURCE, resource.getTsFilePath(), e);
+        if (wasUnclosed) {
+          throw new PipeException(e.getMessage(), e);
+        }
+      }
+    } finally {
+      if (resourceReadLockAcquired) {
+        resource.readUnlock();
+      }
+    }
+  }
+
+  private boolean isTsFilePartitionSnapshotCurrent(
+      final TsFileManager tsFileManager,
+      final long timePartition,
+      final TsFileResourcesByPartition snapshot) {
     tsFileManager.readLock();
     try {
-      final int originalSequenceTsFileCount = tsFileManager.size(true);
-      final int originalUnsequenceTsFileCount = tsFileManager.size(false);
-      LOGGER.info(
-          "Pipe {}@{}: start to extract historical TsFile, original sequence file count {}, "
-              + "original unsequence file count {}, start progress index {}",
-          pipeName,
-          dataRegionId,
-          originalSequenceTsFileCount,
-          originalUnsequenceTsFileCount,
-          startIndex);
-
-      final Collection<TsFileResource> sequenceTsFileResources =
-          tsFileManager.getTsFileList(true).stream()
-              .peek(originalResourceList::add)
-              .filter(
-                  resource ->
-                      isHistoricalExtractorEnabled
-                          &&
-                          // Some resource is marked as deleted but not removed from the list.
-                          !resource.isDeleted()
-                          // Some resource is generated by pipe. We ignore them if the pipe should
-                          // not transfer pipe requests.
-                          && (!resource.isGeneratedByPipe() || isForwardingPipeRequests)
-                          && (
-                          // Some resource may not be closed due to the control of
-                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                          !resource.isClosed()
-                                  && Optional.ofNullable(resource.getProcessor())
-                                      .map(TsFileProcessor::alreadyMarkedClosing)
-                                      .orElse(true)
-                              || mayTsFileContainUnprocessedData(resource)
-                                  && isTsFileResourceOverlappedWithTimeRange(resource)
-                                  && mayTsFileResourceOverlappedWithPattern(resource)))
-              .collect(Collectors.toList());
-      filteredTsFileResources.addAll(sequenceTsFileResources);
-
-      final Collection<TsFileResource> unsequenceTsFileResources =
-          tsFileManager.getTsFileList(false).stream()
-              .peek(originalResourceList::add)
-              .filter(
-                  resource ->
-                      isHistoricalExtractorEnabled
-                          &&
-                          // Some resource is marked as deleted but not removed from the list.
-                          !resource.isDeleted()
-                          // Some resource is generated by pipe. We ignore them if the pipe should
-                          // not transfer pipe requests.
-                          && (!resource.isGeneratedByPipe() || isForwardingPipeRequests)
-                          && (
-                          // Some resource may not be closed due to the control of
-                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                          !resource.isClosed()
-                                  && Optional.ofNullable(resource.getProcessor())
-                                      .map(TsFileProcessor::alreadyMarkedClosing)
-                                      .orElse(true)
-                              || mayTsFileContainUnprocessedData(resource)
-                                  && isTsFileResourceOverlappedWithTimeRange(resource)
-                                  && mayTsFileResourceOverlappedWithPattern(resource)))
-              .collect(Collectors.toList());
-      filteredTsFileResources.addAll(unsequenceTsFileResources);
-
-      filteredTsFileResources.removeIf(
-          resource -> {
-            // Pin the resource, in case the file is removed by compaction or anything.
-            // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
-            try {
-              PipeDataNodeResourceManager.tsfile()
-                  .pinTsFileResource(resource, shouldTransferModFile, pipeName);
-              return false;
-            } catch (final IOException e) {
-              LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
-              return true;
-            }
-          });
-
-      LOGGER.info(
-          "Pipe {}@{}: finish to extract historical TsFile, extracted sequence file count {}/{}, "
-              + "extracted unsequence file count {}/{}, extracted file count {}/{}, took {} ms",
-          pipeName,
-          dataRegionId,
-          sequenceTsFileResources.size(),
-          originalSequenceTsFileCount,
-          unsequenceTsFileResources.size(),
-          originalUnsequenceTsFileCount,
-          filteredTsFileResources.size(),
-          originalSequenceTsFileCount + originalUnsequenceTsFileCount,
-          System.currentTimeMillis() - startHistoricalExtractionTime);
+      final Pair<List<TsFileResource>, List<TsFileResource>> currentSnapshot =
+          tsFileManager.getAllTsFileListForQuery(Collections.singletonList(timePartition), null);
+      return areSameTsFileResources(snapshot.sequenceResources, currentSnapshot.left)
+          && areSameTsFileResources(snapshot.unsequenceResources, currentSnapshot.right);
     } finally {
       tsFileManager.readUnlock();
     }
   }
 
-  private boolean mayTsFileContainUnprocessedData(final TsFileResource resource) {
-    if (startIndex instanceof TimeWindowStateProgressIndex) {
-      // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-      return ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime();
+  private boolean areSameTsFileResources(
+      final List<TsFileResource> first, final List<TsFileResource> second) {
+    if (first.size() != second.size()) {
+      return false;
+    }
+    for (int i = 0; i < first.size(); ++i) {
+      if (first.get(i) != second.get(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private Exception unpinTsFilesInPartition(final TsFilePartitionExtractionResult result) {
+    Exception firstException = null;
+    for (TsFileResource resource : new ArrayList<>(result.filteredResources2TableNames.keySet())) {
+      try {
+        unpinHistoricalTsFileResource(resource);
+      } catch (final IOException | RuntimeException e) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING,
+            pipeName,
+            dataRegionId,
+            resource.getTsFilePath(),
+            e);
+        if (firstException == null) {
+          firstException = e;
+        } else {
+          firstException.addSuppressed(e);
+        }
+      }
+      if (!resourcesWithPinnedTsFile.contains(resource)
+          && !resourcesWithPinnedModFile.contains(resource)) {
+        result.filteredResources2TableNames.remove(resource);
+      }
+    }
+    return firstException;
+  }
+
+  private void unpinHistoricalTsFileResource(final TsFileResource resource) throws IOException {
+    final PipeTsFileResourceManager manager = PipeDataNodeResourceManager.tsfile();
+    Exception firstException = null;
+    if (resourcesWithPinnedTsFile.contains(resource)) {
+      try {
+        final File pinnedTsFile =
+            PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                resource.getTsFile(), pipeNameWithCreationTime);
+        manager.decreaseFileReference(pinnedTsFile, pipeNameWithCreationTime);
+        resourcesWithPinnedTsFile.remove(resource);
+      } catch (final IOException | RuntimeException e) {
+        firstException = e;
+      }
+    }
+    if (resourcesWithPinnedModFile.contains(resource)) {
+      try {
+        final File pinnedModFile =
+            PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                resource.getExclusiveModFile().getFile(), pipeNameWithCreationTime);
+        manager.decreaseFileReference(pinnedModFile, pipeNameWithCreationTime);
+        resourcesWithPinnedModFile.remove(resource);
+      } catch (final IOException | RuntimeException e) {
+        if (firstException == null) {
+          firstException = e;
+        } else {
+          firstException.addSuppressed(e);
+        }
+      }
+    }
+    if (firstException instanceof IOException) {
+      throw (IOException) firstException;
+    }
+    if (firstException != null) {
+      throw (RuntimeException) firstException;
+    }
+  }
+
+  private boolean shouldExtractTsFileResource(
+      final TsFileResource resource, final HistoricalTsFileExtractionStatistics statistics) {
+    if (!isHistoricalSourceEnabled) {
+      return false;
     }
 
-    if (startIndex instanceof StateProgressIndex) {
-      startIndex = ((StateProgressIndex) startIndex).getInnerProgressIndex();
+    // Some resource is marked as deleted but not removed from the list.
+    if (resource.isDeleted()) {
+      ++statistics.skippedDeletedCount;
+      return false;
+    }
+
+    // Some resource is generated by pipe. We ignore them if the pipe should not transfer pipe
+    // requests.
+    if (resource.isGeneratedByPipe() && !isForwardingPipeRequests) {
+      ++statistics.skippedGeneratedByPipeCount;
+      return false;
+    }
+
+    // Unclosed files may still have incomplete progress and time metadata. Select them
+    // conservatively; the event waits for the file to close before parsing or transfer.
+    if (!resource.isClosed()) {
+      ++statistics.selectedByUnclosedOrClosingCount;
+      return true;
+    }
+
+    if (!mayTsFileContainUnprocessedData(resource)) {
+      ++statistics.skippedCoveredCount;
+      return false;
+    }
+
+    if (!isTsFileResourceOverlappedWithTimeRange(resource)) {
+      ++statistics.filteredByTimeOrPathCount;
+      ++statistics.filteredByTimeCount;
+      return false;
+    }
+
+    if (!mayTsFileResourceOverlappedWithPattern(resource)) {
+      ++statistics.filteredByTimeOrPathCount;
+      ++statistics.filteredByPathCount;
+      return false;
+    }
+
+    ++statistics.selectedByProgressUncoveredCount;
+    return true;
+  }
+
+  private boolean mayTsFileContainUnprocessedData(final TsFileResource resource) {
+    final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
+        getTimeWindowStateProgressIndex(startIndex);
+    if (Objects.nonNull(timeWindowStateProgressIndex)) {
+      // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
+      return timeWindowStateProgressIndex.getMinTime() <= resource.getFileEndTime();
     }
 
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
@@ -651,26 +1149,140 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       // instead of replication or something else.
       ProgressIndex dedicatedProgressIndex =
           tryToExtractLocalProgressIndexForIoTV2(resource.getMaxProgressIndexAfterClose());
-      return greaterThanStartIndex(resource, dedicatedProgressIndex);
+      return isProgressIndexNotCoveredByStartIndex(resource, dedicatedProgressIndex);
     }
-    return greaterThanStartIndex(resource, resource.getMaxProgressIndexAfterClose());
+    return isProgressIndexNotCoveredByStartIndex(
+        resource, resource.getMaxProgressIndexAfterClose());
   }
 
-  private boolean greaterThanStartIndex(PersistentResource resource, ProgressIndex progressIndex) {
-    if (!startIndex.isAfter(progressIndex) && !startIndex.equals(progressIndex)) {
-      LOGGER.info(
-          "Pipe {}@{}: resource {} meets mayTsFileContainUnprocessedData condition, extractor progressIndex: {}, resource ProgressIndex: {}",
-          pipeName,
-          dataRegionId,
-          resource,
-          startIndex,
-          progressIndex);
+  private boolean isProgressIndexNotCoveredByStartIndex(
+      PersistentResource resource, ProgressIndex progressIndex) {
+    // Ratis writes do not carry Pipe progress indexes. Minimum therefore means unknown here,
+    // rather than an empty file already covered by the initial checkpoint. Replay conservatively
+    // after a leader change, or successful writes can disappear from the subscription backlog.
+    if (progressIndex instanceof MinimumProgressIndex
+        && ConsensusFactory.RATIS_CONSENSUS.equals(
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
       return true;
     }
-    return false;
+    final ProgressIndex innerStartIndex = getInnerProgressIndex(startIndex);
+    if (innerStartIndex.isEqualOrAfter(progressIndex)
+        || isProgressIndexCoveredByTimePartitionProgressIndex(
+            resource, progressIndex, innerStartIndex)) {
+      return false;
+    }
+
+    LOGGER.info(
+        DataNodePipeMessages.PIPE_RESOURCE_MEETS_MAYTSFILECONTAINUNPROCESSEDDATA_CONDITION_EXTRACT,
+        pipeName,
+        dataRegionId,
+        resource,
+        innerStartIndex,
+        progressIndex);
+    return true;
+  }
+
+  private ProgressIndex getInnerProgressIndex(final ProgressIndex progressIndex) {
+    return progressIndex instanceof StateProgressIndex
+        ? ((StateProgressIndex) progressIndex).getInnerProgressIndex()
+        : Objects.isNull(progressIndex) ? MinimumProgressIndex.INSTANCE : progressIndex;
+  }
+
+  private TimeWindowStateProgressIndex getTimeWindowStateProgressIndex(
+      final ProgressIndex progressIndex) {
+    return Objects.isNull(progressIndex)
+        ? null
+        : progressIndex.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
+  }
+
+  private boolean isProgressIndexCoveredByTimePartitionProgressIndex(
+      final PersistentResource resource,
+      final ProgressIndex progressIndex,
+      final ProgressIndex startIndex) {
+    if (!(resource instanceof TsFileResource)) {
+      return false;
+    }
+
+    final TimePartitionProgressIndex timePartitionProgressIndex =
+        getTimePartitionProgressIndex(startIndex);
+    // Keep this check strictly partition-local, matching the reporting side. This is what makes
+    // query-priority historical transfer restart-safe even when different partitions are sent in an
+    // order that conflicts with the global ProgressIndex order.
+    return Objects.nonNull(timePartitionProgressIndex)
+        && timePartitionProgressIndex.isProgressIndexEqualOrAfter(
+            ((TsFileResource) resource).getTimePartition(), progressIndex);
+  }
+
+  private TimePartitionProgressIndex getTimePartitionProgressIndex(
+      final ProgressIndex progressIndex) {
+    final ProgressIndex innerProgressIndex = getInnerProgressIndex(progressIndex);
+    if (innerProgressIndex instanceof TimePartitionProgressIndex) {
+      return (TimePartitionProgressIndex) innerProgressIndex;
+    }
+
+    if (innerProgressIndex instanceof HybridProgressIndex) {
+      final ProgressIndex timePartitionProgressIndex =
+          ((HybridProgressIndex) innerProgressIndex)
+              .getType2Index()
+              .get(ProgressIndexType.TIME_PARTITION_PROGRESS_INDEX.getType());
+      if (timePartitionProgressIndex instanceof TimePartitionProgressIndex) {
+        return (TimePartitionProgressIndex) timePartitionProgressIndex;
+      }
+    }
+    return null;
+  }
+
+  private static class TsFileResourcesByPartition {
+
+    private final List<TsFileResource> sequenceResources = new ArrayList<>();
+    private final List<TsFileResource> unsequenceResources = new ArrayList<>();
+  }
+
+  private static class TsFilePartitionExtractionResult {
+
+    private final TsFileResourcesByPartition resources;
+    private final Map<TsFileResource, Set<String>> filteredResources2TableNames = new HashMap<>();
+    private final HistoricalTsFileExtractionStatistics statistics =
+        new HistoricalTsFileExtractionStatistics();
+    private int selectedSequenceTsFileCount;
+    private int selectedUnsequenceTsFileCount;
+    private boolean snapshotInvalid;
+
+    private TsFilePartitionExtractionResult(final TsFileResourcesByPartition resources) {
+      this.resources = resources;
+    }
+  }
+
+  private static class HistoricalTsFileExtractionStatistics {
+
+    private int selectedByProgressUncoveredCount;
+    private int selectedByUnclosedOrClosingCount;
+    private int filteredByTimeOrPathCount;
+    private int filteredByTimeCount;
+    private int filteredByPathCount;
+    private int skippedCoveredCount;
+    private int skippedDeletedCount;
+    private int skippedGeneratedByPipeCount;
+    private int pinFailedCount;
+
+    private void add(final HistoricalTsFileExtractionStatistics statistics) {
+      selectedByProgressUncoveredCount += statistics.selectedByProgressUncoveredCount;
+      selectedByUnclosedOrClosingCount += statistics.selectedByUnclosedOrClosingCount;
+      filteredByTimeOrPathCount += statistics.filteredByTimeOrPathCount;
+      filteredByTimeCount += statistics.filteredByTimeCount;
+      filteredByPathCount += statistics.filteredByPathCount;
+      skippedCoveredCount += statistics.skippedCoveredCount;
+      skippedDeletedCount += statistics.skippedDeletedCount;
+      skippedGeneratedByPipeCount += statistics.skippedGeneratedByPipeCount;
+      pinFailedCount += statistics.pinFailedCount;
+    }
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
+    // Trimming to avoid unnecessary file device getter
+    if (isDbNameCoveredByPattern) {
+      return true;
+    }
     final Set<IDeviceID> deviceSet;
     try {
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -678,9 +1290,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-    } catch (final IOException e) {
+    } catch (final IOException | RuntimeException e) {
       LOGGER.warn(
-          "Pipe {}@{}: failed to get devices from TsFile {}, extract it anyway",
+          DataNodePipeMessages.PIPE_FAILED_TO_GET_DEVICES_FROM_TSFILE_1,
           pipeName,
           dataRegionId,
           resource.getTsFilePath(),
@@ -692,7 +1304,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         .anyMatch(
             deviceID -> {
               if (!isModelDetected) {
-                detectModel(resource, deviceID);
+                detectModel(resource);
                 isModelDetected = true;
               }
 
@@ -705,13 +1317,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             });
   }
 
-  private void detectModel(final TsFileResource resource, final IDeviceID deviceID) {
-    this.isTableModel =
-        !(deviceID instanceof PlainDeviceID
-            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-            || deviceID.getTableName().equals(PATH_ROOT));
-
+  private void detectModel(final TsFileResource resource) {
+    // One source serves one data region, so the data model is decided by its database.
     final String databaseName = resource.getDatabaseName();
+    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     isDbNameCoveredByPattern =
         isTableModel
             ? tablePattern.isTableModelDataAllowedToBeCaptured()
@@ -726,16 +1335,17 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private boolean isTsFileResourceCoveredByTimeRange(final TsFileResource resource) {
-    return historicalDataExtractionStartTime <= resource.getFileStartTime()
+    // In particular, a sequence file's end time is not final until it is closed. Do not disable
+    // row-level filtering based on the bounds observed while an asynchronous close is in flight.
+    return resource.isClosed()
+        && historicalDataExtractionStartTime <= resource.getFileStartTime()
         && historicalDataExtractionEndTime >= resource.getFileEndTime();
   }
 
   private void extractDeletions(
-      final DeletionResourceManager deletionResourceManager,
-      final List<PersistentResource> resourceList) {
-    LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
+      List<DeletionResource> allDeletionResources, final List<PersistentResource> resourceList) {
+    LOGGER.info(DataNodePipeMessages.PIPE_START_TO_EXTRACT_DELETIONS, pipeName, dataRegionId);
     long startTime = System.currentTimeMillis();
-    List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
     final int originalDeletionCount = allDeletionResources.size();
     // For deletions that are filtered and will not be sent, we should manually decrease its
     // reference count. Because the initial value of referenceCount is `ReplicaNum - 1`
@@ -746,7 +1356,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
                 toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
               }
-              return !greaterThanStartIndex(resource, toBeCompared);
+              return !isProgressIndexNotCoveredByStartIndex(resource, toBeCompared);
             })
         .forEach(DeletionResource::decreaseReference);
     // Get deletions that should be sent.
@@ -758,12 +1368,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                   if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
                     toBeCompared = tryToExtractLocalProgressIndexForIoTV2(toBeCompared);
                   }
-                  return greaterThanStartIndex(resource, toBeCompared);
+                  return isProgressIndexNotCoveredByStartIndex(resource, toBeCompared);
                 })
             .collect(Collectors.toList());
     resourceList.addAll(allDeletionResources);
+    extractedHistoricalDeletionCount = allDeletionResources.size();
     LOGGER.info(
-        "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}, took {} ms",
+        DataNodePipeMessages.PIPE_FINISH_TO_EXTRACT_DELETIONS_EXTRACT_DELETIONS,
         pipeName,
         dataRegionId,
         allDeletionResources.size(),
@@ -777,21 +1388,81 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       start();
     }
 
+    if (Objects.nonNull(pendingHistoricalProgressIndexToReport)) {
+      final ProgressIndex progressIndex = pendingHistoricalProgressIndexToReport;
+      pendingHistoricalProgressIndexToReport = null;
+      return supplyHistoricalProgressReportEvent(progressIndex);
+    }
+
     if (Objects.isNull(pendingQueue)) {
       return null;
     }
 
-    final PersistentResource resource = pendingQueue.poll();
-    if (resource == null) {
-      return supplyTerminateEvent();
-    } else if (resource instanceof TsFileResource) {
-      return supplyTsFileEvent((TsFileResource) resource);
-    } else {
-      return supplyDeletionEvent((DeletionResource) resource);
+    while (true) {
+      final PersistentResource resource = pendingQueue.peek();
+      if (resource == null) {
+        if (shouldReportMaxHistoricalProgressIndex) {
+          shouldReportMaxHistoricalProgressIndex = false;
+          if (!maxSuppliedHistoricalProgressReportIndex.isEqualOrAfter(
+              maxHistoricalProgressIndex)) {
+            return supplyHistoricalProgressReportEvent(maxHistoricalProgressIndex);
+          }
+        }
+        return supplyTerminateEvent();
+      }
+
+      if (resource instanceof TsFileResource) {
+        final TsFileResource tsFileResource = (TsFileResource) resource;
+        if (consumeSkippedHistoricalTsFileEventIfNecessary(tsFileResource)) {
+          clearReplicateIndexForResource(tsFileResource);
+          pendingQueue.poll();
+          if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
+            if (shouldReportHistoricalProgressAfterResource(tsFileResource)) {
+              return supplyHistoricalProgressReportEvent(
+                  getHistoricalProgressIndexAfterResource(tsFileResource));
+            }
+            continue;
+          }
+          return supplyProgressReportEvent(tsFileResource.getMaxProgressIndex());
+        }
+
+        final Event event = supplyTsFileEvent(tsFileResource);
+        pendingQueue.poll();
+        if (Objects.nonNull(event) && shouldReportHistoricalProgressAfterResource(tsFileResource)) {
+          pendingHistoricalProgressIndexToReport =
+              getHistoricalProgressIndexAfterResource(tsFileResource);
+        }
+        return event;
+      }
+
+      final Event event = supplyDeletionEvent((DeletionResource) resource);
+      pendingQueue.poll();
+      return event;
     }
   }
 
+  private boolean shouldReportHistoricalProgressAfterResource(final PersistentResource resource) {
+    return shouldUseHistoricalTsFileQueryPriorityOrder()
+        && historicalProgressReportResources.remove(resource);
+  }
+
+  private ProgressIndex getHistoricalProgressIndexAfterResource(final TsFileResource resource) {
+    return new TimePartitionProgressIndex(
+        resource.getTimePartition(), resource.getMaxProgressIndex());
+  }
+
   private Event supplyTerminateEvent() {
+    final PipeTerminateEvent.HistoricalTransferSummary historicalTransferSummary =
+        PipeTerminateEvent.snapshotHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
+    if (Objects.nonNull(historicalTransferSummary)) {
+      LOGGER.info(
+          DataNodePipeMessages
+              .PIPE_LOG_PIPE_HISTORICAL_SOURCE_HAS_SUPPLIED_ALL_EVENTS_EMITTING_8B58DE19,
+          pipeName,
+          dataRegionId,
+          historicalTransferSummary.toReportMessage());
+    }
+
     final PipeTerminateEvent terminateEvent =
         new PipeTerminateEvent(
             pipeName,
@@ -802,7 +1473,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     if (!terminateEvent.increaseReferenceCount(
         PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName())) {
       LOGGER.warn(
-          "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
+          DataNodePipeMessages.PIPE_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR_2,
           pipeName,
           dataRegionId);
       return null;
@@ -811,82 +1482,170 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     return terminateEvent;
   }
 
-  private Event supplyTsFileEvent(final TsFileResource resource) {
-    if (!filteredTsFileResources.contains(resource)) {
-      final ProgressReportEvent progressReportEvent =
-          new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
-      progressReportEvent.bindProgressIndex(resource.getMaxProgressIndex());
-      final boolean isReferenceCountIncreased =
-          progressReportEvent.increaseReferenceCount(
-              PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
-      if (!isReferenceCountIncreased) {
-        LOGGER.warn(
-            "The reference count of the event {} cannot be increased, skipping it.",
-            progressReportEvent);
-      }
-      return isReferenceCountIncreased ? progressReportEvent : null;
+  protected boolean consumeSkippedHistoricalTsFileEventIfNecessary(final TsFileResource resource) {
+    if (!filteredTsFileResources2TableNames.containsKey(resource)
+        || !shouldSkipHistoricalTsFileEvent(resource)) {
+      return false;
     }
 
-    filteredTsFileResources.remove(resource);
-
-    final PipeTsFileInsertionEvent event =
-        new PipeTsFileInsertionEvent(
-            isModelDetected ? isTableModel : null,
-            resource.getDatabaseName(),
-            resource,
-            null,
-            shouldTransferModFile,
-            false,
-            true,
-            pipeName,
-            creationTime,
-            pipeTaskMeta,
-            treePattern,
-            tablePattern,
-            userName,
-            skipIfNoPrivileges,
-            historicalDataExtractionStartTime,
-            historicalDataExtractionEndTime);
-
-    // if using IoTV2, assign a replicateIndex for this event
-    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
-        && PipeConsensusProcessor.isShouldReplicate(event)) {
-      event.setReplicateIndexForIoTV2(
-          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
-      LOGGER.info(
-          "[{}]Set {} for historical event {}", pipeName, event.getReplicateIndexForIoTV2(), event);
-    }
-
-    if (sloppyPattern || isDbNameCoveredByPattern) {
-      event.skipParsingPattern();
-    }
-    if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
-      event.skipParsingTime();
-    }
-
+    filteredTsFileResources2TableNames.remove(resource);
+    PipeTerminateEvent.markHistoricalTsFileSkipped(pipeName, creationTime, dataRegionId);
+    LOGGER.info(
+        DataNodePipeMessages.PIPE_SKIP_HISTORICAL_TSFILE_BECAUSE_REALTIME_SOURCE,
+        pipeName,
+        dataRegionId,
+        resource.getTsFilePath(),
+        tsFileDedupScopeID);
     try {
+      return true;
+    } finally {
+      try {
+        unpinHistoricalTsFileResource(resource);
+      } catch (final IOException | RuntimeException e) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_SKIPPED_HISTORICAL_TSFILERESOURCE,
+            pipeName,
+            dataRegionId,
+            resource.getTsFilePath(),
+            e);
+      }
+    }
+  }
+
+  protected Event supplyProgressReportEvent(final ProgressIndex progressIndex) {
+    final ProgressReportEvent progressReportEvent =
+        new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
+    progressReportEvent.bindProgressIndex(progressIndex);
+    final boolean isReferenceCountIncreased =
+        progressReportEvent.increaseReferenceCount(
+            PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
+    if (!isReferenceCountIncreased) {
+      LOGGER.warn(
+          DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT, progressReportEvent);
+    }
+    return isReferenceCountIncreased ? progressReportEvent : null;
+  }
+
+  private Event supplyHistoricalProgressReportEvent(final ProgressIndex progressIndex) {
+    maxSuppliedHistoricalProgressReportIndex =
+        maxSuppliedHistoricalProgressReportIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+            progressIndex);
+    return supplyProgressReportEvent(progressIndex);
+  }
+
+  protected Event supplyTsFileEvent(final TsFileResource resource) {
+    if (!filteredTsFileResources2TableNames.containsKey(resource)) {
+      clearReplicateIndexForResource(resource);
+      return shouldUseHistoricalTsFileQueryPriorityOrder()
+          ? null
+          : supplyProgressReportEvent(resource.getMaxProgressIndex());
+    }
+
+    boolean shouldUnpinResource = false;
+    boolean shouldClearReplicateIndex = false;
+    try {
+      final PipeTsFileInsertionEvent event =
+          new PipeTsFileInsertionEvent(
+              isModelDetected ? isTableModel : null,
+              resource.getDatabaseName(),
+              resource,
+              null,
+              shouldTransferModFile,
+              false,
+              true,
+              filteredTsFileResources2TableNames.get(resource),
+              pipeName,
+              creationTime,
+              pipeTaskMeta,
+              treePattern,
+              tablePattern,
+              userId,
+              userName,
+              cliHostname,
+              skipIfNoPrivileges,
+              historicalDataExtractionStartTime,
+              historicalDataExtractionEndTime);
+      event.setTsFileParser(tsFileParser);
+
+      if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
+        event.skipReportOnCommitAndGeneratedEvents();
+      }
+
+      // if using IoTV2, assign a replicateIndex for this event
+      if (shouldAssignReplicateIndexForIoTV2(event)) {
+        event.setReplicateIndexForIoTV2(assignReplicateIndexForResource(resource));
+        LOGGER.debug(
+            DataNodePipeMessages.SET_FOR_HISTORICAL_EVENT,
+            pipeName,
+            event.getReplicateIndexForIoTV2(),
+            event);
+      }
+
+      if (sloppyPattern
+          || isDbNameCoveredByPattern
+          || isTsFileResourceCoveredByTablePattern(
+              resource, filteredTsFileResources2TableNames.get(resource))) {
+        event.skipParsingPattern();
+      }
+      if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
+        event.skipParsingTime();
+      }
+
       final boolean isReferenceCountIncreased =
           event.increaseReferenceCount(
               PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
       if (!isReferenceCountIncreased) {
-        LOGGER.warn(
-            "Pipe {}@{}: failed to increase reference count for historical tsfile event {}, will discard it",
-            pipeName,
-            dataRegionId,
-            event);
+        // Unlike realtime supply, which already holds a queued event reference, this is the
+        // event's first reference acquisition. The source's pin keeps the file available for retry.
+        // Keep the queue entry, pin, and replicate index until an event owns the resource. A
+        // failed reference acquisition must not advance historical progress past this file.
+        throw new PipeException(
+            String.format(
+                DataNodePipeMessages.INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT,
+                event.coreReportMessage()));
       }
-      return isReferenceCountIncreased ? event : null;
+      filteredTsFileResources2TableNames.remove(resource);
+      shouldUnpinResource = true;
+      shouldClearReplicateIndex = true;
+      return event;
     } finally {
-      try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
-            pipeName,
-            dataRegionId,
-            resource.getTsFilePath());
+      if (shouldClearReplicateIndex) {
+        clearReplicateIndexForResource(resource);
+      }
+      if (shouldUnpinResource) {
+        try {
+          unpinHistoricalTsFileResource(resource);
+        } catch (final IOException | RuntimeException e) {
+          LOGGER.warn(
+              DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_CREATING,
+              pipeName,
+              dataRegionId,
+              resource.getTsFilePath());
+        }
       }
     }
+  }
+
+  private boolean shouldSkipHistoricalTsFileEvent(final TsFileResource resource) {
+    return pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        && DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .containsTsFile(dataRegionId, tsFileDedupScopeID, resource.getTsFilePath());
+  }
+
+  private boolean isTsFileResourceCoveredByTablePattern(
+      final TsFileResource resource, final Set<String> tableNames) {
+    return isModelDetected
+        && isTableModel
+        && tablePattern.isTableModelDataAllowedToBeCaptured()
+        && Objects.nonNull(resource)
+        && Objects.nonNull(tableNames)
+        && !tableNames.isEmpty()
+        && tableNames.stream()
+            .allMatch(
+                tableName ->
+                    tablePattern.matchesDatabase(resource.getDatabaseName())
+                        && tablePattern.matchesTable(tableName));
   }
 
   private Event supplyDeletionEvent(final DeletionResource deletionResource) {
@@ -898,9 +1657,20 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             pipeTaskMeta,
             treePattern,
             tablePattern,
+            userId,
             userName,
+            cliHostname,
             skipIfNoPrivileges,
             false);
+    // if using IoTV2, assign a replicateIndex for this historical deletion event
+    if (shouldAssignReplicateIndexForIoTV2(event)) {
+      event.setReplicateIndexForIoTV2(assignReplicateIndexForResource(deletionResource));
+      LOGGER.debug(
+          DataNodePipeMessages.SET_FOR_HISTORICAL_DELETION_EVENT,
+          pipeName,
+          event.getReplicateIndexForIoTV2(),
+          event);
+    }
 
     if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();
@@ -914,18 +1684,34 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
     if (!isReferenceCountIncreased) {
       LOGGER.warn(
-          "Pipe {}@{}: failed to increase reference count for historical deletion event {}, will discard it",
+          DataNodePipeMessages.PIPE_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR,
           pipeName,
           dataRegionId,
           event);
     } else {
-      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+      Optional.ofNullable(DeletionResourceManager.getInstanceIfPresent(dataRegionId))
           .ifPresent(
               manager ->
                   event.setDeletionResource(
                       manager.getDeletionResource(event.getDeleteDataNode())));
     }
+    clearReplicateIndexForResource(deletionResource);
     return isReferenceCountIncreased ? event : null;
+  }
+
+  protected boolean shouldAssignReplicateIndexForIoTV2(final EnrichedEvent event) {
+    return DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && IoTConsensusV2Processor.isShouldReplicate(event);
+  }
+
+  protected long assignReplicateIndexForResource(final PersistentResource resource) {
+    return pendingResource2ReplicateIndexForIoTV2.computeIfAbsent(
+        resource,
+        ignored -> ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
+  }
+
+  protected void clearReplicateIndexForResource(final PersistentResource resource) {
+    pendingResource2ReplicateIndexForIoTV2.remove(resource);
   }
 
   @Override
@@ -943,24 +1729,29 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   @Override
   public synchronized void close() {
+    if (!isTerminateSignalSent) {
+      PipeTerminateEvent.clearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
+    }
+    final Set<TsFileResource> pinnedResources = new HashSet<>(resourcesWithPinnedTsFile);
+    pinnedResources.addAll(resourcesWithPinnedModFile);
+    for (TsFileResource resource : pinnedResources) {
+      try {
+        unpinHistoricalTsFileResource(resource);
+      } catch (final IOException | RuntimeException e) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING,
+            pipeName,
+            dataRegionId,
+            resource.getTsFilePath(),
+            e);
+      }
+    }
     if (Objects.nonNull(pendingQueue)) {
-      pendingQueue.forEach(
-          resource -> {
-            if (resource instanceof TsFileResource) {
-              try {
-                PipeDataNodeResourceManager.tsfile()
-                    .unpinTsFileResource((TsFileResource) resource, pipeName);
-              } catch (final IOException e) {
-                LOGGER.warn(
-                    "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
-                    pipeName,
-                    dataRegionId,
-                    ((TsFileResource) resource).getTsFilePath());
-              }
-            }
-          });
       pendingQueue.clear();
       pendingQueue = null;
     }
+    pendingResource2ReplicateIndexForIoTV2.clear();
+    historicalProgressReportResources.clear();
+    pendingHistoricalProgressIndexToReport = null;
   }
 }

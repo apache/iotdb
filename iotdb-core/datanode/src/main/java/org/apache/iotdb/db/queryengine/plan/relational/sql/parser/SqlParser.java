@@ -19,18 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.CaseInsensitiveStream;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseListener;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 
 import org.antlr.v4.runtime.ANTLRErrorListener;
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonToken;
@@ -44,6 +48,7 @@ import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.Pair;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.time.ZoneId;
@@ -97,7 +102,8 @@ public class SqlParser {
   }
 
   public SqlParser(BiConsumer<RelationalSqlLexer, RelationalSqlParser> initializer) {
-    this.initializer = requireNonNull(initializer, "initializer is null");
+    this.initializer =
+        requireNonNull(initializer, DataNodeQueryMessages.EXCEPTION_INITIALIZER_IS_NULL_2EEC3764);
   }
 
   public Statement createStatement(String sql, ZoneId zoneId, IClientSession clientSession) {
@@ -154,7 +160,7 @@ public class SqlParser {
 
       // Override the default error strategy to not attempt inserting or deleting a token.
       // Otherwise, it messes up error reporting
-      parser.setErrorHandler(
+      DefaultErrorStrategy reportingErrorStrategy =
           new DefaultErrorStrategy() {
             @Override
             public Token recoverInline(Parser recognizer) throws RecognitionException {
@@ -163,7 +169,11 @@ public class SqlParser {
               }
               throw new InputMismatchException(recognizer, nextTokensState, nextTokensContext);
             }
-          });
+          };
+      // Any error in the SLL stage falls back to the LL stage, which reports it with the strategy
+      // above, so the SLL stage needs no recovery; BailErrorStrategy also skips the per-rule sync()
+      // checks.
+      parser.setErrorHandler(new BailErrorStrategy());
 
       parser.addParseListener(new PostProcessor(Arrays.asList(parser.getRuleNames()), parser));
 
@@ -179,10 +189,11 @@ public class SqlParser {
           // first, try parsing with potentially faster SLL mode
           parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
           tree = parseFunction.apply(parser);
-        } catch (ParsingException ex) {
+        } catch (ParsingException | ParseCancellationException ex) {
           // if we fail, parse with LL mode
           tokenStream.seek(0); // rewind input stream
           parser.reset();
+          parser.setErrorHandler(reportingErrorStrategy);
 
           parser.getInterpreter().setPredictionMode(PredictionMode.LL);
           tree = parseFunction.apply(parser);
@@ -203,7 +214,8 @@ public class SqlParser {
 
       return new AstBuilder(location.orElse(null), zoneId, clientSession).visit(tree);
     } catch (StackOverflowError e) {
-      throw new ParsingException(name + " is too large (stack overflow while parsing)");
+      throw new ParsingException(
+          name + DataNodeQueryMessages.IS_TOO_LARGE_STACK_OVERFLOW_WHILE_PARSING);
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     }
@@ -223,7 +235,8 @@ public class SqlParser {
       Token token = context.QUOTED_IDENTIFIER().getSymbol();
       if (token.getText().length() == 2) { // empty identifier
         throw new ParsingException(
-            "Zero-length delimited identifier not allowed",
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_ZERO_LENGTH_DELIMITED_IDENTIFIER_NOT_ALLOWED_00C9ADEC,
             null,
             token.getLine(),
             token.getCharPositionInLine() + 1);
@@ -234,7 +247,8 @@ public class SqlParser {
     public void exitBackQuotedIdentifier(RelationalSqlParser.BackQuotedIdentifierContext context) {
       Token token = context.BACKQUOTED_IDENTIFIER().getSymbol();
       throw new ParsingException(
-          "backquoted identifiers are not supported; use double quotes to quote identifiers",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_BACKQUOTED_IDENTIFIERS_ARE_NOT_SUPPORTED_USE_DOUBLE_QUOTES_78BC7EE3,
           null,
           token.getLine(),
           token.getCharPositionInLine() + 1);
@@ -259,7 +273,8 @@ public class SqlParser {
       if (!(context.getChild(0) instanceof TerminalNode)) {
         int rule = ((ParserRuleContext) context.getChild(0)).getRuleIndex();
         throw new AssertionError(
-            "nonReserved can only contain tokens. Found nested rule: " + ruleNames.get(rule));
+            DataNodeQueryMessages.NON_RESERVED_CAN_ONLY_CONTAIN_TOKENS_FOUND_NESTED_RULE
+                + ruleNames.get(rule));
       }
 
       // replace nonReserved words with IDENT tokens

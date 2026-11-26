@@ -20,6 +20,7 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.session.endpointselector.EndpointSelectionStrategyFactory;
 import org.apache.iotdb.session.endpointselector.RandomSelectionStrategy;
 import org.apache.iotdb.session.endpointselector.SequentialSelectionStrategy;
 
@@ -29,6 +30,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -69,6 +71,19 @@ public class EndpointSelectionStrategyTest {
     endpoint.setIp(ip);
     endpoint.setPort(port);
     return endpoint;
+  }
+
+  @Test
+  public void testStrategyNameIsIndependentOfDefaultLocale() {
+    Locale original = Locale.getDefault();
+    try {
+      Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+      assertEquals(
+          "sequential",
+          EndpointSelectionStrategyFactory.createSelectionStrategy("SEQUENTIAL").getName());
+    } finally {
+      Locale.setDefault(original);
+    }
   }
 
   // RandomSelectionStrategy

@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.pipe.receiver.transform.statement;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
@@ -91,12 +93,13 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    LOGGER.info(
-        "Pipe: Inserting row to {}.{}. Casting type from {} to {}.",
-        devicePath,
-        measurements[columnIndex],
-        dataTypes[columnIndex],
-        dataType);
+    if (LOGGER.isInfoEnabled()) {
+      PipeLogger.log(
+          LOGGER::info,
+          DataNodePipeMessages.PIPE_INSERTING_ROW_CASTING_TYPE_FROM,
+          dataTypes[columnIndex],
+          dataType);
+    }
     values[columnIndex] =
         ValueConverter.convert(dataTypes[columnIndex], dataType, values[columnIndex]);
     dataTypes[columnIndex] = dataType;
@@ -105,7 +108,13 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
   @Override
   public void transferType(ZoneId zoneId) throws QueryProcessException {
+    if (measurementSchemas == null) {
+      return;
+    }
     for (int i = 0; i < measurementSchemas.length; i++) {
+      if (!isColumnPresent(i) || dataTypes == null || i >= dataTypes.length) {
+        continue;
+      }
       // null when time series doesn't exist
       if (measurementSchemas[i] == null) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -124,17 +133,18 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
+      if (values == null || i >= values.length || values[i] == null) {
+        continue;
+      }
       try {
         values[i] = ValueConverter.parse(values[i].toString(), dataTypes[i]);
       } catch (Exception e) {
-        LOGGER.warn(
-            "data type of {}.{} is not consistent, "
-                + "registered type {}, inserting timestamp {}, value {}",
-            devicePath,
-            measurements[i],
-            dataTypes[i],
-            time,
-            values[i]);
+        if (LOGGER.isWarnEnabled()) {
+          PipeLogger.log(
+              LOGGER::warn,
+              DataNodePipeMessages.FAILED_TO_PARSE_ROW_VALUE_DURING_DATA_TYPE_CONVERSION,
+              dataTypes[i]);
+        }
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw e;
         } else {

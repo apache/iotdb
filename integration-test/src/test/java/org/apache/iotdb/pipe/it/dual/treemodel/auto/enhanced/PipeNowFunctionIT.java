@@ -25,15 +25,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,14 +49,10 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
-public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
+public class PipeNowFunctionIT extends AbstractPipeTreeModelSharedClusterIT {
 
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
-
+  // CREATE/ALTER PIPE through RPC accepts "now" for prefixed and unprefixed history/source time
+  // bounds; each created pipe remains visible and RUNNING until explicitly stopped.
   @Test
   public void testPipeNowFunction() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -66,57 +62,61 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> sourceAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("source.start-time", "now");
-      extractorAttributes.put("source.end-time", "now");
-      extractorAttributes.put("source.history.start-time", "now");
-      extractorAttributes.put("source.history.end-time", "now");
-      extractorAttributes.put("source.history.enable", "true");
+      sourceAttributes.put("source.start-time", "now");
+      sourceAttributes.put("source.end-time", "now");
+      sourceAttributes.put("source.history.start-time", "now");
+      sourceAttributes.put("source.history.end-time", "now");
+      sourceAttributes.put("source.history.enable", "true");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      extractorAttributes.clear();
-      extractorAttributes.put("start-time", "now");
-      extractorAttributes.put("end-time", "now");
-      extractorAttributes.put("history.start-time", "now");
-      extractorAttributes.put("history.end-time", "now");
-      extractorAttributes.put("history.enable", "true");
+      sourceAttributes.clear();
+      sourceAttributes.put("start-time", "now");
+      sourceAttributes.put("end-time", "now");
+      sourceAttributes.put("history.start-time", "now");
+      sourceAttributes.put("history.end-time", "now");
+      sourceAttributes.put("history.enable", "true");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      extractorAttributes.clear();
-      extractorAttributes.put("extractor.start-time", "now");
-      extractorAttributes.put("extractor.end-time", "now");
-      extractorAttributes.put("extractor.history.start-time", "now");
-      extractorAttributes.put("extractor.history.end-time", "now");
-      extractorAttributes.put("history.enable", "true");
+      sourceAttributes.clear();
+      sourceAttributes.put("source.start-time", "now");
+      sourceAttributes.put("source.end-time", "now");
+      sourceAttributes.put("source.history.start-time", "now");
+      sourceAttributes.put("source.history.end-time", "now");
+      sourceAttributes.put("history.enable", "true");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       status =
           client.createPipe(
-              new TCreatePipeReq("p3", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p3", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -124,40 +124,44 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      extractorAttributes.clear();
-      extractorAttributes.put("extractor.start-time", "now");
-      extractorAttributes.put("extractor.end-time", "now");
-      extractorAttributes.put("extractor.history.start-time", "now");
-      extractorAttributes.put("extractor.history.end-time", "now");
+      sourceAttributes.clear();
+      sourceAttributes.put("source.start-time", "now");
+      sourceAttributes.put("source.end-time", "now");
+      sourceAttributes.put("source.history.start-time", "now");
+      sourceAttributes.put("source.history.end-time", "now");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
       client.alterPipe(
           new TAlterPipeReq()
               .setPipeName("p1")
-              .setExtractorAttributes(extractorAttributes)
+              .setExtractorAttributes(sourceAttributes)
               .setIsReplaceAllExtractorAttributes(false)
               .setProcessorAttributes(new HashMap<>())
               .setIsReplaceAllProcessorAttributes(false)
               .setConnectorAttributes(new HashMap<>())
               .setIsReplaceAllConnectorAttributes(false));
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      extractorAttributes.clear();
-      extractorAttributes.put("start-time", "now");
-      extractorAttributes.put("end-time", "now");
-      extractorAttributes.put("history.start-time", "now");
-      extractorAttributes.put("history.end-time", "now");
+      sourceAttributes.clear();
+      sourceAttributes.put("start-time", "now");
+      sourceAttributes.put("end-time", "now");
+      sourceAttributes.put("history.start-time", "now");
+      sourceAttributes.put("history.end-time", "now");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
       client.alterPipe(
           new TAlterPipeReq()
               .setPipeName("p1")
-              .setExtractorAttributes(extractorAttributes)
+              .setExtractorAttributes(sourceAttributes)
               .setIsReplaceAllExtractorAttributes(false)
               .setProcessorAttributes(new HashMap<>())
               .setIsReplaceAllProcessorAttributes(false)
@@ -167,12 +171,15 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
     }
   }
 
+  // Tree-model CREATE/ALTER PIPE must accept now in prefixed and unprefixed history/source time
+  // attributes; execute all six variants in order on the same connection.
   @Test
   public void testTreeModeSQLSupportNowFunc() {
     doTest(BaseEnv.TREE_SQL_DIALECT);
@@ -187,109 +194,84 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
     final String p1 =
         String.format(
             "create pipe p1"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
+                + " with source ("
+                + "'source.history.enable'='true',"
                 + "'source.start-time'='now',"
                 + "'source.end-time'='now',"
                 + "'source.history.start-time'='now',"
                 + "'source.history.end-time'='now')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
       statement.execute(p1);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    final String p2 =
-        String.format(
-            "create pipe p2"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'start-time'='now',"
-                + "'end-time'='now',"
-                + "'history.start-time'='now',"
-                + "'history.end-time'='now')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      final String p2 =
+          String.format(
+              "create pipe p2"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'start-time'='now',"
+                  + "'end-time'='now',"
+                  + "'history.start-time'='now',"
+                  + "'history.end-time'='now')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p2);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    final String p3 =
-        String.format(
-            "create pipe p3"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'extractor.start-time'='now',"
-                + "'extractor.end-time'='now',"
-                + "'extractor.history.start-time'='now',"
-                + "'extractor.history.end-time'='now')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      final String p3 =
+          String.format(
+              "create pipe p3"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'source.start-time'='now',"
+                  + "'source.end-time'='now',"
+                  + "'source.history.start-time'='now',"
+                  + "'source.history.end-time'='now')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p3);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    String alterP3 =
-        "alter pipe p3"
-            + " modify extractor ("
-            + "'history.enable'='true',"
-            + "'start-time'='now',"
-            + "'end-time'='now',"
-            + "'history.start-time'='now',"
-            + "'history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      String alterP3 =
+          "alter pipe p3"
+              + " modify source ("
+              + "'history.enable'='true',"
+              + "'start-time'='now',"
+              + "'end-time'='now',"
+              + "'history.start-time'='now',"
+              + "'history.end-time'='now')";
       statement.execute(alterP3);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    alterP3 =
-        "alter pipe p3"
-            + " modify extractor ("
-            + "'extractor.history.enable'='true',"
-            + "'extractor.start-time'='now',"
-            + "'extractor.end-time'='now',"
-            + "'extractor.history.start-time'='now',"
-            + "'extractor.history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      alterP3 =
+          "alter pipe p3"
+              + " modify source ("
+              + "'source.history.enable'='true',"
+              + "'source.start-time'='now',"
+              + "'source.end-time'='now',"
+              + "'source.history.start-time'='now',"
+              + "'source.history.end-time'='now')";
       statement.execute(alterP3);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    alterP3 =
-        "alter pipe p3"
-            + " modify source ("
-            + "'extractor.history.enable'='true',"
-            + "'source.start-time'='now',"
-            + "'source.end-time'='now',"
-            + "'source.history.start-time'='now',"
-            + "'source.history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      alterP3 =
+          "alter pipe p3"
+              + " modify source ("
+              + "'source.history.enable'='true',"
+              + "'source.start-time'='now',"
+              + "'source.end-time'='now',"
+              + "'source.history.start-time'='now',"
+              + "'source.history.end-time'='now')";
       statement.execute(alterP3);
     } catch (final SQLException e) {
       fail(e.getMessage());

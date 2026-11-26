@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.rpc.UrlUtils;
 
 import org.slf4j.Logger;
@@ -48,13 +49,10 @@ public class NodeUrlUtils {
    * Convert TEndPoint to TEndPointUrl
    *
    * @param endPoint TEndPoint
-   * @return TEndPointUrl with format ip:port
+   * @return TEndPointUrl with format host:port or [ipv6]:port
    */
   public static String convertTEndPointUrl(TEndPoint endPoint) {
-    StringJoiner url = new StringJoiner(":");
-    url.add(endPoint.getIp());
-    url.add(String.valueOf(endPoint.getPort()));
-    return url.toString();
+    return UrlUtils.convertTEndPointIpv4AndIpv6Url(endPoint);
   }
 
   /**
@@ -74,7 +72,7 @@ public class NodeUrlUtils {
   /**
    * Parse TEndPoint from a given TEndPointUrl
    *
-   * @param endPointUrl ip:port
+   * @param endPointUrl host:port or [ipv6]:port
    * @return TEndPoint
    * @throws BadNodeUrlException Throw when unable to parse
    */
@@ -90,7 +88,7 @@ public class NodeUrlUtils {
    */
   public static List<TEndPoint> parseTEndPointUrls(List<String> endPointUrls) {
     if (endPointUrls == null) {
-      throw new NumberFormatException("endPointUrls is null");
+      throw new NumberFormatException(UtilMessages.ENDPOINT_URLS_IS_NULL);
     }
     List<TEndPoint> result = new ArrayList<>();
     for (String url : endPointUrls) {
@@ -149,8 +147,8 @@ public class NodeUrlUtils {
       throws BadNodeUrlException {
     String[] split = configNodeUrl.split(",");
     if (split.length != 3) {
-      logger.warn("Bad ConfigNode url: {}", configNodeUrl);
-      throw new BadNodeUrlException(String.format("Bad node url: %s", configNodeUrl));
+      logger.warn(UtilMessages.BAD_CONFIG_NODE_URL, configNodeUrl);
+      throw new BadNodeUrlException(String.format(UtilMessages.BAD_NODE_URL, configNodeUrl));
     }
     return new TConfigNodeLocation(
         Integer.parseInt(split[0]),

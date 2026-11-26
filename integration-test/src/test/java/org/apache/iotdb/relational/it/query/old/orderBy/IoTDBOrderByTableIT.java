@@ -25,9 +25,9 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -48,6 +48,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.USE_DB;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -1303,7 +1304,7 @@ public class IoTDBOrderByTableIT {
   private void errorTest(String sql, String error) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
+      assertEquals(error, assertQueryFails(statement, sql).getMessage());
     } catch (Exception e) {
       assertEquals(error, e.getMessage());
     }

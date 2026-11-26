@@ -56,6 +56,8 @@ public class SessionConfig {
 
   public static final String SQL_DIALECT = "tree";
 
+  public static final String DEFAULT_SSL_PROTOCOL = "TLS";
+
   private SessionConfig() {}
 
   // Endpoint selection strategy constants

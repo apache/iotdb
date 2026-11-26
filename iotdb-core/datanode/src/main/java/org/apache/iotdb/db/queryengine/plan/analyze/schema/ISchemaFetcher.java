@@ -21,9 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -48,7 +50,10 @@ public interface ISchemaFetcher {
    * @return the matched timeseries schema organized as tree structure logically
    */
   ISchemaTree fetchSchema(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch all the schema by the given patternTree in device level
@@ -56,7 +61,10 @@ public interface ISchemaFetcher {
    * @return schemaTree without measurement nodes
    */
   ISchemaTree fetchRawSchemaInDeviceLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch all the schema by the given patternTree in device level
@@ -64,7 +72,10 @@ public interface ISchemaFetcher {
    * @return schemaTree without measurement nodes
    */
   ISchemaTree fetchRawSchemaInMeasurementLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch all the schema with tags of existing timeseries matched by the given patternTree
@@ -73,7 +84,10 @@ public interface ISchemaFetcher {
    * @return the matched timeseries schema organized as tree structure logically
    */
   ISchemaTree fetchSchemaWithTags(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch and compute the schema of target timeseries, with device and measurement defined in given
@@ -108,6 +122,23 @@ public interface ISchemaFetcher {
       List<CompressionType[]> compressionTypes,
       List<Boolean> aligned,
       MPPQueryContext context);
+
+  default ISchemaTree fetchSchemaList(
+      final List<PartialPath> devicePaths,
+      final List<String[]> measurementsList,
+      final MPPQueryContext context) {
+    // The lock is recorded in the query context and intentionally remains held through execution.
+    // The query lifecycle releases all recorded schema read locks in Coordinator's finally block.
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
+    final PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < devicePaths.size(); i++) {
+      for (final String measurement : measurementsList.get(i)) {
+        patternTree.appendFullPath(devicePaths.get(i), measurement);
+      }
+    }
+    return fetchSchema(patternTree, true, context, true);
+  }
 
   Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath);
 

@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -33,6 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode.getDeduplicatedDescriptors;
 
 public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
 
@@ -103,7 +106,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
       outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
     }
     outputColumnNames.addAll(
-        aggregationDescriptorList.stream()
+        getDeduplicatedDescriptors(aggregationDescriptorList).stream()
             .map(AggregationDescriptor::getOutputColumnNames)
             .flatMap(List::stream)
             .collect(Collectors.toList()));
@@ -111,8 +114,8 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSeriesAggregationSourceNode(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitSeriesAggregationSourceNode(this, context);
   }
 
   @Override

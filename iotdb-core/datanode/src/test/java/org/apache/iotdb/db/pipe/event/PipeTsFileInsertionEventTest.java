@@ -1,0 +1,726 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.pipe.event;
+
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.TimeRange;
+import org.junit.Assert;
+import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern.buildUnionPattern;
+import static org.apache.iotdb.db.auth.AuthorityChecker.NO_PERMISSION_PROMOTION;
+
+public class PipeTsFileInsertionEventTest {
+  @Test
+  public void testRealtimeTsFileTimeParsingRemainsUnchanged() {
+    final TsFileResource resource = new TsFileResource(new File("1-1-0-0.tsfile"));
+    final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"t1", "d1"});
+    resource.updateStartTime(device, 0);
+    resource.updateEndTime(device, Long.MIN_VALUE);
+    resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            true,
+            "db1",
+            resource,
+            null,
+            false,
+            false,
+            false,
+            Collections.singleton("t1"),
+            "realtime_time_filter",
+            1L,
+            null,
+            null,
+            new TablePattern(true, null, null),
+            null,
+            null,
+            null,
+            true,
+            -10,
+            10);
+    Assert.assertFalse(event.shouldParseTime());
+    event.close();
+  }
+
+  @Test
+  public void testHistoricalModsSurviveOriginalFileRemoval() throws Exception {
+    assertHistoricalModsAfterOriginalFileRemoval(true, true);
+  }
+
+  @Test
+  public void testHistoricalFileWithoutModsSurvivesOriginalFileRemoval() throws Exception {
+    assertHistoricalModsAfterOriginalFileRemoval(false, true);
+  }
+
+  @Test
+  public void testHistoricalModsRemainDisabledAfterOriginalFileRemoval() throws Exception {
+    assertHistoricalModsAfterOriginalFileRemoval(true, false);
+  }
+
+  private void assertHistoricalModsAfterOriginalFileRemoval(
+      final boolean hasMods, final boolean transferMods) throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalMods").toFile();
+    final String pipeName = "historical_mods";
+    final long creationTime = 1L;
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+    final PipeTsFileResourceManager manager = PipeDataNodeResourceManager.tsfile();
+    PipeTsFileInsertionEvent event = null;
+    boolean increased = false;
+    File pinnedTsFile = null;
+    File pinnedModFile = null;
+    try {
+      final File dataDir = new File(tempDir, "unsequence/db1/0/0");
+      Assert.assertTrue(dataDir.mkdirs());
+      final TsFileResource resource =
+          createNonEmptyTsFileResource(dataDir, "1-1-0-0.tsfile", 1L, 0);
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      final TableDeletionEntry deletion =
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "t1",
+                  new FullExactMatch(
+                      IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"t1", "d1"}))),
+              new TimeRange(1L, 1L));
+      if (hasMods) {
+        resource.getExclusiveModFile().write(deletion);
+        resource.getExclusiveModFile().close();
+      }
+      manager.pinTsFileResource(resource, transferMods, resourcePipeName);
+      pinnedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              resource.getTsFile(), resourcePipeName);
+      pinnedModFile = ModificationFile.getExclusiveMods(pinnedTsFile);
+
+      // Compaction removes the original after historical selection has pinned both files.
+      Assert.assertTrue(resource.remove());
+      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertEquals(hasMods && transferMods, pinnedModFile.exists());
+      event =
+          new PipeTsFileInsertionEvent(
+              true,
+              "db1",
+              resource,
+              null,
+              transferMods,
+              false,
+              true,
+              Collections.singleton("t1"),
+              pipeName,
+              creationTime,
+              null,
+              null,
+              new TablePattern(true, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      increased = event.internallyIncreaseResourceReferenceCount(getClass().getName());
+      Assert.assertTrue(increased);
+      Assert.assertEquals(hasMods && transferMods, event.isWithMod());
+      if (hasMods && transferMods) {
+        Assert.assertEquals(pinnedModFile, event.getModFile());
+        Assert.assertEquals(
+            Collections.singletonList(deletion),
+            ModificationFile.readAllModifications(event.getTsFile(), true));
+      } else {
+        Assert.assertNull(event.getModFile());
+      }
+    } finally {
+      if (increased) {
+        event.internallyDecreaseResourceReferenceCount(getClass().getName());
+      } else if (event != null) {
+        event.close();
+      }
+      if (pinnedModFile != null) {
+        manager.decreaseFileReference(pinnedModFile, resourcePipeName);
+      }
+      if (pinnedTsFile != null) {
+        manager.decreaseFileReference(pinnedTsFile, resourcePipeName);
+      }
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testAuthCheck() throws Exception {
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    final File file =
+        new File(
+            TsFileNameGenerator.generateNewTsFilePath(
+                TestConstant.BASE_OUTPUT_PATH + IoTDBConstant.SEQUENCE_FOLDER_NAME, 1, 1, 1, 1));
+    try {
+      final TestAccessControl accessControl = Mockito.spy(new TestAccessControl());
+      AuthorityChecker.setAccessControl(accessControl);
+
+      final TsFileResource resource = new TsFileResource(file);
+      try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+        writer.startChunkGroup("d1");
+        writer.generateSimpleAlignedSeriesToCurrentDevice(
+            Arrays.asList("s1", "s2"),
+            new TimeRange[][][] {
+              new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12), new TimeRange(3, 12)}}
+            },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4);
+        writer.endChunkGroup();
+        writer.endFile();
+      }
+      resource.setStatus(TsFileResourceStatus.NORMAL);
+
+      final ITimeIndex timeIndex = new ArrayDeviceTimeIndex();
+      final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1");
+      timeIndex.putStartTime(deviceID, 0);
+      timeIndex.putEndTime(deviceID, 1);
+      resource.setTimeIndex(timeIndex);
+
+      final PipeTsFileInsertionEvent tableEvent =
+          new PipeTsFileInsertionEvent(
+              true,
+              "db",
+              resource,
+              null,
+              true,
+              false,
+              false,
+              Collections.singleton("table"),
+              null,
+              0,
+              null,
+              buildUnionPattern(
+                  false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+              new TablePattern(true, null, null),
+              "0",
+              "user",
+              "localhost",
+              false,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      Assert.assertThrows(AccessDeniedException.class, tableEvent::throwIfNoPrivilege);
+      // A denied event must remain retryable until SELECT is granted.
+      Assert.assertThrows(AccessDeniedException.class, tableEvent::throwIfNoPrivilege);
+      Mockito.doReturn(true)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      tableEvent.throwIfNoPrivilege();
+      // Processing can fail after a successful check, so the next attempt must check again.
+      tableEvent.throwIfNoPrivilege();
+      Mockito.doReturn(false)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      Assert.assertThrows(AccessDeniedException.class, tableEvent::throwIfNoPrivilege);
+      tableEvent.close();
+
+      final PipeTsFileInsertionEvent treeEvent =
+          new PipeTsFileInsertionEvent(
+              false,
+              "root.db",
+              resource,
+              null,
+              true,
+              false,
+              false,
+              null,
+              null,
+              0,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              "0",
+              "user",
+              "localhost",
+              false,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      // Shall not throw any exceptions for historical files
+      treeEvent.throwIfNoPrivilege();
+      Assert.assertTrue(treeEvent.shouldParse4Privilege());
+
+      Assert.assertThrows(PipeException.class, treeEvent::toTabletInsertionEvents);
+
+      treeEvent.setTreeSchemaMap(Collections.singletonMap(deviceID, new String[] {"s0", "s1"}));
+      Assert.assertThrows(AccessDeniedException.class, treeEvent::throwIfNoPrivilege);
+      // Retrying a realtime event must not fall back to the historical coarse filter.
+      Assert.assertThrows(AccessDeniedException.class, treeEvent::throwIfNoPrivilege);
+
+      treeEvent.close();
+    } finally {
+      AuthorityChecker.setAccessControl(oldControl);
+      FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    }
+  }
+
+  @Test
+  public void testHistoricalTableEventWithUnknownTableNamesChecksPrivilegesAfterClose() {
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    final TestAccessControl accessControl = Mockito.spy(new TestAccessControl());
+    final TsFileResource resource = Mockito.mock(TsFileResource.class);
+    final IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table", "d1"});
+    Mockito.when(resource.getTsFile()).thenReturn(new File("sequence/db/1/0/1-1-0-0.tsfile"));
+    Mockito.when(resource.getDevices()).thenReturn(Collections.singleton(deviceID));
+    Mockito.when(resource.isEmpty()).thenReturn(false);
+    Mockito.when(resource.isClosed()).thenReturn(true);
+    Mockito.when(resource.isGeneratedByPipe()).thenReturn(false);
+    Mockito.when(resource.isGeneratedByIoTConsensusV2()).thenReturn(false);
+    AuthorityChecker.setAccessControl(accessControl);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            true,
+            "db",
+            resource,
+            null,
+            false,
+            false,
+            true,
+            null,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    PipeTsFileInsertionEvent skipIfNoPrivilegesEvent = null;
+    try {
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+      Mockito.doReturn(true)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      event.throwIfNoPrivilege();
+      Assert.assertFalse(event.shouldParse4Privilege());
+
+      Mockito.doReturn(false)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      skipIfNoPrivilegesEvent =
+          new PipeTsFileInsertionEvent(
+              true,
+              "db",
+              resource,
+              null,
+              false,
+              false,
+              true,
+              null,
+              null,
+              0,
+              null,
+              buildUnionPattern(
+                  false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+              new TablePattern(true, null, null),
+              "0",
+              "user",
+              "localhost",
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      skipIfNoPrivilegesEvent.throwIfNoPrivilege();
+      Assert.assertTrue(skipIfNoPrivilegesEvent.shouldParse4Privilege());
+    } finally {
+      event.close();
+      if (skipIfNoPrivilegesEvent != null) {
+        skipIfNoPrivilegesEvent.close();
+      }
+      AuthorityChecker.setAccessControl(oldControl);
+    }
+  }
+
+  @Test
+  public void testMissingDeviceMetadataFailsWithClearMessage() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeMissingDeviceMetadata").toFile();
+    final TsFileResource resource =
+        createSpyTsFileResource(tempDir, "missing-device-metadata.tsfile", 1L, 1);
+    Mockito.doReturn(Collections.emptySet()).when(resource).getDevices();
+    resource.setStatus(TsFileResourceStatus.NORMAL);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            true,
+            "db",
+            resource,
+            null,
+            false,
+            true,
+            true,
+            null,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    try {
+      final PipeException exception =
+          Assert.assertThrows(PipeException.class, event::throwIfNoPrivilege);
+      Assert.assertTrue(exception.getCause() instanceof IOException);
+      Assert.assertEquals(
+          DataNodePipeMessages
+              .EXCEPTION_CANNOT_DETERMINE_TABLE_NAMES_BECAUSE_THE_NON_EMPTY_TSFILE_RESOURCE_HAS_NO_DEVICE_METADATA_6A0CBC2B,
+          exception.getCause().getMessage());
+      Assert.assertTrue(exception.getMessage().contains(resource.getTsFilePath()));
+    } finally {
+      event.close();
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testTsFileDedupScopeIdIsPreservedForCleanupAndCopy() throws Exception {
+    final PipeTsFileEpochProgressIndexKeeper keeper =
+        PipeTsFileEpochProgressIndexKeeper.getInstance();
+    final int dataRegionId = 1;
+    final String scopeA = "scope-a";
+    final String scopeB = "scope-b";
+    final File tempDir = Files.createTempDirectory("pipeTsFileDedupScope").toFile();
+
+    try {
+      final TsFileResource sourceResource =
+          createSpyTsFileResource(tempDir, "source.tsfile", 1L, dataRegionId);
+      keeper.registerProgressIndex(dataRegionId, scopeA, sourceResource);
+      keeper.registerProgressIndex(dataRegionId, scopeB, sourceResource);
+
+      final PipeTsFileInsertionEvent sourceEvent =
+          new PipeTsFileInsertionEvent(
+                  true,
+                  "db",
+                  sourceResource,
+                  null,
+                  true,
+                  false,
+                  false,
+                  Collections.singleton("table"),
+                  "pipe",
+                  1L,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  true,
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE)
+              .bindTsFileDedupScopeID(scopeA);
+
+      sourceEvent.eliminateProgressIndex();
+      Assert.assertFalse(
+          keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(
+          keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+
+      keeper.registerProgressIndex(dataRegionId, scopeA, sourceResource);
+      final PipeTsFileInsertionEvent copiedEvent =
+          sourceEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+              "pipe", 2L, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
+      Assert.assertEquals(scopeA, copiedEvent.getTsFileDedupScopeID());
+      copiedEvent.eliminateProgressIndex();
+      Assert.assertFalse(
+          keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(
+          keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+
+      keeper.registerProgressIndex(dataRegionId, scopeA, sourceResource);
+      final TsFileResource compactedResource =
+          createSpyTsFileResource(tempDir, "compacted.tsfile", 2L, dataRegionId);
+      final PipeCompactedTsFileInsertionEvent compactedEvent =
+          new PipeCompactedTsFileInsertionEvent(
+              new CommitterKey("pipe", 1L, dataRegionId, 0),
+              Collections.singleton(sourceEvent),
+              sourceEvent,
+              compactedResource,
+              true);
+      Assert.assertEquals(scopeA, compactedEvent.getTsFileDedupScopeID());
+      compactedEvent.eliminateProgressIndex();
+      Assert.assertFalse(
+          keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(
+          keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+    } finally {
+      keeper.clearProgressIndex(dataRegionId, scopeA);
+      keeper.clearProgressIndex(dataRegionId, scopeB);
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test(timeout = 60000)
+  public void testRealtimeEventCanSkipWaitingForClosedStatusAfterTsFileSealed() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeTsFileSealed").toFile();
+
+    try {
+      final TsFileResource resource =
+          createNonEmptyTsFileResource(tempDir, "realtime.tsfile", 1L, 1);
+      Assert.assertFalse(resource.isClosed());
+      Assert.assertFalse(resource.isEmpty());
+
+      final PipeTsFileInsertionEvent sourceEvent =
+          new PipeTsFileInsertionEvent(false, "root.db", resource, false);
+      Assert.assertTrue(sourceEvent.waitForTsFileClose());
+
+      final PipeTsFileInsertionEvent copiedEvent =
+          sourceEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+              "pipe", 1L, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
+      Assert.assertTrue(copiedEvent.waitForTsFileClose());
+
+      copiedEvent.close();
+      sourceEvent.close();
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  private TsFileResource createSpyTsFileResource(
+      final File tempDir, final String fileName, final long flushOrderId, final int dataRegionId)
+      throws IOException {
+    final TsFileResource resource =
+        createNonEmptyTsFileResource(tempDir, fileName, flushOrderId, dataRegionId);
+    final TsFileResource spyResource = Mockito.spy(resource);
+    Mockito.doReturn(String.valueOf(dataRegionId)).when(spyResource).getDataRegionId();
+    return spyResource;
+  }
+
+  private TsFileResource createNonEmptyTsFileResource(
+      final File tempDir, final String fileName, final long flushOrderId, final int dataRegionId)
+      throws IOException {
+    final File file = new File(tempDir, fileName);
+    Assert.assertTrue(file.createNewFile());
+
+    final TsFileResource resource = new TsFileResource(file);
+    resource.updateProgressIndex(new SimpleProgressIndex(1, flushOrderId));
+    final ITimeIndex timeIndex = new ArrayDeviceTimeIndex();
+    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + dataRegionId);
+    timeIndex.putStartTime(deviceID, 1);
+    timeIndex.putEndTime(deviceID, 1);
+    resource.setTimeIndex(timeIndex);
+    return resource;
+  }
+
+  static class TestAccessControl implements AccessControl {
+
+    @Override
+    public void checkCanCreateDatabase(
+        String userName, String databaseName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanDropDatabase(
+        String userName, String databaseName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanAlterDatabase(
+        String userName, String databaseName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanShowOrUseDatabase(
+        String userName, String databaseName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanCreateTable(
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanDropTable(
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanAlterTable(
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanInsertIntoTable(
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanSelectFromTable(
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+      throw new AccessDeniedException(
+          NO_PERMISSION_PROMOTION
+              + PrivilegeType.SELECT
+              + " ON "
+              + tableName.getDatabaseName()
+              + "."
+              + tableName.getObjectName());
+    }
+
+    @Override
+    public void checkCanSelectFromDatabase4Pipe(
+        String userName, String databaseName, IAuditEntity auditEntity) {
+      throw new AccessDeniedException(
+          NO_PERMISSION_PROMOTION + PrivilegeType.SELECT + " ON DB:" + databaseName);
+    }
+
+    @Override
+    public boolean checkCanSelectFromTable4Pipe(
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+      return false;
+    }
+
+    @Override
+    public void checkCanDeleteFromTable(
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanShowOrDescTable(
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkCanCreateViewFromTreePath(PartialPath path, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkUserCanRunRelationalAuthorStatement(
+        String userName, RelationalAuthorStatement statement, IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkUserIsAdmin(IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkUserGlobalSysPrivilege(IAuditEntity auditEntity) {}
+
+    @Override
+    public void checkUserGlobalSysPrivilege(
+        IAuditEntity auditEntity,
+        AuditLogOperation auditLogOperation,
+        Supplier<String> auditObject) {}
+
+    @Override
+    public boolean hasGlobalPrivilege(IAuditEntity auditEntity, PrivilegeType privilegeType) {
+      return false;
+    }
+
+    @Override
+    public void checkMissingPrivileges(
+        String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {}
+
+    @Override
+    public TSStatus checkPermissionBeforeProcess(
+        Statement statement, TreeAccessCheckContext context) {
+      return null;
+    }
+
+    @Override
+    public TSStatus checkFullPathWriteDataPermission(
+        IAuditEntity auditEntity, IDeviceID device, String measurementId) {
+      return null;
+    }
+
+    @Override
+    public TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName) {
+      return null;
+    }
+
+    @Override
+    public TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject) {
+      return null;
+    }
+
+    @Override
+    public TSStatus checkCanAlterView(
+        IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
+      return null;
+    }
+
+    @Override
+    public TSStatus checkSeriesPrivilege4Pipe(
+        IAuditEntity context,
+        List<? extends PartialPath> checkedPathsSupplier,
+        PrivilegeType permission) {
+      return AuthorityChecker.getTSStatus(
+          IntStream.range(0, checkedPathsSupplier.size()).boxed().collect(Collectors.toList()),
+          checkedPathsSupplier,
+          permission);
+    }
+
+    @Override
+    public List<Integer> checkSeriesPrivilegeWithIndexes4Pipe(
+        IAuditEntity context,
+        List<? extends PartialPath> checkedPathsSupplier,
+        PrivilegeType permission) {
+      return null;
+    }
+
+    @Override
+    public TSStatus allowUserToLogin(String userName) {
+      return null;
+    }
+  }
+}

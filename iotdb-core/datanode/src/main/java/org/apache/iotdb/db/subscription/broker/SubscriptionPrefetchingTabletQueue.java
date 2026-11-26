@@ -21,6 +21,8 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -31,7 +33,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +71,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  private @NonNull SubscriptionEvent pollTabletsInternal(
+  private SubscriptionEvent pollTabletsInternal(
       final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
     final AtomicReference<SubscriptionEvent> eventRef = new AtomicReference<>();
     inFlightEvents.compute(
@@ -80,7 +81,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           if (Objects.isNull(ev)) {
             if (isCommitContextOutdated(commitContext)) {
               LOGGER.warn(
-                  "SubscriptionPrefetchingTabletQueue {} detected outdated poll request, consumer {}, commit context {}, offset {}",
+                  DataNodePipeMessages
+                      .PIPE_LOG_SUBSCRIPTIONPREFETCHINGTABLETQUEUE_DETECTED_OUTDATED_POLL_C0001CCF,
                   this,
                   consumerId,
                   commitContext,
@@ -90,8 +92,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             }
             final String errorMessage =
                 String.format(
-                    "SubscriptionPrefetchingTabletQueue %s is currently not transferring any tablet to consumer %s, commit context: %s, offset: %s",
-                    this, consumerId, commitContext, offset);
+                    DataNodePipeMessages
+                        .MESSAGE_SUBSCRIPTIONPREFETCHINGTABLETQUEUE_ARG_IS_CURRENTLY_NOT_TRANSFERRING_ANY_TABLET_TO_CONSUMER_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_ED3B95E8,
+                    this,
+                    consumerId,
+                    commitContext,
+                    offset);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return null;
@@ -101,8 +107,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             ev.cleanUp(false);
             final String errorMessage =
                 String.format(
-                    "outdated poll request after commit, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",
-                    consumerId, commitContext, offset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_OUTDATED_POLL_REQUEST_AFTER_COMMIT_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_AF34C3B9,
+                    consumerId,
+                    commitContext,
+                    offset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return null; // remove this entry
@@ -112,8 +122,13 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           if (!Objects.equals(ev.getLastPolledConsumerId(), consumerId)) {
             final String errorMessage =
                 String.format(
-                    "inconsistent polled consumer id, current: %s, incoming: %s, commit context: %s, offset: %s, prefetching queue: %s",
-                    ev.getLastPolledConsumerId(), consumerId, commitContext, offset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_INCONSISTENT_POLLED_CONSUMER_ID_CURRENT_ARG_INCOMING_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_2A5392D5,
+                    ev.getLastPolledConsumerId(),
+                    consumerId,
+                    commitContext,
+                    offset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -123,8 +138,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           if (Objects.isNull(response)) {
             final String errorMessage =
                 String.format(
-                    "current response is null when fetching next response, consumer id: %s commit context: %s, offset: %s, prefetching queue: %s",
-                    consumerId, commitContext, offset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_CURRENT_RESPONSE_IS_NULL_WHEN_FETCHING_NEXT_RESPONSE_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_4BF8D18D,
+                    consumerId,
+                    commitContext,
+                    offset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -135,7 +154,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           // 2. Check previous response type and offset
           final short responseType = response.getResponseType();
           if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-            final String errorMessage = String.format("unexpected response type: %s", responseType);
+            final String errorMessage =
+                String.format(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE_FMT, responseType);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -147,8 +167,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
               if (!Objects.equals(offset, ((TabletsPayload) payload).getNextOffset())) {
                 final String errorMessage =
                     String.format(
-                        "inconsistent offset, current: %s, incoming: %s, consumer: %s, prefetching queue: %s",
-                        ((TabletsPayload) payload).getNextOffset(), offset, consumerId, this);
+                        DataNodePipeMessages
+                            .MESSAGE_INCONSISTENT_OFFSET_CURRENT_ARG_INCOMING_ARG_CONSUMER_ARG_PREFETCHING_QUEUE_ARG_3BB4E919,
+                        ((TabletsPayload) payload).getNextOffset(),
+                        offset,
+                        consumerId,
+                        this);
                 LOGGER.warn(errorMessage);
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
@@ -157,7 +181,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             default:
               {
                 final String errorMessage =
-                    String.format("unexpected response type: %s", responseType);
+                    String.format(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE_FMT, responseType);
                 LOGGER.warn(errorMessage);
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
@@ -177,8 +201,13 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           } catch (final Exception e) {
             final String errorMessage =
                 String.format(
-                    "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",
-                    e, consumerId, commitContext, offset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_EXCEPTION_OCCURRED_WHEN_FETCHING_NEXT_RESPONSE_ARG_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_8C49BE57,
+                    e,
+                    consumerId,
+                    commitContext,
+                    offset,
+                    this);
             LOGGER.warn(errorMessage, e);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
           }
@@ -196,7 +225,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     try {
       return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
     } catch (final Exception e) {
-      LOGGER.error("Subscription: unexpected exception (broken invariant) {}", e, e);
+      LOGGER.error(DataNodeMiscMessages.SUBSCRIPTION_UNEXPECTED_EXCEPTION, e, e);
     }
     return false;
   }

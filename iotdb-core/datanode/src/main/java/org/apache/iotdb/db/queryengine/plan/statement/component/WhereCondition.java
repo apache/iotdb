@@ -35,6 +35,13 @@ public class WhereCondition extends StatementNode {
     this.predicate = ExpressionAnalyzer.toLowerCaseExpression(predicate);
   }
 
+  /** Wraps an expression that has already been normalized without rebuilding its AST. */
+  public static WhereCondition fromNormalizedPredicate(Expression predicate) {
+    WhereCondition whereCondition = new WhereCondition();
+    whereCondition.predicate = predicate;
+    return whereCondition;
+  }
+
   public Expression getPredicate() {
     return predicate;
   }

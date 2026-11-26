@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.tsfile.enums.TSDataType;
+
 public class BackIntTVList extends QuickIntTVList {
   private final BackwardSort policy;
 
@@ -26,13 +28,19 @@ public class BackIntTVList extends QuickIntTVList {
     policy = new BackwardSort(this);
   }
 
+  BackIntTVList(TSDataType dataType) {
+    policy = new BackwardSort(this);
+    this.dataType = dataType;
+  }
+
   @Override
-  public synchronized void sort() {
+  public synchronized int sort() {
     if (!sorted) {
       policy.backwardSort(timestamps, rowCount);
       policy.clearTmp();
     }
     sorted = true;
     seqRowCount = rowCount;
+    return rowCount;
   }
 }

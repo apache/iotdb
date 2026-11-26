@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -32,8 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.IntColumn;
@@ -44,8 +46,9 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ConfigExecutionTest {
@@ -58,6 +61,31 @@ public class ConfigExecutionTest {
     execution.start();
     ExecutionResult result = execution.getStatus();
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+  }
+
+  @Test
+  public void regionValidationErrorRetainsStatusAndMessage() {
+    ExecutorService executor = getExecutor();
+    try {
+      for (TSStatusCode code :
+          new TSStatusCode[] {
+            TSStatusCode.MIGRATE_REGION_ERROR,
+            TSStatusCode.RECONSTRUCT_REGION_ERROR,
+            TSStatusCode.EXTEND_REGION_ERROR,
+            TSStatusCode.REMOVE_REGION_PEER_ERROR
+          }) {
+        TSStatus status = new TSStatus(code.getStatusCode()).setMessage("Region 99 does not exist");
+        SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+        future.setException(new IoTDBException(status));
+        IConfigTask task = clientManager -> future;
+        ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), executor, task);
+        execution.start();
+
+        assertEquals(status, execution.getStatus().status);
+      }
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   @Test
@@ -157,9 +185,32 @@ public class ConfigExecutionTest {
     }
   }
 
+  @Test
+  public void isActiveTellsWhetherAnRpcOfTheQueryIsInProgress() {
+    ExecutorService executor = getExecutor();
+    try {
+      IConfigTask task =
+          (clientManager) -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), executor, task);
+      // the execution is created by the RPC that executes the statement
+      assertTrue(execution.isActive());
+      // that RPC returns, and the client has not asked for the result yet
+      execution.recordExecutionTime(1);
+      assertFalse(execution.isActive());
+      // an RPC that fetches the result arrives
+      execution.updateCurrentRpcStartTime(System.nanoTime());
+      assertTrue(execution.isActive());
+      // and returns as well
+      execution.recordExecutionTime(1);
+      assertFalse(execution.isActive());
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
   private MPPQueryContext genMPPQueryContext() {
     MPPQueryContext context = new MPPQueryContext(new QueryId("query1"));
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     return context;
   }
 

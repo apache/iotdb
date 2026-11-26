@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.exception.metadata.template;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class DuplicatedTemplateException extends MetadataException {
   public DuplicatedTemplateException(String path) {
     super(
-        String.format("Failed to create duplicated template for path %s", path),
+        String.format(DataNodeSchemaMessages.FAILED_CREATE_DUPLICATED_TEMPLATE_FMT, path),
         TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode(),
         true);
   }

@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.exception;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 public class StorageGroupNotReadyException extends StorageEngineException {
 
   public StorageGroupNotReadyException(String storageGroup, int errorCode) {
-    super("the sg " + storageGroup + " may not ready now, please wait and retry later", errorCode);
+    super(String.format(DataNodeMiscMessages.STORAGE_GROUP_NOT_READY_FMT, storageGroup), errorCode);
   }
 }

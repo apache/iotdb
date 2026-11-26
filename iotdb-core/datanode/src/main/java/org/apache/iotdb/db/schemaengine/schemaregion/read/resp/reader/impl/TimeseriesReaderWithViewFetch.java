@@ -21,12 +21,13 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
@@ -40,8 +41,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.TimeseriesFilt
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
+import java.util.UUID;
 
 public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesSchemaInfo> {
   private static final Logger LOGGER = LoggerFactory.getLogger(TimeseriesReaderWithViewFetch.class);
@@ -242,12 +244,54 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     cachedViewList.clear();
 
     ISchemaTree schemaTree =
-        ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, true, null);
+        ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, true, null, true);
     // process each view expression and get data type
     TransformToExpressionVisitor transformToExpressionVisitor = new TransformToExpressionVisitor();
     CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =
         new CompleteMeasurementSchemaVisitor();
     Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
+
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (classLoaderManager == null) {
+      analyzeViewExpressionTypes(
+          delayedLogicalViewList,
+          viewExpressionList,
+          transformToExpressionVisitor,
+          completeMeasurementSchemaVisitor,
+          schemaTree,
+          expressionTypes);
+      return;
+    }
+
+    // This asynchronous schema read has no query id, so use a temporary scope whose lifetime is
+    // limited to UDF type inference.
+    UDFClassLoaderManager.QueryScope queryScope =
+        classLoaderManager.openQueryScope("logical-view-type-" + UUID.randomUUID());
+    try {
+      classLoaderManager.withQueryScope(
+          queryScope,
+          () -> {
+            analyzeViewExpressionTypes(
+                delayedLogicalViewList,
+                viewExpressionList,
+                transformToExpressionVisitor,
+                completeMeasurementSchemaVisitor,
+                schemaTree,
+                expressionTypes);
+            return null;
+          });
+    } finally {
+      classLoaderManager.finalizeUDFQuery(queryScope);
+    }
+  }
+
+  private void analyzeViewExpressionTypes(
+      final List<ITimeSeriesSchemaInfo> delayedLogicalViewList,
+      final List<ViewExpression> viewExpressionList,
+      final TransformToExpressionVisitor transformToExpressionVisitor,
+      final CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor,
+      final ISchemaTree schemaTree,
+      final Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     for (int i = 0; i < delayedLogicalViewList.size(); i++) {
       ViewExpression viewExpression = viewExpressionList.get(i);
       Expression expression = null;

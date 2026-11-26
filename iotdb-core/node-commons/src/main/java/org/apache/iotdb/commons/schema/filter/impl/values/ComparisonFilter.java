@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.schema.filter.impl.values;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -33,12 +35,16 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public class ComparisonFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ComparisonFilter.class);
+
   private final Operator operator;
   private final String value;
 
   public ComparisonFilter(final Operator operator, final String value) {
-    requireNonNull(operator, "operator is null");
-    requireNonNull(value, "value is null");
+    requireNonNull(operator, SchemaMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    requireNonNull(value, SchemaMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
 
     this.operator = operator;
     this.value = value;
@@ -94,6 +100,11 @@ public class ComparisonFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(operator, value);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(value);
   }
 
   public enum Operator {

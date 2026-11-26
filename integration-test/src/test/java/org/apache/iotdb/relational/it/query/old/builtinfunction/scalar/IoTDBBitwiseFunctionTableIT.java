@@ -148,7 +148,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time,s2,s3,bit_count(9,64),bit_count(s2,64),bit_count(s2,s3) from bit_count_error_table",
         "Argument exception, the scalar function num must be representable with the bits specified. 9 cannot be represented with 2 bits.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -159,7 +159,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time,s2,s3,bit_count(9,1),bit_count(s2,1),bit_count(s2,s3) from bit_count_error_table",
         "Argument exception, the scalar function bit_count bits must be between 2 and 64.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -170,7 +170,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bit_count(s4) from bit_count_error_table",
         "701: Scalar function bit_count only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
 
@@ -178,7 +178,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bit_count(s1,s4) from bit_count_error_table",
         "701: Scalar function bit_count only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -204,7 +204,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_and(s4) from bitwise_and_table",
         "701: Scalar function bitwise_and only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
 
@@ -212,7 +212,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_and(s1,s4) from bitwise_and_table",
         "701: Scalar function bitwise_and only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -240,7 +240,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_not(s4) from bitwise_not_table",
         "701: Scalar function bitwise_not only accepts one argument and it must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
 
@@ -248,7 +248,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_not(s1,s4) from bitwise_not_table",
         "701: Scalar function bitwise_not only accepts one argument and it must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -274,7 +274,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_or(s4) from bitwise_or_table",
         "701: Scalar function bitwise_or only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
 
@@ -282,7 +282,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_or(s1,s4) from bitwise_or_table",
         "701: Scalar function bitwise_or only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -308,7 +308,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_xor(s4) from bitwise_xor_table",
         "701: Scalar function bitwise_xor only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
 
@@ -316,7 +316,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_xor(s1,s4) from bitwise_xor_table",
         "701: Scalar function bitwise_xor only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -347,7 +347,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_left_shift(s4) from bitwise_left_shift_table",
         "701: Scalar function bitwise_left_shift only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
 
@@ -355,7 +355,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_left_shift(s1,s4) from bitwise_left_shift_table",
         "701: Scalar function bitwise_left_shift only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -388,7 +388,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_right_shift(s4) from bitwise_right_shift_table",
         "701: Scalar function bitwise_right_shift only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
 
@@ -396,7 +396,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_right_shift(s1,s4) from bitwise_right_shift_table",
         "701: Scalar function bitwise_right_shift only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }
@@ -423,7 +423,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_right_shift_arithmetic(s4) from bitwise_right_shift_arithmetic_table",
         "701: Scalar function bitwise_right_shift_arithmetic only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
 
@@ -431,7 +431,7 @@ public class IoTDBBitwiseFunctionTableIT {
         EnvFactory.getEnv(),
         "select time, bitwise_right_shift_arithmetic(s1,s4) from bitwise_right_shift_arithmetic_table",
         "701: Scalar function bitwise_right_shift_arithmetic only accepts two arguments and they must be Int32 or Int64 data type.",
-        CommonDescriptor.getInstance().getConfig().getAdminName(),
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
         DATABASE_NAME);
   }

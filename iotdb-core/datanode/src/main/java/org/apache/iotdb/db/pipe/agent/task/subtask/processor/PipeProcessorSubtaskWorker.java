@@ -20,34 +20,147 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.pipe.api.event.Event;
 
+import org.apache.ratis.thirdparty.com.google.common.annotations.VisibleForTesting;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
 
   private static final int SLEEP_INTERVAL_ADJUSTMENT_ROUND_INTERVAL = 100;
+  private static final long LONG_RUNNING_EVENT_INITIAL_REPORT_DELAY_IN_NANOS =
+      TimeUnit.MINUTES.toNanos(10);
+  private static final long LONG_RUNNING_EVENT_REPORT_INTERVAL_IN_NANOS =
+      TimeUnit.MINUTES.toNanos(30);
+  private static final int MAX_EVENT_REPORT_LENGTH = 1024;
+  private static final int MAX_STACK_TRACE_DEPTH = 64;
+
   private int totalRoundInAdjustmentInterval = 0;
   private int workingRoundInAdjustmentInterval = 0;
   private long sleepingTimeInMilliSecond = 50;
 
-  private final Set<PipeProcessorSubtask> subtasks =
-      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<PipeProcessorSubtask> subtasks;
+  private final Object wakeUpMonitor = new Object();
+  private final Runnable wakeUpCallback = this::wakeUp;
+  private boolean isWakeUpRequested;
+
+  private final ListeningExecutorService workerThreadPoolExecutor;
+
+  // Guards the worker-thread life cycle. Emptiness check, state change and submission are atomic,
+  // so a concurrent schedule is never lost and at most one worker thread runs this worker.
+  private final Object lifecycleMonitor = new Object();
+  private boolean isRunning;
+
+  private volatile Thread workerThread;
+  private volatile PipeProcessorSubtask currentSubtask;
+
+  private PipeProcessorSubtask.EventProcessingContext lastReportedEventProcessingContext;
+  private long lastEventReportTimeInNanos = Long.MIN_VALUE;
+
+  public PipeProcessorSubtaskWorker(final ListeningExecutorService workerThreadPoolExecutor) {
+    this(Collections.newSetFromMap(new ConcurrentHashMap<>()), workerThreadPoolExecutor);
+  }
+
+  @VisibleForTesting
+  PipeProcessorSubtaskWorker(
+      final Set<PipeProcessorSubtask> subtasks,
+      final ListeningExecutorService workerThreadPoolExecutor) {
+    this.subtasks = subtasks;
+    this.workerThreadPoolExecutor = workerThreadPoolExecutor;
+  }
 
   @Override
-  @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
-    while (true) {
+    final Thread currentThread = Thread.currentThread();
+    boolean exitedNormally = false;
+    try {
+      while (true) {
+        if (workerThreadPoolExecutor.isShutdown()) {
+          // The executor is shut down; release this worker.
+          return;
+        }
+
+        cleanupClosedSubtasksIfNecessary();
+        if (subtasks.isEmpty()) {
+          if (stopIfNoSubtask()) {
+            exitedNormally = true;
+            return;
+          }
+          // A subtask was scheduled meanwhile; keep this worker.
+          continue;
+        }
+
+        final boolean canSleepBeforeNextRound = runSubtasks();
+        sleepIfNecessary(canSleepBeforeNextRound);
+        adjustSleepingTimeIfNecessary();
+      }
+    } finally {
+      if (workerThread == currentThread) {
+        workerThread = null;
+      }
+      if (!exitedNormally) {
+        // Exited abnormally: reset the state and restart if subtasks remain.
+        synchronized (lifecycleMonitor) {
+          if (isRunning) {
+            isRunning = false;
+            startLockedIfNecessary();
+          }
+        }
+      }
+    }
+  }
+
+  /** Stops this worker if it has no subtask left, atomically with {@link #start()}. */
+  private boolean stopIfNoSubtask() {
+    synchronized (lifecycleMonitor) {
       cleanupClosedSubtasksIfNecessary();
-      final boolean canSleepBeforeNextRound = runSubtasks();
-      sleepIfNecessary(canSleepBeforeNextRound);
-      adjustSleepingTimeIfNecessary();
+      if (!subtasks.isEmpty()) {
+        return false;
+      }
+      isRunning = false;
+      return true;
+    }
+  }
+
+  @VisibleForTesting
+  boolean isRunning() {
+    synchronized (lifecycleMonitor) {
+      return isRunning;
+    }
+  }
+
+  private void start() {
+    synchronized (lifecycleMonitor) {
+      startLockedIfNecessary();
+    }
+  }
+
+  private void startLockedIfNecessary() {
+    if (isRunning || subtasks.isEmpty() || workerThreadPoolExecutor.isShutdown()) {
+      return;
+    }
+
+    isRunning = true;
+    try {
+      workerThreadPoolExecutor.submit(this);
+    } catch (final RejectedExecutionException e) {
+      isRunning = false;
+      LOGGER.warn(
+          DataNodePipeMessages
+              .LOG_FAILED_TO_SUBMIT_PIPE_PROCESSOR_WORKER_BECAUSE_THE_WORKER_THREAD_POOL_HAS_BEEN_SHUT_DOWN_CA28ED14,
+          e);
     }
   }
 
@@ -55,45 +168,67 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     subtasks.removeIf(PipeProcessorSubtask::isClosed);
   }
 
-  private boolean runSubtasks() {
+  @VisibleForTesting
+  boolean runSubtasks() {
     ++totalRoundInAdjustmentInterval;
 
     boolean canSleepBeforeNextRound = true;
-
     for (final PipeProcessorSubtask subtask : subtasks) {
-      if (subtask.isClosed() || !subtask.isSubmittingSelf() || subtask.isStoppedByException()) {
+      if (subtask.isClosed()
+          || !subtask.isSubmittingSelf()
+          || subtask.isStoppedByException()
+          || subtask.isWaitingForTsFileParserMemory()) {
         continue;
       }
 
+      workerThread = Thread.currentThread();
+      currentSubtask = subtask;
       try {
         final boolean hasAtLeastOneEventProcessed = subtask.call();
         if (hasAtLeastOneEventProcessed) {
           canSleepBeforeNextRound = false;
         }
         subtask.onSuccess(hasAtLeastOneEventProcessed);
+      } catch (final PipeProcessorSubtaskYieldException ignored) {
+        // The subtask voluntarily yields this worker without succeeding, failing, or retrying.
       } catch (final Exception e) {
         if (subtask.isClosed()) {
-          LOGGER.warn("subtask {} is closed, ignore exception", subtask, e);
+          LOGGER.warn(DataNodePipeMessages.SUBTASK_IS_CLOSED_IGNORE_EXCEPTION, subtask, e);
         } else {
           subtask.onFailure(e);
         }
+      } finally {
+        currentSubtask = null;
       }
     }
 
     return canSleepBeforeNextRound;
   }
 
-  private void sleepIfNecessary(final boolean canSleepBeforeNextRound) {
+  @VisibleForTesting
+  void sleepIfNecessary(final boolean canSleepBeforeNextRound) {
     if (canSleepBeforeNextRound) {
       try {
-        Thread.sleep(sleepingTimeInMilliSecond);
+        synchronized (wakeUpMonitor) {
+          // A parser can become eligible before this worker starts waiting. Keep that notification
+          // until the idle round consumes it, instead of sleeping with the fair queue head ready.
+          if (!isWakeUpRequested) {
+            wakeUpMonitor.wait(sleepingTimeInMilliSecond);
+          }
+          isWakeUpRequested = false;
+        }
       } catch (final InterruptedException e) {
-        LOGGER.warn("subtask worker is interrupted", e);
+        LOGGER.warn(DataNodePipeMessages.SUBTASK_WORKER_IS_INTERRUPTED, e);
         Thread.currentThread().interrupt();
       }
     } else {
       ++workingRoundInAdjustmentInterval;
     }
+  }
+
+  @VisibleForTesting
+  void setSleepingTimeInMilliSecond(final long sleepingTimeInMilliSecond) {
+    this.sleepingTimeInMilliSecond = sleepingTimeInMilliSecond;
   }
 
   private void adjustSleepingTimeIfNecessary() {
@@ -115,6 +250,108 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   }
 
   public void schedule(final PipeProcessorSubtask pipeProcessorSubtask) {
+    pipeProcessorSubtask.setWorkerWakeUpCallback(wakeUpCallback);
     subtasks.add(pipeProcessorSubtask);
+    wakeUp();
+  }
+
+  private void wakeUp() {
+    synchronized (wakeUpMonitor) {
+      isWakeUpRequested = true;
+      wakeUpMonitor.notifyAll();
+    }
+    // The worker may have exited when it had no subtask; start it again on demand.
+    start();
+  }
+
+  void watchLongRunningEvent() {
+    final PipeProcessorSubtask subtask = currentSubtask;
+    final Thread thread = workerThread;
+    if (subtask == null || thread == null) {
+      return;
+    }
+
+    final PipeProcessorSubtask.EventProcessingContext context = subtask.getEventProcessingContext();
+    final long currentTimeInNanos = System.nanoTime();
+    if (!isLongRunningEventReportDue(context, currentTimeInNanos)) {
+      return;
+    }
+
+    final StackTraceElement[] stackTrace = thread.getStackTrace();
+    // The event may finish while its stack is being captured. Do not attribute a later event's
+    // stack to this event.
+    if (currentSubtask != subtask || subtask.getEventProcessingContext() != context) {
+      return;
+    }
+
+    markLongRunningEventReported(context, currentTimeInNanos);
+    LOGGER.warn(
+        DataNodePipeMessages
+            .LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775,
+        thread.getName(),
+        TimeUnit.NANOSECONDS.toMillis(currentTimeInNanos - context.getStartTimeInNanos()),
+        subtask.getPipeName(),
+        subtask.getRegionId(),
+        subtask.getDisplayTaskID(),
+        getEventReport(context.getEvent()),
+        thread.getState(),
+        formatStackTrace(stackTrace));
+  }
+
+  @VisibleForTesting
+  boolean isLongRunningEventReportDue(
+      final PipeProcessorSubtask.EventProcessingContext context, final long currentTimeInNanos) {
+    if (context == null
+        || currentTimeInNanos - context.getStartTimeInNanos()
+            < LONG_RUNNING_EVENT_INITIAL_REPORT_DELAY_IN_NANOS) {
+      return false;
+    }
+
+    return lastReportedEventProcessingContext != context
+        || currentTimeInNanos - lastEventReportTimeInNanos
+            >= LONG_RUNNING_EVENT_REPORT_INTERVAL_IN_NANOS;
+  }
+
+  @VisibleForTesting
+  void markLongRunningEventReported(
+      final PipeProcessorSubtask.EventProcessingContext context, final long currentTimeInNanos) {
+    lastReportedEventProcessingContext = context;
+    lastEventReportTimeInNanos = currentTimeInNanos;
+  }
+
+  @VisibleForTesting
+  static String getEventReport(final Event event) {
+    String report = event.getClass().getName();
+    if (event instanceof EnrichedEvent) {
+      try {
+        report =
+            event.getClass().getSimpleName() + ": " + ((EnrichedEvent) event).coreReportMessage();
+      } catch (final RuntimeException ignored) {
+        // Keep the event class name if its diagnostic method fails.
+      }
+    }
+
+    report = report.replace('\n', ' ').replace('\r', ' ');
+    return report.length() <= MAX_EVENT_REPORT_LENGTH
+        ? report
+        : report.substring(0, MAX_EVENT_REPORT_LENGTH) + "...";
+  }
+
+  @VisibleForTesting
+  static String formatStackTrace(final StackTraceElement[] stackTrace) {
+    final StringBuilder builder = new StringBuilder();
+    final int frameCount = Math.min(stackTrace.length, MAX_STACK_TRACE_DEPTH);
+    for (int i = 0; i < frameCount; ++i) {
+      builder.append('\n').append('\t').append(stackTrace[i]);
+    }
+    if (stackTrace.length > frameCount) {
+      builder
+          .append('\n')
+          .append('\t')
+          .append("... (")
+          .append(stackTrace.length - frameCount)
+          .append(')');
+    }
+    return builder.toString();
   }
 }

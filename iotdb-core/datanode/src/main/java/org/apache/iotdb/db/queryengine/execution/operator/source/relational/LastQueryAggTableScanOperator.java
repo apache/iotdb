@@ -19,40 +19,43 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastByDescAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastDescAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.serializeTimeValueWithNull;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_NO_VALUE;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 /**
  * This class is used to execute aggregation table scan when apply {@code canUseLastCacheOptimize()}
@@ -65,6 +68,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   private static final TableDeviceSchemaCache TABLE_DEVICE_SCHEMA_CACHE =
       TableDeviceSchemaCache.getInstance();
 
+  private final QualifiedObjectName tableCompleteName;
   private final String dbName;
   private int outputDeviceIndex;
   private DeviceEntry currentDeviceEntry;
@@ -72,7 +76,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   private final int allDeviceCount;
 
   private final boolean needUpdateCache;
-  private final boolean needUpdateNullEntry;
   private final List<Integer> hitCachesIndexes;
   private final List<Pair<OptionalLong, TsPrimitiveType[]>> lastRowCacheResults;
   private final List<TimeValuePair[]> lastValuesCacheResults;
@@ -81,13 +84,18 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   // indicates the index of last(time) aggregation
   private int lastTimeAggregationIdx = -1;
 
+  private final Map<DeviceEntry, Integer> deviceCountMap;
+  private final DataNodeQueryContext dataNodeQueryContext;
+
   public LastQueryAggTableScanOperator(
       AbstractAggTableScanOperatorParameter parameter,
       List<DeviceEntry> cachedDeviceEntries,
       QualifiedObjectName qualifiedObjectName,
       List<Integer> hitCachesIndexes,
       List<Pair<OptionalLong, TsPrimitiveType[]>> lastRowCacheResults,
-      List<TimeValuePair[]> lastValuesCacheResults) {
+      List<TimeValuePair[]> lastValuesCacheResults,
+      Map<DeviceEntry, Integer> deviceCountMap,
+      DataNodeQueryContext dataNodeQueryContext) {
 
     super(parameter);
 
@@ -96,11 +104,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
     this.cachedDeviceEntries = cachedDeviceEntries;
     this.needUpdateCache =
         LastQueryUtil.needUpdateCache(parameter.seriesScanOptions.getGlobalTimeFilter());
-    this.needUpdateNullEntry =
-        LastQueryUtil.needUpdateNullEntry(parameter.seriesScanOptions.getGlobalTimeFilter());
     this.hitCachesIndexes = hitCachesIndexes;
     this.lastRowCacheResults = lastRowCacheResults;
     this.lastValuesCacheResults = lastValuesCacheResults;
+    this.tableCompleteName = qualifiedObjectName;
     this.dbName = qualifiedObjectName.getDatabaseName();
 
     this.operatorContext.recordSpecifiedInfo(
@@ -110,6 +117,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         lastTimeAggregationIdx = i;
       }
     }
+    this.deviceCountMap = deviceCountMap;
+    this.dataNodeQueryContext = dataNodeQueryContext;
   }
 
   @Override
@@ -125,7 +134,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   public TsBlock next() throws Exception {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
-
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -145,14 +153,17 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   }
 
   /** Main process logic, calc the last aggregation results of current device. */
-  private void processCurrentDevice() {
+  private void processCurrentDevice() throws Exception {
     if (currentHitCacheIndex < hitCachesIndexes.size()
         && outputDeviceIndex == hitCachesIndexes.get(currentHitCacheIndex)) {
       currentDeviceEntry = cachedDeviceEntries.get(currentHitCacheIndex);
       if (lastRowCacheResults != null) {
         buildResultUseLastRowCache();
       } else {
-        checkState(lastValuesCacheResults != null, "lastValuesCacheResults shouldn't be null here");
+        checkState(
+            lastValuesCacheResults != null,
+            DataNodeQueryMessages
+                .EXCEPTION_LASTVALUESCACHERESULTS_SHOULDN_QUOTE_T_BE_NULL_HERE_0DCD5841);
         buildResultUseLastValuesCache();
       }
       return;
@@ -185,7 +196,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()), lastTime, true, false, null)));
             } else {
               columnBuilder.appendNull();
             }
@@ -193,9 +205,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
+                      serializeTimeValueWithNull(
                           getTSDataType(schema.getType()),
                           lastTime,
+                          false,
                           false,
                           new TsPrimitiveType.TsBinary(
                               new Binary(id, TSFileConfig.STRING_CHARSET)))));
@@ -212,7 +225,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()), lastTime, true, false, null)));
             } else {
               columnBuilder.appendNull();
             }
@@ -220,9 +234,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
+                      serializeTimeValueWithNull(
                           getTSDataType(schema.getType()),
                           lastTime,
+                          false,
                           false,
                           new TsPrimitiveType.TsBinary(attribute))));
             } else {
@@ -236,9 +251,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
+                      serializeTimeValueWithNull(
                           getTSDataType(schema.getType()),
                           lastTime,
+                          false,
                           new TsPrimitiveType.TsLong(lastTime))));
             } else {
               columnBuilder.writeTsPrimitiveType(new TsPrimitiveType.TsLong(lastTime));
@@ -248,9 +264,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
+                      serializeTimeValueWithNull(
                           getTSDataType(schema.getType()),
                           lastTime,
+                          false,
                           false,
                           new TsPrimitiveType.TsLong(lastTime))));
             } else {
@@ -263,12 +280,13 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
           TsPrimitiveType tsPrimitiveType =
               lastRowCacheResults.get(currentHitCacheIndex).getRight()[measurementIdx];
           long lastByTime = lastRowCacheResults.get(currentHitCacheIndex).getLeft().getAsLong();
-          if (tsPrimitiveType == EMPTY_PRIMITIVE_TYPE) {
+          if (tsPrimitiveType == PLACEHOLDER_NO_VALUE) {
             // there is no data for this time series
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(getTSDataType(schema.getType()), lastByTime, true, null)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()), lastByTime, true, false, null)));
             } else {
               columnBuilder.appendNull();
             }
@@ -276,15 +294,19 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
-                          getTSDataType(schema.getType()), lastByTime, false, tsPrimitiveType)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()),
+                          lastByTime,
+                          false,
+                          false,
+                          tsPrimitiveType)));
             } else {
               columnBuilder.writeTsPrimitiveType(tsPrimitiveType);
             }
           }
           break;
         default:
-          throw new IllegalStateException("Unsupported category: " + category);
+          throw new IllegalStateException(DataNodeQueryMessages.UNSUPPORTED_CATEGORY + category);
       }
 
       channel += aggregator.getChannelCount();
@@ -297,11 +319,15 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
   private void buildResultUseLastValuesCache() {
     TimeValuePair[] currentHitResult = lastValuesCacheResults.get(currentHitCacheIndex);
-    // if it is EMPTY_PRIMITIVE_TYPE, means there is no data in device
-    TsPrimitiveType timeLastValue = currentHitResult[currentHitResult.length - 1].getValue();
+    // The time column uses PLACEHOLDER_NO_VALUE even when its timestamp identifies a real row.
+    // Only an empty time entry means that the device has no data. Without a time entry, an
+    // empty final FIELD must not discard other fields' partial results.
+    boolean deviceHasNoData =
+        currentHitResult.length > measurementCount
+            && currentHitResult[measurementCount] == PLACEHOLDER_EMPTY_COLUMN;
     // when there is no data, no need to append result if the query is GROUP BY or output of
     // aggregator is partial (final operator will produce NULL result)
-    if (timeLastValue == EMPTY_PRIMITIVE_TYPE
+    if (deviceHasNoData
         && (groupingKeySize != 0 || tableAggregators.get(0).getStep().isOutputPartial())) {
       outputDeviceIndex++;
       currentHitCacheIndex++;
@@ -325,15 +351,16 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               getNthIdColumnValue(
                   cachedDeviceEntries.get(currentHitCacheIndex), aggColumnsIndexArray[columnIdx]);
           if (aggregator.getAccumulator() instanceof LastDescAccumulator) {
-            if (timeLastValue == EMPTY_PRIMITIVE_TYPE || id == null) {
+            if (deviceHasNoData || id == null) {
               columnBuilder.appendNull();
             } else {
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastRowTime,
+                            false,
                             new TsPrimitiveType.TsBinary(
                                 new Binary(id, TSFileConfig.STRING_CHARSET)))));
               } else {
@@ -342,15 +369,18 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             }
           } else {
             // last_by
-            int measurementIdx = aggColumnsIndexArray[aggregatorInputChannels.get(channel)];
-            long lastTime =
-                lastValuesCacheResults.get(currentHitCacheIndex)[measurementIdx].getTimestamp();
+            int measurementIdx = aggColumnsIndexArray[aggregatorInputChannels.get(channel + 1)];
+            TimeValuePair sourceLast = currentHitResult[measurementIdx];
+            long lastTime = sourceLast.getTimestamp();
 
-            if (timeLastValue == EMPTY_PRIMITIVE_TYPE || id == null) {
+            if (sourceLast.getValue() == PLACEHOLDER_NO_VALUE) {
+              columnBuilder.appendNull();
+            } else if (id == null) {
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                        serializeTimeValueWithNull(
+                            getTSDataType(schema.getType()), lastTime, true, false, null)));
               } else {
                 columnBuilder.appendNull();
               }
@@ -358,9 +388,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastTime,
+                            false,
                             false,
                             new TsPrimitiveType.TsBinary(
                                 new Binary(id, TSFileConfig.STRING_CHARSET)))));
@@ -375,31 +406,35 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               cachedDeviceEntries.get(currentHitCacheIndex)
                   .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
           if (aggregator.getAccumulator() instanceof LastDescAccumulator) {
-            if (timeLastValue == EMPTY_PRIMITIVE_TYPE || attribute == null) {
+            if (deviceHasNoData || attribute == null) {
               columnBuilder.appendNull();
             } else {
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastRowTime,
+                            false,
                             new TsPrimitiveType.TsBinary(attribute))));
               } else {
                 columnBuilder.writeBinary(attribute);
               }
             }
           } else {
-            int measurementIdx = aggColumnsIndexArray[aggregatorInputChannels.get(channel)];
-            long lastTime =
-                lastValuesCacheResults.get(currentHitCacheIndex)[measurementIdx].getTimestamp();
+            int measurementIdx = aggColumnsIndexArray[aggregatorInputChannels.get(channel + 1)];
+            TimeValuePair sourceLast = currentHitResult[measurementIdx];
+            long lastTime = sourceLast.getTimestamp();
 
             // last_by
-            if (timeLastValue == EMPTY_PRIMITIVE_TYPE || attribute == null) {
+            if (sourceLast.getValue() == PLACEHOLDER_NO_VALUE) {
+              columnBuilder.appendNull();
+            } else if (attribute == null) {
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                        serializeTimeValueWithNull(
+                            getTSDataType(schema.getType()), lastTime, true, false, null)));
               } else {
                 columnBuilder.appendNull();
               }
@@ -407,9 +442,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastTime,
+                            false,
                             false,
                             new TsPrimitiveType.TsBinary(attribute))));
               } else {
@@ -421,15 +457,16 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         case TIME:
           if (aggregator.getAccumulator() instanceof LastDescAccumulator) {
             // for last(time) aggregation
-            if (timeLastValue == EMPTY_PRIMITIVE_TYPE) {
+            if (deviceHasNoData) {
               columnBuilder.appendNull();
             } else {
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastRowTime,
+                            false,
                             new TsPrimitiveType.TsLong(lastRowTime))));
               } else {
                 columnBuilder.writeTsPrimitiveType(new TsPrimitiveType.TsLong(lastRowTime));
@@ -443,23 +480,18 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             TsPrimitiveType tsPrimitiveType =
                 lastValuesCacheResults.get(currentHitCacheIndex)[measurementIdx].getValue();
 
-            if (tsPrimitiveType == EMPTY_PRIMITIVE_TYPE) {
+            if (tsPrimitiveType == PLACEHOLDER_NO_VALUE) {
               // there is no data
-              if (aggregator.getStep().isOutputPartial()) {
-                columnBuilder.writeBinary(
-                    new Binary(
-                        serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
-              } else {
-                columnBuilder.appendNull();
-              }
+              columnBuilder.appendNull();
             } else {
               if (aggregator.getStep().isOutputPartial()) {
-                // output: xDataType, yLastTime, xIsNull, xResult
+                // output: xDataType, yLastTime, xIsNull, isOrderTimeNull, xResult
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastTime,
+                            false,
                             false,
                             new TsPrimitiveType.TsLong(lastTime))));
               } else {
@@ -471,7 +503,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         case FIELD:
           checkState(
               aggregator.getAccumulator() instanceof LastDescAccumulator,
-              "Accumulator should be LastDescAccumulator when reach here");
+              DataNodeQueryMessages
+                  .EXCEPTION_ACCUMULATOR_SHOULD_BE_LASTDESCACCUMULATOR_WHEN_REACH_HERE_CE38F96A);
 
           int measurementIdx = aggColumnsIndexArray[aggregatorInputChannels.get(channel)];
           long lastTime =
@@ -479,22 +512,22 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
           TsPrimitiveType tsPrimitiveType =
               lastValuesCacheResults.get(currentHitCacheIndex)[measurementIdx].getValue();
 
-          if (tsPrimitiveType == EMPTY_PRIMITIVE_TYPE) {
+          if (tsPrimitiveType == PLACEHOLDER_NO_VALUE) {
             // there is no data for this time series
             columnBuilder.appendNull();
           } else {
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
-                          getTSDataType(schema.getType()), lastTime, tsPrimitiveType)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()), lastTime, false, tsPrimitiveType)));
             } else {
               columnBuilder.writeTsPrimitiveType(tsPrimitiveType);
             }
           }
           break;
         default:
-          throw new IllegalStateException("Unsupported category: " + category);
+          throw new IllegalStateException(DataNodeQueryMessages.UNSUPPORTED_CATEGORY + category);
       }
 
       channel += aggregator.getChannelCount();
@@ -512,38 +545,39 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
     boolean hasSetLastTime = false;
     for (int i = 0; i < tableAggregators.size(); i++) {
       TableAggregator tableAggregator = tableAggregators.get(i);
+      if (!canUpdateLastCache(tableAggregator)) {
+        channel += tableAggregator.getChannelCount();
+        continue;
+      }
       ColumnSchema schema = aggColumnSchemas.get(aggregatorInputChannels.get(channel));
 
       switch (schema.getColumnCategory()) {
         case TIME:
           if (!hasSetLastTime) {
             hasSetLastTime = true;
+            updateMeasurementList.add("");
             if (i == lastTimeAggregationIdx) {
               LastDescAccumulator lastAccumulator =
                   (LastDescAccumulator) tableAggregator.getAccumulator();
               if (lastAccumulator.hasInitResult()) {
-                updateMeasurementList.add("");
                 updateTimeValuePairList.add(
                     new TimeValuePair(
                         lastAccumulator.getMaxTime(),
                         new TsPrimitiveType.TsLong(lastAccumulator.getMaxTime())));
               } else {
                 currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-                TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-                    dbName,
-                    currentDeviceEntry.getDeviceID(),
-                    new String[] {""},
-                    new TimeValuePair[] {EMPTY_TIME_VALUE_PAIR});
+                updateTimeValuePairList.add(PLACEHOLDER_EMPTY_COLUMN);
               }
             } else {
               LastByDescAccumulator lastByAccumulator =
                   (LastByDescAccumulator) tableAggregator.getAccumulator();
               if (lastByAccumulator.hasInitResult() && !lastByAccumulator.isXNull()) {
-                updateMeasurementList.add("");
                 updateTimeValuePairList.add(
                     new TimeValuePair(
                         lastByAccumulator.getLastTimeOfY(),
                         new TsPrimitiveType.TsLong(lastByAccumulator.getLastTimeOfY())));
+              } else {
+                updateTimeValuePairList.add(PLACEHOLDER_EMPTY_COLUMN);
               }
             }
           }
@@ -551,8 +585,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         case FIELD:
           LastByDescAccumulator lastByAccumulator =
               (LastByDescAccumulator) tableAggregator.getAccumulator();
-          // only can update LastCache when last_by return non-null value
-          if (lastByAccumulator.hasInitResult() && !lastByAccumulator.isXNull()) {
+          if (lastByAccumulator.hasInitResult()) {
             long lastByTime = lastByAccumulator.getLastTimeOfY();
 
             if (!hasSetLastTime) {
@@ -564,8 +597,13 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
             updateMeasurementList.add(schema.getName());
             updateTimeValuePairList.add(
-                new TimeValuePair(
-                    lastByTime, cloneTsPrimitiveType(lastByAccumulator.getXResult())));
+                lastByAccumulator.isXNull()
+                    ? new TimeValuePair(lastByTime, PLACEHOLDER_NO_VALUE)
+                    : new TimeValuePair(
+                        lastByTime, cloneTsPrimitiveType(lastByAccumulator.getXResult())));
+          } else {
+            updateMeasurementList.add(schema.getName());
+            updateTimeValuePairList.add(PLACEHOLDER_EMPTY_COLUMN);
           }
           break;
         default:
@@ -575,17 +613,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       channel += tableAggregator.getChannelCount();
     }
 
-    if (!updateMeasurementList.isEmpty()) {
-      String[] updateMeasurementArray = updateMeasurementList.toArray(new String[0]);
-      TimeValuePair[] updateTimeValuePairArray =
-          updateTimeValuePairList.toArray(new TimeValuePair[0]);
-      currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-      TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-          dbName,
-          currentDeviceEntry.getDeviceID(),
-          updateMeasurementArray,
-          updateTimeValuePairArray);
-    }
+    checkIfUpdated(updateMeasurementList, updateTimeValuePairList);
   }
 
   private void updateLastCacheUseLastValuesIfPossible() {
@@ -594,6 +622,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
     List<TimeValuePair> updateTimeValuePairList = new ArrayList<>();
     boolean hasSetLastTime = false;
     for (TableAggregator tableAggregator : tableAggregators) {
+      if (!canUpdateLastCache(tableAggregator)) {
+        channel += tableAggregator.getChannelCount();
+        continue;
+      }
       ColumnSchema schema = aggColumnSchemas.get(aggregatorInputChannels.get(channel));
 
       switch (schema.getColumnCategory()) {
@@ -601,29 +633,29 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         case TAG:
         case ATTRIBUTE:
           if (!hasSetLastTime && tableAggregator.getAccumulator() instanceof LastDescAccumulator) {
-            hasSetLastTime = true;
             LastDescAccumulator lastAccumulator =
                 (LastDescAccumulator) tableAggregator.getAccumulator();
             if (lastAccumulator.hasInitResult()) {
+              hasSetLastTime = true;
               updateMeasurementList.add("");
               updateTimeValuePairList.add(
                   new TimeValuePair(
                       lastAccumulator.getMaxTime(),
                       new TsPrimitiveType.TsLong(lastAccumulator.getMaxTime())));
-            } else {
+            } else if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
+              // A NULL TAG or ATTRIBUTE does not imply that the device has no rows.
+              hasSetLastTime = true;
+              updateMeasurementList.add("");
               currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-              TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-                  dbName,
-                  currentDeviceEntry.getDeviceID(),
-                  new String[] {""},
-                  new TimeValuePair[] {EMPTY_TIME_VALUE_PAIR});
+              updateTimeValuePairList.add(PLACEHOLDER_EMPTY_COLUMN);
             }
           }
           break;
         case FIELD:
           checkState(
               tableAggregator.getAccumulator() instanceof LastDescAccumulator,
-              "Accumulator should be LastDescAccumulator when reach here");
+              DataNodeQueryMessages
+                  .EXCEPTION_ACCUMULATOR_SHOULD_BE_LASTDESCACCUMULATOR_WHEN_REACH_HERE_CE38F96A);
           LastDescAccumulator lastAccumulator =
               (LastDescAccumulator) tableAggregator.getAccumulator();
           updateMeasurementList.add(schema.getName());
@@ -633,7 +665,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
                     lastAccumulator.getMaxTime(),
                     cloneTsPrimitiveType(lastAccumulator.getLastValue())));
           } else {
-            updateTimeValuePairList.add(EMPTY_TIME_VALUE_PAIR);
+            updateTimeValuePairList.add(PLACEHOLDER_EMPTY_COLUMN);
           }
           break;
         default:
@@ -643,16 +675,61 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       channel += tableAggregator.getChannelCount();
     }
 
+    checkIfUpdated(updateMeasurementList, updateTimeValuePairList);
+  }
+
+  private boolean canUpdateLastCache(TableAggregator aggregator) {
+    // TTL is added to the time filter when the scan's data source is initialized.
+    // An empty result under a lower time bound does not prove that older data is absent.
+    return LastQueryUtil.needUpdateNullEntry(seriesScanOptions.getGlobalTimeFilter())
+        || (aggregator.getAccumulator() instanceof LastAccumulator
+            ? ((LastAccumulator) aggregator.getAccumulator()).hasInitResult()
+            : ((LastByDescAccumulator) aggregator.getAccumulator()).hasInitResult());
+  }
+
+  private void checkIfUpdated(
+      List<String> updateMeasurementList, List<TimeValuePair> updateTimeValuePairList) {
     if (!updateMeasurementList.isEmpty()) {
-      String[] updateMeasurementArray = updateMeasurementList.toArray(new String[0]);
-      TimeValuePair[] updateTimeValuePairArray =
-          updateTimeValuePairList.toArray(new TimeValuePair[0]);
       currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-      TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
-          dbName,
-          currentDeviceEntry.getDeviceID(),
-          updateMeasurementArray,
-          updateTimeValuePairArray);
+
+      boolean deviceInMultiRegion =
+          deviceCountMap != null && deviceCountMap.containsKey(currentDeviceEntry);
+      if (!deviceInMultiRegion) {
+        TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheFromQuery(
+            dbName,
+            currentDeviceEntry.getDeviceID(),
+            updateMeasurementList.toArray(new String[0]),
+            updateTimeValuePairList.toArray(new TimeValuePair[0]));
+        return;
+      }
+
+      dataNodeQueryContext.lock(true);
+      try {
+        Pair<Integer, Map<String, TimeValuePair>> deviceInfo =
+            dataNodeQueryContext.getDeviceInfo(tableCompleteName, currentDeviceEntry);
+        Map<String, TimeValuePair> values = deviceInfo.getRight();
+
+        int size = updateMeasurementList.size();
+        for (int i = 0; i < size; i++) {
+          String measurementName = updateMeasurementList.get(i);
+          TimeValuePair timeValuePair = updateTimeValuePairList.get(i);
+          if (values.containsKey(measurementName)) {
+            TimeValuePair oldValue = values.get(measurementName);
+            if (timeValuePair.getTimestamp() > oldValue.getTimestamp()) {
+              values.put(measurementName, timeValuePair);
+            }
+          } else {
+            values.put(measurementName, timeValuePair);
+          }
+        }
+
+        deviceInfo.left--;
+        if (deviceInfo.left == 0) {
+          dataNodeQueryContext.updateLastCache(tableCompleteName, currentDeviceEntry);
+        }
+      } finally {
+        dataNodeQueryContext.unLock(true);
+      }
     }
   }
 
@@ -664,7 +741,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       if (lastRowCacheResults != null) {
         updateLastCacheUseLastRowIfPossible();
       } else {
-        checkState(lastValuesCacheResults != null, "lastValuesCacheResults shouldn't be null here");
+        checkState(
+            lastValuesCacheResults != null,
+            DataNodeQueryMessages
+                .EXCEPTION_LASTVALUESCACHERESULTS_SHOULDN_QUOTE_T_BE_NULL_HERE_0DCD5841);
         updateLastCacheUseLastValuesIfPossible();
       }
     }
@@ -682,29 +762,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   }
 
   private TsPrimitiveType cloneTsPrimitiveType(TsPrimitiveType originalValue) {
-    switch (originalValue.getDataType()) {
-      case BOOLEAN:
-        return new TsPrimitiveType.TsBoolean(originalValue.getBoolean());
-      case INT32:
-      case DATE:
-        return new TsPrimitiveType.TsInt(originalValue.getInt());
-      case INT64:
-      case TIMESTAMP:
-        return new TsPrimitiveType.TsLong(originalValue.getLong());
-      case FLOAT:
-        return new TsPrimitiveType.TsFloat(originalValue.getFloat());
-      case DOUBLE:
-        return new TsPrimitiveType.TsDouble(originalValue.getDouble());
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return new TsPrimitiveType.TsBinary(originalValue.getBinary());
-      case VECTOR:
-        return new TsPrimitiveType.TsVector(originalValue.getVector());
-      default:
-        throw new UnSupportedDataTypeException(
-            "Unsupported data type:" + originalValue.getDataType());
-    }
+    return Type.fromTsDataType(originalValue.getDataType())
+        .getTsPrimitiveType(originalValue.getValue());
   }
 
   @Override

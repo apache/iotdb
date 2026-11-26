@@ -31,10 +31,12 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Assert;
@@ -149,10 +151,18 @@ public class PipeInfoTest {
         new CreatePipePluginPlan(
             new PipePluginMeta(pluginName, "org.apache.iotdb.TestJar", false, "test.jar", "???"),
             new Binary("123", TSFileConfig.STRING_CHARSET));
-    pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
-    // Drop pipe plugin test plugin
-    pipeInfo.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName, false);
+    // Shall fail due to validation
+    Assert.assertEquals(
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+        pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan).getCode());
+
+    // Drop pipe plugin test plugin, validation failure
+    Assert.assertThrows(
+        PipeException.class,
+        () -> pipeInfo.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName, false));
+
+    // Idempotent
     DropPipePluginPlan dropPipePluginPlan = new DropPipePluginPlan(pluginName);
     pipeInfo.getPipePluginInfo().dropPipePlugin(dropPipePluginPlan);
   }

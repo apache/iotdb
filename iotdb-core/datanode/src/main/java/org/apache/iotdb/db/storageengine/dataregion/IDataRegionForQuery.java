@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -81,5 +81,5 @@ public interface IDataRegionForQuery {
   /** Get database name of this DataRegion */
   String getDatabaseName();
 
-  String getDataRegionId();
+  String getDataRegionIdString();
 }

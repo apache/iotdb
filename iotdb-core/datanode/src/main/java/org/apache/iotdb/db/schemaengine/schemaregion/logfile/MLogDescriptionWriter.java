@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -35,7 +37,7 @@ public class MLogDescriptionWriter {
     if (!file.exists() && !file.createNewFile()) {
       throw new IOException(
           String.format(
-              "Failed to create file %s because the named file already exists", file.getName()));
+              DataNodeSchemaMessages.FAILED_TO_CREATE_FILE_ALREADY_EXISTS, file.getName()));
     }
     fileChannel =
         FileChannel.open(new File(schemaDir, logFileName).toPath(), StandardOpenOption.WRITE);

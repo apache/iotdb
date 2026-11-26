@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.tools.schema;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.BufferedSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
@@ -46,10 +48,10 @@ public class MLogParser {
   private static final String MLOG_CLI_PREFIX = "print-schema-log";
 
   private static final String FILE_ARGS = "f";
-  private static final String FILE_NAME = "mlog file";
+  private static final String FILE_NAME = DataNodeSchemaMessages.MESSAGE_MLOG_FILE_47096EDD;
 
   private static final String OUT_ARGS = "o";
-  private static final String OUT_NAME = "output txt file";
+  private static final String OUT_NAME = DataNodeSchemaMessages.MESSAGE_OUTPUT_TXT_FILE_261FEB25;
 
   private static final String HELP_ARGS = "help";
 
@@ -69,7 +71,9 @@ public class MLogParser {
             .required()
             .argName(FILE_NAME)
             .hasArg()
-            .desc("Need to specify a binary mlog file to parse (required)")
+            .desc(
+                DataNodeSchemaMessages
+                    .MESSAGE_NEED_TO_SPECIFY_A_BINARY_MLOG_FILE_TO_PARSE_REQUIRED_2F43690B)
             .build();
     options.addOption(opFile);
 
@@ -78,7 +82,9 @@ public class MLogParser {
             .required(false)
             .argName(OUT_NAME)
             .hasArg()
-            .desc("Could specify the output file after parse (optional)")
+            .desc(
+                DataNodeSchemaMessages
+                    .MESSAGE_COULD_SPECIFY_THE_OUTPUT_FILE_AFTER_PARSE_OPTIONAL_9907C287)
             .build();
     options.addOption(opOut);
 
@@ -86,7 +92,7 @@ public class MLogParser {
         Option.builder(HELP_ARGS)
             .longOpt(HELP_ARGS)
             .hasArg(false)
-            .desc("Display help information")
+            .desc(DataNodeSchemaMessages.MESSAGE_DISPLAY_HELP_INFORMATION_3BBD4899)
             .build();
     options.addOption(opHelp);
 
@@ -101,14 +107,14 @@ public class MLogParser {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      logger.warn("Too few params input, please check the following hint.");
+      logger.warn(DataNodeMiscMessages.TOO_FEW_PARAMS);
       hf.printHelp(MLOG_CLI_PREFIX, options, true);
       return;
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      logger.error("Parse error: {}", e.getMessage());
+      logger.error(DataNodeMiscMessages.PARSE_ERROR, e.getMessage());
       hf.printHelp(MLOG_CLI_PREFIX, options, true);
       return;
     }
@@ -121,7 +127,7 @@ public class MLogParser {
       parseBasicParams(commandLine);
       parseFromFile(inputFile, outputFile);
     } catch (Exception e) {
-      logger.error("Encounter an error, because: {} ", e.getMessage());
+      logger.error(DataNodeMiscMessages.ENCOUNTER_ERROR, e.getMessage());
     }
   }
 
@@ -138,9 +144,12 @@ public class MLogParser {
       throws ParseException {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
-      String msg = String.format("Required values for option '%s' not provided", name);
+      String msg =
+          String.format(
+              DataNodeSchemaMessages.MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2,
+              name);
       logger.info(msg);
-      logger.info("Use -help for more information");
+      logger.info(DataNodeMiscMessages.USE_HELP);
       throw new ParseException(msg);
     }
     return str;

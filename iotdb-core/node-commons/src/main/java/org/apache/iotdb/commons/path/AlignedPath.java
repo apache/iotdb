@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.PathMessages;
 import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -53,7 +54,7 @@ import java.util.Objects;
 public class AlignedPath extends PartialPath {
 
   private static final String NODES_LENGTH_ERROR =
-      "nodes.length for MeasurementPath should always be greater than 1, current is: %s";
+      PathMessages.NODES_LENGTH_SHOULD_BE_GREATER_THAN_ONE;
 
   private static final Logger logger = LoggerFactory.getLogger(AlignedPath.class);
 
@@ -177,7 +178,7 @@ public class AlignedPath extends PartialPath {
 
   @Override
   public String getMeasurement() {
-    throw new UnsupportedOperationException("AlignedPath doesn't have measurement name!");
+    throw new UnsupportedOperationException(PathMessages.ALIGNED_PATH_NO_MEASUREMENT_NAME);
   }
 
   public List<String> getMeasurementList() {
@@ -321,7 +322,7 @@ public class AlignedPath extends PartialPath {
               new ArrayList<>(this.measurementList),
               new ArrayList<>(this.schemaList));
     } catch (IllegalPathException e) {
-      logger.warn("path is illegal: {}", this.getFullPath(), e);
+      logger.warn(PathMessages.PATH_IS_ILLEGAL, this.getFullPath(), e);
     }
     return alignedPath;
   }
@@ -376,14 +377,14 @@ public class AlignedPath extends PartialPath {
     PartialPath partialPath = PartialPath.deserialize(byteBuffer);
     AlignedPath alignedPath = new AlignedPath();
     int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> measurements = new ArrayList<>();
+    List<String> measurements = new ArrayList<>(measurementSize);
     for (int i = 0; i < measurementSize; i++) {
       measurements.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     int measurementSchemaSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<IMeasurementSchema> measurementSchemas = null;
     if (measurementSchemaSize != -1) {
-      measurementSchemas = new ArrayList<>();
+      measurementSchemas = new ArrayList<>(measurementSchemaSize);
       for (int i = 0; i < measurementSchemaSize; i++) {
         byte type = ReadWriteIOUtils.readByte(byteBuffer);
         if (type == 0) {

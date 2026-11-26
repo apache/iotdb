@@ -24,13 +24,17 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFormatException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFormats;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
@@ -45,6 +49,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -52,6 +57,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -70,7 +76,9 @@ public class WALNodeRecoverTask implements Runnable {
   // version id of first valid .wal file
   private long firstValidVersionId = Long.MAX_VALUE;
   private Map<Long, MemTableInfo> memTableId2Info;
-  private Map<Long, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
+  private Map<Long, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer = new HashMap<>();
+  private final Set<Long> failedMemTables = new HashSet<>();
+  private boolean recoveryFailed;
 
   public WALNodeRecoverTask(File logDirectory, CountDownLatch allNodesRecoveredLatch) {
     this.logDirectory = logDirectory;
@@ -79,7 +87,33 @@ public class WALNodeRecoverTask implements Runnable {
 
   @Override
   public void run() {
-    logger.info("Start recovering WAL node in the directory {}", logDirectory);
+    try {
+      validateFilesBeforeRecovery();
+      recoverNode();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    } finally {
+      allNodesRecoveredLatch.countDown();
+    }
+  }
+
+  private void validateFilesBeforeRecovery() throws IOException {
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    File[] checkpoints = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
+    if (walFiles != null) {
+      for (File file : walFiles) {
+        WALFormats.validateForRecovery(file);
+      }
+    }
+    if (checkpoints != null) {
+      for (File file : checkpoints) {
+        WALFormats.validateForRecovery(file);
+      }
+    }
+  }
+
+  private void recoverNode() {
+    logger.info(StorageEngineMessages.START_RECOVERING_WAL_NODE_IN_DIR, logDirectory);
 
     // recover version id and search index
     long[] indexInfo = readLastFileInfoAndRepairIt();
@@ -90,13 +124,18 @@ public class WALNodeRecoverTask implements Runnable {
       recoverInfoFromCheckpoints();
       recoverTsFiles();
     } catch (Exception e) {
+      recoveryFailed = true;
+      WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         recoverPerformer.getRecoverListener().fail(e);
+      }
+      if (WALFormatException.isFatal(e)) {
+        throw new IllegalStateException(e);
       }
     } finally {
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         try {
-          if (!recoverPerformer.canWrite()) {
+          if (recoveryFailed || !recoverPerformer.canWrite()) {
             recoverPerformer.close();
           }
         } catch (Exception e) {
@@ -105,50 +144,56 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
 
-    try {
-      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
-        // delete checkpoint info to avoid repeated recover
-        File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
-        for (File checkpointFile : checkpointFiles) {
-          try {
-            Files.delete(checkpointFile.toPath());
-          } catch (IOException e) {
-            logger.error("error when delete checkpoint file. {}", checkpointFile, e);
-          }
+    if (recoveryFailed) {
+      logger.warn(
+          StorageEngineMessages
+              .LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF,
+          logDirectory);
+      return;
+    }
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      // delete checkpoint info to avoid repeated recover
+      File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
+      for (File checkpointFile : checkpointFiles) {
+        try {
+          Files.delete(checkpointFile.toPath());
+        } catch (IOException e) {
+          logger.error(StorageEngineMessages.ERROR_DELETE_CHECKPOINT_FILE, checkpointFile, e);
         }
-        // register wal node
-        WALManager.getInstance()
-            .registerWALNode(
-                logDirectory.getName(),
-                logDirectory.getAbsolutePath(),
-                lastVersionId + 1,
-                lastSearchIndex);
+      }
+      // register wal node
+      WALManager.getInstance()
+          .registerWALNode(
+              logDirectory.getName(),
+              logDirectory.getAbsolutePath(),
+              lastVersionId + 1,
+              lastSearchIndex);
+      logger.info(
+          StorageEngineMessages
+              .STORAGE_LOG_SUCCESSFULLY_RECOVER_WAL_NODE_IN_THE_DIRECTORY_ADD_THIS_FA6ADE22,
+          logDirectory);
+    } else {
+      if (cleanupRecoveredDirectory(logDirectory)) {
         logger.info(
-            "Successfully recover WAL node in the directory {}, add this node to WALManger.",
-            logDirectory);
-      } else {
-        // delete this wal node folder
-        FileUtils.deleteFileOrDirectory(logDirectory);
-        logger.info(
-            "Successfully recover WAL node in the directory {}, so delete these wal files.",
+            StorageEngineMessages
+                .STORAGE_LOG_SUCCESSFULLY_RECOVER_WAL_NODE_IN_THE_DIRECTORY_SO_DELETE_A17892D9,
             logDirectory);
       }
+    }
 
-      // IoTConsensusV2 will not only delete WAL node folder, but also register WAL node.
-      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-        // register wal node
-        WALManager.getInstance()
-            .registerWALNode(
-                logDirectory.getName(),
-                logDirectory.getAbsolutePath(),
-                lastVersionId + 1,
-                lastSearchIndex);
-        logger.info(
-            "Successfully recover WAL node in the directory {}, add this node to WALManger.",
-            logDirectory);
-      }
-    } finally {
-      allNodesRecoveredLatch.countDown();
+    // IoTConsensusV2 will not only delete WAL node folder, but also register WAL node.
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+      // register wal node
+      WALManager.getInstance()
+          .registerWALNode(
+              logDirectory.getName(),
+              logDirectory.getAbsolutePath(),
+              lastVersionId + 1,
+              lastSearchIndex);
+      logger.info(
+          StorageEngineMessages
+              .STORAGE_LOG_SUCCESSFULLY_RECOVER_WAL_NODE_IN_THE_DIRECTORY_ADD_THIS_FA6ADE22,
+          logDirectory);
     }
   }
 
@@ -165,6 +210,7 @@ public class WALNodeRecoverTask implements Runnable {
     WALMetaData metaData = new WALMetaData(lastSearchIndex, new ArrayList<>(), new HashSet<>());
     WALFileStatus fileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     try (WALReader walReader = new WALReader(lastWALFile, true)) {
+      long previousLogicalOffset = 0;
       while (walReader.hasNext()) {
         WALEntry walEntry = walReader.next();
         long searchIndex = DEFAULT_SEARCH_INDEX;
@@ -177,13 +223,24 @@ public class WALNodeRecoverTask implements Runnable {
           }
         }
         metaData.setTruncateOffSet(walReader.getWALCurrentReadOffset());
-        metaData.add(walEntry.serializedSize(), searchIndex, walEntry.getMemTableId());
+        long logicalOffset = walReader.getLogicalReadOffset();
+        // Legacy entries may serialize differently in this version; retain their on-disk sizes.
+        metaData.add(
+            Math.toIntExact(logicalOffset - previousLogicalOffset),
+            searchIndex,
+            walEntry.getMemTableId());
+        previousLogicalOffset = logicalOffset;
       }
     } catch (Exception e) {
-      logger.warn("Fail to read wal logs from {}, skip them", lastWALFile, e);
+      if (WALFormatException.isFatal(e)) {
+        throw new IllegalStateException(e);
+      }
+      logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_LOGS_SKIP, lastWALFile, e);
     }
     // make sure last wal file is correct
-    repairWalFileIfBroken(lastWALFile, metaData);
+    if (!repairWalFileIfBroken(lastWALFile, metaData)) {
+      return new long[] {lastVersionId, lastSearchIndex};
+    }
     // rename last wal file when file status are inconsistent
     if (WALFileUtils.parseStatusCode(lastWALFile.getName()) != fileStatus) {
       String targetName =
@@ -192,18 +249,47 @@ public class WALNodeRecoverTask implements Runnable {
               WALFileUtils.parseStartSearchIndex(lastWALFile.getName()),
               fileStatus);
       if (!lastWALFile.renameTo(SystemFileFactory.INSTANCE.getFile(logDirectory, targetName))) {
-        logger.error("Fail to rename file {} to {}", lastWALFile, targetName);
+        logger.error(StorageEngineMessages.FAIL_TO_RENAME_FILE, lastWALFile, targetName);
       }
     }
     return new long[] {lastVersionId, lastSearchIndex};
   }
 
-  private static void repairWalFileIfBroken(File walFile, WALMetaData metaData) {
+  /** Clears recovered logs but retains quarantined files for diagnosis across restarts. */
+  static boolean cleanupRecoveredDirectory(File directory) {
+    File[] quarantined =
+        directory.listFiles((dir, name) -> name.matches(".*\\.wal\\.broken(?:\\.\\d+)?"));
+    if (quarantined == null) {
+      return false;
+    }
+    if (quarantined.length == 0) {
+      FileUtils.deleteFileOrDirectory(directory);
+      return true;
+    }
+    File[] logs =
+        directory.listFiles(
+            (dir, name) ->
+                WALFileUtils.walFilenameFilter(dir, name)
+                    || CheckpointFileUtils.checkpointFilenameFilter(dir, name));
+    if (logs != null) {
+      for (File log : logs) {
+        FileUtils.deleteFileOrDirectory(log);
+      }
+    }
+    return false;
+  }
+
+  private static boolean repairWalFileIfBroken(File walFile, WALMetaData metaData) {
     WALRepairWriter walRepairWriter = new WALRepairWriter(walFile);
     try {
-      walRepairWriter.repair(metaData);
+      return walRepairWriter.repair(metaData);
     } catch (IOException e) {
-      logger.error("Fail to recover metadata of wal file {}", walFile, e);
+      if (WALFormatException.isFatal(e)) {
+        throw new IllegalStateException(e);
+      }
+      logger.error(StorageEngineMessages.FAIL_TO_RECOVER_WAL_METADATA, walFile, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      return false;
     }
   }
 
@@ -239,11 +325,19 @@ public class WALNodeRecoverTask implements Runnable {
       return;
     }
     // make preparation for recovery
-    for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
+    for (Map.Entry<Long, UnsealedTsFileRecoverPerformer> entry :
+        memTableId2RecoverPerformer.entrySet()) {
+      UnsealedTsFileRecoverPerformer recoverPerformer = entry.getValue();
       try {
         recoverPerformer.startRecovery();
       } catch (Exception e) {
+        recoveryFailed = true;
+        WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
+        failedMemTables.add(entry.getKey());
         recoverPerformer.getRecoverListener().fail(e);
+        if (WALFormatException.isFatal(e)) {
+          throw new IllegalStateException(e);
+        }
       }
     }
     // find all valid .wal files
@@ -270,7 +364,7 @@ public class WALNodeRecoverTask implements Runnable {
           // see WALInfoEntry#serialize, entry type
           buffer.position(Byte.BYTES);
           long memTableId = buffer.getLong();
-          if (!memTableId2Info.containsKey(memTableId)) {
+          if (!memTableId2Info.containsKey(memTableId) || failedMemTables.contains(memTableId)) {
             continue;
           }
           buffer.clear();
@@ -282,21 +376,32 @@ public class WALNodeRecoverTask implements Runnable {
             recoverPerformer.redoLog(walEntry);
           } else {
             logger.debug(
-                "Fail to find TsFile recover performer for wal entry in TsFile {}", walFile);
+                StorageEngineMessages
+                    .STORAGE_LOG_FAIL_TO_FIND_TSFILE_RECOVER_PERFORMER_FOR_WAL_ENTRY_IN_TSFILE_ED4EF3E7,
+                walFile);
           }
         }
       } catch (BrokenWALFileException e) {
         logger.warn(
-            "Fail to read memTable ids from the wal file {} of wal node: {}",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_READ_MEMTABLE_IDS_FROM_THE_WAL_FILE_OF_WAL_NODE_5325B5AB,
             walFile.getAbsoluteFile(),
-            e.getMessage());
+            logDirectory.getName(),
+            e);
       } catch (IOException e) {
+        if (WALFormatException.isFatal(e)) {
+          throw new IllegalStateException(e);
+        }
         logger.warn(
-            "Fail to read memTable ids from the wal file {} of wal node.",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_READ_MEMTABLE_IDS_FROM_THE_WAL_FILE_OF_WAL_NODE_FBCE8D93,
             walFile.getAbsoluteFile(),
             e);
       } catch (Exception e) {
-        logger.warn("Fail to read wal logs from {}, skip them", walFile, e);
+        if (WALFormatException.isFatal(e)) {
+          throw new IllegalStateException(e);
+        }
+        logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_LOGS_SKIP, walFile, e);
       }
     }
     endRecovery();
@@ -304,12 +409,23 @@ public class WALNodeRecoverTask implements Runnable {
 
   private void endRecovery() {
     // end recovering all recover performers
-    for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
+    for (Map.Entry<Long, UnsealedTsFileRecoverPerformer> entry :
+        memTableId2RecoverPerformer.entrySet()) {
+      if (failedMemTables.contains(entry.getKey())) {
+        continue;
+      }
+      UnsealedTsFileRecoverPerformer recoverPerformer = entry.getValue();
       try {
         recoverPerformer.endRecovery();
         recoverPerformer.getRecoverListener().succeed();
       } catch (Exception e) {
+        recoveryFailed = true;
+        WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
+        failedMemTables.add(entry.getKey());
         recoverPerformer.getRecoverListener().fail(e);
+        if (WALFormatException.isFatal(e)) {
+          throw new IllegalStateException(e);
+        }
       }
     }
   }

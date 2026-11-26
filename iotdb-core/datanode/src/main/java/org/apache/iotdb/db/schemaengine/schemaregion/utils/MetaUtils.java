@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -64,15 +65,16 @@ public class MetaUtils {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= level) {
       throw new IllegalPathException(
-          path.getFullPath(), "it is no longer than default sg level: " + level);
+          path.getFullPath(), DataNodeSchemaMessages.PATH_NO_LONGER_THAN_SG_LEVEL + level);
     }
     if (!nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(
-          path.getFullPath(), "it does not start with " + IoTDBConstant.PATH_ROOT);
+          path.getFullPath(),
+          DataNodeSchemaMessages.PATH_DOES_NOT_START_WITH_ROOT + IoTDBConstant.PATH_ROOT);
     }
-    String[] storageGroupNodes = new String[level + 1];
-    System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
-    return new PartialPath(storageGroupNodes);
+    String[] databaseNodes = new String[level + 1];
+    System.arraycopy(nodeNames, 0, databaseNodes, 0, level + 1);
+    return new PartialPath(databaseNodes);
   }
 
   /**

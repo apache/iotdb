@@ -20,24 +20,28 @@
 package org.apache.iotdb.db.it.alignbydevice;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.experimental.categories.Category;
 
 /**
  * Change series_slot_num to 1, to generate more devices which are cross data regions as possible.
  */
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignByDeviceWithTemplate2IT extends IoTDBAlignByDeviceWithTemplateIT {
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.slf4j.Logger;
@@ -129,10 +130,10 @@ public class OpenFileNumUtil {
         in1.close();
         pro1.destroy();
       } catch (IOException e) {
-        LOGGER.error("Cannot get PID of IoTDB process because ", e);
+        LOGGER.error(DataNodeMiscMessages.CANNOT_GET_PID, e);
       }
     } else {
-      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil to get the PID of IoTDB.", os);
+      LOGGER.warn(DataNodeMiscMessages.UNSUPPORTED_OS_GET_PID, os);
     }
     return iotdbPid;
   }
@@ -190,7 +191,7 @@ public class OpenFileNumUtil {
       }
       pro.destroy();
     } catch (Exception e) {
-      LOGGER.error("Cannot get open file number of IoTDB process because ", e);
+      LOGGER.error(DataNodeMiscMessages.CANNOT_GET_OPEN_FILE_NUMBER, e);
     }
     return resultMap;
   }

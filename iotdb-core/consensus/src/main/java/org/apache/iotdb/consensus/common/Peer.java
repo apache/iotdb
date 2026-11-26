@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +71,7 @@ public class Peer implements Comparable<Peer> {
       BasicStructureSerDeUtil.write(nodeId, stream);
       ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, stream);
     } catch (IOException e) {
-      logger.error("Failed to serialize Peer", e);
+      logger.error(ConsensusMessages.FAILED_TO_SERIALIZE_PEER, e);
     }
   }
 

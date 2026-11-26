@@ -44,15 +44,35 @@ public class FormFactorOperator implements AggregatedResultOperator {
 
   @Override
   public Set<String> getDeclaredIntermediateValueNames() {
+    return Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList("sum_x2", "sum_x1", "sum_abs_x1", "count")));
+  }
+
+  @Override
+  public boolean supportsLegacyIntermediateResults() {
+    return true;
+  }
+
+  @Override
+  public Set<String> getLegacyIntermediateValueNames() {
     return Collections.unmodifiableSet(new HashSet<>(Arrays.asList("sum_x2", "sum_x1", "count")));
   }
 
   @Override
   public Pair<TSDataType, Object> terminateWindow(
       TSDataType measurementDataType, CustomizedReadableIntermediateResults intermediateResults) {
+    if (intermediateResults.isLegacyStatisticsFormula()) {
+      return new Pair<>(
+          TSDataType.DOUBLE,
+          Math.pow(
+                  intermediateResults.getDouble("sum_x2") / intermediateResults.getLong("count"),
+                  0.5)
+              / (intermediateResults.getDouble("sum_x1") / intermediateResults.getLong("count")));
+    }
     return new Pair<>(
         TSDataType.DOUBLE,
-        Math.pow(intermediateResults.getDouble("sum_x2") / intermediateResults.getInt("count"), 0.5)
-            / (intermediateResults.getDouble("sum_x1") / intermediateResults.getInt("count")));
+        Math.pow(
+                intermediateResults.getDouble("sum_x2") / intermediateResults.getLong("count"), 0.5)
+            / (intermediateResults.getDouble("sum_abs_x1") / intermediateResults.getLong("count")));
   }
 }

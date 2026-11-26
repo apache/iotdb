@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.IntoProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.DataNodeInternalClient;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -37,7 +39,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.successfulAsList;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
 
@@ -79,10 +81,11 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     ListenableFuture<?> childBlocked = child.isBlocked();
+    boolean childDone = childBlocked.isDone();
     boolean writeDone = writeOperationDone();
-    if (writeDone && childBlocked.isDone()) {
+    if (writeDone && childDone) {
       return NOT_BLOCKED;
-    } else if (childBlocked.isDone()) {
+    } else if (childDone) {
       return writeOperationFuture;
     } else if (writeDone) {
       return childBlocked;
@@ -101,7 +104,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     checkLastWriteOperation();
 
     if (!processTsBlock(cachedTsBlock)) {
-      return null;
+      return tryToReturnPartialResult();
     }
     cachedTsBlock = null;
     if (child.hasNextWithTimer()) {
@@ -109,7 +112,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       processTsBlock(inputTsBlock);
 
       // call child.next only once
-      return null;
+      return tryToReturnPartialResult();
     } else {
       return tryToReturnResultTsBlock();
     }
@@ -168,7 +171,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     try {
       if (!writeOperationFuture.isDone()) {
         throw new IllegalStateException(
-            "The operator cannot continue until the last write operation is done.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THE_OPERATOR_CANNOT_CONTINUE_UNTIL_THE_LAST_WRITE_OPERATION_1F241343);
       }
 
       TSStatus executionStatus = writeOperationFuture.get();
@@ -176,7 +180,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
           && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         String message =
             String.format(
-                "Error occurred while inserting tablets in SELECT INTO: %s",
+                DataNodeQueryMessages
+                    .EXCEPTION_ERROR_OCCURRED_WHILE_INSERTING_TABLETS_IN_SELECT_INTO_ARG_7238E6B9,
                 executionStatus.getMessage());
         throw new IntoProcessException(message, executionStatus.getCode());
       }
@@ -202,6 +207,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected abstract boolean processTsBlock(TsBlock inputTsBlock);
 
   protected abstract TsBlock tryToReturnResultTsBlock();
+
+  protected abstract TsBlock tryToReturnPartialResult();
 
   protected abstract void resetInsertTabletStatementGenerators();
 

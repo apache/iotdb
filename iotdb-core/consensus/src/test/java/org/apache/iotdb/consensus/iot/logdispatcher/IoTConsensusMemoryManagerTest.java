@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 
@@ -47,10 +48,12 @@ public class IoTConsensusMemoryManagerTest {
     previousMemoryBlock = IoTConsensusMemoryManager.getInstance().getMemoryBlock();
     IoTConsensusMemoryManager.getInstance()
         .setMemoryBlock(new AtomicLongMemoryBlock("Test", null, memoryBlockSize));
+    IoTConsensusMemoryManager.getInstance().reset();
   }
 
   @After
   public void tearDown() throws Exception {
+    IoTConsensusMemoryManager.getInstance().reset();
     IoTConsensusMemoryManager.getInstance().setMemoryBlock(previousMemoryBlock);
   }
 
@@ -62,6 +65,60 @@ public class IoTConsensusMemoryManagerTest {
   @Test
   public void testMultiReserveAndRelease() {
     testReserveAndRelease(3);
+  }
+
+  @Test
+  public void testRawAndSerializedMemoryAreBothReservedOnce() {
+    final IndexedConsensusRequest request =
+        new IndexedConsensusRequest(
+            1, Collections.singletonList(new SizedConsensusRequest(10, 20)));
+
+    assertEquals(10L, request.getRetainedMemorySize());
+    request.buildSerializedRequests();
+    request.buildSerializedRequests();
+    assertEquals(20L, request.getMemorySize());
+    assertEquals(30L, request.getRetainedMemorySize());
+    assertEquals(1, request.getSerializedRequests().size());
+    request.clearRequests();
+    assertTrue(request.getRequests().isEmpty());
+    assertEquals(20L, request.getRetainedMemorySize());
+
+    assertTrue(IoTConsensusMemoryManager.getInstance().reserve(request));
+    assertTrue(IoTConsensusMemoryManager.getInstance().reserve(request));
+    assertEquals(
+        20L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
+
+    IoTConsensusMemoryManager.getInstance().free(request);
+    assertEquals(
+        20L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
+    IoTConsensusMemoryManager.getInstance().free(request);
+    assertEquals(
+        0L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testUnserializedRequestReservesRawMemory() {
+    final IndexedConsensusRequest request =
+        new IndexedConsensusRequest(
+            1, Collections.singletonList(new SizedConsensusRequest(10, 20)));
+
+    assertTrue(IoTConsensusMemoryManager.getInstance().reserve(request));
+    assertEquals(
+        10L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
+    IoTConsensusMemoryManager.getInstance().free(request);
+    assertEquals(
+        0L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testClearUnserializedRequest() {
+    final IndexedConsensusRequest request =
+        new IndexedConsensusRequest(
+            1, Collections.singletonList(new SizedConsensusRequest(10, 20)));
+
+    request.clearRequests();
+    assertTrue(request.getRequests().isEmpty());
+    assertEquals(0L, request.getRetainedMemorySize());
   }
 
   private void testReserveAndRelease(int numReservation) {
@@ -99,5 +156,26 @@ public class IoTConsensusMemoryManagerTest {
       IoTConsensusMemoryManager.getInstance().free(indexedConsensusRequest);
     }
     assertEquals(0, IoTConsensusMemoryManager.getInstance().getMemorySizeInByte());
+  }
+
+  private static final class SizedConsensusRequest implements IConsensusRequest {
+
+    private final long rawMemorySize;
+    private final int serializedMemorySize;
+
+    private SizedConsensusRequest(final long rawMemorySize, final int serializedMemorySize) {
+      this.rawMemorySize = rawMemorySize;
+      this.serializedMemorySize = serializedMemorySize;
+    }
+
+    @Override
+    public ByteBuffer serializeToByteBuffer() {
+      return ByteBuffer.allocate(serializedMemorySize);
+    }
+
+    @Override
+    public long getMemorySize() {
+      return rawMemorySize;
+    }
   }
 }

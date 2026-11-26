@@ -68,10 +68,11 @@ public interface Row {
   float getFloat(int columnIndex) throws IOException;
 
   /**
-   * Returns the double value at the specified column in this row.
+   * Returns the numeric value at the specified column in this row as a double.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code
-   * TSDataType.DOUBLE}.
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.INT32},
+   * {@code TSDataType.INT64}, {@code TSDataType.FLOAT}, or {@code TSDataType.DOUBLE}, and that the
+   * value is not null. INT64 values may lose precision when converted to double.
    *
    * @param columnIndex index of the specified column
    * @return the double value at the specified column in this row

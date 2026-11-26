@@ -21,10 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.DeviceIn;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -51,6 +53,67 @@ import static org.junit.Assert.fail;
 public class ModificationFileTest {
 
   @Test
+  public void testRemoveUpdatesMetrics() throws IOException {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.remove.metrics.temp");
+    int modFileNumBefore = FileMetrics.getInstance().getModFileNum();
+    long modFileSizeBefore = FileMetrics.getInstance().getModFileSize();
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, true)) {
+      modificationFile.write(
+          new TreeDeletionEntry(
+              new MeasurementPath(new String[] {"root", "sg", "d1", "s1"}), 1, 10));
+      long fileLength = modificationFile.getFileLength();
+      assertEquals(modFileNumBefore + 1, FileMetrics.getInstance().getModFileNum());
+      assertEquals(modFileSizeBefore + fileLength, FileMetrics.getInstance().getModFileSize());
+
+      modificationFile.remove();
+      assertEquals(modFileNumBefore, FileMetrics.getInstance().getModFileNum());
+      assertEquals(modFileSizeBefore, FileMetrics.getInstance().getModFileSize());
+    } finally {
+      Files.deleteIfExists(new File(tempFileName).toPath());
+    }
+  }
+
+  @Test
+  public void testCompactUpdatesMetricsAndAllowFurtherWrite() throws IOException {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.compact.metrics.temp");
+    int modFileNumBefore = FileMetrics.getInstance().getModFileNum();
+    long modFileSizeBefore = FileMetrics.getInstance().getModFileSize();
+    long time = 1000;
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, true)) {
+      while (modificationFile.getFileLength() < 1024 * 1024) {
+        modificationFile.write(
+            new TreeDeletionEntry(
+                new MeasurementPath(new String[] {"root", "sg", "d1", "s1"}),
+                Long.MIN_VALUE,
+                time += 5000));
+      }
+
+      assertEquals(modFileNumBefore + 1, FileMetrics.getInstance().getModFileNum());
+      modificationFile.compact();
+      assertEquals(modFileNumBefore + 1, FileMetrics.getInstance().getModFileNum());
+      assertEquals(
+          modFileSizeBefore + modificationFile.getFileLength(),
+          FileMetrics.getInstance().getModFileSize());
+
+      modificationFile.write(
+          new TreeDeletionEntry(
+              new MeasurementPath(new String[] {"root", "sg", "d1", "s2"}),
+              Long.MIN_VALUE,
+              time + 5000));
+      assertEquals(modFileNumBefore + 1, FileMetrics.getInstance().getModFileNum());
+      assertEquals(
+          modFileSizeBefore + modificationFile.getFileLength(),
+          FileMetrics.getInstance().getModFileSize());
+
+      modificationFile.remove();
+      assertEquals(modFileNumBefore, FileMetrics.getInstance().getModFileNum());
+      assertEquals(modFileSizeBefore, FileMetrics.getInstance().getModFileSize());
+    } finally {
+      Files.deleteIfExists(new File(tempFileName).toPath());
+    }
+  }
+
+  @Test
   public void readMyWrite() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     ModEntry[] modifications =
@@ -69,6 +132,14 @@ public class ModificationFileTest {
                   new FullExactMatch(Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
               new TimeRange(5, 6)),
           new TableDeletionEntry(new DeletionPredicate("table4"), new TimeRange(7, 8)),
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "table5",
+                  new DeviceIn(
+                      Arrays.asList(
+                          Factory.DEFAULT_FACTORY.create(new String[] {"table5", "id1", "id2"}),
+                          Factory.DEFAULT_FACTORY.create(new String[] {"table5", "id3", "id4"})))),
+              new TimeRange(9, 10)),
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName, false)) {
       for (int i = 0; i < 4; i++) {
@@ -79,11 +150,11 @@ public class ModificationFileTest {
         assertEquals(modifications[i], modificationList.get(i));
       }
 
-      for (int i = 4; i < 8; i++) {
+      for (int i = 4; i < modifications.length; i++) {
         mFile.write(modifications[i]);
       }
       modificationList = mFile.getAllMods();
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < modifications.length; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
     } catch (IOException e) {
@@ -110,6 +181,14 @@ public class ModificationFileTest {
                   new FullExactMatch(Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
               new TimeRange(5, 6)),
           new TableDeletionEntry(new DeletionPredicate("table4"), new TimeRange(7, 8)),
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "table5",
+                  new DeviceIn(
+                      Arrays.asList(
+                          Factory.DEFAULT_FACTORY.create(new String[] {"table5", "id1", "id2"}),
+                          Factory.DEFAULT_FACTORY.create(new String[] {"table5", "id3", "id4"})))),
+              new TimeRange(9, 10)),
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName, false)) {
       mFile.write(Arrays.asList(modifications));

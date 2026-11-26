@@ -21,11 +21,13 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.co
 
 import org.apache.iotdb.commons.schema.MergeSortIterator;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
+
+import jakarta.validation.constraints.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -435,8 +437,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
 
     protected int decide() {
-      throw new IllegalStateException(
-          "There shall not exist two node with the same name separately in newChildBuffer and updateChildBuffer");
+      throw new IllegalStateException(DataNodeSchemaMessages.DUPLICATE_NODE_IN_BUFFERS);
     }
 
     protected int compare(ICachedMNode left, ICachedMNode right) {

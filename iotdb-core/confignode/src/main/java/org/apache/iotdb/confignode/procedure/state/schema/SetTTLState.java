@@ -19,6 +19,8 @@
 package org.apache.iotdb.confignode.procedure.state.schema;
 
 public enum SetTTLState {
+  // Keep existing state ordinals stable for persisted procedures.
   SET_CONFIGNODE_TTL,
-  UPDATE_DATANODE_CACHE
+  UPDATE_DATANODE_CACHE,
+  CAPTURE_PREVIOUS_TTL
 }

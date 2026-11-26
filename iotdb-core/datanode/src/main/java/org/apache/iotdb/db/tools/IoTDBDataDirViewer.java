@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -33,6 +34,8 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -50,28 +53,34 @@ public class IoTDBDataDirViewer {
       data_dir = args[0].split(",");
       outFile = args[1];
     } else {
-      throw new IOException("Invalid parameters. Please check the user guide.");
+      throw new IOException(DataNodeMiscMessages.INVALID_PARAMETERS_CHECK_USER_GUIDE);
     }
-    System.out.println("output save path:" + outFile);
-    System.out.println("data dir num:" + data_dir.length);
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_OUTPUT_SAVE_PATH_ARG_1876448C, Objects.toString(outFile)));
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_DATA_DIR_NUM_ARG_5D16D696, Objects.toString(data_dir.length)));
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {
       for (String dir : data_dir) {
         File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
         File[] seqAndUnseqDirs = dirFile.listFiles();
         if (seqAndUnseqDirs == null) {
           throw new IOException(
-              "Irregular data dir structure.There should be a sequence and unsequence directory "
-                  + "under the data directory "
-                  + dirFile.getName());
+              String.format(
+                  DataNodeMiscMessages
+                      .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_A_SEQUENCE_95B4D431,
+                  dirFile.getName()));
         }
         List<File> fileList = Arrays.asList(seqAndUnseqDirs);
         fileList.sort((Comparator.comparing(File::getName)));
         if (!"sequence".equals(seqAndUnseqDirs[1].getName())
             || !"unsequence".equals(seqAndUnseqDirs[2].getName())) {
           throw new IOException(
-              "Irregular data dir structure.There should be a sequence and unsequence directory "
-                  + "under the data directory "
-                  + dirFile.getPath());
+              String.format(
+                  DataNodeMiscMessages
+                      .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_A_SEQUENCE_95B4D431,
+                  dirFile.getPath()));
         }
 
         printlnBoth(pw, "|==============================================================");
@@ -90,9 +99,10 @@ public class IoTDBDataDirViewer {
     File[] storageGroupDirs = seqOrUnseqDir.listFiles();
     if (storageGroupDirs == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be database directories under "
-              + "the sequence/unsequence directory "
-              + seqOrUnseqDir.getName());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_DATABASE_DIRECTORIES_10C36DC2,
+              seqOrUnseqDir.getName()));
     }
     List<File> fileList = Arrays.asList(storageGroupDirs);
     fileList.sort((Comparator.comparing(File::getName)));
@@ -107,9 +117,10 @@ public class IoTDBDataDirViewer {
     File[] files = storageGroup.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be dataRegion directories under "
-              + "the database directory "
-              + storageGroup.getName());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_DATAREGION_6BCDBFA1,
+              storageGroup.getName()));
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));
@@ -124,9 +135,10 @@ public class IoTDBDataDirViewer {
     File[] files = dataRegion.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be timeInterval directories under "
-              + "the database directory "
-              + dataRegion.getName());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_TIMEINTERVAL_8D074700,
+              dataRegion.getName()));
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));
@@ -141,9 +153,10 @@ public class IoTDBDataDirViewer {
     File[] files = timeInterval.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be tsfiles under "
-              + "the timeInterval directories directory "
-              + timeInterval.getName());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_TSFILES_UNDER_6381FDA5,
+              timeInterval.getName()));
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));
@@ -166,15 +179,38 @@ public class IoTDBDataDirViewer {
     for (IDeviceID device : keys) {
       // iterating the index, must present
       //noinspection OptionalGetWithoutIsPresent
+      Optional<Long> startTime = resource.getStartTime(device);
+      long start;
+      if (!startTime.isPresent()) {
+        printlnBoth(
+            pw,
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_DEVICE_ARG_START_TIME_IS_NULL_0A1A37C4, device));
+        return;
+      } else {
+        start = startTime.get();
+      }
+      long end;
+      Optional<Long> endTime = resource.getStartTime(device);
+      if (!endTime.isPresent()) {
+        printlnBoth(
+            pw,
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_DEVICE_ARG_END_TIME_IS_NULL_60C3310D, device));
+        return;
+      } else {
+        end = endTime.get();
+      }
       printlnBoth(
           pw,
           String.format(
-              "|  |  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
+              DataNodeMiscMessages
+                  .EXCEPTION_DEVICE_ARG_START_TIME_ARG_ARG_END_TIME_ARG_ARG_00865978,
               device,
-              resource.getStartTime(device),
-              DateTimeUtils.convertLongToDate(resource.getStartTime(device).get()),
-              resource.getEndTime(device),
-              DateTimeUtils.convertLongToDate(resource.getEndTime(device).get())));
+              start,
+              DateTimeUtils.convertLongToDate(start),
+              end,
+              DateTimeUtils.convertLongToDate(end)));
     }
   }
 

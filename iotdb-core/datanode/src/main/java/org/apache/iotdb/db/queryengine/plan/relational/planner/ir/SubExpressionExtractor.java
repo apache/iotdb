@@ -18,16 +18,17 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.graph.SuccessorsFunction;
-import com.google.common.graph.Traverser;
+import org.apache.ratis.thirdparty.com.google.common.graph.SuccessorsFunction;
+import org.apache.ratis.thirdparty.com.google.common.graph.Traverser;
 
 import java.util.stream.Stream;
 
-import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Streams.stream;
 
 /**
  * Extracts and returns the stream of all expression subtrees within an Expression, including
@@ -43,6 +44,7 @@ public final class SubExpressionExtractor {
   public static Stream<Node> preOrder(Node node) {
     return stream(
         Traverser.forTree((SuccessorsFunction<Node>) Node::getChildren)
-            .depthFirstPreOrder(requireNonNull(node, "node is null")));
+            .depthFirstPreOrder(
+                requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A)));
   }
 }

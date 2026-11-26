@@ -47,9 +47,6 @@ public abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT 
   }
 
   protected void setUpConfig() {
-    // enable subscription
-    senderEnv.getConfig().getCommonConfig().setSubscriptionEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setSubscriptionEnabled(true);
     senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
 
     // enable auto create schema

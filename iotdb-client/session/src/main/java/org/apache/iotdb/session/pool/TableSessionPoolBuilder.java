@@ -39,6 +39,9 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   /**
    * Sets the list of node URLs for the IoTDB cluster.
    *
+   * <p>Use the same host/IP form as each DataNode's dn_rpc_address. Recovery deduplicates literal
+   * addresses, not DNS aliases.
+   *
    * @param nodeUrls a list of node URLs.
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue Collection.singletonList("localhost:6667")
@@ -169,6 +172,21 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   }
 
   /**
+   * Buffer requests larger than this threshold use temporary arrays and reset reusable buffers to
+   * {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed transports for all
+   * sessions and background node discovery. Zero makes every nonempty buffer request use temporary
+   * storage.
+   *
+   * @param thriftMaxReusableBufferSize the buffer reuse threshold in bytes.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue Integer.MAX_VALUE (keeps the original reuse policy)
+   */
+  public TableSessionPoolBuilder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+    this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
+    return this;
+  }
+
+  /**
    * Enables or disables rpc compression for the connection.
    *
    * @param enableCompression whether to enable compression.
@@ -260,24 +278,72 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   /**
    * Sets the trust store path for SSL connections.
    *
-   * @param keyStore the trust store path.
+   * @param trustStore the trust store path.
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue null
    */
-  public TableSessionPoolBuilder trustStore(String keyStore) {
-    this.trustStore = keyStore;
+  public TableSessionPoolBuilder trustStore(String trustStore) {
+    this.trustStore = trustStore;
     return this;
   }
 
   /**
    * Sets the trust store password for SSL connections.
    *
-   * @param keyStorePwd the trust store password.
+   * @param trustStorePwd the trust store password.
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue null
    */
-  public TableSessionPoolBuilder trustStorePwd(String keyStorePwd) {
-    this.trustStorePwd = keyStorePwd;
+  public TableSessionPoolBuilder trustStorePwd(String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
+    return this;
+  }
+
+  /**
+   * Sets the key store path for mutual SSL connections.
+   *
+   * @param keyStore the key store path.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue null
+   */
+  public TableSessionPoolBuilder keyStore(String keyStore) {
+    this.keyStore = keyStore;
+    return this;
+  }
+
+  /**
+   * Sets the key store password for mutual SSL connections.
+   *
+   * @param keyStorePwd the key store password.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue null
+   */
+  public TableSessionPoolBuilder keyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+    return this;
+  }
+
+  /**
+   * Sets the SSL protocol for secure connections.
+   *
+   * @param sslProtocol the SSL protocol.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue TLS
+   */
+  public TableSessionPoolBuilder sslProtocol(String sslProtocol) {
+    this.sslProtocol = sslProtocol;
+    return this;
+  }
+
+  /**
+   * Enables or disables schema auto-creation for this pool's write requests.
+   *
+   * @param enableAutoCreateSchema whether to allow auto creating tables and columns.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionPoolBuilder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
     return this;
   }
 
@@ -292,7 +358,10 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
           Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
     }
     this.sqlDialect = "table";
-    SessionPool sessionPool = new SessionPool(this);
-    return new TableSessionPool(sessionPool);
+    return createSessionPool();
+  }
+
+  protected ITableSessionPool createSessionPool() {
+    return new TableSessionPool(new SessionPool(this));
   }
 }

@@ -1,0 +1,4 @@
+# Catch2 single-header (downloaded at build time by Maven or CMake)
+catch.hpp
+*
+!.gitignore

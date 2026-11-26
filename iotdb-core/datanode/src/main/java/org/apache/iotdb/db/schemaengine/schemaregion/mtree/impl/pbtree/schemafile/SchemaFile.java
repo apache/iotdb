@@ -23,11 +23,14 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
@@ -35,6 +38,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafil
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.PageManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -43,11 +47,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 
 /**
@@ -110,7 +114,7 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (pmtFile.exists() && override) {
-      logger.warn("PBTree File [{}] will be overwritten since already exists.", filePath);
+      logger.warn(DataNodeSchemaMessages.PBTREE_FILE_OVERWRITTEN, filePath);
       Files.delete(Paths.get(pmtFile.toURI()));
       pmtFile.createNewFile();
     }
@@ -121,7 +125,7 @@ public class SchemaFile implements ISchemaFile {
       pmtFile.createNewFile();
     }
 
-    this.channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    this.channel = openReadWriteChannel(pmtFile);
     this.headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     // will be overwritten if to init
     this.dataTTL = ttl;
@@ -136,7 +140,7 @@ public class SchemaFile implements ISchemaFile {
     pmtFile = file;
     filePath = pmtFile.getPath();
     logPath = file.getParent() + File.separator + SchemaConstant.PBTREE_LOG_FILE_NAME;
-    channel = new RandomAccessFile(file, "rw").getChannel();
+    channel = openReadWriteChannel(file);
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
     if (channel.size() <= 0) {
@@ -236,15 +240,14 @@ public class SchemaFile implements ISchemaFile {
         if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
           throw new MetadataException(
               String.format(
-                  "Adding or updating children of device using template [%s] is NOT allowed.",
+                  DataNodeSchemaMessages.ADDING_CHILDREN_UNDER_TEMPLATE_NOT_ALLOWED,
                   node.getFullPath()));
         }
 
         // now only 32 bits page index is allowed
         throw new MetadataException(
             String.format(
-                "Cannot flush any node with negative address [%s] except for DatabaseNode.",
-                node.getFullPath()));
+                DataNodeSchemaMessages.CANNOT_FLUSH_NODE_NEGATIVE_ADDRESS, node.getFullPath()));
       }
     }
     pageManager.writeMNode(node);
@@ -262,7 +265,7 @@ public class SchemaFile implements ISchemaFile {
       throws MetadataException, IOException {
     if (parent.isMeasurement() || getNodeAddress(parent) < 0) {
       throw new MetadataException(
-          String.format("Node [%s] has no child in pbtree file.", parent.getFullPath()));
+          String.format(DataNodeSchemaMessages.NODE_NO_CHILD_IN_PBTREE, parent.getFullPath()));
     }
 
     return pageManager.getChildren(parent);
@@ -270,10 +273,42 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void close() throws IOException {
-    updateHeaderBuffer();
-    pageManager.close();
-    forceChannel();
-    channel.close();
+    IOException failure = null;
+    try {
+      updateHeaderBuffer();
+    } catch (IOException e) {
+      failure = e;
+    }
+    try {
+      pageManager.close();
+    } catch (IOException e) {
+      if (failure == null) {
+        failure = e;
+      } else {
+        failure.addSuppressed(e);
+      }
+    }
+    try {
+      forceChannel();
+    } catch (IOException e) {
+      if (failure == null) {
+        failure = e;
+      } else {
+        failure.addSuppressed(e);
+      }
+    }
+    try {
+      channel.close();
+    } catch (IOException e) {
+      if (failure == null) {
+        failure = e;
+      } else {
+        failure.addSuppressed(e);
+      }
+    }
+    if (failure != null) {
+      throw failure;
+    }
   }
 
   @Override
@@ -292,9 +327,17 @@ public class SchemaFile implements ISchemaFile {
     }
     pmtFile.createNewFile();
 
-    channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    channel = openReadWriteChannel(pmtFile);
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     initFileHeader();
+  }
+
+  private static FileChannel openReadWriteChannel(File file) throws IOException {
+    return FileChannel.open(
+        file.toPath(),
+        StandardOpenOption.READ,
+        StandardOpenOption.WRITE,
+        StandardOpenOption.CREATE);
   }
 
   public String inspect() throws MetadataException, IOException {
@@ -304,15 +347,11 @@ public class SchemaFile implements ISchemaFile {
   public String inspect(PrintWriter pw) throws MetadataException, IOException {
     String header =
         String.format(
-            "=============================\n"
-                + "== PBTree File Sketch Tool ==\n"
-                + "=============================\n"
-                + "== Notice: \n"
-                + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
-                + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
-                + "=============================\n"
-                + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
-            storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
+            DataNodeSchemaMessages
+                .EXCEPTION_PBTREE_FILE_SKETCH_TOOL_NOTICE_INTERNAL_ENTITY_PRESENTS_AS_NAME_IS_ALIGNED_CHILD_SEGMENT_ADDRESS_MEASUREMENT_PRESENTS_AS_NAME_DATA_TYPE_ENCODING_COMPRESSOR_ALIAS_IF_EXIST_BELONG_TO_STORAGEGROUP_ARG_SEGMENT_OF_SG_ARG_TOTAL_PAGES_ARG_006AFD00,
+            storageGroupName == null
+                ? DataNodeSchemaMessages.EXCEPTION_NOT_SPECIFIED_022755C1
+                : storageGroupName,
             Long.toHexString(lastSGAddr),
             lastPageIndex + 1);
     if (pw == null) {
@@ -320,7 +359,7 @@ public class SchemaFile implements ISchemaFile {
     }
     pw.print(header);
     pageManager.inspect(pw);
-    return String.format("SchemaFile[%s] had been inspected.", this.filePath);
+    return String.format(DataNodeSchemaMessages.SCHEMA_FILE_INSPECTED, this.filePath);
   }
 
   // endregion
@@ -352,28 +391,34 @@ public class SchemaFile implements ISchemaFile {
     if (channel.size() == 0) {
       // new pbtree file
       lastPageIndex = 0;
-      ReadWriteIOUtils.write(lastPageIndex, headerContent);
-      ReadWriteIOUtils.write(dataTTL, headerContent);
-      ReadWriteIOUtils.write(isEntity, headerContent);
-      ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
-      ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
-      pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
-    } else {
-      channel.read(headerContent);
-      headerContent.clear();
-      lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
-      dataTTL = ReadWriteIOUtils.readLong(headerContent);
-      isEntity = ReadWriteIOUtils.readBool(headerContent);
-      sgNodeTemplateIdWithState = ReadWriteIOUtils.readInt(headerContent);
-      lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
-
-      if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
-        channel.close();
-        throw new MetadataException("SchemaFile with wrong version, please check or upgrade.");
+      pageManager = null;
+      try {
+        pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
+        updateHeaderBuffer();
+      } catch (IOException | MetadataException e) {
+        closeAfterInitializationFailure(e);
+        throw e;
       }
+    } else {
+      try {
+        IOUtils.readFully(channel, headerContent);
+        headerContent.clear();
+        lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
+        dataTTL = ReadWriteIOUtils.readLong(headerContent);
+        isEntity = ReadWriteIOUtils.readBool(headerContent);
+        sgNodeTemplateIdWithState = ReadWriteIOUtils.readInt(headerContent);
+        lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
 
-      pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath);
+        if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
+          throw new MetadataException(DataNodeSchemaMessages.SCHEMA_FILE_WRONG_VERSION);
+        }
+
+        pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath);
+      } catch (IOException | MetadataException e) {
+        closeChannelAfterInitializationFailure(e);
+        throw e;
+      }
     }
   }
 
@@ -388,7 +433,36 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
     headerContent.flip();
-    channel.write(headerContent, 0);
+    IOUtils.writeFully(channel, headerContent, 0);
+  }
+
+  private void closeAfterInitializationFailure(Exception failure) {
+    if (pageManager != null) {
+      try {
+        pageManager.close();
+      } catch (IOException closeException) {
+        failure.addSuppressed(closeException);
+      }
+    }
+    try {
+      channel.truncate(0);
+    } catch (IOException cleanupException) {
+      failure.addSuppressed(cleanupException);
+    }
+    try {
+      channel.force(true);
+    } catch (IOException cleanupException) {
+      failure.addSuppressed(cleanupException);
+    }
+    closeChannelAfterInitializationFailure(failure);
+  }
+
+  private void closeChannelAfterInitializationFailure(Exception failure) {
+    try {
+      channel.close();
+    } catch (IOException closeException) {
+      failure.addSuppressed(closeException);
+    }
   }
 
   private void forceChannel() throws IOException {
@@ -463,17 +537,18 @@ public class SchemaFile implements ISchemaFile {
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.PBTREE_SNAPSHOT);
     try {
       sync();
-      if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
+      if (schemaFileSnapshot.exists() && !FileUtils.deleteFileIfExist(schemaFileSnapshot)) {
         logger.error(
-            "Failed to delete old snapshot {} while creating pbtree file snapshot.",
+            DataNodeSchemaMessages.FAILED_TO_DELETE_OLD_PBTREE_SNAPSHOT,
             schemaFileSnapshot.getName());
         return false;
       }
       Files.copy(Paths.get(filePath), schemaFileSnapshot.toPath());
       return true;
     } catch (IOException e) {
-      logger.error("Failed to create SchemaFile snapshot due to {}", e.getMessage(), e);
-      schemaFileSnapshot.delete();
+      logger.error(DataNodeSchemaMessages.FAILED_TO_CREATE_SCHEMA_FILE_SNAPSHOT, e.getMessage(), e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      FileUtils.deleteFileIfExist(schemaFileSnapshot);
       return false;
     }
   }

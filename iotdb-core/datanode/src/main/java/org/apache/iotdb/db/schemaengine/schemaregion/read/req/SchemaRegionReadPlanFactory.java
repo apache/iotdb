@@ -22,10 +22,11 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.req;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowDevicesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowNodesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTimeSeriesPlanImpl;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.Map;
 
@@ -61,9 +62,18 @@ public class SchemaRegionReadPlanFactory {
       boolean isPrefixMatch,
       SchemaFilter schemaFilter,
       boolean needViewDetail,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      Ordering timeseriesOrdering) {
     return new ShowTimeSeriesPlanImpl(
-        path, relatedTemplate, limit, offset, isPrefixMatch, schemaFilter, needViewDetail, scope);
+        path,
+        relatedTemplate,
+        limit,
+        offset,
+        isPrefixMatch,
+        schemaFilter,
+        needViewDetail,
+        scope,
+        timeseriesOrdering);
   }
 
   public static IShowNodesPlan getShowNodesPlan(PartialPath path, PathPatternTree scope) {

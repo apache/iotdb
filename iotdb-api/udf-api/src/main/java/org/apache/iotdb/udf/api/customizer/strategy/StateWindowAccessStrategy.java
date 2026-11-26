@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.udf.api.customizer.strategy;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 import java.time.ZoneId;
 
 public class StateWindowAccessStrategy implements AccessStrategy {
@@ -83,13 +85,17 @@ public class StateWindowAccessStrategy implements AccessStrategy {
   public void check() {
     if (delta < 0) {
       throw new RuntimeException(
-          String.format("Parameter delta(%f) should be positive or equal to 0.", delta));
+          String.format(
+              UdfApiMessages
+                  .EXCEPTION_PARAMETER_DELTA_ARG_SHOULD_BE_POSITIVE_OR_EQUAL_TO_0_787DD7AE,
+              delta));
     }
     if (displayWindowEnd < displayWindowBegin) {
       throw new RuntimeException(
           String.format(
-              "displayWindowEnd(%d) < displayWindowBegin(%d)",
-              displayWindowEnd, displayWindowBegin));
+              UdfApiMessages.EXCEPTION_DISPLAYWINDOWEND_ARG_DISPLAYWINDOWBEGIN_ARG_216864F1,
+              displayWindowEnd,
+              displayWindowBegin));
     }
   }
 

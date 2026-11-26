@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -38,6 +39,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to ConfigNode. See confignode.thrift for more details. */
@@ -98,14 +100,19 @@ public class SyncConfigNodeClientPool {
             return client.submitTestConnectionTask((TNodeLocations) req);
           case TEST_CONNECTION:
             return client.testConnectionEmptyRPC();
+          case SHOW_APPLIED_CONFIGURATIONS:
+            return client.showAppliedConfigurations((int) req);
           default:
             return RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                String.format(
+                    ConfigNodeMessages.EXCEPTION_UNKNOWN_REQUEST_TYPE_ARG_78571982,
+                    Objects.toString(requestType)));
         }
       } catch (Exception e) {
         lastException = e;
         LOGGER.warn(
-            "{} failed on ConfigNode {}, because {}, retrying {}...",
+            ConfigNodeMessages.FAILED_ON_CONFIGNODE_BECAUSE_RETRYING,
             requestType,
             endPoint,
             e.getMessage(),
@@ -113,10 +120,12 @@ public class SyncConfigNodeClientPool {
         doRetryWait(retry);
       }
     }
-    LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
+    LOGGER.error(ConfigNodeMessages.FAILED_ON_CONFIGNODE, requestType, endPoint, lastException);
     return RpcUtils.getStatus(
         TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR,
-        "All retry failed due to: " + lastException.getMessage());
+        String.format(
+            ConfigNodeMessages.EXCEPTION_ALL_RETRY_FAILED_DUE_TO_ARG_AEA920B0,
+            Objects.toString(lastException.getMessage())));
   }
 
   /**
@@ -135,6 +144,12 @@ public class SyncConfigNodeClientPool {
     while (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       TimeUnit.MILLISECONDS.sleep(2000);
       updateConfigNodeLeader(status);
+      if (configNodeLeader == null) {
+        LOGGER.warn(
+            ConfigNodeMessages
+                .LOG_REDIRECTION_RECOMMENDED_REMOVECONFIGNODE_BUT_NO_LEADER_ENDPOINT_PROVIDED_ABORT_RETRY_520A4C64);
+        break;
+      }
       try (SyncConfigNodeIServiceClient clientLeader =
           clientManager.borrowClient(configNodeLeader)) {
         status = clientLeader.removeConfigNode(configNodeLocation);
@@ -147,7 +162,7 @@ public class SyncConfigNodeClientPool {
     try {
       TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
     } catch (InterruptedException e) {
-      LOGGER.error("Retry wait failed.", e);
+      LOGGER.error(ConfigNodeMessages.RETRY_WAIT_FAILED, e);
       Thread.currentThread().interrupt();
     }
   }

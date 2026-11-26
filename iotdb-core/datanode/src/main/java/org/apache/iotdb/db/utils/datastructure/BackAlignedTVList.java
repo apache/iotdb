@@ -27,17 +27,23 @@ public class BackAlignedTVList extends QuickAlignedTVList {
   private final BackwardSort policy;
 
   BackAlignedTVList(List<TSDataType> types) {
-    super(types);
+    this(types, true);
+  }
+
+  BackAlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
+    super(types, initializeValueColumns);
     policy = new BackwardSort(this);
   }
 
   @Override
-  public synchronized void sort() {
+  public synchronized int sort() {
     if (!sorted) {
       policy.backwardSort(timestamps, rowCount);
       policy.clearTmp();
+      updateSegmentMovedMap();
     }
     sorted = true;
     seqRowCount = rowCount;
+    return rowCount;
   }
 }

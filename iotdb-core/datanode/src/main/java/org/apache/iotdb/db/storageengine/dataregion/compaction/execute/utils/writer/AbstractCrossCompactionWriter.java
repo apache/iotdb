@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
@@ -26,7 +27,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TimeValuePair;
@@ -68,13 +71,25 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   protected List<TsFileResource> targetResources;
 
+  private final EncryptParameter encryptParameter;
+
+  @TestOnly
   protected AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
+      throws IOException {
+    this(targetResources, seqFileResources, EncryptDBUtils.getDefaultFirstEncryptParam());
+  }
+
+  protected AbstractCrossCompactionWriter(
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqFileResources,
+      EncryptParameter encryptParameter)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];
     isCurrentDeviceExistedInSourceSeqFiles = new boolean[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
+    this.encryptParameter = encryptParameter;
     long memorySizeForEachWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
@@ -83,10 +98,11 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
                 / targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
-          new CompactionTsFileWriter(
+          CompactionTsFileWriter.create(
               targetResources.get(i).getTsFile(),
               memorySizeForEachWriter,
-              CompactionType.CROSS_COMPACTION));
+              CompactionType.CROSS_COMPACTION,
+              this.encryptParameter));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
@@ -125,6 +141,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     sealChunk(
         targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId], subTaskId);
     seqFileIndexArray[subTaskId] = 0;
+    clearChunkWriterFactory(subTaskId);
   }
 
   @Override
@@ -134,8 +151,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    writeDataPoint(timestamp, value, chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
+    writeDataPoint(timestamp, value, chunkWriters[subTaskId], subTaskId);
     checkChunkSizeAndMayOpenANewChunk(
         targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
     isDeviceExistedInTargetFiles[fileIndex] = true;
@@ -155,6 +171,9 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       // set empty target file to DELETED
       if (isEmptyFile[i]) {
         targetResources.get(i).forceMarkDeleted();
+      } else if (compactionTaskSummary != null) {
+        compactionTaskSummary.recordTargetTsFileTableSizeMap(
+            targetResources.get(i), targetFileWriters.get(i).getTableSizeMap());
       }
     }
   }
@@ -193,6 +212,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     checkPreviousTimestamp(timestamp, subTaskId);
 
     int fileIndex = seqFileIndexArray[subTaskId];
+    int previousFileIndex = fileIndex;
     boolean hasFlushedCurrentChunk = false;
     // If timestamp is later than the current source seq tsfile, then flush chunk writer and move to
     // next file
@@ -205,6 +225,10 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         hasFlushedCurrentChunk = true;
       }
       seqFileIndexArray[subTaskId] = ++fileIndex;
+    }
+    if (fileIndex != previousFileIndex) {
+      switchChunkWriterEncryptionParameter(
+          targetFileWriters.get(fileIndex).getEncryptParameter(), subTaskId);
     }
   }
 
@@ -257,4 +281,11 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   }
 
   protected abstract TsFileSequenceReader getFileReader(TsFileResource resource) throws IOException;
+
+  @Override
+  public EncryptParameter getEncryptParameter() {
+    return targetFileWriters.isEmpty()
+        ? encryptParameter
+        : targetFileWriters.get(0).getEncryptParameter();
+  }
 }

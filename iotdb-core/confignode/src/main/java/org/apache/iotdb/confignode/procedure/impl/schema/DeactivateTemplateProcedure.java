@@ -28,18 +28,19 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeactivateTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
@@ -48,6 +49,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.thirdparty.com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +82,7 @@ public class DeactivateTemplateProcedure
   private Map<String, List<Integer>> dataNodeRequest; // transient
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public DeactivateTemplateProcedure(boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -100,7 +102,7 @@ public class DeactivateTemplateProcedure
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct schema black list with template {}", requestMessage);
+          LOGGER.info(ProcedureMessages.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE, requestMessage);
           if (constructBlackList(env) > 0) {
             setNextState(DeactivateTemplateState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
@@ -108,31 +110,34 @@ public class DeactivateTemplateProcedure
             setFailure(
                 new ProcedureException(
                     new IoTDBException(
-                        "Target Device Template is not activated on any path matched by given path pattern",
+                        ProcedureMessages
+                            .TARGET_DEVICE_TEMPLATE_IS_NOT_ACTIVATED_ON_ANY_PATH_MATCHED,
                         TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode())));
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of template timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES, requestMessage);
           invalidateCache(env);
           break;
         case DELETE_DATA:
-          LOGGER.info("Delete data of template timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DELETE_DATA_OF_TEMPLATE_TIMESERIES, requestMessage);
           deleteData(env);
           break;
         case DEACTIVATE_TEMPLATE:
-          LOGGER.info("Deactivate template of {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DEACTIVATE_TEMPLATE_OF, requestMessage);
           deactivateTemplate(env);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DeactivateTemplate-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.DEACTIVATETEMPLATE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -143,11 +148,10 @@ public class DeactivateTemplateProcedure
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
-    List<TSStatus> successResult = new ArrayList<>();
     DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>
         constructBlackListTask =
             new DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>(
-                "construct schema black list",
+                ProcedureMessages.MESSAGE_CONSTRUCT_SCHEMA_BLACK_LIST_514776EF,
                 env,
                 targetSchemaRegionGroup,
                 CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
@@ -156,26 +160,11 @@ public class DeactivateTemplateProcedure
                         consensusGroupIdList, dataNodeRequest))) {
               @Override
               protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                  TDataNodeLocation dataNodeLocation,
-                  List<TConsensusGroupId> consensusGroupIdList,
-                  TSStatus response) {
-                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-                if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  successResult.add(response);
-                } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                  List<TSStatus> subStatusList = response.getSubStatus();
-                  for (int i = 0; i < subStatusList.size(); i++) {
-                    if (subStatusList.get(i).getCode()
-                        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                      successResult.add(subStatusList.get(i));
-                    } else {
-                      failedRegionList.add(consensusGroupIdList.get(i));
-                    }
-                  }
-                } else {
-                  failedRegionList.addAll(consensusGroupIdList);
-                }
-                return failedRegionList;
+                  final TDataNodeLocation dataNodeLocation,
+                  final List<TConsensusGroupId> consensusGroupIdList,
+                  final TSStatus response) {
+                return processResponseOfOneDataNodeWithSuccessResult(
+                    dataNodeLocation, consensusGroupIdList, response);
               }
             };
     constructBlackListTask.execute();
@@ -185,7 +174,7 @@ public class DeactivateTemplateProcedure
     }
 
     long preDeletedNum = 0;
-    for (TSStatus resp : successResult) {
+    for (TSStatus resp : constructBlackListTask.getSuccessResult()) {
       preDeletedNum += Long.parseLong(resp.getMessage());
     }
     return preDeletedNum;
@@ -208,9 +197,11 @@ public class DeactivateTemplateProcedure
         // all dataNodes must clear the related schema cache
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOGGER.error(
-              "Failed to invalidate schema cache of template timeSeries {}", requestMessage);
+              ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES,
+              requestMessage);
           setFailure(
-              new ProcedureException(new MetadataException("Invalidate schema cache failed")));
+              new ProcedureException(
+                  new MetadataException(ProcedureMessages.INVALIDATE_SCHEMA_CACHE_FAILED)));
           return;
         }
       }
@@ -227,7 +218,7 @@ public class DeactivateTemplateProcedure
     if (!relatedDataRegionGroup.isEmpty() && !timeSeriesPatternTree.isEmpty()) {
       final DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
           new DeactivateTemplateRegionTaskExecutor<>(
-              "delete data",
+              ProcedureMessages.MESSAGE_DELETE_DATA_1896591B,
               env,
               relatedDataRegionGroup,
               false,
@@ -243,7 +234,7 @@ public class DeactivateTemplateProcedure
   private void deactivateTemplate(ConfigNodeProcedureEnv env) {
     DeactivateTemplateRegionTaskExecutor<TDeactivateTemplateReq> deleteTimeSeriesTask =
         new DeactivateTemplateRegionTaskExecutor<>(
-            "deactivate template schema",
+            ProcedureMessages.MESSAGE_DEACTIVATE_TEMPLATE_SCHEMA_F8DEF172,
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
             CnToDnAsyncRequestType.DEACTIVATE_TEMPLATE,
@@ -281,7 +272,7 @@ public class DeactivateTemplateProcedure
       DeactivateTemplateRegionTaskExecutor<TRollbackSchemaBlackListWithTemplateReq>
           rollbackStateTask =
               new DeactivateTemplateRegionTaskExecutor<>(
-                  "roll back schema black list",
+                  ProcedureMessages.MESSAGE_ROLL_BACK_SCHEMA_BLACK_LIST_5F1CB6A2,
                   env,
                   env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
                   CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
@@ -394,7 +385,7 @@ public class DeactivateTemplateProcedure
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<PartialPath, List<Template>> templateSetInfo = new HashMap<>();
+    Map<PartialPath, List<Template>> templateSetInfo = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; i++) {
       PartialPath pattern = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
       int templateNum = ReadWriteIOUtils.readInt(byteBuffer);
@@ -428,8 +419,7 @@ public class DeactivateTemplateProcedure
         getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, queryId, templateSetInfo);
   }
 
-  private class DeactivateTemplateRegionTaskExecutor<Q>
-      extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+  private class DeactivateTemplateRegionTaskExecutor<Q> extends DataNodeTSStatusTaskExecutor<Q> {
 
     private final String taskName;
 
@@ -460,41 +450,19 @@ public class DeactivateTemplateProcedure
     }
 
     @Override
-    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-        TDataNodeLocation dataNodeLocation,
-        List<TConsensusGroupId> consensusGroupIdList,
-        TSStatus response) {
-      List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
-      }
-
-      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          }
-        }
-      } else {
-        failedRegionList.addAll(consensusGroupIdList);
-      }
-      return failedRegionList;
-    }
-
-    @Override
     protected void onAllReplicasetFailure(
         TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
       setFailure(
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Deactivate template of %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      ProcedureMessages
+                          .DEACTIVATE_TEMPLATE_OF_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN,
                       requestMessage,
                       taskName,
                       consensusGroupId.type,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      printFailureMap()))));
       interruptTask();
     }
   }

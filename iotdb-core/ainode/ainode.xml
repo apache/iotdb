@@ -37,11 +37,15 @@
             <destName>LICENSE</destName>
         </file>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
+            <source>src/assembly/resources/NOTICE-binary</source>
             <destName>NOTICE</destName>
         </file>
     </files>
     <fileSets>
+        <fileSet>
+            <directory>iotdb/ainode/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+        </fileSet>
         <fileSet>
             <directory>resources/conf</directory>
             <outputDirectory>conf</outputDirectory>
@@ -52,24 +56,26 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>dist</directory>
+            <directory>dist/ainode</directory>
             <outputDirectory>lib</outputDirectory>
-            <includes>
-                <include>*.whl</include>
-            </includes>
+            <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>${project.basedir}/../../scripts/conf</directory>
-            <outputDirectory>conf</outputDirectory>
-            <includes>
-                <include>ainode-env.*</include>
-                <include>**/ainode-env.*</include>
-            </includes>
-            <fileMode>0755</fileMode>
+            <directory>src/assembly/resources/licenses</directory>
+            <outputDirectory>licenses</outputDirectory>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../../scripts/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
+            <includes>
+                <include>*ainode.*</include>
+                <include>**/*ainode.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/tools/ops</directory>
+            <outputDirectory>tools/ops</outputDirectory>
             <includes>
                 <include>*ainode.*</include>
                 <include>**/*ainode.*</include>

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.sync;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -90,7 +92,7 @@ public class PipeMessage {
         case 3:
           return PipeMessageType.ERROR;
         default:
-          throw new IllegalArgumentException("Invalid input: " + type);
+          throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
       }
     }
   }

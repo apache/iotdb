@@ -19,33 +19,33 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
-public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
+public abstract class DefaultTraversalVisitor<C> implements AstVisitor<Void, C> {
   @Override
-  protected Void visitCast(Cast node, C context) {
+  public Void visitCast(Cast node, C context) {
     process(node.getExpression(), context);
     return null;
   }
 
   @Override
-  protected Void visitArithmeticBinary(ArithmeticBinaryExpression node, C context) {
+  public Void visitArithmeticBinary(ArithmeticBinaryExpression node, C context) {
     process(node.getLeft(), context);
     process(node.getRight(), context);
 
@@ -53,7 +53,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitBetweenPredicate(BetweenPredicate node, C context) {
+  public Void visitBetweenPredicate(BetweenPredicate node, C context) {
     process(node.getValue(), context);
     process(node.getMin(), context);
     process(node.getMax(), context);
@@ -62,7 +62,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitCoalesceExpression(CoalesceExpression node, C context) {
+  public Void visitCoalesceExpression(CoalesceExpression node, C context) {
     for (Expression operand : node.getOperands()) {
       process(operand, context);
     }
@@ -71,7 +71,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   //    @Override
-  //    protected Void visitSubscriptExpression(SubscriptExpression node, C context)
+  //    public Void visitSubscriptExpression(SubscriptExpression node, C context)
   //    {
   //        process(node.getBase(), context);
   //        process(node.getIndex(), context);
@@ -80,7 +80,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   //    }
 
   @Override
-  protected Void visitComparisonExpression(ComparisonExpression node, C context) {
+  public Void visitComparisonExpression(ComparisonExpression node, C context) {
     process(node.getLeft(), context);
     process(node.getRight(), context);
 
@@ -88,7 +88,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitInPredicate(InPredicate node, C context) {
+  public Void visitInPredicate(InPredicate node, C context) {
     process(node.getValue(), context);
     process(node.getValueList(), context);
 
@@ -96,7 +96,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitFunctionCall(FunctionCall node, C context) {
+  public Void visitFunctionCall(FunctionCall node, C context) {
     for (Expression argument : node.getArguments()) {
       process(argument, context);
     }
@@ -105,7 +105,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitSimpleCaseExpression(SimpleCaseExpression node, C context) {
+  public Void visitSimpleCaseExpression(SimpleCaseExpression node, C context) {
     process(node.getOperand(), context);
     for (WhenClause clause : node.getWhenClauses()) {
       process(clause.getOperand(), context);
@@ -118,7 +118,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitNullIfExpression(NullIfExpression node, C context) {
+  public Void visitNullIfExpression(NullIfExpression node, C context) {
     process(node.getFirst(), context);
     process(node.getSecond(), context);
 
@@ -126,7 +126,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   //    @Override
-  //    protected Void visitBindExpression(BindExpression node, C context)
+  //    public Void visitBindExpression(BindExpression node, C context)
   //    {
   //        for (Expression value : node.getValues()) {
   //            process(value, context);
@@ -137,20 +137,20 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   //    }
 
   //    @Override
-  //    protected Void visitArithmeticNegation(ArithmeticNegation node, C context)
+  //    public Void visitArithmeticNegation(ArithmeticNegation node, C context)
   //    {
   //        process(node.getValue(), context);
   //        return null;
   //    }
 
   @Override
-  protected Void visitNotExpression(NotExpression node, C context) {
+  public Void visitNotExpression(NotExpression node, C context) {
     process(node.getValue(), context);
     return null;
   }
 
   @Override
-  protected Void visitSearchedCaseExpression(SearchedCaseExpression node, C context) {
+  public Void visitSearchedCaseExpression(SearchedCaseExpression node, C context) {
     for (WhenClause clause : node.getWhenClauses()) {
       process(clause.getOperand(), context);
       process(clause.getResult(), context);
@@ -161,13 +161,13 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitIsNullPredicate(IsNullPredicate node, C context) {
+  public Void visitIsNullPredicate(IsNullPredicate node, C context) {
     process(node.getValue(), context);
     return null;
   }
 
   @Override
-  protected Void visitLogicalExpression(LogicalExpression node, C context) {
+  public Void visitLogicalExpression(LogicalExpression node, C context) {
     for (Expression child : node.getTerms()) {
       process(child, context);
     }
@@ -176,7 +176,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitRow(Row node, C context) {
+  public Void visitRow(Row node, C context) {
     for (Expression expression : node.getItems()) {
       process(expression, context);
     }
@@ -184,7 +184,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   //    @Override
-  //    protected Void visitLambdaExpression(LambdaExpression node, C context)
+  //    public Void visitLambdaExpression(LambdaExpression node, C context)
   //    {
   //        process(node.getBody(), context);
   //

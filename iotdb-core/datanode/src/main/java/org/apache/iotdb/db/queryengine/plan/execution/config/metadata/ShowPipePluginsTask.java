@@ -31,8 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
@@ -50,6 +50,7 @@ public class ShowPipePluginsTask implements IConfigTask {
   public static final Binary PIPE_PLUGIN_TYPE_EXTERNAL = BytesUtils.valueOf("External");
 
   private static final Binary PIPE_JAR_NAME_EMPTY_FIELD = BytesUtils.valueOf("");
+  private static final Binary PIPE_PLUGIN_EXCEPTION_MESSAGE_EMPTY_FIELD = BytesUtils.valueOf("");
 
   private final ShowPipePluginsStatement showPipePluginsStatement;
 
@@ -74,7 +75,8 @@ public class ShowPipePluginsTask implements IConfigTask {
     final List<PipePluginMeta> pipePluginMetaList = new ArrayList<>();
     if (allPipePluginsInformation != null) {
       for (final ByteBuffer pipePluginInformationByteBuffer : allPipePluginsInformation) {
-        pipePluginMetaList.add(PipePluginMeta.deserialize(pipePluginInformationByteBuffer));
+        pipePluginMetaList.add(
+            PipePluginMeta.deserializeForShowPipePlugin(pipePluginInformationByteBuffer));
       }
     }
     pipePluginMetaList.sort(Comparator.comparing(PipePluginMeta::getPluginName));
@@ -103,6 +105,12 @@ public class ShowPipePluginsTask implements IConfigTask {
               pipePluginMeta.getJarName() == null
                   ? PIPE_JAR_NAME_EMPTY_FIELD
                   : BytesUtils.valueOf(pipePluginMeta.getJarName()));
+      builder
+          .getColumnBuilder(4)
+          .writeBinary(
+              pipePluginMeta.getPluginLoadingExceptionMessage() == null
+                  ? PIPE_PLUGIN_EXCEPTION_MESSAGE_EMPTY_FIELD
+                  : BytesUtils.valueOf(pipePluginMeta.getPluginLoadingExceptionMessage()));
       builder.declarePosition();
     }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.isession;
 
+import org.apache.iotdb.isession.i18n.ISessionMessages;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -29,8 +30,8 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -60,7 +61,10 @@ public class SessionDataSet implements ISessionDataSet {
       ZoneId zoneId,
       int timeFactor,
       boolean tableModel,
-      List<Integer> columnIndex2TsBlockColumnIndexList) {
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -80,7 +84,95 @@ public class SessionDataSet implements ISessionDataSet {
             RpcUtils.DEFAULT_TIME_FORMAT,
             timeFactor,
             tableModel,
-            columnIndex2TsBlockColumnIndexList);
+            columnIndex2TsBlockColumnIndexList,
+            offsetSet,
+            offset,
+            totalLength);
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      boolean ignoreTimeStamp,
+      boolean moreData,
+      ZoneId zoneId,
+      int timeFactor,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList) {
+    this(
+        sql,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        queryId,
+        statementId,
+        client,
+        sessionId,
+        queryResult,
+        ignoreTimeStamp,
+        moreData,
+        zoneId,
+        timeFactor,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      boolean ignoreTimeStamp,
+      long timeout,
+      boolean moreData,
+      int fetchSize,
+      ZoneId zoneId,
+      int timeFactor,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength) {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            moreData,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryResult,
+            fetchSize,
+            timeout,
+            zoneId,
+            RpcUtils.DEFAULT_TIME_FORMAT,
+            timeFactor,
+            tableModel,
+            columnIndex2TsBlockColumnIndexList,
+            offsetSet,
+            offset,
+            totalLength);
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -102,26 +194,27 @@ public class SessionDataSet implements ISessionDataSet {
       int timeFactor,
       boolean tableModel,
       List<Integer> columnIndex2TsBlockColumnIndexList) {
-    this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
-            sql,
-            columnNameList,
-            columnTypeList,
-            columnNameIndex,
-            ignoreTimeStamp,
-            moreData,
-            queryId,
-            statementId,
-            client,
-            sessionId,
-            queryResult,
-            fetchSize,
-            timeout,
-            zoneId,
-            RpcUtils.DEFAULT_TIME_FORMAT,
-            timeFactor,
-            tableModel,
-            columnIndex2TsBlockColumnIndexList);
+    this(
+        sql,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        queryId,
+        statementId,
+        client,
+        sessionId,
+        queryResult,
+        ignoreTimeStamp,
+        timeout,
+        moreData,
+        fetchSize,
+        zoneId,
+        timeFactor,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
   }
 
   public int getFetchSize() {
@@ -152,49 +245,17 @@ public class SessionDataSet implements ISessionDataSet {
   }
 
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
-    List<Field> outFields = new ArrayList<>();
-    for (int i = ioTDBRpcDataSet.getValueColumnStartIndex();
-        i < ioTDBRpcDataSet.getColumnSize();
-        i++) {
+    int valueColumnStartIndex = ioTDBRpcDataSet.getValueColumnStartIndex();
+    int columnSize = ioTDBRpcDataSet.getColumnSize();
+    List<Field> outFields = new ArrayList<>(columnSize - valueColumnStartIndex);
+    for (int columnIndex = valueColumnStartIndex + 1; columnIndex <= columnSize; columnIndex++) {
       Field field;
-
-      String columnName = ioTDBRpcDataSet.getColumnNameList().get(i);
-
-      if (!ioTDBRpcDataSet.isNull(columnName)) {
-        TSDataType dataType = ioTDBRpcDataSet.getDataType(columnName);
+      if (!ioTDBRpcDataSet.isNull(columnIndex)) {
+        TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
         field = new Field(dataType);
-        switch (dataType) {
-          case BOOLEAN:
-            boolean booleanValue = ioTDBRpcDataSet.getBoolean(columnName);
-            field.setBoolV(booleanValue);
-            break;
-          case INT32:
-          case DATE:
-            int intValue = ioTDBRpcDataSet.getInt(columnName);
-            field.setIntV(intValue);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            long longValue = ioTDBRpcDataSet.getLong(columnName);
-            field.setLongV(longValue);
-            break;
-          case FLOAT:
-            float floatValue = ioTDBRpcDataSet.getFloat(columnName);
-            field.setFloatV(floatValue);
-            break;
-          case DOUBLE:
-            double doubleValue = ioTDBRpcDataSet.getDouble(columnName);
-            field.setDoubleV(doubleValue);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            field.setBinaryV(ioTDBRpcDataSet.getBinary(columnName));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
-        }
+        TypeServices.FIELD_VALUE_READER_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .read(ioTDBRpcDataSet, columnIndex, field);
       } else {
         field = new Field(null);
       }
@@ -326,10 +387,26 @@ public class SessionDataSet implements ISessionDataSet {
     }
 
     public Binary getBlob(int columnIndex) throws StatementExecutionException {
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
+      if (dataType == null) {
+        return null;
+      }
+
+      if (dataType.equals(TSDataType.OBJECT)) {
+        throw new StatementExecutionException(ISessionMessages.OBJECT_TYPE_ONLY_SUPPORT_GET_STRING);
+      }
       return ioTDBRpcDataSet.getBinary(columnIndex);
     }
 
     public Binary getBlob(String columnName) throws StatementExecutionException {
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(columnName);
+      if (dataType == null) {
+        return null;
+      }
+
+      if (dataType.equals(TSDataType.OBJECT)) {
+        throw new StatementExecutionException(ISessionMessages.OBJECT_TYPE_ONLY_SUPPORT_GET_STRING);
+      }
       return ioTDBRpcDataSet.getBinary(columnName);
     }
 

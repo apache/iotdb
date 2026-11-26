@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.commons.lang3.ArrayUtils;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,7 +31,7 @@ public class IntTVListTest {
 
   @Test
   public void testIntTVList1() {
-    IntTVList tvList = IntTVList.newList();
+    IntTVList tvList = IntTVList.newList(TSDataType.INT32);
     for (int i = 0; i < 1000; i++) {
       tvList.putInt(i, i);
     }
@@ -43,7 +44,7 @@ public class IntTVListTest {
 
   @Test
   public void testIntTVList2() {
-    IntTVList tvList = IntTVList.newList();
+    IntTVList tvList = IntTVList.newList(TSDataType.INT32);
     for (int i = 1000; i >= 0; i--) {
       tvList.putInt(i, i);
     }
@@ -56,7 +57,7 @@ public class IntTVListTest {
 
   @Test
   public void testPutIntsWithoutBitMap() {
-    IntTVList tvList = IntTVList.newList();
+    IntTVList tvList = IntTVList.newList(TSDataType.INT32);
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
@@ -77,7 +78,7 @@ public class IntTVListTest {
 
   @Test
   public void testPutIntsWithBitMap() {
-    IntTVList tvList = IntTVList.newList();
+    IntTVList tvList = IntTVList.newList(TSDataType.INT32);
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -108,7 +109,7 @@ public class IntTVListTest {
 
   @Test
   public void testClone() {
-    IntTVList tvList = IntTVList.newList();
+    IntTVList tvList = IntTVList.newList(TSDataType.INT32);
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);

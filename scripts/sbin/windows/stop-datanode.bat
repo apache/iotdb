@@ -62,7 +62,10 @@ if not defined dn_rpc_port (
 
 echo Check whether the rpc_port is used..., port is %dn_rpc_port%
 
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr :%dn_rpc_port% ') do (
+@REM Only stop the process listening on dn_rpc_port: other rows with this port belong to clients
+@REM connected to it (CLI, Session applications, ...) or to TIME_WAIT sockets (PID 0).
+@REM Listening sockets are matched by their foreign port 0 because the State column is localized.
+for /f "tokens=5" %%a in ('netstat /ano ^| findstr /c:":%dn_rpc_port% " ^| findstr /c:":0 "') do (
   taskkill /f /pid %%a
   echo Close DataNode, PID: %%a
 )

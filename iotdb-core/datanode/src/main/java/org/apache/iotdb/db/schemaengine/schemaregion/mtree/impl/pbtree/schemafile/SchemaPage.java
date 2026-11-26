@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 
@@ -106,7 +107,7 @@ public abstract class SchemaPage implements ISchemaPage {
   @Override
   public void flushPageToChannel(FileChannel channel) throws IOException {
     this.pageBuffer.clear();
-    channel.write(pageBuffer, SchemaFile.getPageAddress(pageIndex));
+    IOUtils.writeFully(channel, pageBuffer, SchemaFile.getPageAddress(pageIndex));
     dirtyFlag = false;
   }
 

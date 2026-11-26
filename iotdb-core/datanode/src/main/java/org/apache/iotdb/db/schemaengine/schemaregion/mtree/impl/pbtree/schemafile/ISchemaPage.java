@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -60,8 +61,7 @@ public interface ISchemaPage {
       case SchemaFileConfig.ALIAS_PAGE:
         return new AliasIndexPage(buffer);
       default:
-        throw new MetadataException(
-            "ByteBuffer is corrupted or set to a wrong position to load as a SchemaPage.");
+        throw new MetadataException(DataNodeSchemaMessages.BYTEBUFFER_CORRUPTED_FOR_SCHEMA_PAGE);
     }
   }
 

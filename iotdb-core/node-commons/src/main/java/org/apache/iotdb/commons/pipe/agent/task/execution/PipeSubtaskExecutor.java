@@ -22,11 +22,14 @@ package org.apache.iotdb.commons.pipe.agent.task.execution;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
+import org.apache.ratis.thirdparty.com.google.common.annotations.VisibleForTesting;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,11 +39,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
+
+  private static final long WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS = 60L;
 
   private static final ExecutorService globalSubtaskCallbackListeningExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -50,6 +58,7 @@ public abstract class PipeSubtaskExecutor {
 
   protected final WrappedThreadPoolExecutor underlyingThreadPool;
   protected final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
+  protected final ListeningScheduledExecutorService subtaskWorkerScheduledExecutor;
 
   private final Map<String, PipeSubtask> registeredIdSubtaskMapper;
 
@@ -70,6 +79,21 @@ public abstract class PipeSubtaskExecutor {
       final String workingThreadName,
       final @Nullable String callbackThreadName,
       final boolean disableLogInThreadPool) {
+    this(
+        corePoolSize,
+        workingThreadName,
+        callbackThreadName,
+        disableLogInThreadPool,
+        WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS);
+  }
+
+  @VisibleForTesting
+  protected PipeSubtaskExecutor(
+      final int corePoolSize,
+      final String workingThreadName,
+      final @Nullable String callbackThreadName,
+      final boolean disableLogInThreadPool,
+      final long workerThreadKeepAliveTimeInSeconds) {
     this.workingThreadName = workingThreadName;
     this.callbackThreadName =
         Objects.nonNull(callbackThreadName)
@@ -77,11 +101,18 @@ public abstract class PipeSubtaskExecutor {
             : ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName();
     underlyingThreadPool =
         (WrappedThreadPoolExecutor)
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, workingThreadName);
+            IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+                corePoolSize,
+                workerThreadKeepAliveTimeInSeconds,
+                TimeUnit.SECONDS,
+                workingThreadName);
     if (disableLogInThreadPool) {
       underlyingThreadPool.disableErrorLog();
     }
     subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(underlyingThreadPool);
+    final ScheduledExecutorService underlyingScheduledExecutor =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(workingThreadName + "-Scheduler");
+    subtaskWorkerScheduledExecutor = MoreExecutors.listeningDecorator(underlyingScheduledExecutor);
     subtaskCallbackListeningExecutor =
         Objects.nonNull(callbackThreadName)
             ? IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -98,13 +129,20 @@ public abstract class PipeSubtaskExecutor {
 
   public final synchronized void register(final PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
-      LOGGER.warn("The subtask {} is already registered.", subtask.getTaskID());
+      LOGGER.warn(PipeMessages.SUBTASK_ALREADY_REGISTERED, subtask.getDisplayTaskID());
       return;
     }
 
     registeredIdSubtaskMapper.put(subtask.getTaskID(), subtask);
     subtask.bindExecutors(
-        subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor, schedulerSupplier(this));
+        subtaskWorkerThreadPoolExecutor,
+        subtaskWorkerScheduledExecutor,
+        subtaskCallbackListeningExecutor,
+        schedulerSupplier(this));
+  }
+
+  private static String getSafeSubtaskStr(final String subtaskID) {
+    return subtaskID.replaceAll("password=[^,}]*", "password=******");
   }
 
   protected PipeSubtaskScheduler schedulerSupplier(final PipeSubtaskExecutor executor) {
@@ -113,26 +151,50 @@ public abstract class PipeSubtaskExecutor {
 
   public final synchronized void start(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
-      LOGGER.warn("The subtask {} is not registered.", subTaskID);
+      LOGGER.warn(PipeMessages.SUBTASK_NOT_REGISTERED, getSafeSubtaskStr(subTaskID));
       return;
     }
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
+    if (isShutdown()) {
+      // Fail fast before touching the "submitting self" state, otherwise start() may report a
+      // false success and the subtask will never be executed.
+      LOGGER.error(
+          PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID());
+      throw new RejectedExecutionException(
+          PipeMessages
+              .EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212);
+    }
+
     if (subtask.isSubmittingSelf()) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("The subtask {} is already running.", subTaskID);
+        LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, subtask.getDisplayTaskID());
       }
     } else {
-      subtask.allowSubmittingSelf();
-      subtask.submitSelf();
+      try {
+        subtask.allowSubmittingSelf();
+        subtask.submitSelf();
+      } catch (final RuntimeException e) {
+        // The submission may be rejected, e.g., because the underlying thread pool has been shut
+        // down. The "submitting self" state must be reverted, otherwise this and all the following
+        // start() calls would take the "already running" branch above and report a false success,
+        // leaving the subtask never executed until the node restarts.
+        subtask.disallowSubmittingSelf();
+        LOGGER.error(
+            PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID(), e);
+        throw e;
+      } catch (final Error e) {
+        subtask.disallowSubmittingSelf();
+        throw e;
+      }
       ++runningSubtaskNumber;
-      LOGGER.info("The subtask {} is started to submit self.", subTaskID);
+      LOGGER.info(PipeMessages.SUBTASK_STARTED, subtask.getDisplayTaskID());
     }
   }
 
   public final synchronized void stop(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
-      LOGGER.warn("The subtask {} is not registered.", subTaskID);
+      LOGGER.warn(PipeMessages.SUBTASK_NOT_REGISTERED, getSafeSubtaskStr(subTaskID));
       return;
     }
 
@@ -149,9 +211,9 @@ public abstract class PipeSubtaskExecutor {
     if (subtask != null) {
       try {
         subtask.close();
-        LOGGER.info("The subtask {} is closed successfully.", subTaskID);
+        LOGGER.info(PipeMessages.SUBTASK_CLOSED, subtask.getDisplayTaskID());
       } catch (final Exception e) {
-        LOGGER.error("Failed to close the subtask {}.", subTaskID, e);
+        LOGGER.error(PipeMessages.SUBTASK_CLOSE_FAILED, subtask.getDisplayTaskID(), e);
       }
     }
   }
@@ -164,6 +226,11 @@ public abstract class PipeSubtaskExecutor {
   @TestOnly
   public final int getRegisteredSubtaskNumber() {
     return registeredIdSubtaskMapper.size();
+  }
+
+  @TestOnly
+  public final int getWorkerThreadPoolSize() {
+    return underlyingThreadPool.getPoolSize();
   }
 
   /////////////////////// executor management  ///////////////////////
@@ -179,6 +246,7 @@ public abstract class PipeSubtaskExecutor {
     }
 
     subtaskWorkerThreadPoolExecutor.shutdown();
+    subtaskWorkerScheduledExecutor.shutdown();
     if (subtaskCallbackListeningExecutor != globalSubtaskCallbackListeningExecutor) {
       subtaskCallbackListeningExecutor.shutdown();
     }

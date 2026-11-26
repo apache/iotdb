@@ -21,6 +21,7 @@ package org.apache.iotdb.db.trigger.executor;
 
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
@@ -85,7 +86,7 @@ public class TriggerExecutor {
     } else {
       // !event.equals(triggerInformation.getEvent()) should not happen in normal case
       LOGGER.warn(
-          "Trigger {} was fired with wrong event {}",
+          DataNodeMiscMessages.MISC_LOG_TRIGGER_WAS_FIRED_WITH_WRONG_EVENT_43D89454,
           triggerInformation.getTriggerName(),
           triggerInformation.getEvent());
     }
@@ -100,8 +101,11 @@ public class TriggerExecutor {
       throws TriggerExecutionException {
     String errorMessage =
         String.format(
-                "Error occurred during executing Trigger(%s)#%s: %s, please check whether the implementation of Trigger is correct according to the trigger-api description.",
-                triggerInformation.getTriggerName(), methodName, System.lineSeparator())
+                DataNodeMiscMessages
+                    .EXCEPTION_ERROR_OCCURRED_DURING_EXECUTING_TRIGGER_ARG_ARG_ARG_PLEASE_CHECK_WHETHER_THE_IMPLEMENTATION_OF_TRIGGER_IS_CORRECT_ACCORDING_TO_THE_TRIGGER_API_DESCRIPTION_98708501,
+                triggerInformation.getTriggerName(),
+                methodName,
+                System.lineSeparator())
             + t;
     LOGGER.warn(errorMessage);
     throw new TriggerExecutionException(errorMessage);

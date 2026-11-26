@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBAirGapSink;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV1Req;
@@ -76,7 +77,9 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
         Boolean.toString(shouldReceiverConvertOnTypeMismatch));
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID, userId);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, cliHostname);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
@@ -84,6 +87,9 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
         Boolean.toString(shouldMarkAsPipeRequest));
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, Boolean.toString(skipIfNoPrivileges));
+    appendPipeInfoToHandshakeParams(params);
 
     return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
@@ -102,7 +108,7 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
   protected byte[] getTransferSingleFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The config region air gap connector does not support transferring single file piece bytes.");
+        ManagerMessages.THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING);
   }
 
   @Override
@@ -114,13 +120,13 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBConfigRegionAirGapConnector can't transfer TabletInsertionEvent.");
+        ManagerMessages.IOTDBCONFIGREGIONAIRGAPCONNECTOR_CAN_T_TRANSFER_TABLETINSERTIONEVENT);
   }
 
   @Override
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBConfigRegionAirGapConnector can't transfer TsFileInsertionEvent.");
+        ManagerMessages.IOTDBCONFIGREGIONAIRGAPCONNECTOR_CAN_T_TRANSFER_TSFILEINSERTIONEVENT);
   }
 
   @Override
@@ -135,7 +141,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
         doTransferWrapper(socket, (PipeConfigRegionSnapshotEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
-            "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.",
+            ManagerMessages
+                .IOTDBCONFIGREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
             event);
       }
     } catch (final IOException e) {
@@ -143,8 +150,9 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
 
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer event %s, because %s.",
-              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
+              ManagerMessages.NETWORK_ERROR_WHEN_TRANSFER_EVENT_BECAUSE,
+              ((EnrichedEvent) event).coreReportMessage(),
+              e.getMessage()),
           e);
     }
   }
@@ -178,8 +186,10 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
             pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
       final String errorMessage =
           String.format(
-              "Transfer config region write plan %s error. Socket: %s.",
-              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), socket);
+              ManagerMessages
+                  .MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_SOCKET_ARG_543F8727,
+              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(),
+              socket);
       // Send handshake because we don't know whether the receiver side configNode
       // has set up a new one
       sendHandshakeReq(socket);
@@ -187,7 +197,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeConfigRegionWritePlanEvent.toString());
+          pipeConfigRegionWritePlanEvent.toString(),
+          true);
     }
   }
 
@@ -237,9 +248,13 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
             Objects.nonNull(templateFile) ? templateFile.getName() : null,
             Objects.nonNull(templateFile) ? templateFile.length() : 0,
             pipeConfigRegionSnapshotEvent.getFileType(),
-            pipeConfigRegionSnapshotEvent.toSealTypeString()))) {
+            pipeConfigRegionSnapshotEvent.toSealTypeString(),
+            pipeConfigRegionSnapshotEvent.getAuthUserName()))) {
       final String errorMessage =
-          String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
+          String.format(
+              ManagerMessages.MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_ARG_ERROR_SOCKET_ARG_42098622,
+              snapshot,
+              socket);
       // Send handshake because we don't know whether the receiver side configNode
       // has set up a new one
       sendHandshakeReq(socket);
@@ -247,9 +262,10 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeConfigRegionSnapshotEvent.toString());
+          pipeConfigRegionSnapshotEvent.toString(),
+          true);
     } else {
-      LOGGER.info("Successfully transferred config region snapshot {}.", snapshot);
+      LOGGER.info(ManagerMessages.SUCCESSFULLY_TRANSFERRED_CONFIG_REGION_SNAPSHOT, snapshot);
     }
   }
 }

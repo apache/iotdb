@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.ratis.protocol.RaftGroupId;
@@ -49,6 +50,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -68,16 +70,16 @@ class DiskGuardian {
    */
   static final class RaftLogSummary {
 
-    /** Whether the path denotes an open segment under active writing progress */
-    private static final Predicate<Path> isOpenSegment =
-        p -> p.toFile().getName().startsWith("log_inprogress");
+    /** Open and closed log segment names, following Ratis' naming convention. */
+    private static final Pattern LOG_SEGMENT_PATTERN =
+        Pattern.compile("log_(?:\\d+-\\d+|inprogress_\\d+(?:\\..*)?)");
 
     private final RaftGroupId gid;
     private final File raftLogStorageRoot;
     private long totalSize;
     private Set<Path> logFiles;
 
-    private RaftLogSummary(RaftGroupId gid, File raftLogStorageRoot) {
+    RaftLogSummary(RaftGroupId gid, File raftLogStorageRoot) {
       this.gid = gid;
       this.raftLogStorageRoot = raftLogStorageRoot;
       this.totalSize = 0;
@@ -90,29 +92,26 @@ class DiskGuardian {
 
     void updateNow() {
       try (final Stream<Path> files = Files.list(raftLogStorageRoot.toPath())) {
-        final Set<Path> latest = files.filter(isOpenSegment).collect(Collectors.toSet());
-        this.totalSize += diff(logFiles, latest);
+        final Set<Path> latest =
+            files
+                .filter(p -> LOG_SEGMENT_PATTERN.matcher(p.getFileName().toString()).matches())
+                .collect(Collectors.toSet());
+        // An open segment can grow or be recreated under the same path between scans.
+        this.totalSize = latest.stream().mapToLong(p -> p.toFile().length()).sum();
         this.logFiles = latest;
       } catch (IOException e) {
         // keep the files unchanged
-        logger.warn("{}: Error caught when listing files for {} at {}:", this, gid, e);
+        logger.warn(RatisMessages.ERROR_LISTING_FILES, this, gid, e);
       }
-    }
-
-    private static long diff(Set<Path> old, Set<Path> latest) {
-      final long incremental = totalSize(latest.stream().filter(p -> !old.contains(p)));
-      final long decremental = totalSize(old.stream().filter(p -> !latest.contains(p)));
-      return incremental - decremental;
-    }
-
-    private static long totalSize(Stream<Path> files) {
-      return files.mapToLong(p -> p.toFile().length()).sum();
     }
 
     @Override
     public String toString() {
       return String.format(
-          "[Raft Log Summary]: group=%s, total size=%d, files=%s", gid, totalSize, logFiles);
+          RatisMessages.EXCEPTION_RAFT_LOG_SUMMARY_GROUP_ARG_TOTAL_SIZE_ARG_FILES_ARG_FB26547E,
+          gid,
+          totalSize,
+          logFiles);
     }
   }
 
@@ -184,14 +183,11 @@ class DiskGuardian {
                 .triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId), false);
             final boolean flagCleared = snapshotFlag.get(groupId).compareAndSet(true, false);
             if (!flagCleared) {
-              logger.info(
-                  "{}: clear snapshot flag failed for group {}, please check the related implementation",
-                  this,
-                  groupId);
+              logger.info(RatisMessages.CLEAR_SNAPSHOT_FLAG_FAILED, this, groupId);
             }
           } catch (ConsensusException e) {
             logger.info(
-                "{} take snapshot failed for group {} due to {}. Disk file status {}",
+                RatisMessages.TAKE_SNAPSHOT_FAILED,
                 this,
                 groupId,
                 e,

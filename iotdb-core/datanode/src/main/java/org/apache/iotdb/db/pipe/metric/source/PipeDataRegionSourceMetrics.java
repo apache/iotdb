@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.source;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -30,8 +31,7 @@ import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
     for (final String taskID : taskIDs) {
@@ -181,14 +181,11 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
-    for (final String taskID : taskIDs) {
-      deregister(taskID);
-    }
-    if (!extractorMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe extractor metrics, extractor map not empty");
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the extractors registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -285,11 +282,12 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
         String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
+    recentProcessedTsFileEpochStateMap.remove(taskID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull final IoTDBDataRegionSource extractor) {
+  public synchronized void register(final IoTDBDataRegionSource extractor) {
     final String taskID = extractor.getTaskID();
     extractorMap.putIfAbsent(taskID, extractor);
     if (Objects.nonNull(metricService)) {
@@ -297,11 +295,9 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!extractorMap.containsKey(taskID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe data region extractor metrics, IoTDBDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_EXTRACTOR, taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -316,9 +312,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe data region extractor tablet event, IoTDBDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_EXTRACTOR_1, taskID);
       return;
     }
     rate.mark();
@@ -330,9 +324,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe data region extractor tsfile event, IoTDBDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_EXTRACTOR_2, taskID);
       return;
     }
     rate.mark();
@@ -344,9 +336,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
     final Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe data region extractor heartbeat event, IoTDBDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_EXTRACTOR, taskID);
       return;
     }
     rate.mark();
@@ -359,9 +349,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
     final Gauge gauge = recentProcessedTsFileEpochStateMap.get(taskID);
     if (gauge == null) {
-      LOGGER.info(
-          "Failed to set recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_SET_RECENT_PROCESSED_TSFILE_EPOCH, taskID);
       return;
     }
     gauge.set(state.getId());

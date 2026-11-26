@@ -25,26 +25,33 @@ import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 
+import org.awaitility.Awaitility;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.sql.*;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Date;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /** Tests that may not be satisfied with the default cluster settings. */
@@ -64,22 +71,42 @@ public class IoTDBCustomizedClusterIT {
     testRepeatedlyRestartWholeCluster(
         (s, i, env) -> {
           if (i != 0) {
-            ResultSet resultSet = s.executeQuery("SELECT last s1 FROM root.**");
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            assertEquals(4, metaData.getColumnCount());
-            int cnt = 0;
-            while (resultSet.next()) {
-              cnt++;
-              StringBuilder result = new StringBuilder();
-              for (int j = 0; j < metaData.getColumnCount(); j++) {
-                result
-                    .append(metaData.getColumnName(j + 1))
-                    .append(":")
-                    .append(resultSet.getString(j + 1))
-                    .append(",");
-              }
-              System.out.println(result);
-            }
+            // This query is fanned out to every DataNode and the results are compared across
+            // replicas. Right after a restart the last cache on each coordinator is reloaded
+            // lazily, so the cross-replica comparison may transiently observe an inconsistent
+            // result until the cluster converges. ORDER BY TIMESERIES makes the row order
+            // deterministic across coordinators (the root cause of the observed flakiness), and the
+            // retry tolerates the brief convergence window (e.g. a replica that has not finished
+            // recovering yet) without masking a genuine, persistent inconsistency.
+            //
+            // ignoreExceptionsMatching(InconsistentDataException) is required: a mismatch surfaces
+            // as InconsistentDataException (a RuntimeException) thrown from getString(), and
+            // untilAsserted() only retries on AssertionError by default, so without it the retry
+            // would not actually cover this failure. We match only InconsistentDataException so a
+            // genuine error (e.g. a real SQLException) still fails fast instead of being retried.
+            Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
+                .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
+                .untilAsserted(
+                    () -> {
+                      try (ResultSet resultSet =
+                          s.executeQuery("SELECT last s1 FROM root.** ORDER BY TIMESERIES ASC")) {
+                        ResultSetMetaData metaData = resultSet.getMetaData();
+                        assertEquals(4, metaData.getColumnCount());
+                        while (resultSet.next()) {
+                          StringBuilder result = new StringBuilder();
+                          for (int j = 0; j < metaData.getColumnCount(); j++) {
+                            result
+                                .append(metaData.getColumnName(j + 1))
+                                .append(":")
+                                .append(resultSet.getString(j + 1))
+                                .append(",");
+                          }
+                          System.out.println(result);
+                        }
+                      }
+                    });
           }
           s.execute("INSERT INTO root.db1.d1 (time, s1) VALUES (1, 1)");
           s.execute("INSERT INTO root.db2.d1 (time, s1) VALUES (1, 1)");
@@ -179,6 +206,7 @@ public class IoTDBCustomizedClusterIT {
    * submitted by the ShutdownHook cannot be executed. This test ensures that this blocking is
    * fixed.
    */
+  @Category(DailyIT.class)
   @Test
   public void testWalThrottleStuck()
       throws SQLException,
@@ -271,21 +299,43 @@ public class IoTDBCustomizedClusterIT {
     }
   }
 
+  // Start a valid 1C1D cluster, then give only the DataNode an unsupported persisted consensus
+  // protocol and verify that the DataNode exits with ILLEGAL_PARAMETER.
+  @Category(DailyIT.class)
   @Test
-  public void testStartWithWrongConfig() throws InterruptedException {
+  public void testStartWithWrongConfig() throws Exception {
     SimpleEnv simpleEnv = new SimpleEnv();
-    simpleEnv
-        .getConfig()
-        .getCommonConfig()
-        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensusV1");
     try {
       simpleEnv.initClusterEnvironment(1, 1);
-    } catch (AssertionError e) {
-      // ignore
+      DataNodeWrapper dataNodeWrapper = simpleEnv.getDataNodeWrapper(0);
+      Process initialProcess = dataNodeWrapper.getInstance();
+      dataNodeWrapper.stop();
+      assertTrue(
+          "DataNode did not stop before its persisted consensus protocol was changed",
+          initialProcess.waitFor(20, TimeUnit.SECONDS));
+
+      File systemPropertiesFile = new File(dataNodeWrapper.getSystemDir(), "system.properties");
+      Properties systemProperties = new Properties();
+      try (FileInputStream input = new FileInputStream(systemPropertiesFile)) {
+        systemProperties.load(input);
+      }
+      systemProperties.setProperty(
+          "data_region_consensus_protocol", "org.apache.iotdb.consensus.iot.IoTConsensusV1");
+      try (FileOutputStream output = new FileOutputStream(systemPropertiesFile)) {
+        systemProperties.store(output, null);
+      }
+
+      dataNodeWrapper.start();
+      Process dataNodeProcess = dataNodeWrapper.getInstance();
+      assertTrue(
+          "DataNode did not exit after rejecting the invalid consensus protocol",
+          dataNodeProcess.waitFor(20, TimeUnit.SECONDS));
+      // POSIX systems keep only the low 8 bits of an exit status.
+      assertEquals(
+          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode() & 0xFF,
+          dataNodeProcess.exitValue() & 0xFF);
+    } finally {
+      simpleEnv.cleanClusterEnvironment();
     }
-    simpleEnv.getDataNodeWrapper(0).getInstance().waitFor(20, TimeUnit.SECONDS);
-    assertEquals(
-        TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(),
-        simpleEnv.getDataNodeWrapper(0).getInstance().exitValue());
   }
 }

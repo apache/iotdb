@@ -34,6 +34,8 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -51,10 +53,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -303,25 +304,37 @@ public class Util {
     return new ISchemaFetcher() {
       @Override
       public ISchemaTree fetchSchema(
-          PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+          PathPatternTree patternTree,
+          boolean withTemplate,
+          MPPQueryContext context,
+          boolean canSeeAuditDB) {
         return ANALYSIS.getSchemaTree();
       }
 
       @Override
       public ISchemaTree fetchRawSchemaInDeviceLevel(
-          PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+          PathPatternTree patternTree,
+          PathPatternTree authorityScope,
+          MPPQueryContext context,
+          boolean canSeeAuditDB) {
         return ANALYSIS.getSchemaTree();
       }
 
       @Override
       public ISchemaTree fetchRawSchemaInMeasurementLevel(
-          PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+          PathPatternTree patternTree,
+          PathPatternTree authorityScope,
+          MPPQueryContext context,
+          boolean canSeeAuditDB) {
         return ANALYSIS.getSchemaTree();
       }
 
       @Override
       public ISchemaTree fetchSchemaWithTags(
-          PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+          PathPatternTree patternTree,
+          boolean withTemplate,
+          MPPQueryContext context,
+          boolean canSeeAuditDB) {
         return ANALYSIS.getSchemaTree();
       }
 
@@ -378,6 +391,11 @@ public class Util {
       }
 
       @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
+        return ANALYSIS.getSchemaPartitionInfo();
+      }
+
+      @Override
       public SchemaPartition getOrCreateSchemaPartition(
           PathPatternTree patternTree, String userName) {
         return ANALYSIS.getSchemaPartitionInfo();
@@ -390,8 +408,26 @@ public class Util {
       }
 
       @Override
+      public DataPartition getDataPartition(
+          String database,
+          DeviceEntryDataSet dataSet,
+          List<TTimePartitionSlot> timePartitionSlots) {
+        return ANALYSIS.getDataPartitionInfo();
+      }
+
+      @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
           Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return ANALYSIS.getDataPartitionInfo();
+      }
+
+      @Override
+      public DataPartition getDataPartitionWithUnclosedTimeRange(
+          String database,
+          DeviceEntryDataSet dataSet,
+          List<TTimePartitionSlot> timePartitionSlots,
+          boolean needLeftAll,
+          boolean needRightAll) {
         return ANALYSIS.getDataPartitionInfo();
       }
 
@@ -409,7 +445,10 @@ public class Util {
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+          PathPatternTree patternTree,
+          PathPatternTree scope,
+          Integer level,
+          boolean canSeeAuditDB) {
         return null;
       }
 

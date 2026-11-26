@@ -24,12 +24,17 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.view.ViewType;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class ViewTypeFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ViewTypeFilter.class);
 
   private final ViewType viewType;
 
@@ -80,5 +85,10 @@ public class ViewTypeFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(viewType);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

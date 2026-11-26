@@ -23,8 +23,9 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.Map;
 import java.util.Objects;
@@ -37,6 +38,9 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   private final SchemaFilter schemaFilter;
   private final boolean needViewDetail;
 
+  // order-by-timeseries pushdown ordering inside a single SchemaRegion
+  private final Ordering timeseriesOrdering;
+
   public ShowTimeSeriesPlanImpl(
       PartialPath path,
       Map<Integer, Template> relatedTemplate,
@@ -45,11 +49,13 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
       boolean isPrefixMatch,
       SchemaFilter schemaFilter,
       boolean needViewDetail,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      Ordering timeseriesOrdering) {
     super(path, limit, offset, isPrefixMatch, scope);
     this.relatedTemplate = relatedTemplate;
     this.schemaFilter = schemaFilter;
     this.needViewDetail = needViewDetail;
+    this.timeseriesOrdering = timeseriesOrdering;
   }
 
   @Override
@@ -68,17 +74,23 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   }
 
   @Override
+  public Ordering getTimeseriesOrdering() {
+    return timeseriesOrdering;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     ShowTimeSeriesPlanImpl that = (ShowTimeSeriesPlanImpl) o;
-    return Objects.equals(relatedTemplate, that.relatedTemplate)
+    return Objects.equals(timeseriesOrdering, that.timeseriesOrdering)
+        && Objects.equals(relatedTemplate, that.relatedTemplate)
         && Objects.equals(schemaFilter, that.schemaFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), relatedTemplate, schemaFilter);
+    return Objects.hash(super.hashCode(), relatedTemplate, schemaFilter, timeseriesOrdering);
   }
 }

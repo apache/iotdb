@@ -19,16 +19,19 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate;
 
+import org.apache.iotdb.calc.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
@@ -42,8 +45,8 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.AbstractOperatorProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -58,17 +61,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -76,11 +77,13 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -115,6 +118,7 @@ public class AggregateProcessor implements PipeProcessor {
   private PipeTaskMeta pipeTaskMeta;
   private long outputMaxDelayMilliseconds;
   private long outputMinReportIntervalMilliseconds;
+  private String outputDatabase;
   private String outputDatabaseWithPathSeparator;
 
   private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
@@ -144,34 +148,87 @@ public class AggregateProcessor implements PipeProcessor {
     validator
         .validate(
             arg -> !((String) arg).isEmpty(),
-            String.format("The parameter %s must not be empty.", PROCESSOR_OPERATORS_KEY),
+            String.format(
+                DataNodePipeMessages.EXCEPTION_THE_PARAMETER_ARG_MUST_NOT_BE_EMPTY_CDF15003,
+                PROCESSOR_OPERATORS_KEY),
+            parameters.getStringOrDefault(
+                PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE))
+        .validate(
+            arg -> areUniqueOperatorNames((String) arg),
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_S_IS_INVALID_BC22CF92,
+                parameters.getStringOrDefault(
+                    PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE)),
             parameters.getStringOrDefault(
                 PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE))
         .validate(
             arg -> !((String) arg).isEmpty(),
-            String.format("The parameter %s must not be empty.", PROCESSOR_WINDOWING_STRATEGY_KEY),
+            String.format(
+                DataNodePipeMessages.EXCEPTION_THE_PARAMETER_ARG_MUST_NOT_BE_EMPTY_CDF15003,
+                PROCESSOR_WINDOWING_STRATEGY_KEY),
             parameters.getStringOrDefault(
                 PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE))
         .validate(
             arg -> ((String) arg).isEmpty() || ((String) arg).startsWith("root."),
             String.format(
-                "The output database %s shall start with root.",
+                DataNodePipeMessages.MESSAGE_THE_OUTPUT_DATABASE_ARG_SHALL_START_WITH_ROOT_54921196,
                 parameters.getStringOrDefault(
                     PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE)),
             parameters.getStringOrDefault(
                 PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE))
         .validate(
             arg ->
-                ((String) arg).isEmpty()
-                    || Arrays.stream(((String) arg).replace(" ", "").split(","))
-                        .allMatch(this::isLegalMeasurement),
+                areLegalOutputMeasurements(
+                    (String) arg,
+                    parameters.getStringOrDefault(
+                        PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE)),
             String.format(
-                "The output measurements %s contains illegal measurements, the measurements must be the last level of a legal path",
+                DataNodePipeMessages
+                    .MESSAGE_THE_OUTPUT_MEASUREMENTS_ARG_CONTAINS_ILLEGAL_MEASUREMENTS_THE_MEASUREMENTS_MUST_BE_THE_LAST_LEVEL_OF_A_LEGAL_PATH_793FA8AE,
                 parameters.getStringOrDefault(
                     PROCESSOR_OUTPUT_MEASUREMENTS_KEY,
                     PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE)),
             parameters.getStringOrDefault(
                 PROCESSOR_OUTPUT_MEASUREMENTS_KEY, PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE));
+  }
+
+  private boolean areUniqueOperatorNames(final String operatorString) {
+    final String[] operatorNames = operatorString.replace(" ", "").split(",", -1);
+    final Set<String> uniqueOperatorNames = new HashSet<>();
+    return Arrays.stream(operatorNames)
+        .allMatch(
+            operatorName ->
+                !operatorName.isEmpty()
+                    && uniqueOperatorNames.add(operatorName.toLowerCase(Locale.ROOT)));
+  }
+
+  private boolean areLegalOutputMeasurements(
+      final String outputMeasurementString, final String operatorString) {
+    if (outputMeasurementString.isEmpty()) {
+      return true;
+    }
+
+    final String[] outputMeasurementNames =
+        Arrays.stream(outputMeasurementString.replace(" ", "").split(",", -1))
+            .toArray(String[]::new);
+    final String[] operatorNames = operatorString.replace(" ", "").split(",", -1);
+    if (outputMeasurementNames.length > operatorNames.length) {
+      return false;
+    }
+
+    final Set<String> uniqueOutputMeasurementNames = new HashSet<>();
+    for (int index = 0; index < operatorNames.length; ++index) {
+      final String outputMeasurementName =
+          index < outputMeasurementNames.length
+              ? outputMeasurementNames[index]
+              : operatorNames[index];
+      if ((index < outputMeasurementNames.length && !isLegalMeasurement(outputMeasurementName))
+          || !uniqueOutputMeasurementNames.add(outputMeasurementName)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private boolean isLegalMeasurement(final String measurement) {
@@ -219,13 +276,15 @@ public class AggregateProcessor implements PipeProcessor {
     // The output max delay milliseconds must be set to at least 1
     // to guarantee the correctness of the CAS in last receive time
     outputMaxDelayMilliseconds =
-        outputMaxDelaySeconds < 0 ? Long.MAX_VALUE : Math.max(outputMaxDelaySeconds * 1000, 1);
+        outputMaxDelaySeconds < 0
+            ? Long.MAX_VALUE
+            : Math.max(secondsToMilliseconds(outputMaxDelaySeconds), 1);
     outputMinReportIntervalMilliseconds =
-        parameters.getLongOrDefault(
+        secondsToMilliseconds(
+            parameters.getLongOrDefault(
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
-                PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
-            * 1000;
-    final String outputDatabase =
+                PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE));
+    outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
     outputDatabaseWithPathSeparator =
@@ -253,10 +312,10 @@ public class AggregateProcessor implements PipeProcessor {
     for (int i = 0; i < operatorNameList.size(); ++i) {
       if (i < outputMeasurementNameList.size()) {
         aggregatorName2OutputNameMap.put(
-            operatorNameList.get(i).toLowerCase(), outputMeasurementNameList.get(i));
+            operatorNameList.get(i).toLowerCase(Locale.ROOT), outputMeasurementNameList.get(i));
       } else {
         aggregatorName2OutputNameMap.put(
-            operatorNameList.get(i).toLowerCase(), operatorNameList.get(i));
+            operatorNameList.get(i).toLowerCase(Locale.ROOT), operatorNameList.get(i));
       }
     }
 
@@ -274,11 +333,13 @@ public class AggregateProcessor implements PipeProcessor {
       operatorProcessor.getAggregatorOperatorSet().stream()
           .filter(
               operator ->
-                  aggregatorName2OutputNameMap.containsKey(operator.getName().toLowerCase()))
+                  aggregatorName2OutputNameMap.containsKey(
+                      operator.getName().toLowerCase(Locale.ROOT)))
           .forEach(
               operator -> {
                 outputName2OperatorMap.put(
-                    aggregatorName2OutputNameMap.get(operator.getName().toLowerCase()), operator);
+                    aggregatorName2OutputNameMap.get(operator.getName().toLowerCase(Locale.ROOT)),
+                    operator);
                 declaredIntermediateResultSet.addAll(operator.getDeclaredIntermediateValueNames());
               });
 
@@ -297,7 +358,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!aggregatorName2OutputNameMap.isEmpty()) {
       throw new PipeException(
           String.format(
-              "The aggregator and output name %s is invalid.", aggregatorName2OutputNameMap));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_S_IS_INVALID_BC22CF92,
+              aggregatorName2OutputNameMap));
     }
 
     intermediateResultName2OperatorSupplierMap.keySet().retainAll(declaredIntermediateResultSet);
@@ -305,7 +368,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!declaredIntermediateResultSet.isEmpty()) {
       throw new PipeException(
           String.format(
-              "The needed intermediate values %s are not defined.", declaredIntermediateResultSet));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_NEEDED_INTERMEDIATE_VALUES_S_ARE_NOT_DEFINED_3FF0C52D,
+              declaredIntermediateResultSet));
     }
 
     // Set up column name strings
@@ -324,7 +389,10 @@ public class AggregateProcessor implements PipeProcessor {
         agent.getConfiguredProcessor(processorName, parameters, configuration);
     if (!(windowProcessor instanceof AbstractWindowingProcessor)) {
       throw new PipeException(
-          String.format("The processor %s is not a windowing processor.", processorName));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_PROCESSOR_S_IS_NOT_A_WINDOWING_PROCESSOR_EA5B59BA,
+              processorName));
     }
     windowingProcessor = (AbstractWindowingProcessor) windowProcessor;
 
@@ -341,17 +409,15 @@ public class AggregateProcessor implements PipeProcessor {
 
     // Restore window state
     final ProgressIndex index = pipeTaskMeta.getProgressIndex();
-    if (index == MinimumProgressIndex.INSTANCE) {
+    if (Objects.isNull(index) || index == MinimumProgressIndex.INSTANCE) {
       return;
     }
-    if (!(index instanceof TimeWindowStateProgressIndex)) {
-      throw new PipeException(
-          String.format(
-              "The aggregate processor does not support progressIndexType %s", index.getType()));
-    }
-
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
-        (TimeWindowStateProgressIndex) index;
+        index.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
+    // A pipe altered from another processor may not have window state yet.
+    if (Objects.isNull(timeWindowStateProgressIndex)) {
+      return;
+    }
     for (final Map.Entry<String, Pair<Long, ByteBuffer>> entry :
         timeWindowStateProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
       final AtomicReference<TimeSeriesRuntimeState> stateReference =
@@ -370,7 +436,8 @@ public class AggregateProcessor implements PipeProcessor {
         try {
           stateReference.get().restoreTimestampAndWindows(entry.getValue());
         } catch (final IOException e) {
-          throw new PipeException("Encountered exception when deserializing from PipeTaskMeta", e);
+          throw new PipeException(
+              DataNodePipeMessages.ENCOUNTERED_EXCEPTION_WHEN_DESERIALIZING_FROM_PIPETASKMETA, e);
         }
       }
     }
@@ -425,6 +492,8 @@ public class AggregateProcessor implements PipeProcessor {
       final Row row, final RowCollector rowCollector, final AtomicReference<Exception> exception) {
     final Map<String, Pair<Long, ByteBuffer>> resultMap = new HashMap<>();
 
+    resetOutputDatabaseForGeneratedEvent(rowCollector);
+
     final long timestamp = row.getTime();
     for (int index = 0, size = row.size(); index < size; ++index) {
       // Do not calculate null values
@@ -438,7 +507,7 @@ public class AggregateProcessor implements PipeProcessor {
       final String timeSeries =
           (outputDatabaseWithPathSeparator.isEmpty()
                   ? row.getDeviceId()
-                  : row.getDeviceId().replaceFirst(databaseWithPathSeparator, ""))
+                  : stripDatabasePrefix(row.getDeviceId(), databaseWithPathSeparator))
               + TsFileConstant.PATH_SEPARATOR
               + row.getColumnName(index);
 
@@ -459,53 +528,7 @@ public class AggregateProcessor implements PipeProcessor {
       synchronized (stateReference) {
         final TimeSeriesRuntimeState state = stateReference.get();
         try {
-          switch (row.getDataType(index)) {
-            case BOOLEAN:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getBoolean(index), outputMinReportIntervalMilliseconds);
-              break;
-            case INT32:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getInt(index), outputMinReportIntervalMilliseconds);
-              break;
-            case DATE:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getDate(index), outputMinReportIntervalMilliseconds);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getLong(index), outputMinReportIntervalMilliseconds);
-              break;
-            case FLOAT:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getFloat(index), outputMinReportIntervalMilliseconds);
-              break;
-            case DOUBLE:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getDouble(index), outputMinReportIntervalMilliseconds);
-              break;
-            case TEXT:
-            case STRING:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getString(index), outputMinReportIntervalMilliseconds);
-              break;
-            case BLOB:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getBinary(index), outputMinReportIntervalMilliseconds);
-              break;
-            default:
-              throw new UnsupportedOperationException(
-                  String.format("The type %s is not supported", row.getDataType(index)));
-          }
+          result = state.updateWindows(timestamp, row, index, outputMinReportIntervalMilliseconds);
           if (Objects.nonNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
             if (Objects.nonNull(result.getRight())) {
@@ -524,30 +547,29 @@ public class AggregateProcessor implements PipeProcessor {
   public void process(
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
-    try {
-      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-        final AtomicReference<Exception> ex = new AtomicReference<>();
-        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-            .consumeTabletInsertionEventsWithRetry(
-                event -> {
-                  try {
-                    process(event, eventCollector);
-                  } catch (Exception e) {
-                    ex.set(e);
-                  }
-                },
-                "AggregateProcessor::process");
-        if (ex.get() != null) {
-          throw ex.get();
-        }
-      } else {
+    if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+          .consumeTabletInsertionEventsWithRetry(
+              event -> {
+                try {
+                  process(event, eventCollector);
+                } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                  throw e;
+                } catch (Exception e) {
+                  throw new PipeException(e.getMessage(), e);
+                }
+              },
+              "AggregateProcessor::process");
+      tsFileInsertionEvent.close();
+    } else {
+      try {
         for (final TabletInsertionEvent tabletInsertionEvent :
             tsFileInsertionEvent.toTabletInsertionEvents()) {
           process(tabletInsertionEvent, eventCollector);
         }
+      } finally {
+        tsFileInsertionEvent.close();
       }
-    } finally {
-      tsFileInsertionEvent.close();
     }
     // The timeProgressIndex shall only be reported by the output events
     // whose progressIndex is bounded with tablet events
@@ -577,6 +599,7 @@ public class AggregateProcessor implements PipeProcessor {
                 synchronized (stateReference) {
                   final PipeRowCollector rowCollector =
                       new PipeRowCollector(pipeTaskMeta, null, dataBaseName, isTableModel);
+                  resetOutputDatabaseForGeneratedEvent(rowCollector);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
@@ -609,6 +632,23 @@ public class AggregateProcessor implements PipeProcessor {
     eventCollector.collect(event);
   }
 
+  private void resetOutputDatabaseForGeneratedEvent(final RowCollector rowCollector) {
+    if (!outputDatabase.isEmpty() && rowCollector instanceof PipeRowCollector) {
+      ((PipeRowCollector) rowCollector)
+          .resetDatabaseInfo(outputDatabase, Boolean.FALSE, null, outputDatabase);
+    }
+  }
+
+  static String stripDatabasePrefix(final String deviceId, final String databaseWithPathSeparator) {
+    return deviceId.startsWith(databaseWithPathSeparator)
+        ? deviceId.substring(databaseWithPathSeparator.length())
+        : deviceId;
+  }
+
+  static long secondsToMilliseconds(final long seconds) {
+    return TimeUnit.SECONDS.toMillis(seconds);
+  }
+
   /**
    * Collect {@link WindowOutput}s of a single timeSeries in one turn. The {@link TSDataType}s shall
    * be the same because the {@link AggregatedResultOperator}s shall return the same value for the
@@ -624,23 +664,12 @@ public class AggregateProcessor implements PipeProcessor {
     if (Objects.isNull(outputs) || outputs.isEmpty()) {
       return;
     }
-    // Sort and same timestamps removal
-    outputs.sort(Comparator.comparingLong(WindowOutput::getTimestamp));
-
-    final AtomicLong lastValue = new AtomicLong(Long.MIN_VALUE);
-    final List<WindowOutput> distinctOutputs = new ArrayList<>();
-    outputs.forEach(
-        output -> {
-          final long timeStamp = output.getTimestamp();
-          if (timeStamp != lastValue.get()) {
-            lastValue.set(timeStamp);
-            distinctOutputs.add(output);
-          }
-        });
+    final List<WindowOutput> distinctOutputs = sortAndDeduplicateOutputs(outputs);
 
     final MeasurementSchema[] measurementSchemaList =
         new MeasurementSchema[columnNameStringList.length];
     final TSDataType[] valueColumnTypes = new TSDataType[columnNameStringList.length];
+    final Type[] valueTypes = new Type[columnNameStringList.length];
     final Object[] valueColumns = new Object[columnNameStringList.length];
     final BitMap[] bitMaps = new BitMap[columnNameStringList.length];
 
@@ -663,86 +692,19 @@ public class AggregateProcessor implements PipeProcessor {
             measurementSchemaList[columnIndex] =
                 new MeasurementSchema(
                     columnNameStringList[columnIndex], valueColumnTypes[columnIndex]);
-            switch (valueColumnTypes[columnIndex]) {
-              case BOOLEAN:
-                valueColumns[columnIndex] = new boolean[distinctOutputs.size()];
-                break;
-              case INT32:
-                valueColumns[columnIndex] = new int[distinctOutputs.size()];
-                break;
-              case DATE:
-                valueColumns[columnIndex] = new LocalDate[distinctOutputs.size()];
-                break;
-              case INT64:
-              case TIMESTAMP:
-                valueColumns[columnIndex] = new long[distinctOutputs.size()];
-                break;
-              case FLOAT:
-                valueColumns[columnIndex] = new float[distinctOutputs.size()];
-                break;
-              case DOUBLE:
-                valueColumns[columnIndex] = new double[distinctOutputs.size()];
-                break;
-              case TEXT:
-              case BLOB:
-              case STRING:
-                valueColumns[columnIndex] = new Binary[distinctOutputs.size()];
-                break;
-              default:
-                throw new UnsupportedOperationException(
-                    String.format(
-                        "The output tablet does not support column type %s",
-                        valueColumnTypes[columnIndex]));
-            }
+            valueTypes[columnIndex] = getOutputTabletType(valueColumnTypes[columnIndex]);
+            valueColumns[columnIndex] =
+                TypeServices.Pipe.AGGREGATE_TABLET_COLUMN_ALLOCATOR_SERVICE
+                    .call(valueTypes[columnIndex])
+                    .apply(distinctOutputs.size());
           }
           // Fill in values
-          switch (valueColumnTypes[columnIndex]) {
-            case BOOLEAN:
-              ((boolean[]) valueColumns[columnIndex])[rowIndex] =
-                  (boolean) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case INT32:
-              ((int[]) valueColumns[columnIndex])[rowIndex] =
-                  (int) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case DATE:
-              ((LocalDate[]) valueColumns[columnIndex])[rowIndex] =
-                  (LocalDate) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case INT64:
-            case TIMESTAMP:
-              ((long[]) valueColumns[columnIndex])[rowIndex] =
-                  (long) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case FLOAT:
-              ((float[]) valueColumns[columnIndex])[rowIndex] =
-                  (float) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case DOUBLE:
-              ((double[]) valueColumns[columnIndex])[rowIndex] =
-                  (double) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case TEXT:
-            case STRING:
-              ((Binary[]) valueColumns[columnIndex])[rowIndex] =
-                  aggregatedResults.get(columnNameStringList[columnIndex]).getRight()
-                          instanceof Binary
-                      ? (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight()
-                      : new Binary(
-                          (String)
-                              aggregatedResults.get(columnNameStringList[columnIndex]).getRight(),
-                          TSFileConfig.STRING_CHARSET);
-              break;
-            case BLOB:
-              ((Binary[]) valueColumns[columnIndex])[rowIndex] =
-                  (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            default:
-              throw new UnsupportedOperationException(
-                  String.format(
-                      "The output tablet does not support column type %s",
-                      valueColumnTypes[rowIndex]));
-          }
+          TypeServices.Pipe.AGGREGATE_TABLET_COLUMN_VALUE_WRITER_SERVICE
+              .call(valueTypes[columnIndex])
+              .write(
+                  valueColumns[columnIndex],
+                  rowIndex,
+                  aggregatedResults.get(columnNameStringList[columnIndex]).getRight());
         } else {
           bitMaps[columnIndex].mark(rowIndex);
         }
@@ -755,7 +717,7 @@ public class AggregateProcessor implements PipeProcessor {
     int filteredCount = 0;
     for (int i = 0; i < columnNameStringList.length; ++i) {
       if (!bitMaps[i].isAllMarked()) {
-        originColumnIndex2FilteredColumnIndexMapperList[i] = ++filteredCount;
+        originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
       }
     }
 
@@ -837,14 +799,47 @@ public class AggregateProcessor implements PipeProcessor {
     }
   }
 
+  private static Type getOutputTabletType(final TSDataType dataType) {
+    try {
+      return Type.fromTsDataType(dataType);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new UnsupportedOperationException(
+          String.format(DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT, dataType));
+    }
+  }
+
+  static List<WindowOutput> sortAndDeduplicateOutputs(final List<WindowOutput> outputs) {
+    outputs.sort(Comparator.comparingLong(WindowOutput::getTimestamp));
+
+    final List<WindowOutput> distinctOutputs = new ArrayList<>(outputs.size());
+    long lastTimestamp = 0;
+    boolean hasLastTimestamp = false;
+    for (final WindowOutput output : outputs) {
+      if (!hasLastTimestamp || output.getTimestamp() != lastTimestamp) {
+        distinctOutputs.add(output);
+        lastTimestamp = output.getTimestamp();
+        hasLastTimestamp = true;
+      }
+    }
+    return distinctOutputs;
+  }
+
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(pipeName)
-        && pipeName2referenceCountMap.compute(
-                pipeName, (name, count) -> Objects.nonNull(count) ? count - 1 : 0)
-            == 0) {
-      pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).clear();
-      pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+    boolean isLastReference = false;
+    if (Objects.nonNull(pipeName)) {
+      isLastReference =
+          pipeName2referenceCountMap.computeIfPresent(
+                  pipeName, (name, count) -> count > 1 ? count - 1 : null)
+              == null;
+    }
+    if (isLastReference) {
+      final ConcurrentMap<String, AtomicReference<TimeSeriesRuntimeState>>
+          timeSeries2RuntimeStateMap =
+              pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+      if (timeSeries2RuntimeStateMap != null) {
+        timeSeries2RuntimeStateMap.clear();
+      }
       pipeName2LastValueReceiveTimeMap.remove(pipeName);
     }
     if (Objects.nonNull(windowingProcessor)) {

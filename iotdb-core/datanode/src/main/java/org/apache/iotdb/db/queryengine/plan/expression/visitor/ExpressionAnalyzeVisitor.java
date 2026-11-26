@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 
 import java.util.List;
@@ -28,7 +29,9 @@ public abstract class ExpressionAnalyzeVisitor<R, C> extends ExpressionVisitor<R
   @Override
   public R visitExpression(Expression expression, C context) {
     throw new IllegalArgumentException(
-        "unsupported expression type: " + expression.getExpressionType());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_FD6F5B7C,
+            expression.getExpressionType()));
   }
 
   protected List<R> getResultsFromChild(Expression expression, C context) {

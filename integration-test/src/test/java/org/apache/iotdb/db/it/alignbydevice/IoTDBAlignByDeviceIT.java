@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -104,13 +105,13 @@ public class IoTDBAlignByDeviceIT {
       };
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -662,27 +663,29 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void aggregateTest() {
     String[] retArray =
-        new String[] {"root.vehicle.d0,11,11,6,6,1,", "root.vehicle.d1,2,null,null,null,null,"};
+        new String[] {
+          "root.vehicle.d0,11,55555,1000.11,good,true,", "root.vehicle.d1,2,null,null,null,null,"
+        };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s0),count(s1),count(s2),count(s3),count(s4) "
+              "select count(s0),max_value(s1),max_value(s2),last_value(s3),last_value(s4) "
                   + "from root.vehicle.d1,root.vehicle.d0 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Device,count(s0),count(s1),count(s2),count(s3),count(s4)",
+                "Device,count(s0),max_value(s1),max_value(s2),last_value(s3),last_value(s4)",
                 new int[] {
                   Types.VARCHAR,
                   Types.BIGINT,
                   Types.BIGINT,
-                  Types.BIGINT,
-                  Types.BIGINT,
-                  Types.BIGINT,
+                  Types.FLOAT,
+                  Types.VARCHAR,
+                  Types.BOOLEAN,
                 });
 
         int cnt = 0;
@@ -711,9 +714,9 @@ public class IoTDBAlignByDeviceIT {
   public void groupByTimeTest() {
     String[] retArray =
         new String[] {
-          "2,root.vehicle.d0,1,1,3,0,0,",
-          "22,root.vehicle.d0,0,0,0,0,0,",
-          "42,root.vehicle.d0,0,0,0,0,0,",
+          "2,root.vehicle.d0,1,40000,4.44,null,null,",
+          "22,root.vehicle.d0,0,null,null,null,null,",
+          "42,root.vehicle.d0,0,null,null,null,null,",
           "2,root.vehicle.d1,0,null,null,null,null,",
           "22,root.vehicle.d1,0,null,null,null,null,",
           "42,root.vehicle.d1,0,null,null,null,null,"
@@ -724,20 +727,20 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(*) from root.vehicle.** GROUP BY ([2,50),20ms) align by device")) {
+              "select count(s0),max_value(s1),max_value(s2),last_value(s3),last_value(s4) from root.vehicle.** GROUP BY ([2,50),20ms) align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,Device,count(s0),count(s1),count(s2),count(s3),count(s4)",
+                "Time,Device,count(s0),max_value(s1),max_value(s2),last_value(s3),last_value(s4)",
                 new int[] {
                   Types.TIMESTAMP,
                   Types.VARCHAR,
                   Types.BIGINT,
                   Types.BIGINT,
-                  Types.BIGINT,
-                  Types.BIGINT,
-                  Types.BIGINT,
+                  Types.FLOAT,
+                  Types.VARCHAR,
+                  Types.BOOLEAN,
                 });
 
         int cnt = 0;
@@ -1123,6 +1126,22 @@ public class IoTDBAlignByDeviceIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void selectWithNonExistMeasurementInAlwaysTrueWhereClause() {
+    // root.vehicle.d1 has no s1, so its predicate is always true, while root.vehicle.d0 is still
+    // filtered by its own s1
+    resultSetEqualTest(
+        "select s0 from root.vehicle.* where s1 is null align by device",
+        new String[] {"Time", "Device", "s0"},
+        new String[] {
+          "106,root.vehicle.d0,99,", "1,root.vehicle.d1,999,", "1000,root.vehicle.d1,888,",
+        });
+    resultSetEqualTest(
+        "select count(s0) from root.vehicle.* where s1 is null align by device",
+        new String[] {"Device", "count(s0)"},
+        new String[] {"root.vehicle.d0,1,", "root.vehicle.d1,2,"});
   }
 
   /**

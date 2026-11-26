@@ -40,6 +40,8 @@ import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestC
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,7 +66,7 @@ public class ClusterManager {
   private final ClusterInfo clusterInfo;
 
   public static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public ClusterManager(IManager configManager, ClusterInfo clusterInfo) {
     this.configManager = configManager;
@@ -72,7 +75,7 @@ public class ClusterManager {
 
   public void checkClusterId() {
     if (clusterInfo.getClusterId() != null) {
-      LOGGER.info("clusterID: {}", clusterInfo.getClusterId());
+      LOGGER.info(ManagerMessages.CLUSTERID, clusterInfo.getClusterId());
       return;
     }
     generateClusterId();
@@ -90,7 +93,7 @@ public class ClusterManager {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption during waiting for get cluster id.");
+        LOGGER.warn(ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID);
         break;
       }
     }
@@ -241,7 +244,9 @@ public class ClusterManager {
   private List<TTestConnectionResult> badNodeConnectionResult(
       TSStatus badStatus, TNodeLocations nodeLocations, TSender sender) {
     final String errorMessage =
-        "ConfigNode leader cannot connect to the sender: " + badStatus.getMessage();
+        String.format(
+            ManagerMessages.EXCEPTION_CONFIGNODE_LEADER_CANNOT_CONNECT_TO_THE_SENDER_ARG_3A20DE7B,
+            Objects.toString(badStatus.getMessage()));
     List<TTestConnectionResult> results = new ArrayList<>();
     nodeLocations
         .getConfigNodeLocations()

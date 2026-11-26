@@ -20,13 +20,15 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class IllegalParameterOfPathException extends MetadataException {
 
   public IllegalParameterOfPathException(String msg, String path) {
     super(
-        String.format("%s. Failed to create timeseries for path %s", msg, path),
+        String.format(
+            DataNodeSchemaMessages.ILLEGAL_PARAMETER_FAILED_CREATE_TIMESERIES_FMT, msg, path),
         TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(),
         true);
   }

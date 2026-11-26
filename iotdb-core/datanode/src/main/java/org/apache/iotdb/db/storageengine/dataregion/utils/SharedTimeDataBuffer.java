@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -59,28 +61,32 @@ public class SharedTimeDataBuffer {
     if (timeBuffer != null) {
       return;
     }
-    Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader());
-    timeChunkHeader = timeChunk.getHeader();
-    timeBuffer = timeChunk.getData();
-    encryptParam = timeChunk.getEncryptParam();
+    try (Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader())) {
+      timeChunkHeader = timeChunk.getHeader();
+      timeBuffer = timeChunk.getData();
+      encryptParam = reader.getEncryptParam();
+    }
   }
 
   public long[] getPageTime(int pageId) throws IOException {
-    int size = timeData.size();
-    if (pageId < size) {
+    if (pageId >= 0 && pageId < timeData.size()) {
       return timeData.get(pageId);
-    } else if (pageId == size) {
-      loadPageData();
+    } else if (pageId >= timeData.size()) {
+      while (timeData.size() <= pageId) {
+        loadPageData();
+      }
       return timeData.get(pageId);
     } else {
       throw new UnsupportedOperationException(
-          "PageId in SharedTimeDataBuffer should be  incremental.");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_PAGEID_IN_SHAREDTIMEDATABUFFER_SHOULD_BE_INCREMENTAL_A5E6C4EE);
     }
   }
 
   private void loadPageData() throws IOException {
     if (!timeBuffer.hasRemaining()) {
-      throw new UnsupportedOperationException("No more data in SharedTimeDataBuffer");
+      throw new UnsupportedOperationException(
+          StorageEngineMessages.NO_MORE_DATA_IN_SHARED_TIME_BUFFER);
     }
     PageHeader timePageHeader =
         isSinglePageChunk()
@@ -88,7 +94,8 @@ public class SharedTimeDataBuffer {
             : PageHeader.deserializeFrom(timeBuffer, timeChunkHeader.getDataType());
     IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer timePageData =
-        ChunkReader.deserializePageData(timePageHeader, timeBuffer, timeChunkHeader, decryptor);
+        ChunkReader.deserializePageData(
+            timePageHeader, timeBuffer, timeChunkHeader, decryptor, encryptParam, timeData.size());
     long[] pageData = new long[(int) timePageHeader.getNumOfValues()];
     int index = 0;
     while (defaultTimeDecoder.hasNext(timePageData)) {

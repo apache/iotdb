@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -93,7 +95,7 @@ public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOpera
 
       return !finished;
     } catch (IOException e) {
-      throw new RuntimeException("Error happened while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_SCANNING_THE_FILE, e);
     }
   }
 

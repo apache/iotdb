@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import com.github.luben.zstd.Zstd;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -46,18 +47,54 @@ public class PipeSinkConstant {
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
   public static final String SINK_IOTDB_NODE_URLS_KEY = "sink.node-urls";
 
+  public static final String CONNECTOR_IOTDB_SSL_ENABLE_KEY = "connector.ssl.enable";
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
+  public static final String CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY =
+      "connector.ssl.trust-store-path";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY = "sink.ssl.trust-store-path";
+  public static final String CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY =
+      "connector.ssl.trust-store-pwd";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY = "sink.ssl.trust-store-pwd";
+  public static final String CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY =
+      "connector.ssl.key-store-path";
+  public static final String SINK_IOTDB_SSL_KEY_STORE_PATH_KEY = "sink.ssl.key-store-path";
+  public static final String CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY = "connector.ssl.key-store-pwd";
+  public static final String SINK_IOTDB_SSL_KEY_STORE_PWD_KEY = "sink.ssl.key-store-pwd";
 
   public static final String CONNECTOR_IOTDB_PARALLEL_TASKS_KEY = "connector.parallel.tasks";
   public static final String SINK_IOTDB_PARALLEL_TASKS_KEY = "sink.parallel.tasks";
   public static final int CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE =
       PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum();
+  public static final Set<String> SINGLE_THREAD_DEFAULT_SINK =
+      new HashSet<>(
+          Arrays.asList(
+              BuiltinPipePlugin.OPC_DA_SINK.getPipePluginName(),
+              BuiltinPipePlugin.OPC_DA_CONNECTOR.getPipePluginName()));
 
   public static final String CONNECTOR_REALTIME_FIRST_KEY = "connector.realtime-first";
   public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
   public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = true;
+
+  public static final String CONNECTOR_SERIALIZE_BY_REGION_KEY = "connector.serialize-by-region";
+  public static final String SINK_SERIALIZE_BY_REGION_KEY = "sink.serialize-by-region";
+  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
+
+  public static boolean isSerializeByRegionEnabled(final PipeParameters parameters) {
+    return parameters.getBooleanOrDefault(
+        Arrays.asList(CONNECTOR_SERIALIZE_BY_REGION_KEY, SINK_SERIALIZE_BY_REGION_KEY),
+        CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE);
+  }
+
+  public static String getConnectorOrSinkNameWithDefault(final PipeParameters parameters) {
+    return parameters.getStringOrDefault(
+        Arrays.asList(CONNECTOR_KEY, SINK_KEY), getDefaultConnectorOrSinkName(parameters));
+  }
+
+  private static String getDefaultConnectorOrSinkName(final PipeParameters parameters) {
+    return isSerializeByRegionEnabled(parameters)
+        ? BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName()
+        : BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName();
+  }
 
   public static final String CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY = "connector.batch.enable";
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
@@ -78,11 +115,17 @@ public class PipeSinkConstant {
   public static final long CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE = MB;
   public static final long CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
 
+  public static final String CONNECTOR_IOTDB_USER_ID = "connector.user-id";
+  public static final String SINK_IOTDB_USER_ID = "sink.user-id";
+
   public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
   public static final String SINK_IOTDB_USER_KEY = "sink.user";
   public static final String CONNECTOR_IOTDB_USERNAME_KEY = "connector.username";
   public static final String SINK_IOTDB_USERNAME_KEY = "sink.username";
   public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
+
+  public static final String CONNECTOR_IOTDB_CLI_HOSTNAME = "connector.cli-hostname";
+  public static final String SINK_IOTDB_CLI_HOSTNAME = "sink.cli-hostname";
 
   public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
   public static final String SINK_IOTDB_PASSWORD_KEY = "sink.password";
@@ -94,6 +137,13 @@ public class PipeSinkConstant {
       "sink.exception.data.convert-on-type-mismatch";
   public static final boolean CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE =
       true;
+  public static final String
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY =
+          "connector.exception.data.convert-on-type-mismatch.tsfile.async-load";
+  public static final String SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY =
+      "sink.exception.data.convert-on-type-mismatch.tsfile.async-load";
+  public static final boolean
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE = true;
 
   public static final String CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY =
       "connector.exception.conflict.resolve-strategy";
@@ -136,6 +186,39 @@ public class PipeSinkConstant {
       "sink.air-gap.handshake-timeout-ms";
   public static final int CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE = 5000;
 
+  public static final String CONNECTOR_AIR_GAP_TRANSPORT_KEY = "connector.air-gap.transport";
+  public static final String SINK_AIR_GAP_TRANSPORT_KEY = "sink.air-gap.transport";
+  public static final String CONNECTOR_AIR_GAP_TRANSPORT_TCP_VALUE = "tcp";
+  public static final String CONNECTOR_AIR_GAP_TRANSPORT_UDP_VALUE = "udp";
+  public static final String CONNECTOR_AIR_GAP_TRANSPORT_DEFAULT_VALUE =
+      CONNECTOR_AIR_GAP_TRANSPORT_TCP_VALUE;
+  public static final Set<String> CONNECTOR_AIR_GAP_TRANSPORT_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  CONNECTOR_AIR_GAP_TRANSPORT_TCP_VALUE, CONNECTOR_AIR_GAP_TRANSPORT_UDP_VALUE)));
+
+  public static final String CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY =
+      "connector.air-gap.strict-unidirectional";
+  public static final String SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY =
+      "sink.air-gap.strict-unidirectional";
+  public static final boolean CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_DEFAULT_VALUE = false;
+
+  public static final String CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY =
+      "connector.air-gap.udp.packet-size-bytes";
+  public static final String SINK_AIR_GAP_UDP_PACKET_SIZE_KEY =
+      "sink.air-gap.udp.packet-size-bytes";
+  public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE = 60 * 1024;
+  // Leave room for IP/UDP headers and common encapsulation on a 1500-byte MTU link.
+  public static final int CONNECTOR_AIR_GAP_STRICT_UDP_PACKET_SIZE_DEFAULT_VALUE = 1400;
+  public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE = 1024;
+  public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE = 65_507;
+  public static final String CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY =
+      "connector.air-gap.udp.send-interval-ms";
+  public static final String SINK_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY =
+      "sink.air-gap.udp.send-interval-ms";
+  public static final int CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_DEFAULT_VALUE = 5;
+
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY = "connector.version";
   public static final String SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY = "sink.version";
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_DEFAULT_VALUE = "1.1";
@@ -143,38 +226,6 @@ public class PipeSinkConstant {
   public static final String CONNECTOR_WEBSOCKET_PORT_KEY = "connector.websocket.port";
   public static final String SINK_WEBSOCKET_PORT_KEY = "sink.websocket.port";
   public static final int CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE = 8080;
-
-  public static final String CONNECTOR_OPC_UA_MODEL_KEY = "connector.opcua.model";
-  public static final String SINK_OPC_UA_MODEL_KEY = "sink.opcua.model";
-  public static final String CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE = "client-server";
-  public static final String CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE = "pub-sub";
-  public static final String CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE =
-      CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE;
-
-  public static final String CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY = "connector.opcua.tcp.port";
-  public static final String SINK_OPC_UA_TCP_BIND_PORT_KEY = "sink.opcua.tcp.port";
-  public static final int CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE = 12686;
-
-  public static final String CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY = "connector.opcua.https.port";
-  public static final String SINK_OPC_UA_HTTPS_BIND_PORT_KEY = "sink.opcua.https.port";
-  public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
-
-  public static final String CONNECTOR_OPC_UA_SECURITY_DIR_KEY = "connector.opcua.security.dir";
-  public static final String SINK_OPC_UA_SECURITY_DIR_KEY = "sink.opcua.security.dir";
-  public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
-      CommonDescriptor.getInstance().getConfDir() != null
-          ? CommonDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
-          : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
-
-  public static final String CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY =
-      "connector.opcua.enable-anonymous-access";
-  public static final String SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY =
-      "sink.opcua.enable-anonymous-access";
-  public static final boolean CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE = true;
-
-  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_KEY = "connector.opcua.placeholder";
-  public static final String SINK_OPC_UA_PLACEHOLDER_KEY = "sink.opcua.placeholder";
-  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE = "null";
 
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
@@ -285,6 +336,6 @@ public class PipeSinkConstant {
   public static final boolean CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE = false;
 
   private PipeSinkConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

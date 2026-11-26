@@ -100,9 +100,9 @@ public class IoTDBAutoRegionGroupExtensionIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      setStorageGroupAndCheckRegionGroupDistribution(client);
+      setDatabaseAndCheckRegionGroupDistribution(client);
 
-      // Delete all StorageGroups
+      // Delete all Databases
       for (int i = 0; i < TEST_DATABASE_NUM; i++) {
         String curSg = DATABASE + i;
         client.deleteDatabase(new TDeleteDatabaseReq(curSg));
@@ -113,6 +113,9 @@ public class IoTDBAutoRegionGroupExtensionIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         if (showRegionResp.getRegionInfoListSize() == 0) {
           isAllRegionGroupDeleted = true;
           break;
@@ -123,11 +126,11 @@ public class IoTDBAutoRegionGroupExtensionIT {
       Assert.assertTrue(isAllRegionGroupDeleted);
 
       // Re-test for safety
-      setStorageGroupAndCheckRegionGroupDistribution(client);
+      setDatabaseAndCheckRegionGroupDistribution(client);
     }
   }
 
-  private void setStorageGroupAndCheckRegionGroupDistribution(SyncConfigNodeIServiceClient client)
+  private void setDatabaseAndCheckRegionGroupDistribution(SyncConfigNodeIServiceClient client)
       throws TException, IllegalPathException, IOException {
 
     for (int i = 0; i < TEST_DATABASE_NUM; i++) {
@@ -186,8 +189,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
                   .merge(regionInfo.getDataNodeId(), 1, Integer::sum);
             });
     // The number of RegionGroups should not less than the testMinRegionGroupNum for each database
-    // +1 for system database
-    Assert.assertEquals(TEST_DATABASE_NUM + 1, databaseRegionCounter.size());
+    Assert.assertEquals(TEST_DATABASE_NUM, databaseRegionCounter.size());
     databaseRegionCounter.forEach(
         (database, regionCount) ->
             Assert.assertTrue(
@@ -206,8 +208,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
             <= 1);
     // The maximal Region count - minimal Region count should be less than or equal to 1 for each
     // Database
-    // +1 for system database
-    Assert.assertEquals(TEST_DATABASE_NUM + 1, databaseDataNodeRegionCounter.size());
+    Assert.assertEquals(TEST_DATABASE_NUM, databaseDataNodeRegionCounter.size());
     databaseDataNodeRegionCounter.forEach(
         (database, dataNodeRegionCount) ->
             Assert.assertTrue(

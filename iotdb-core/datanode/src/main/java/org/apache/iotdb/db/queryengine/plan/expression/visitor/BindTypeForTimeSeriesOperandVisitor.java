@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -51,7 +52,8 @@ public class BindTypeForTimeSeriesOperandVisitor extends ReconstructVisitor<List
         }
       }
     }
-    throw new SemanticException(String.format("please ensure input[%s] is correct", oldPathString));
+    throw new SemanticException(
+        String.format(DataNodeQueryMessages.PLEASE_ENSURE_INPUT_IS_CORRECT, oldPathString));
   }
 
   @Override

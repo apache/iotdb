@@ -121,7 +121,7 @@ public class TsFileGenerator implements AutoCloseable {
       tablet.reset();
     }
 
-    LOGGER.info("Write {} points into device {}", number, device);
+    LOGGER.debug("Write {} points into device {}", number, device);
   }
 
   public void generateData(
@@ -161,7 +161,7 @@ public class TsFileGenerator implements AutoCloseable {
       tablet.reset();
     }
 
-    LOGGER.info("Write {} points into device {}", number, device);
+    LOGGER.debug("Write {} points into device {}", number, device);
   }
 
   private void generateDataPoint(
@@ -278,7 +278,7 @@ public class TsFileGenerator implements AutoCloseable {
         for (long j = startTime; j <= endTime; j++) {
           timeSet.remove(j);
         }
-        LOGGER.info("Delete {} - {} timestamp of device {}", startTime, endTime, device);
+        LOGGER.debug("Delete {} - {} timestamp of device {}", startTime, endTime, device);
       }
     }
   }

@@ -21,10 +21,12 @@ package org.apache.iotdb.pipe.api.customizer.parameter;
 
 import org.apache.iotdb.pipe.api.exception.PipeAttributeNotProvidedException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.pipe.api.i18n.PipeApiMessages;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -57,12 +59,19 @@ public class PipeParameterValidator {
       final List<String> lhsAttributes,
       final List<String> rhsAttributes,
       final boolean isRequired) {
-    final boolean lhsExistence = lhsAttributes.stream().anyMatch(parameters::hasAttribute);
-    final boolean rhsExistence = rhsAttributes.stream().anyMatch(parameters::hasAttribute);
-    if (lhsExistence && rhsExistence) {
+    final Set<String> lhsExistingKeys = getExistingAttributeKeys(lhsAttributes);
+    final Set<String> rhsExistingKeys = getExistingAttributeKeys(rhsAttributes);
+    final boolean lhsExistence = !lhsExistingKeys.isEmpty();
+    final boolean rhsExistence = !rhsExistingKeys.isEmpty();
+    // One unprefixed key may match both sides after prefix reduction. It is still one attribute.
+    if (lhsExistence
+        && rhsExistence
+        && !(lhsExistingKeys.size() == 1 && lhsExistingKeys.equals(rhsExistingKeys))) {
       throw new PipeParameterNotValidException(
           String.format(
-              "Cannot specify both %s and %s at the same time", lhsAttributes, rhsAttributes));
+              PipeApiMessages.EXCEPTION_CANNOT_SPECIFY_BOTH_ARG_AND_ARG_AT_THE_SAME_TIME_7DA8858B,
+              lhsAttributes,
+              rhsAttributes));
     }
     if (isRequired && !lhsExistence && !rhsExistence) {
       throw new PipeAttributeNotProvidedException(
@@ -72,6 +81,18 @@ public class PipeParameterValidator {
               .toString());
     }
     return this;
+  }
+
+  private Set<String> getExistingAttributeKeys(final List<String> attributeKeys) {
+    return attributeKeys.stream()
+        .flatMap(
+            key ->
+                Stream.of(
+                    key,
+                    PipeParameters.KeyReducer.shallowReduce(key),
+                    PipeParameters.KeyReducer.reduce(key)))
+        .filter(parameters.getAttribute()::containsKey)
+        .collect(Collectors.toSet());
   }
 
   /**
@@ -94,7 +115,8 @@ public class PipeParameterValidator {
       throws PipeAttributeNotProvidedException {
     if (!parameters.hasAttribute(key)) {
       if (!canBeOptional) {
-        throw new PipeParameterNotValidException(String.format("Parameter %s should be set.", key));
+        throw new PipeParameterNotValidException(
+            String.format(PipeApiMessages.PARAMETER_SHOULD_BE_SET, key));
       }
       return this;
     }
@@ -108,8 +130,11 @@ public class PipeParameterValidator {
 
     throw new PipeParameterNotValidException(
         String.format(
-            "Invalid value %s of %s. The value should be one of %s",
-            actualValue, key, Arrays.toString(optionalValues)));
+            PipeApiMessages
+                .EXCEPTION_INVALID_VALUE_ARG_OF_ARG_THE_VALUE_SHOULD_BE_ONE_OF_ARG_7D1B4AF8,
+            actualValue,
+            key,
+            Arrays.toString(optionalValues)));
   }
 
   /**

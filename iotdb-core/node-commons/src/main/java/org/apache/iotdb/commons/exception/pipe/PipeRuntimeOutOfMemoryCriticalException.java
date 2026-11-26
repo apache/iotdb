@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMetaVersion;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -76,7 +77,8 @@ public class PipeRuntimeOutOfMemoryCriticalException extends PipeRuntimeCritical
         return new PipeRuntimeOutOfMemoryCriticalException(
             message, ReadWriteIOUtils.readLong(byteBuffer));
       default:
-        throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
+        throw new UnsupportedOperationException(
+            String.format(PipeMessages.UNSUPPORTED_VERSION, version));
     }
   }
 
@@ -90,7 +92,8 @@ public class PipeRuntimeOutOfMemoryCriticalException extends PipeRuntimeCritical
         return new PipeRuntimeOutOfMemoryCriticalException(
             message, ReadWriteIOUtils.readLong(stream));
       default:
-        throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
+        throw new UnsupportedOperationException(
+            String.format(PipeMessages.UNSUPPORTED_VERSION, version));
     }
   }
 

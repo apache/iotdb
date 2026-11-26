@@ -103,7 +103,7 @@ public class IoTDBPatternRecognitionIT {
         "INSERT INTO t5 VALUES (2025-01-01T00:01:00, 'p1', 1, 10.0)",
       };
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
@@ -115,13 +115,13 @@ public class IoTDBPatternRecognitionIT {
   }
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -142,6 +142,7 @@ public class IoTDBPatternRecognitionIT {
             + "FROM beidou "
             + "MATCH_RECOGNIZE ( "
             + "    PARTITION BY device_id "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        RPR_FIRST(A.time) AS event_start, "
@@ -184,6 +185,7 @@ public class IoTDBPatternRecognitionIT {
             + ")"
             + "MATCH_RECOGNIZE ( "
             + "    PARTITION BY device_id "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        RPR_FIRST(A.time) AS event_start, "
@@ -265,6 +267,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.match, m.price, m.label "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        RUNNING RPR_LAST(totalprice) AS price,  "
@@ -348,6 +351,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.time, m.price "
             + "FROM t2 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        %s AS price "
             + "    ALL ROWS PER MATCH "
@@ -442,6 +446,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.time, m.price "
             + "FROM t2 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        %s AS price "
             + "    ALL ROWS PER MATCH "
@@ -475,6 +480,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.price "
             + "FROM t3 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        %s AS price "
             + "    ONE ROW PER MATCH "
@@ -574,6 +580,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.time, m.price "
             + "FROM t2 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        %s AS price "
             + "    ALL ROWS PER MATCH "
@@ -654,6 +661,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.time, m.match, m.price, m.lower_or_higher, m.label "
             + "FROM t4 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        RUNNING RPR_LAST(totalprice) AS price, "
@@ -691,6 +699,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.time, m.match, m.price, m.label, m.prev_label, m.next_label "
             + "FROM t4 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        RUNNING RPR_LAST(totalprice) AS price, "
@@ -742,6 +751,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.time, m.match, m.price, m.label "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        RUNNING RPR_LAST(totalprice) AS price,  "
@@ -883,6 +893,7 @@ public class IoTDBPatternRecognitionIT {
         "SELECT m.time, m.match, m.price, m.label "
             + "FROM t1 "
             + "MATCH_RECOGNIZE ( "
+            + "    ORDER BY time "
             + "    MEASURES "
             + "        MATCH_NUMBER() AS match, "
             + "        RUNNING RPR_LAST(totalprice) AS price,  "

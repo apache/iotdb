@@ -22,9 +22,12 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -41,13 +44,21 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private AlignedWritableMemChunk memChunk;
 
-  public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList, boolean isTableModel) {
-    memChunk = new AlignedWritableMemChunk(schemaList, isTableModel);
+  private EncryptParameter encryptParameter;
+
+  public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList) {
+    memChunk = new AlignedWritableMemChunk(schemaList);
+  }
+
+  public AlignedWritableMemChunkGroup(
+      List<IMeasurementSchema> schemaList, EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+    memChunk = new AlignedWritableMemChunk(schemaList, encryptParameter);
   }
 
   @TestOnly
   public AlignedWritableMemChunkGroup(
-      AlignedWritableMemChunk memChunk, List<IMeasurementSchema> schemaList, boolean isTableModel) {
+      AlignedWritableMemChunk memChunk, List<IMeasurementSchema> schemaList) {
     this.memChunk = memChunk;
   }
 
@@ -73,8 +84,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long count() {
-    return memChunk.count();
+  public long count(boolean ignoreAllNullRows) {
+    return memChunk.count(ignoreAllNullRows);
   }
 
   /**
@@ -96,20 +107,20 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public Map<String, IWritableMemChunk> getMemChunkMap() {
-    if (memChunk.count() == 0) {
+  public Map<String, IWritableMemChunk> getMemChunkMap(boolean ignoreAllNullRows) {
+    if (memChunk.count(ignoreAllNullRows) == 0) {
       return Collections.emptyMap();
     }
     return Collections.singletonMap("", memChunk);
   }
 
   @Override
-  public boolean isEmpty() {
-    return memChunk.isEmpty() || memChunk.isAllDeleted();
+  public boolean isEmpty(boolean ignoreAllNullRows) {
+    return memChunk.isEmpty(ignoreAllNullRows) || memChunk.isAllDeleted();
   }
 
   @Override
-  public long delete(ModEntry modEntry) {
+  public long delete(ModEntry modEntry, boolean ignoreAllNullRows) {
     int deletedPointsNumber = 0;
     Set<String> measurements = memChunk.getAllMeasurements();
     List<String> columnsToBeRemoved = new ArrayList<>();
@@ -133,7 +144,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return deletedPointsNumber;
   }
 
-  public long deleteTime(ModEntry modEntry) {
+  public long deleteTime(ModEntry modEntry, boolean ignoreAllNullRows) {
     return memChunk.deleteTime(modEntry.getStartTime(), modEntry.getEndTime());
   }
 
@@ -143,8 +154,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getMaxTime() {
-    return memChunk.getMaxTime();
+  public long getMaxTime(boolean ignoreAllNullRows) {
+    return memChunk.getMaxTime(ignoreAllNullRows);
   }
 
   public AlignedWritableMemChunk getAlignedMemChunk() {
@@ -161,18 +172,28 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk.serializeToWAL(buffer);
   }
 
-  protected static AlignedWritableMemChunkGroup deserialize(
-      DataInputStream stream, boolean isTableModel) throws IOException {
+  @Override
+  public void setEncryptParameter(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+    memChunk.setEncryptParameter(encryptParameter);
+  }
+
+  protected static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
+      throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
-    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream, isTableModel);
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
     return memChunkGroup;
   }
 
+  @Override
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    memChunk.checkDataType(node);
+  }
+
   protected static AlignedWritableMemChunkGroup deserializeSingleTVListMemChunks(
-      DataInputStream stream, boolean isTableModel) throws IOException {
+      DataInputStream stream) throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
-    memChunkGroup.memChunk =
-        AlignedWritableMemChunk.deserializeSingleTVListMemChunks(stream, isTableModel);
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserializeSingleTVListMemChunks(stream);
     return memChunkGroup;
   }
 }

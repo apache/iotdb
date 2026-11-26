@@ -38,7 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
-import com.google.common.collect.MinMaxPriorityQueue;
+import org.apache.ratis.thirdparty.com.google.common.collect.MinMaxPriorityQueue;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

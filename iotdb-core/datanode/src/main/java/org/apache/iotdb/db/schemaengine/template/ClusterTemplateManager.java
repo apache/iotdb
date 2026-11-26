@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -118,21 +120,21 @@ public class ClusterTemplateManager implements ITemplateManager {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
-            "Failed to execute create device template {} in config node, status is {}.",
-            statement.getName(),
-            tsStatus);
+            DataNodeSchemaMessages.FAILED_TO_CREATE_TEMPLATE, statement.getName(), tsStatus);
       }
       return tsStatus;
     } catch (MetadataException e) {
       throw new RuntimeException(
           new IoTDBException(
-              "create template error -" + e.getMessage(),
+              DataNodeSchemaMessages.CREATE_TEMPLATE_ERROR_PREFIX + e.getMessage(),
               e,
               TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(
+              DataNodeSchemaMessages.CREATE_TEMPLATE_ERROR, statement.getName(), e.getMessage()),
+          e,
+          TSStatusCode.CREATE_TEMPLATE_ERROR);
     }
   }
 
@@ -175,9 +177,10 @@ public class ClusterTemplateManager implements ITemplateManager {
         throw new IoTDBRuntimeException(resp.getStatus());
       }
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              "get all template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(DataNodeSchemaMessages.GET_ALL_TEMPLATE_ERROR, e.getMessage()),
+          e,
+          TSStatusCode.UNDEFINED_TEMPLATE);
     }
     return templatesList;
   }
@@ -196,10 +199,19 @@ public class ClusterTemplateManager implements ITemplateManager {
         throw new IoTDBException(resp.status);
       }
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(DataNodeSchemaMessages.GET_TEMPLATE_INFO_ERROR, name, e.getMessage()),
+          e,
+          TSStatusCode.UNDEFINED_TEMPLATE);
     }
+  }
+
+  private static RuntimeException wrapTemplateRpcException(
+      String message, Exception cause, TSStatusCode statusCode) {
+    IoTDBException exception = new IoTDBException(message, statusCode.getStatusCode());
+    // Query error handling uses the deepest cause to determine the status and message.
+    exception.addSuppressed(cause);
+    return new RuntimeException(exception);
   }
 
   @Override
@@ -228,11 +240,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute set device template {} on path {} in config node, status is {}.",
-            name,
-            path,
-            tsStatus);
+        LOGGER.warn(DataNodeSchemaMessages.FAILED_TO_SET_TEMPLATE, name, path, tsStatus);
         throw new IoTDBException(tsStatus);
       }
     } catch (Exception e) {
@@ -256,7 +264,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                     try {
                       listPath.add(new PartialPath(item));
                     } catch (IllegalPathException e) {
-                      e.printStackTrace();
+                      LOGGER.error(DataNodeSchemaMessages.ILLEGAL_PATH_LOG, item, e);
                     }
                   });
         }
@@ -284,7 +292,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     readWriteLock.readLock().lock();
     try {
       for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
-        if (devicePath.startsWithOrPrefixOf(templateSetPath.getNodes())) {
+        if (devicePath.startsWithOrEqual(templateSetPath.getNodes())) {
           return new Pair<>(
               templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
         }
@@ -365,6 +373,28 @@ public class ClusterTemplateManager implements ITemplateManager {
         template = templateIdMap.get(templateId);
         if (checkIsRelated(pathPattern, entry.getKey(), template)) {
           result.put(templateId, template);
+        }
+      }
+      return result;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  @Override
+  public List<Template> getAllRelatedTemplates(PathPatternTree scope) {
+    readWriteLock.readLock().lock();
+    try {
+      List<Template> result = new ArrayList<>();
+      for (Map.Entry<Integer, List<PartialPath>> entry : templateSetOnPathsMap.entrySet()) {
+        int templateId = entry.getKey();
+        for (PartialPath path : entry.getValue()) {
+          if (!scope
+              .getOverlappedPathPatterns(path.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+              .isEmpty()) {
+            result.add(templateIdMap.get(templateId));
+            break;
+          }
         }
       }
       return result;
@@ -595,10 +625,14 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   public void updateTemplateInfo(byte[] templateInfo) {
+    Template template =
+        TemplateInternalRPCUtil.parseUpdateTemplateInfoBytes(ByteBuffer.wrap(templateInfo));
+    updateTemplateInfo(template);
+  }
+
+  public void updateTemplateInfo(Template template) {
     readWriteLock.writeLock().lock();
     try {
-      Template template =
-          TemplateInternalRPCUtil.parseUpdateTemplateInfoBytes(ByteBuffer.wrap(templateInfo));
       templateIdMap.put(template.getId(), template);
     } finally {
       readWriteLock.writeLock().unlock();

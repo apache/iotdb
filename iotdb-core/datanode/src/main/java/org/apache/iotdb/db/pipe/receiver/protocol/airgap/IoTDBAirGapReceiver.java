@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapUdpProtocol;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 import org.apache.iotdb.db.protocol.session.ClientSession;
@@ -39,10 +41,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.zip.CRC32;
@@ -60,6 +69,10 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private final IoTDBDataNodeReceiverAgent agent;
 
   private boolean isELanguagePayload;
+  private OutputStream currentOutputStream;
+  private DatagramSocket currentDatagramSocket;
+  private SocketAddress currentRemoteSocketAddress;
+  private Long currentDatagramRequestId;
 
   public IoTDBAirGapReceiver(final Socket socket, final long receiverId) {
     this.socket = socket;
@@ -70,10 +83,10 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   @Override
   public void runMayThrow() throws Throwable {
-    socket.setSoTimeout(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+    socket.setSoTimeout(PipeConfig.getInstance().getPipeSinkTransferTimeoutMs());
     socket.setKeepAlive(true);
 
-    LOGGER.info("Pipe air gap receiver {} started. Socket: {}", receiverId, socket);
+    LOGGER.info(DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_STARTED_SOCKET, receiverId, socket);
 
     SessionManager.getInstance().registerSession(new ClientSession(socket));
 
@@ -83,15 +96,10 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         receive();
       }
       LOGGER.info(
-          "Pipe air gap receiver {} closed because socket is closed. Socket: {}",
-          receiverId,
-          socket);
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CLOSED_BECAUSE_SOCKET, receiverId, socket);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Pipe air gap receiver {} closed because of exception. Socket: {}",
-          receiverId,
-          socket,
-          e);
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CLOSED_BECAUSE_OF_1, receiverId, socket, e);
       throw e;
     } finally {
       // session will be closed and removed here
@@ -101,69 +109,39 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   }
 
   private void receive() throws IOException {
-    final InputStream inputStream = new BufferedInputStream(socket.getInputStream());
+    final ReadProgressInputStream readProgressInputStream =
+        new ReadProgressInputStream(socket.getInputStream());
+    final InputStream inputStream = new BufferedInputStream(readProgressInputStream);
 
     try {
       final byte[] data = readData(inputStream);
+      currentOutputStream = socket.getOutputStream();
 
-      // If check sum failed, it indicates that the length we read may not be correct.
-      // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
-      // attempts to read from that.
-      // We directly close the socket here.
-      if (!checkSum(data)) {
-        LOGGER.warn(
-            "Pipe air gap receiver {} closed because of checksum failed. Socket: {}",
-            receiverId,
-            socket);
-        try {
-          fail();
-        } finally {
-          socket.close();
-        }
-        return;
+      if (!receive(data, null)) {
+        socket.close();
       }
-
-      // Removed the used checksum
-      final ByteBuffer byteBuffer = ByteBuffer.wrap(data, LONG_LEN, data.length - LONG_LEN);
-
-      // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
-      final AirGapPseudoTPipeTransferRequest req =
-          (AirGapPseudoTPipeTransferRequest)
-              new AirGapPseudoTPipeTransferRequest()
-                  .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
-                  .setType(ReadWriteIOUtils.readShort(byteBuffer))
-                  .setBody(byteBuffer.slice());
-      final TPipeTransferResp resp = agent.receive(req);
-
-      final TSStatus status = resp.getStatus();
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        ok();
-      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-          || status.getCode()
-              == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
-        LOGGER.info(
-            "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
-            receiverId,
-            resp.getStatus());
-        ok();
-      } else {
+    } catch (final SocketTimeoutException e) {
+      // It is normal for an air gap sender to remain idle. Only close the connection when the
+      // timeout occurs after a request has started, because the stream can no longer be decoded
+      // reliably in that case. Do not send FAIL without receiving a complete request.
+      if (readProgressInputStream.hasReadAnyByte()) {
         LOGGER.warn(
-            "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_EXCEPTION_DURING_HANDLING,
             receiverId,
-            resp.getStatus(),
-            req);
-        fail();
+            socket,
+            e);
+        socket.close();
       }
     } catch (final PipeConnectionException e) {
       LOGGER.info(
-          "Pipe air gap receiver {}: Socket {} closed when listening to data. Because: {}",
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_SOCKET_CLOSED_WHEN,
           receiverId,
           socket,
           e.getMessage());
       socket.close();
     } catch (final Exception e) {
       LOGGER.warn(
-          "Pipe air gap receiver {}: Exception during handling receiving. Socket: {}",
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_EXCEPTION_DURING_HANDLING,
           receiverId,
           socket,
           e);
@@ -171,15 +149,179 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
   }
 
+  boolean receive(final byte[] data, final String receiverKey) throws IOException {
+    return receive(data, receiverKey, null);
+  }
+
+  private boolean receive(
+      final byte[] data, final String receiverKey, final Runnable onValidRequest)
+      throws IOException {
+    try {
+      // If check sum failed, it indicates that the length we read may not be correct.
+      // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
+      // attempts to read from that.
+      if (!checkSum(data)) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CLOSED_BECAUSE_OF, receiverId, socket);
+        fail();
+        return false;
+      }
+
+      if (onValidRequest != null) {
+        onValidRequest.run();
+      }
+      handleReq(toTPipeTransferReq(data), System.currentTimeMillis(), receiverKey);
+      return true;
+    } catch (final IOException e) {
+      throw e;
+    } catch (final Exception e) {
+      if (currentDatagramSocket != null) {
+        fail();
+      }
+      throw e;
+    } finally {
+      currentOutputStream = null;
+      currentDatagramSocket = null;
+      currentRemoteSocketAddress = null;
+      currentDatagramRequestId = null;
+    }
+  }
+
+  void receiveUdp(
+      final DatagramSocket datagramSocket,
+      final DatagramPacket packet,
+      final String receiverKey,
+      final byte[] buffer,
+      final Runnable onValidRequest)
+      throws IOException {
+    isELanguagePayload = false;
+    currentDatagramSocket = datagramSocket;
+    currentRemoteSocketAddress = packet.getSocketAddress();
+    boolean requestHandlingStarted = false;
+    try {
+      if (packet.getLength() < Long.BYTES) {
+        throw new IOException(
+            DataNodePipeMessages.EXCEPTION_AIR_GAP_UDP_PACKET_IS_MISSING_ITS_REQUEST_ID_C4228CC8);
+      }
+      currentDatagramRequestId = ByteBuffer.wrap(buffer, 0, Long.BYTES).getLong();
+      try (final ByteArrayInputStream inputStream =
+          new ByteArrayInputStream(buffer, Long.BYTES, packet.getLength() - Long.BYTES)) {
+        final byte[] data = readData(inputStream);
+        if (inputStream.available() != 0) {
+          throw new IOException(
+              DataNodePipeMessages.EXCEPTION_AIR_GAP_UDP_PACKET_CONTAINS_TRAILING_BYTES_2D34D418);
+        }
+        requestHandlingStarted = true;
+        receive(data, receiverKey, onValidRequest);
+      }
+    } catch (final Exception e) {
+      if (!requestHandlingStarted) {
+        fail();
+      }
+      throw e;
+    } finally {
+      currentOutputStream = null;
+      currentDatagramSocket = null;
+      currentRemoteSocketAddress = null;
+      currentDatagramRequestId = null;
+    }
+  }
+
+  private AirGapPseudoTPipeTransferRequest toTPipeTransferReq(final byte[] data) {
+    // Removed the used checksum
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(data, LONG_LEN, data.length - LONG_LEN);
+
+    // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
+    return (AirGapPseudoTPipeTransferRequest)
+        new AirGapPseudoTPipeTransferRequest()
+            .setStrictUnidirectional(
+                currentDatagramRequestId != null
+                    && (currentDatagramRequestId & AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK) != 0)
+            .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
+            .setType(ReadWriteIOUtils.readShort(byteBuffer))
+            .setBody(byteBuffer.slice());
+  }
+
+  private void handleReq(
+      final AirGapPseudoTPipeTransferRequest req, final long startTime, final String receiverKey)
+      throws IOException {
+    final TPipeTransferResp resp =
+        receiverKey == null
+            ? agent.receive(duplicateReq(req))
+            : agent.receive(receiverKey, duplicateReq(req));
+
+    final TSStatus status = resp.getStatus();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      ok();
+    } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        || status.getCode()
+            == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+      ok();
+    } else if (status.getCode()
+        == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
+      try {
+        Thread.sleep(PipeConfig.getInstance().getPipeAirGapRetryLocalIntervalMs());
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        final InterruptedIOException exception = new InterruptedIOException(e.getMessage());
+        exception.initCause(e);
+        throw exception;
+      }
+      if (System.currentTimeMillis() - startTime
+          < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
+        handleReq(req, startTime, receiverKey);
+      } else {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY, receiverId);
+        fail();
+      }
+    } else {
+      LOGGER.warn(
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_HANDLE_DATA_FAILED,
+          receiverId,
+          resp.getStatus(),
+          req);
+      fail();
+    }
+  }
+
+  private AirGapPseudoTPipeTransferRequest duplicateReq(
+      final AirGapPseudoTPipeTransferRequest req) {
+    return (AirGapPseudoTPipeTransferRequest)
+        new AirGapPseudoTPipeTransferRequest()
+            .setStrictUnidirectional(req.isStrictUnidirectional())
+            .setVersion(req.getVersion())
+            .setType(req.getType())
+            .setBody(req.body.duplicate());
+  }
+
   private void ok() throws IOException {
-    final OutputStream outputStream = socket.getOutputStream();
-    outputStream.write(AirGapOneByteResponse.OK);
-    outputStream.flush();
+    respond(AirGapOneByteResponse.OK);
   }
 
   private void fail() throws IOException {
-    final OutputStream outputStream = socket.getOutputStream();
-    outputStream.write(AirGapOneByteResponse.FAIL);
+    respond(AirGapOneByteResponse.FAIL);
+  }
+
+  private void respond(final byte[] response) throws IOException {
+    if (currentDatagramSocket != null && currentRemoteSocketAddress != null) {
+      if (currentDatagramRequestId == null
+          || (currentDatagramRequestId & AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK) != 0) {
+        return;
+      }
+      final byte[] responseBytes =
+          ByteBuffer.allocate(Long.BYTES + response.length)
+              .putLong(currentDatagramRequestId)
+              .put(response)
+              .array();
+      currentDatagramSocket.send(
+          new DatagramPacket(responseBytes, responseBytes.length, currentRemoteSocketAddress));
+      return;
+    }
+
+    final OutputStream outputStream =
+        currentOutputStream != null ? currentOutputStream : socket.getOutputStream();
+    outputStream.write(response);
     outputStream.flush();
   }
 
@@ -192,7 +334,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       final long actualChecksum = crc32.getValue();
       if (expectedChecksum != actualChecksum) {
         LOGGER.warn(
-            "Pipe air gap receiver {}: checksum failed, expected: {}, actual: {}",
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CHECKSUM_FAILED_EXPECTED,
             receiverId,
             expectedChecksum,
             actualChecksum);
@@ -204,12 +346,23 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
   }
 
-  private byte[] readData(final InputStream inputStream) throws IOException {
+  byte[] readData(final InputStream inputStream) throws IOException {
     final int length = readLength(inputStream);
 
     if (length <= 0) {
       // Will fail() after checkSum()
       return new byte[0];
+    }
+
+    final int maxLength = PipeConfig.getInstance().getPipeAirGapReceiverMaxPayloadSizeInBytes();
+    if (length > maxLength) {
+      throw new IOException(
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_AIRGAP_PAYLOAD_LENGTH_D_EXCEEDS_MAXIMUM_ALLOWED_D_CLOSING_D1712B3D,
+              length,
+              maxLength,
+              socket.getRemoteSocketAddress()));
     }
 
     final byte[] resultBuffer = new byte[length];
@@ -220,11 +373,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     return resultBuffer;
   }
 
+  private int readLength(final InputStream inputStream) throws IOException {
+    return readLength(inputStream, false);
+  }
+
   /**
    * Read the length of the following data. The thread may typically block here when there is no
    * data to read.
    */
-  private int readLength(final InputStream inputStream) throws IOException {
+  private int readLength(final InputStream inputStream, final boolean isELanguage)
+      throws IOException {
     final byte[] doubleIntLengthBytes = new byte[2 * INT_LEN];
     readTillFull(inputStream, doubleIntLengthBytes);
 
@@ -233,10 +391,17 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     if (Arrays.equals(
         doubleIntLengthBytes,
         BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 2 * INT_LEN))) {
+      if (isELanguage) {
+        throw new IOException(
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_DETECTED_SUSPICIOUS_NESTED_E_LANGUAGE_PREFIX_CLOSING_CONNECTION_69C76172,
+                socket.getRemoteSocketAddress()));
+      }
       isELanguagePayload = true;
       skipTillEnough(
           inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN);
-      return readLength(inputStream);
+      return readLength(inputStream, true);
     }
 
     final byte[] dataLengthBytes = BytesUtils.subBytes(doubleIntLengthBytes, 0, INT_LEN);
@@ -264,7 +429,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // In socket input stream readBytes == -1 indicates EOF, namely the
       // socket is closed
       if (readBytes == -1) {
-        throw new PipeConnectionException("Socket closed when executing readTillFull.");
+        throw new PipeConnectionException(
+            DataNodePipeMessages.SOCKET_CLOSED_WHEN_EXECUTING_READTILLFULL);
       }
       alreadyReadBytes += readBytes;
     }
@@ -286,9 +452,41 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // In socket input stream skippedBytes == 0 indicates EOF, namely the
       // socket is closed
       if (skippedBytes == 0) {
-        throw new PipeConnectionException("Socket closed when executing skipTillEnough.");
+        throw new PipeConnectionException(
+            DataNodePipeMessages.SOCKET_CLOSED_WHEN_EXECUTING_SKIPTILLENOUGH);
       }
       currentSkippedBytes += skippedBytes;
+    }
+  }
+
+  private static class ReadProgressInputStream extends FilterInputStream {
+
+    private boolean hasReadAnyByte;
+
+    private ReadProgressInputStream(final InputStream inputStream) {
+      super(inputStream);
+    }
+
+    @Override
+    public int read() throws IOException {
+      final int result = super.read();
+      if (result >= 0) {
+        hasReadAnyByte = true;
+      }
+      return result;
+    }
+
+    @Override
+    public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+      final int result = super.read(buffer, offset, length);
+      if (result > 0) {
+        hasReadAnyByte = true;
+      }
+      return result;
+    }
+
+    private boolean hasReadAnyByte() {
+      return hasReadAnyByte;
     }
   }
 }

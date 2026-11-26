@@ -22,6 +22,7 @@ package org.apache.iotdb.db.protocol.thrift;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Processor;
@@ -55,7 +56,8 @@ public class ProcessorWithMetrics extends Processor {
       in.readMessageEnd();
       TApplicationException x =
           new TApplicationException(
-              TApplicationException.UNKNOWN_METHOD, "Invalid method name: '" + msg.name + "'");
+              TApplicationException.UNKNOWN_METHOD,
+              String.format(DataNodeMiscMessages.INVALID_METHOD_NAME_FMT, msg.name));
       out.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION, msg.seqid));
       x.write(out);
       out.writeMessageEnd();

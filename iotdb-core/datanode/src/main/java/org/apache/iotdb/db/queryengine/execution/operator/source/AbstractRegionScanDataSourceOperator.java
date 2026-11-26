@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -107,7 +108,7 @@ public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourc
       boolean hasCachedCountValue = buildCountResultIfNeed();
       return !finished || hasCachedCountValue;
     } catch (IOException e) {
-      throw new IOException("Error occurs when scanning active time series.", e);
+      throw new IOException(DataNodeQueryMessages.ERROR_OCCURS_WHEN_SCANNING_ACTIVE_TIME_SERIES, e);
     }
   }
 

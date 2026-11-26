@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -85,7 +85,8 @@ public class LeftOuterTimeJoinOperatorTest {
     // 25     25    null
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1, TimeUnit.SECONDS));
 
     Operator leftChild =
         new Operator() {
@@ -374,7 +375,8 @@ public class LeftOuterTimeJoinOperatorTest {
     // 3     3       4       30.0    false
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1, TimeUnit.SECONDS));
 
     Operator leftChild =
         new Operator() {
@@ -702,7 +704,8 @@ public class LeftOuterTimeJoinOperatorTest {
     // 111   111    null
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1, TimeUnit.SECONDS));
 
     Operator leftChild =
         new Operator() {

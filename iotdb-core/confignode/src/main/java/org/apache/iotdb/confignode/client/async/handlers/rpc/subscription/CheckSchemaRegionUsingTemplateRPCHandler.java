@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -55,14 +56,20 @@ public class CheckSchemaRegionUsingTemplateRPCHandler
     responseMap.put(requestId, response);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully check schema region using template on DataNode: {}", targetNode);
+      LOGGER.info(
+          ConfigNodeMessages.SUCCESSFULLY_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE,
+          targetNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       nodeLocationMap.remove(requestId);
       LOGGER.error(
-          "Failed to check schema region using template on DataNode {}, {}", targetNode, tsStatus);
+          ConfigNodeMessages.FAILED_TO_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE,
+          targetNode,
+          tsStatus);
     } else {
       LOGGER.error(
-          "Failed to check schema region using template on DataNode {}, {}", targetNode, tsStatus);
+          ConfigNodeMessages.FAILED_TO_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE,
+          targetNode,
+          tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -70,19 +77,19 @@ public class CheckSchemaRegionUsingTemplateRPCHandler
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Count paths using template error on DataNode: {id="
-            + targetNode.getDataNodeId()
-            + ", internalEndPoint="
-            + targetNode.getInternalEndPoint()
-            + "}"
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_COUNT_PATHS_USING_TEMPLATE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_E05E0F5B,
+            String.valueOf(targetNode.getDataNodeId()),
+            String.valueOf(targetNode.getInternalEndPoint()),
+            String.valueOf(e.getMessage()));
     LOGGER.error(errorMsg);
 
-    countDownLatch.countDown();
     TCheckSchemaRegionUsingTemplateResp resp = new TCheckSchemaRegionUsingTemplateResp();
     resp.setStatus(
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
     responseMap.put(requestId, resp);
+    countDownLatch.countDown();
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -34,6 +35,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
+
+import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -90,6 +94,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
     String[] timeSeriesArray =
         new String[] {
@@ -101,7 +106,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
       try {
         statement.execute(
             "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
-        statement.execute("DELETE TIMESERIES root.sg1.d1.vector1.s1");
+        TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.sg1.d1.vector1.s1");
         statement.execute(
             "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 DOUBLE encoding=PLAIN compressor=SNAPPY)");
       } catch (SQLException e) {
@@ -140,5 +145,24 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
       }
     }
     Assert.assertEquals(timeSeriesArray.length, count);
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void testDifferentDeviceAlignment() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // Should ignore the alignment difference
+      statement.execute("create aligned timeseries root.sg2.d (s2 int64, s3 int64)");
+      // Should use the existing alignment
+      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+      statement.execute("insert into root.sg2.d (time, s4) values (-1, 1)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from root.sg2.d"),
+          "Time,root.sg2.d.s3,root.sg2.d.s4,root.sg2.d.s1,root.sg2.d.s2,",
+          Collections.singleton("-1,null,1.0,null,null,"));
+    } catch (SQLException ignored) {
+      fail();
+    }
   }
 }

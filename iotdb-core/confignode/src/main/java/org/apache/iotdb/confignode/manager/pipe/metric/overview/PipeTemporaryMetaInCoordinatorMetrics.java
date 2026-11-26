@@ -24,12 +24,13 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,7 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::createMetrics);
   }
@@ -68,34 +69,34 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
 
   private void createAutoGauge(final String pipeID) {
     final PipeTemporaryMetaInCoordinator pipeTemporaryMeta = pipeTemporaryMetaMap.get(pipeID);
-    final String[] pipeNameAndCreationTime = pipeID.split("_");
+    final int separatorIndex = pipeID.lastIndexOf('_');
+    final String pipeName = pipeID.substring(0, separatorIndex);
+    final String creationTime = pipeID.substring(separatorIndex + 1);
     metricService.createAutoGauge(
         Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
         PipeTemporaryMetaInCoordinator::getGlobalRemainingEvents,
         Tag.NAME.toString(),
-        pipeNameAndCreationTime[0],
+        pipeName,
         Tag.CREATION_TIME.toString(),
-        pipeNameAndCreationTime[1]);
+        creationTime);
     metricService.createAutoGauge(
         Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
         PipeTemporaryMetaInCoordinator::getGlobalRemainingTime,
         Tag.NAME.toString(),
-        pipeNameAndCreationTime[0],
+        pipeName,
         Tag.CREATION_TIME.toString(),
-        pipeNameAndCreationTime[1]);
+        creationTime);
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::deregister);
-    if (!pipeTemporaryMetaMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty");
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the pipes registered so that a metric service restart can bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
@@ -103,27 +104,28 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
   }
 
   private void removeAutoGauge(final String pipeID) {
-    final String[] pipeNameAndCreationTime = pipeID.split("_");
+    final int separatorIndex = pipeID.lastIndexOf('_');
+    final String pipeName = pipeID.substring(0, separatorIndex);
+    final String creationTime = pipeID.substring(separatorIndex + 1);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT.toString(),
         Tag.NAME.toString(),
-        pipeNameAndCreationTime[0],
+        pipeName,
         Tag.CREATION_TIME.toString(),
-        pipeNameAndCreationTime[1]);
+        creationTime);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         Tag.NAME.toString(),
-        pipeNameAndCreationTime[0],
+        pipeName,
         Tag.CREATION_TIME.toString(),
-        pipeNameAndCreationTime[1]);
-    pipeTemporaryMetaMap.remove(pipeID);
+        creationTime);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeMeta pipeMeta) {
+  public synchronized void register(final PipeMeta pipeMeta) {
     final String taskID =
         pipeMeta.getStaticMeta().getPipeName() + "_" + pipeMeta.getStaticMeta().getCreationTime();
     pipeTemporaryMetaMap.putIfAbsent(
@@ -133,16 +135,18 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String pipeID) {
+  public synchronized void deregister(final String pipeID) {
     if (!pipeTemporaryMetaMap.containsKey(pipeID)) {
       LOGGER.warn(
-          "Failed to deregister pipe temporary meta metrics, PipeTemporaryMeta({}) does not exist",
+          ManagerMessages
+              .FAILED_TO_DEREGISTER_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_DOES_NOT,
           pipeID);
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeMetrics(pipeID);
     }
+    pipeTemporaryMetaMap.remove(pipeID);
   }
 
   public void handleTemporaryMetaChanges(final Iterable<PipeMeta> pipeMetaList) {

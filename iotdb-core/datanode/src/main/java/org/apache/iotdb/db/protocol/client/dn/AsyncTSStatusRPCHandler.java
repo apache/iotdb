@@ -21,6 +21,7 @@ package org.apache.iotdb.db.protocol.client.dn;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -28,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
 /** General RPC handler for TSStatus response type. */
@@ -57,12 +59,13 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
       // Remove only if success
       nodeLocationMap.remove(requestId);
       if (!keepSilent) {
-        LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+        LOGGER.info(
+            DataNodeMiscMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
       }
     } else {
       if (!keepSilent) {
         LOGGER.error(
-            "Failed to {} on DataNode: {}, response: {}",
+            DataNodeMiscMessages.FAILED_ON_DATANODE,
             requestType,
             formattedTargetLocation,
             response);
@@ -76,12 +79,11 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
+        String.format(
+            DataNodeMiscMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            Objects.toString(requestType),
+            Objects.toString(formattedTargetLocation),
+            Objects.toString(e.getMessage()));
     if (!keepSilent) {
       LOGGER.error(errorMsg);
     }

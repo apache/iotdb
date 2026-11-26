@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.Resampler;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -45,7 +46,8 @@ public class UDTFResample implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             x -> (long) x > 0,
-            "gap should be a time period whose unit is ms, s, m, h, d.",
+            LibraryUdfMessages
+                .EXCEPTION_GAP_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_D_0B4CA46A,
             Util.parseTime(validator.getParameters().getString("every"), validator.getParameters()))
         .validate(
             x ->
@@ -55,23 +57,25 @@ public class UDTFResample implements UDTF {
                     || "median".equals(x)
                     || "first".equals(x)
                     || "last".equals(x),
-            "aggr should be min, max, mean, median, first, last.",
+            LibraryUdfMessages.EXCEPTION_AGGR_SHOULD_BE_MIN_MAX_MEAN_MEDIAN_FIRST_LAST_3588D6DE,
             validator.getParameters().getStringOrDefault("aggr", "mean").toLowerCase())
         .validate(
             x -> "nan".equals(x) || "ffill".equals(x) || "bfill".equals(x) || "linear".equals(x),
-            "aggr should be min, max, mean, median, first, last.",
+            LibraryUdfMessages.EXCEPTION_AGGR_SHOULD_BE_MIN_MAX_MEAN_MEDIAN_FIRST_LAST_3588D6DE,
             validator.getParameters().getStringOrDefault("interp", "nan").toLowerCase());
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     if (validator.getParameters().hasAttribute(START_PARAM)) {
       validator.validate(
           x -> (long) x > 0,
-          "start should conform to the format yyyy-MM-dd HH:mm:ss.",
+          LibraryUdfMessages
+              .EXCEPTION_START_SHOULD_CONFORM_TO_THE_FORMAT_YYYY_MM_DD_HH_MM_SS_3FAAA2A2,
           format.parse(validator.getParameters().getString(START_PARAM)).getTime());
     }
     if (validator.getParameters().hasAttribute("end")) {
       validator.validate(
           x -> (long) x > 0,
-          "end should conform to the format yyyy-MM-dd HH:mm:ss.",
+          LibraryUdfMessages
+              .EXCEPTION_END_SHOULD_CONFORM_TO_THE_FORMAT_YYYY_MM_DD_HH_MM_SS_F7135FE6,
           format.parse(validator.getParameters().getString("end")).getTime());
     }
   }

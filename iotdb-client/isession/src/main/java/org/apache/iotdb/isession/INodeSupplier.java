@@ -21,6 +21,7 @@ package org.apache.iotdb.isession;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -30,4 +31,32 @@ public interface INodeSupplier extends Supplier<List<TEndPoint>> {
   void close();
 
   Optional<TEndPoint> getQueryEndPoint();
+
+  /** Initial addresses to try after all discovered endpoints have failed. */
+  default List<TEndPoint> getSeedNodes() {
+    return Collections.emptyList();
+  }
+
+  /** Request a discovery refresh after reconnecting through a seed. */
+  default void requestRefresh() {
+    // Suppliers without automatic discovery have nothing to refresh.
+  }
+
+  /**
+   * Returns whether this supplier is managed by the caller instead of the IoTDB client.
+   *
+   * <p>When this returns {@code true}, the session or pool must not call {@link #close()} during
+   * its own close or reopen lifecycle. The caller remains responsible for closing or otherwise
+   * invalidating the supplier.
+   *
+   * <p>When this returns {@code false}, the session or pool owns the supplier lifecycle and may
+   * call {@link #close()} when the session or pool is closed or reopened. Implementations whose
+   * {@link #close()} is a no-op do not need to override this method.
+   *
+   * <p>Callers sharing one supplier between multiple sessions or pools should implement this method
+   * to return {@code true}. This flag is declarative and is not validated by the client.
+   */
+  default boolean isCallerManaged() {
+    return false;
+  }
 }

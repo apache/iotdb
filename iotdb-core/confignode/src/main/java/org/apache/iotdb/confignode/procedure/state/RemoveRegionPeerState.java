@@ -24,4 +24,7 @@ public enum RemoveRegionPeerState {
   REMOVE_REGION_PEER,
   DELETE_OLD_REGION_PEER,
   REMOVE_REGION_LOCATION_CACHE,
+  DROP_CONSENSUS_PIPES,
+  // Reconcile retained DataRegion replicas after removal, only for IoTConsensus V1.
+  RESET_IOT_CONSENSUS_V1_PEER_LIST,
 }

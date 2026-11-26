@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -40,10 +44,19 @@ import java.util.List;
 
 public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
+  @TestOnly
   public ReadPointCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
-    super(targetResources, seqFileResources);
+    super(targetResources, seqFileResources, EncryptDBUtils.getDefaultFirstEncryptParam());
+  }
+
+  public ReadPointCrossCompactionWriter(
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqFileResources,
+      EncryptParameter encryptParameter)
+      throws IOException {
+    super(targetResources, seqFileResources, encryptParameter);
   }
 
   @Override
@@ -56,13 +69,16 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
     checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
+    chunkPointNumArray[subTaskId] += batchSize;
+    if (hasVariableLengthTypeArray[subTaskId]) {
+      writtenPointTotalSizeArray[subTaskId] += estimateWrittenPointTotalSize(tsBlock);
+    }
     synchronized (this) {
       // we need to synchronized here to avoid multi-thread competition in sub-task
       TsFileResource resource = targetResources.get(seqFileIndexArray[subTaskId]);
       resource.updateStartTime(deviceId, timestamps.getStartTime());
       resource.updateEndTime(deviceId, timestamps.getEndTime());
     }
-    chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
     checkChunkSizeAndMayOpenANewChunk(
         targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriter, subTaskId);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
@@ -80,13 +96,15 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
   @Override
   public boolean flushNonAlignedChunk(Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) {
     throw new UnsupportedOperationException(
-        "Does not support this method in ReadPointCrossCompactionWriter");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_DOES_NOT_SUPPORT_THIS_METHOD_IN_READPOINTCROSSCOMPACTIONWRITER_D024F312);
   }
 
   @Override
   public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId) {
     throw new UnsupportedOperationException(
-        "Does not support this method in ReadPointCrossCompactionWriter");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_DOES_NOT_SUPPORT_THIS_METHOD_IN_READPOINTCROSSCOMPACTIONWRITER_D024F312);
   }
 
   @Override
@@ -95,20 +113,23 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
       int subTaskId,
       AbstractCompactionFlushController flushController) {
     throw new UnsupportedOperationException(
-        "Does not support this method in ReadPointCrossCompactionWriter");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_DOES_NOT_SUPPORT_THIS_METHOD_IN_READPOINTCROSSCOMPACTIONWRITER_D024F312);
   }
 
   @Override
   public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) {
     throw new UnsupportedOperationException(
-        "Does not support this method in ReadPointCrossCompactionWriter");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_DOES_NOT_SUPPORT_THIS_METHOD_IN_READPOINTCROSSCOMPACTIONWRITER_D024F312);
   }
 
   @Override
   public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId) {
     throw new UnsupportedOperationException(
-        "Does not support this method in ReadPointCrossCompactionWriter");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_DOES_NOT_SUPPORT_THIS_METHOD_IN_READPOINTCROSSCOMPACTIONWRITER_D024F312);
   }
 
   @Override
@@ -117,6 +138,7 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
       int subTaskId,
       AbstractCompactionFlushController flushController) {
     throw new UnsupportedOperationException(
-        "Does not support this method in ReadPointCrossCompactionWriter");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_DOES_NOT_SUPPORT_THIS_METHOD_IN_READPOINTCROSSCOMPACTIONWRITER_D024F312);
   }
 }

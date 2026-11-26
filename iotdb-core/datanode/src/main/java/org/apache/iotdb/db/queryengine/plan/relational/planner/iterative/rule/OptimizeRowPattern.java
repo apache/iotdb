@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrPatternAlternationOptimizer;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrRowPatternFlattener;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrPatternAlternationOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPatternFlattener;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.patternRecognition;
 

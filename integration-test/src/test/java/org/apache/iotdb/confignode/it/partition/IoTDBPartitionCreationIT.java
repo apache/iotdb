@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -39,11 +40,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -96,10 +99,10 @@ public class IoTDBPartitionCreationIT {
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
-    setStorageGroup();
+    setDatabase();
   }
 
-  private void setStorageGroup() throws Exception {
+  private void setDatabase() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status = client.setDatabase(new TDatabaseSchema(sg));
@@ -112,6 +115,8 @@ public class IoTDBPartitionCreationIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Partition allocation excludes Removing and ReadOnly nodes, permits an offline node, and
+  // restores all regions after that node restarts.
   @Test
   public void testPartitionAllocation() throws Exception {
     try (SyncConfigNodeIServiceClient client =
@@ -318,38 +323,51 @@ public class IoTDBPartitionCreationIT {
 
       // Shutdown 1 DataNode
       // Current cluster: 1C5D
-      // DataNode status: Running, Running, Removing, ReadOnly, Unknown
+      // DataNode status: Running, Running, Removing, ReadOnly, Stopped (Unknown on Windows).
       // Region distribution: [0, 1, 2], [0, 1, 2], [0], [1], [2]
       EnvFactory.getEnv().shutdownDataNode(4);
       // Wait for shutdown check
-      while (true) {
-        AtomicBoolean containUnknown = new AtomicBoolean(false);
+      boolean isShutdownDetected = false;
+      for (int retry = 0; retry < 60; retry++) {
         TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containUnknown.set(true);
-                  }
-                });
-
-        if (containUnknown.get()) {
+        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+          if (EnvUtils.getNodeStatusAfterLocalStop().getStatus().equals(dataNodeInfo.getStatus())) {
+            isShutdownDetected = true;
+            break;
+          }
+        }
+        if (isShutdownDetected) {
           break;
         }
         TimeUnit.SECONDS.sleep(1);
       }
+      Assert.assertTrue(isShutdownDetected);
 
       // Register 1 DataNode and Create 1 DataPartition to extend 1 DataRegionGroup
       // The new DataRegions wouldn't be allocated to the Removing and ReadOnly DataNode
-      // But the new DataRegion can be allocated to the Unknown DataNode
+      // But the new DataRegion can be allocated to the offline DataNode.
       // Current cluster: 1C6D
-      // Status: Running, Running, Removing, ReadOnly, Unknown, Running
+      // Status: Running, Running, Removing, ReadOnly, Stopped (Unknown on Windows), Running.
       // RegionGroup: [0, 1, 2, 3], [0, 1, 2], [0], [1], [2, 3], [3]
       EnvFactory.getEnv().registerNewDataNode(false);
-      // Use thread sleep to replace verifying because the Unknown DataNode can not pass the
-      // connection check
-      TimeUnit.SECONDS.sleep(25);
+      DataNodeWrapper registeredDataNode = EnvFactory.getEnv().getDataNodeWrapper(5);
+      // Check only the new node because a cluster-wide readiness check includes the offline node.
+      Awaitility.await("new DataNode registration")
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
+          .until(
+              () -> {
+                TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                    showDataNodesResp.getStatus().getCode());
+                return showDataNodesResp.getDataNodesInfoList().stream()
+                    .anyMatch(
+                        dataNodeInfo ->
+                            registeredDataNode.getIp().equals(dataNodeInfo.getRpcAddresss())
+                                && registeredDataNode.getPort() == dataNodeInfo.getRpcPort()
+                                && NodeStatus.Running.getStatus().equals(dataNodeInfo.getStatus()));
+              });
       partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
               sg,
@@ -405,6 +423,9 @@ public class IoTDBPartitionCreationIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
         for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
@@ -443,23 +464,25 @@ public class IoTDBPartitionCreationIT {
       // RegionGroup: [0, 1, 2, 3], [0, 1, 2], [0], [1], [2, 3], [3]
       EnvFactory.getEnv().startDataNode(4);
       // Wait for restart check
-      while (true) {
-        AtomicBoolean containUnknown = new AtomicBoolean(false);
+      boolean isRestartDetected = false;
+      for (int retry = 0; retry < 60; retry++) {
         TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containUnknown.set(true);
-                  }
-                });
-
-        if (!containUnknown.get()) {
+        boolean containDown = false;
+        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+          // The restarted DataNode keeps Stopped until its first heartbeat revives it
+          if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())
+              || NodeStatus.Stopped.getStatus().equals(dataNodeInfo.getStatus())) {
+            containDown = true;
+            break;
+          }
+        }
+        if (!containDown) {
+          isRestartDetected = true;
           break;
         }
         TimeUnit.SECONDS.sleep(1);
       }
+      Assert.assertTrue(isRestartDetected);
       // Check Region count and status
       for (int i = 0; i < 30; i++) {
         runningCnt = 0;
@@ -470,6 +493,9 @@ public class IoTDBPartitionCreationIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
         for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {

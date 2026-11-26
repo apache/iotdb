@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -50,7 +52,9 @@ public class ConsumerGroupMeta {
   private long creationTime;
   private Map<String, Set<String>> topicNameToSubscribedConsumerIdSet;
   private Map<String, ConsumerMeta> consumerIdToConsumerMeta;
+  private boolean tableModel;
   private Map<String, Long> topicNameToSubscriptionCreationTime; // used when creationTime < 0
+  private final Set<String> retainedTopicNames = ConcurrentHashMap.newKeySet();
 
   public ConsumerGroupMeta() {
     this.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
@@ -66,17 +70,23 @@ public class ConsumerGroupMeta {
     this.creationTime = -creationTime;
 
     consumerIdToConsumerMeta.put(firstConsumerMeta.getConsumerId(), firstConsumerMeta);
+    tableModel = isTableConsumer(firstConsumerMeta);
   }
 
   public ConsumerGroupMeta deepCopy() {
     final ConsumerGroupMeta copied = new ConsumerGroupMeta();
     copied.consumerGroupId = consumerGroupId;
     copied.creationTime = creationTime;
-    copied.topicNameToSubscribedConsumerIdSet =
-        new ConcurrentHashMap<>(topicNameToSubscribedConsumerIdSet);
+    copied.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
+    topicNameToSubscribedConsumerIdSet.forEach(
+        (topicName, subscribedConsumerIds) ->
+            copied.topicNameToSubscribedConsumerIdSet.put(
+                topicName, new HashSet<>(subscribedConsumerIds)));
     copied.consumerIdToConsumerMeta = new ConcurrentHashMap<>(consumerIdToConsumerMeta);
+    copied.tableModel = tableModel;
     copied.topicNameToSubscriptionCreationTime =
         new ConcurrentHashMap<>(topicNameToSubscriptionCreationTime);
+    copied.retainedTopicNames.addAll(retainedTopicNames);
     return copied;
   }
 
@@ -116,42 +126,66 @@ public class ConsumerGroupMeta {
     return unsubscribedTopicNames;
   }
 
+  public static Set<String> getTopicsNewlySubByGroup(
+      final ConsumerGroupMeta currentMeta, final ConsumerGroupMeta updatedMeta) {
+    if (!Objects.equals(currentMeta.consumerGroupId, updatedMeta.consumerGroupId)
+        || !Objects.equals(currentMeta.creationTime, updatedMeta.creationTime)) {
+      return Collections.emptySet();
+    }
+
+    final Set<String> newlySubscribedTopicNames = new HashSet<>();
+    updatedMeta
+        .topicNameToSubscribedConsumerIdSet
+        .keySet()
+        .forEach(
+            topicName -> {
+              if (!currentMeta.topicNameToSubscribedConsumerIdSet.containsKey(topicName)) {
+                newlySubscribedTopicNames.add(topicName);
+              }
+            });
+    return newlySubscribedTopicNames;
+  }
+
   /////////////////////////////// consumer ///////////////////////////////
 
   public void checkAuthorityBeforeJoinConsumerGroup(final ConsumerMeta consumerMeta)
       throws SubscriptionException {
-    if (isEmpty()) {
-      return;
-    }
-    final ConsumerMeta existedConsumerMeta = consumerIdToConsumerMeta.values().iterator().next();
-    final boolean match =
-        Objects.equals(existedConsumerMeta.getUsername(), consumerMeta.getUsername())
-            && Objects.equals(existedConsumerMeta.getPassword(), consumerMeta.getPassword());
-    if (!match) {
+    final String expectedSqlDialect =
+        visibleUnder(true)
+            ? SystemConstant.SQL_DIALECT_TABLE_VALUE
+            : SystemConstant.SQL_DIALECT_TREE_VALUE;
+    final String actualSqlDialect = consumerMeta.getConfig().getSqlDialect();
+    final boolean isExpectedTableModel =
+        SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(expectedSqlDialect);
+    final boolean isActualTableModel =
+        SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(actualSqlDialect);
+    if (isExpectedTableModel != isActualTableModel) {
       final String exceptionMessage =
           String.format(
-              "Failed to create consumer %s because inconsistent username & password under the same consumer group, expected %s:%s, actual %s:%s",
+              PipeMessages
+                  .EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9,
               consumerMeta.getConsumerId(),
-              existedConsumerMeta.getUsername(),
-              existedConsumerMeta.getPassword(),
-              consumerMeta.getUsername(),
-              consumerMeta.getPassword());
+              expectedSqlDialect,
+              actualSqlDialect);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
   }
 
   public void addConsumer(final ConsumerMeta consumerMeta) {
+    tableModel = isTableConsumer(consumerMeta);
     consumerIdToConsumerMeta.put(consumerMeta.getConsumerId(), consumerMeta);
   }
 
   public void removeConsumer(final String consumerId) {
     consumerIdToConsumerMeta.remove(consumerId);
-    for (final Map.Entry<String, Set<String>> entry :
-        topicNameToSubscribedConsumerIdSet.entrySet()) {
+    final Iterator<Map.Entry<String, Set<String>>> iterator =
+        topicNameToSubscribedConsumerIdSet.entrySet().iterator();
+    while (iterator.hasNext()) {
+      final Map.Entry<String, Set<String>> entry = iterator.next();
       entry.getValue().remove(consumerId);
       if (entry.getValue().isEmpty()) {
-        topicNameToSubscribedConsumerIdSet.remove(entry.getKey());
+        iterator.remove();
       }
     }
   }
@@ -170,7 +204,33 @@ public class ConsumerGroupMeta {
     return consumerIdToConsumerMeta.get(consumerId);
   }
 
+  public boolean visibleUnder(final boolean isTableModel) {
+    return isTableModel == tableModel;
+  }
+
+  private static boolean isTableConsumer(final ConsumerMeta consumerMeta) {
+    return SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(
+        consumerMeta.getConfig().getSqlDialect());
+  }
+
   ////////////////////////// subscription //////////////////////////
+
+  /** Get all topic names subscribed by this consumer group. */
+  public Set<String> getSubscribedTopicNames() {
+    return Collections.unmodifiableSet(topicNameToSubscribedConsumerIdSet.keySet());
+  }
+
+  public Set<String> getRetainedTopicNames() {
+    return Collections.unmodifiableSet(retainedTopicNames);
+  }
+
+  public void retainTopic(final String topicName) {
+    retainedTopicNames.add(topicName);
+  }
+
+  public void removeRetainedTopic(final String topicName) {
+    retainedTopicNames.remove(topicName);
+  }
 
   /**
    * Get the consumers subscribing the given topic in this group.
@@ -209,28 +269,17 @@ public class ConsumerGroupMeta {
   }
 
   public boolean allowSubscribeTopicForConsumer(final String topic, final String consumerId) {
-    if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
-      return false;
-    }
-    final Set<String> subscribedConsumerIdSet = topicNameToSubscribedConsumerIdSet.get(topic);
-    if (Objects.isNull(subscribedConsumerIdSet)) {
-      return true;
-    }
-    if (subscribedConsumerIdSet.isEmpty()) {
-      return true;
-    }
-    final String subscribedConsumerId = subscribedConsumerIdSet.iterator().next();
-    return Objects.equals(
-        Objects.requireNonNull(consumerIdToConsumerMeta.get(subscribedConsumerId)).getUsername(),
-        Objects.requireNonNull(consumerIdToConsumerMeta.get(consumerId)).getUsername());
+    return consumerIdToConsumerMeta.containsKey(consumerId);
   }
 
   public void addSubscription(final String consumerId, final Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(
-              "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer group %s",
-              consumerId, consumerGroupId));
+              PipeMessages
+                  .EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87,
+              consumerId,
+              consumerGroupId));
     }
 
     for (final String topic : topics) {
@@ -263,12 +312,14 @@ public class ConsumerGroupMeta {
   }
 
   private Set<String> removeSubscriptionInternal(
-      @NonNull final String consumerId, final Set<String> topics) {
+      final String consumerId, final Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(
-              "Failed to remove subscription from consumer group meta: consumer %s does not exist in consumer group %s",
-              consumerId, consumerGroupId));
+              PipeMessages
+                  .EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3,
+              consumerId,
+              consumerGroupId));
     }
 
     final Set<String> noSubscriptionTopicAfterRemoval = new HashSet<>();
@@ -301,7 +352,14 @@ public class ConsumerGroupMeta {
     ReadWriteIOUtils.write(consumerGroupId, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
-    ReadWriteIOUtils.write(topicNameToSubscribedConsumerIdSet.size(), outputStream);
+    // A negative topic count identifies the extended, self-delimiting format. Do not infer the
+    // presence of retained topics from remaining bytes: this meta is also nested in procedures.
+    final boolean hasRetainedTopics = !retainedTopicNames.isEmpty();
+    ReadWriteIOUtils.write(
+        hasRetainedTopics
+            ? -topicNameToSubscribedConsumerIdSet.size() - 1
+            : topicNameToSubscribedConsumerIdSet.size(),
+        outputStream);
     for (final Map.Entry<String, Set<String>> entry :
         topicNameToSubscribedConsumerIdSet.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
@@ -311,7 +369,11 @@ public class ConsumerGroupMeta {
       }
     }
 
-    ReadWriteIOUtils.write(consumerIdToConsumerMeta.size(), outputStream);
+    // A negative empty-consumer count preserves the dialect of a retained table group. Older
+    // readers also treat this count as an empty map, without changing the following fields.
+    ReadWriteIOUtils.write(
+        consumerIdToConsumerMeta.isEmpty() && tableModel ? -1 : consumerIdToConsumerMeta.size(),
+        outputStream);
     for (final Map.Entry<String, ConsumerMeta> entry : consumerIdToConsumerMeta.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
@@ -324,6 +386,12 @@ public class ConsumerGroupMeta {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
+    if (hasRetainedTopics) {
+      ReadWriteIOUtils.write(retainedTopicNames.size(), outputStream);
+      for (final String topicName : retainedTopicNames) {
+        ReadWriteIOUtils.write(topicName, outputStream);
+      }
+    }
   }
 
   public static ConsumerGroupMeta deserialize(final InputStream inputStream) throws IOException {
@@ -334,6 +402,10 @@ public class ConsumerGroupMeta {
 
     consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
     int size = ReadWriteIOUtils.readInt(inputStream);
+    final boolean hasRetainedTopics = size < 0;
+    if (hasRetainedTopics) {
+      size = -size - 1;
+    }
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
 
@@ -348,10 +420,12 @@ public class ConsumerGroupMeta {
 
     consumerGroupMeta.consumerIdToConsumerMeta = new ConcurrentHashMap<>();
     size = ReadWriteIOUtils.readInt(inputStream);
+    consumerGroupMeta.tableModel = size < 0;
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final ConsumerMeta value = ConsumerMeta.deserialize(inputStream);
       consumerGroupMeta.consumerIdToConsumerMeta.put(key, value);
+      consumerGroupMeta.tableModel = isTableConsumer(value);
     }
 
     consumerGroupMeta.topicNameToSubscriptionCreationTime = new ConcurrentHashMap<>();
@@ -364,6 +438,12 @@ public class ConsumerGroupMeta {
       }
     }
 
+    if (hasRetainedTopics) {
+      size = ReadWriteIOUtils.readInt(inputStream);
+      for (int i = 0; i < size; ++i) {
+        consumerGroupMeta.retainedTopicNames.add(ReadWriteIOUtils.readString(inputStream));
+      }
+    }
     return consumerGroupMeta;
   }
 
@@ -375,6 +455,10 @@ public class ConsumerGroupMeta {
 
     consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
     int size = ReadWriteIOUtils.readInt(byteBuffer);
+    final boolean hasRetainedTopics = size < 0;
+    if (hasRetainedTopics) {
+      size = -size - 1;
+    }
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
 
@@ -389,10 +473,12 @@ public class ConsumerGroupMeta {
 
     consumerGroupMeta.consumerIdToConsumerMeta = new ConcurrentHashMap<>();
     size = ReadWriteIOUtils.readInt(byteBuffer);
+    consumerGroupMeta.tableModel = size < 0;
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final ConsumerMeta value = ConsumerMeta.deserialize(byteBuffer);
       consumerGroupMeta.consumerIdToConsumerMeta.put(key, value);
+      consumerGroupMeta.tableModel = isTableConsumer(value);
     }
 
     consumerGroupMeta.topicNameToSubscriptionCreationTime = new ConcurrentHashMap<>();
@@ -405,6 +491,12 @@ public class ConsumerGroupMeta {
       }
     }
 
+    if (hasRetainedTopics) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        consumerGroupMeta.retainedTopicNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
+    }
     return consumerGroupMeta;
   }
 
@@ -421,9 +513,11 @@ public class ConsumerGroupMeta {
     final ConsumerGroupMeta that = (ConsumerGroupMeta) obj;
     return Objects.equals(this.consumerGroupId, that.consumerGroupId)
         && this.creationTime == that.creationTime
+        && this.tableModel == that.tableModel
         && Objects.equals(
             this.topicNameToSubscribedConsumerIdSet, that.topicNameToSubscribedConsumerIdSet)
         && Objects.equals(this.consumerIdToConsumerMeta, that.consumerIdToConsumerMeta)
+        && Objects.equals(this.retainedTopicNames, that.retainedTopicNames)
         && Objects.equals(
             this.topicNameToSubscriptionCreationTime, that.topicNameToSubscriptionCreationTime);
   }
@@ -433,8 +527,10 @@ public class ConsumerGroupMeta {
     return Objects.hash(
         consumerGroupId,
         creationTime,
+        tableModel,
         topicNameToSubscribedConsumerIdSet,
         consumerIdToConsumerMeta,
+        retainedTopicNames,
         topicNameToSubscriptionCreationTime);
   }
 
@@ -451,6 +547,8 @@ public class ConsumerGroupMeta {
         + consumerIdToConsumerMeta
         + ", topicNameToSubscriptionCreationTime="
         + topicNameToSubscriptionCreationTime
+        + ", retainedTopicNames="
+        + retainedTopicNames
         + "}";
   }
 }

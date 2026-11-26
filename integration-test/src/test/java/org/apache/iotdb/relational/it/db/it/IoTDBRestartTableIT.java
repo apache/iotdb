@@ -21,6 +21,7 @@ package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.it.utils.DeletionTestUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -28,8 +29,10 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -37,15 +40,20 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -54,9 +62,21 @@ public class IoTDBRestartTableIT {
 
   private final Logger logger = LoggerFactory.getLogger(IoTDBRestartTableIT.class);
 
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
+  // Reuse the fixed WAL/schema configuration while retaining every scenario's recovery restarts.
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setWalMode("SYNC")
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus")
+        .setDataReplicationFactor(1)
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
+        .setDefaultDataRegionGroupNumPerDatabase(1)
+        .setMemtableSizeThreshold(16 * 1024 * 1024)
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -64,8 +84,8 @@ public class IoTDBRestartTableIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
     EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("ASYNC");
     EnvFactory.getEnv()
@@ -74,6 +94,18 @@ public class IoTDBRestartTableIT {
         .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus");
   }
 
+  @After
+  public void cleanDatabase() throws SQLException {
+    // Recreate each scenario's tables without retaining data or schema from the preceding test.
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists \"test\"");
+    }
+  }
+
+  /**
+   * Write flushed and unflushed table rows across two restarts, then verify all three timestamps.
+   */
   @Test
   public void testRestart() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -121,53 +153,127 @@ public class IoTDBRestartTableIT {
     }
   }
 
-  @Ignore // data deletion
+  /**
+   * Recover three points and verify the remaining values after two range deletions, with a flush
+   * between them.
+   */
   @Test
-  public void testRestartDelete() throws SQLException {
+  public void testRestartDelete() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      statement.execute("create database test");
       statement.execute("use \"test\"");
-      statement.execute("insert into root.turbine.d1(time,s1) values(1,1)");
-      statement.execute("insert into root.turbine.d1(time,s1) values(2,2)");
-      statement.execute("insert into root.turbine.d1(time,s1) values(3,3)");
+      statement.execute(
+          "create table restart_delete(device_id string tag, site string tag, "
+              + "s1 int64 field, s2 boolean field)");
+      statement.execute(
+          "create table restart_keep(device_id string tag, site string tag, "
+              + "s1 int64 field, s2 boolean field)");
+      statement.execute(
+          "insert into restart_delete(time,device_id,site,s1,s2) "
+              + "values(1,'d1','north',11,true),(2,'d1','north',12,false),"
+              + "(2,'d1','south',212,true),(2,'d1',null,52,true),(2,'d1','',62,false)");
+      statement.execute(
+          "insert into restart_keep(time,device_id,site,s1,s2) "
+              + "values(1,'d1','north',311,true),(2,'d1','north',312,false)");
+      statement.execute("flush");
+      // Identical TAG text in two tables, and NULL/empty trailing TAGs, coexist in one file.
+      DeletionTestUtils.assertSharedTsFile(
+          "test",
+          IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"restart_delete", "d1", "north"}),
+          IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"restart_delete", "d1", "south"}),
+          IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"restart_delete", "d1", null}),
+          IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"restart_delete", "d1", ""}),
+          IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"restart_keep", "d1", "north"}));
+      List<Path> closedFiles = DeletionTestUtils.getClosedTsFiles("test", true);
+      statement.execute(
+          "insert into restart_delete(time,device_id,site,s1) values(1,'d1','north',111)");
+      statement.execute(
+          "insert into restart_delete(time,device_id,site,s1,s2) "
+              + "values(3,'d1','north',13,true),(4,'d1','north',14,false)");
+      assertEquals(closedFiles, DeletionTestUtils.getClosedTsFiles("test", true));
+      assertTrue(DeletionTestUtils.getClosedTsFiles("test", false).isEmpty());
+
+      statement.execute(
+          "delete from restart_delete where device_id='d1' and site='north' and time <= 3");
+      assertRestartTableData(statement, "1970-01-01T00:00:00.004Z,d1,north,14,false,");
+
+      // This older rewrite is issued after DELETE has completed and is protected by the SYNC WAL.
+      statement.execute(
+          "insert into restart_delete(time,device_id,site,s1) values(2,'d1','north',1202)");
+      assertEquals(closedFiles, DeletionTestUtils.getClosedTsFiles("test", true));
+      assertTrue(DeletionTestUtils.getClosedTsFiles("test", false).isEmpty());
+      assertRestartTableData(
+          statement,
+          "1970-01-01T00:00:00.002Z,d1,north,1202,null,",
+          "1970-01-01T00:00:00.004Z,d1,north,14,false,");
     }
 
-    TestUtils.restartDataNodes();
+    TestUtils.stopForciblyAndRestartDataNodes();
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
       statement.execute("use \"test\"");
-      statement.execute("delete from root.turbine.d1.s1 where time<=1");
+      assertRestartTableData(
+          statement,
+          "1970-01-01T00:00:00.002Z,d1,north,1202,null,",
+          "1970-01-01T00:00:00.004Z,d1,north,14,false,");
+      // Full data deletion must also preserve the other identities sharing the original file.
+      statement.execute("delete from restart_delete where device_id='d1' and site='north'");
+      assertRestartTableData(statement);
+      statement.execute(
+          "insert into restart_delete(time,device_id,site,s1) values(1,'d1','north',1101)");
+      statement.execute("flush");
+    }
 
-      ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine.d1");
-      assertNotNull(resultSet);
-      String[] exp = new String[] {"2,2.0", "3,3.0"};
-      int cnt = 0;
-      try {
-        while (resultSet.next()) {
-          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-          assertEquals(exp[cnt], result);
-          cnt++;
-        }
-
-        statement.execute("flush");
-        statement.execute("delete from root.turbine.d1.s1 where time<=2");
-
-        exp = new String[] {"3,3.0"};
-        resultSet = statement.executeQuery("SELECT s1 FROM root.turbine.d1");
-        assertNotNull(resultSet);
-        cnt = 0;
-        while (resultSet.next()) {
-          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-          assertEquals(exp[cnt], result);
-          cnt++;
-        }
-      } finally {
-        resultSet.close();
-      }
+    TestUtils.stopForciblyAndRestartDataNodes();
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      statement.execute("use test");
+      assertRestartTableData(statement, "1970-01-01T00:00:00.001Z,d1,north,1101,null,");
+      statement.execute(
+          "insert into restart_delete(time,device_id,site,s1,s2) values(5,'d1','north',15,true)");
+      statement.execute("flush");
+      assertRestartTableData(
+          statement,
+          "1970-01-01T00:00:00.001Z,d1,north,1101,null,",
+          "1970-01-01T00:00:00.005Z,d1,north,15,true,");
     }
   }
 
+  private static void assertRestartTableData(Statement statement, String... targetRows)
+      throws SQLException {
+    List<String> expected =
+        new ArrayList<>(
+            Arrays.asList(
+                "1970-01-01T00:00:00.002Z,d1,null,52,true,",
+                "1970-01-01T00:00:00.002Z,d1,,62,false,"));
+    expected.addAll(Arrays.asList(targetRows));
+    expected.add("1970-01-01T00:00:00.002Z,d1,south,212,true,");
+    try (ResultSet rows =
+        statement.executeQuery(
+            "select time,device_id,site,s1,s2 from restart_delete "
+                + "order by device_id,site nulls first,time")) {
+      TestUtils.assertResultSetEqual(
+          rows, "time,device_id,site,s1,s2,", expected.toArray(new String[0]));
+    }
+    try (ResultSet rows =
+        statement.executeQuery(
+            "select time,device_id,site,s1,s2 from restart_keep order by device_id,site,time")) {
+      TestUtils.assertResultSetEqual(
+          rows,
+          "time,device_id,site,s1,s2,",
+          new String[] {
+            "1970-01-01T00:00:00.001Z,d1,north,311,true,",
+            "1970-01-01T00:00:00.002Z,d1,north,312,false,"
+          });
+    }
+  }
+
+  /** Write rows across two restarts and verify the time filter returns only the row at time 4. */
   @Test
   public void testRestartQueryLargerThanEndTime() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -220,6 +326,9 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /**
+   * Add another field at earlier timestamps after recovery and verify both values survive restart.
+   */
   @Test
   public void testRestartEndTime() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -269,6 +378,10 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /**
+   * Retain the disabled column-deletion scenario: recreate a series with a different type and
+   * verify recovery discards its incompatible WAL value while preserving the other series.
+   */
   @Ignore // delete column
   @Test
   public void testRecoverWALMismatchDataType() throws Exception {
@@ -276,7 +389,7 @@ public class IoTDBRestartTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
       statement.execute("insert into root.turbine1.d1(time,s1,s2) values(1,1.1,2.2)");
-      statement.execute("delete timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.turbine1.d1.s1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
     }
@@ -302,6 +415,10 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /**
+   * Retain the disabled column-deletion scenario: delete one series before restart and verify that
+   * only the remaining series and its value recover.
+   */
   @Ignore // delete column
   @Test
   public void testRecoverWALDeleteSchema() throws Exception {
@@ -309,7 +426,7 @@ public class IoTDBRestartTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
       statement.execute("insert into turbine1(time,tag1,s1,s2) values(1,\'d1\',1.1,2.2)");
-      statement.execute("delete timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.turbine1.d1.s1");
     }
 
     TestUtils.restartDataNodes();
@@ -332,6 +449,7 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /** Write fields at different times, restart DataNodes, and verify both values before time 3. */
   @Test
   public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -374,6 +492,9 @@ public class IoTDBRestartTableIT {
     config.setUnSeqTsFileSize(unFsFileSize);
   }
 
+  /**
+   * Restart after writing an unflushed table row and verify its timestamp and both field values.
+   */
   @Test
   public void testRecoverFromFlushMemTableError() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

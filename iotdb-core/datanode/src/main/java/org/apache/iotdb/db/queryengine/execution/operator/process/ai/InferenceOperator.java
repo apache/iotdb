@@ -19,23 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
+import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
-import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
-import org.apache.iotdb.commons.client.ainode.AINodeClient;
-import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.BottomInferenceWindowParameter;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.CountInferenceWindowParameter;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindowType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -44,13 +46,14 @@ import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class InferenceOperator implements ProcessOperator {
 
@@ -75,7 +78,6 @@ public class InferenceOperator implements ProcessOperator {
   private int resultIndex = 0;
   private List<ByteBuffer> results;
   private final TsBlockSerde serde = new TsBlockSerde();
-  private InferenceWindowType windowType = null;
 
   private final boolean generateTimeColumn;
   private long maxTimestamp;
@@ -109,10 +111,6 @@ public class InferenceOperator implements ProcessOperator {
     this.maxReturnSize = maxReturnSize;
     this.totalRow = 0;
 
-    if (modelInferenceDescriptor.getInferenceWindowParameter() != null) {
-      windowType = modelInferenceDescriptor.getInferenceWindowParameter().getWindowType();
-    }
-
     if (generateTimeColumn) {
       this.interval = 0;
       this.minTimestamp = Long.MAX_VALUE;
@@ -130,10 +128,11 @@ public class InferenceOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     ListenableFuture<?> childBlocked = child.isBlocked();
+    boolean childDone = childBlocked.isDone();
     boolean executionDone = forecastExecutionDone();
-    if (executionDone && childBlocked.isDone()) {
+    if (executionDone && childDone) {
       return NOT_BLOCKED;
-    } else if (childBlocked.isDone()) {
+    } else if (childDone) {
       return inferenceExecutionFuture;
     } else if (executionDone) {
       return childBlocked;
@@ -158,7 +157,7 @@ public class InferenceOperator implements ProcessOperator {
     Column timeColumn = tsBlock.getTimeColumn();
     long[] time = timeColumn.getLongs();
     for (int i = 0; i < time.length; i++) {
-      time[i] = maxTimestamp + interval * currentRowIndex;
+      time[i] = calculateGeneratedTime(maxTimestamp, interval, currentRowIndex);
       currentRowIndex++;
     }
   }
@@ -189,14 +188,16 @@ public class InferenceOperator implements ProcessOperator {
       try {
         if (!inferenceExecutionFuture.isDone()) {
           throw new IllegalStateException(
-              "The operator cannot continue until the forecast execution is done.");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THE_OPERATOR_CANNOT_CONTINUE_UNTIL_THE_FORECAST_EXECUTION_AF8A3145);
         }
 
         TInferenceResp inferenceResp = inferenceExecutionFuture.get();
         if (inferenceResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           String message =
               String.format(
-                  "Error occurred while executing inference:[%s]",
+                  DataNodeQueryMessages
+                      .EXCEPTION_ERROR_OCCURRED_WHILE_EXECUTING_INFERENCE_ARG_14FC21CE,
                   inferenceResp.getStatus().getMessage());
           throw new ModelInferenceProcessException(message);
         }
@@ -229,6 +230,13 @@ public class InferenceOperator implements ProcessOperator {
         maxTimestamp = Math.max(maxTimestamp, timestamp);
       }
       timeColumnBuilder.writeLong(timestamp);
+      if (inputTsBlock.getValueColumnCount() > 1) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .CALL_INFERENCE_FUNCTION_SHOULD_NOT_CONTAIN_MORE_THAN_ONE_INPUT_COLUMN_FOUND_D_INPUT,
+                inputTsBlock.getValueColumnCount()));
+      }
       for (int columnIndex = 0; columnIndex < inputTsBlock.getValueColumnCount(); columnIndex++) {
         columnBuilders[columnIndexes[columnIndex]].write(inputTsBlock.getColumn(columnIndex), i);
       }
@@ -236,86 +244,26 @@ public class InferenceOperator implements ProcessOperator {
     }
   }
 
-  private TWindowParams getWindowParams() {
-    TWindowParams windowParams;
-    if (windowType == null) {
-      return null;
-    }
-    if (windowType == InferenceWindowType.COUNT) {
-      CountInferenceWindowParameter countInferenceWindowParameter =
-          (CountInferenceWindowParameter) modelInferenceDescriptor.getInferenceWindowParameter();
-      windowParams = new TWindowParams();
-      windowParams.setWindowInterval((int) countInferenceWindowParameter.getInterval());
-      windowParams.setWindowStep((int) countInferenceWindowParameter.getStep());
-    } else {
-      windowParams = null;
-    }
-    return windowParams;
-  }
-
-  private TsBlock preProcess(TsBlock inputTsBlock) {
-    //    boolean notBuiltIn = !modelInferenceDescriptor.getModelInformation().isBuiltIn();
-    boolean notBuiltIn = false;
-    if (windowType == null || windowType == InferenceWindowType.HEAD) {
-      if (notBuiltIn
-          && totalRow != modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data does not match the model input %s. Try to use LIMIT in SQL or WINDOW in CALL INFERENCE",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-      return inputTsBlock;
-    } else if (windowType == InferenceWindowType.COUNT) {
-      if (notBuiltIn
-          && totalRow < modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data is less than the model input %s. ",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-    } else if (windowType == InferenceWindowType.TAIL) {
-      if (notBuiltIn
-          && totalRow < modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data is less than the model input %s. ",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-      // Tail window logic: get the latest data for inference
-      long windowSize =
-          (int)
-              ((BottomInferenceWindowParameter)
-                      modelInferenceDescriptor.getInferenceWindowParameter())
-                  .getWindowSize();
-      return inputTsBlock.subTsBlock((int) (totalRow - windowSize));
-    }
-    return inputTsBlock;
-  }
-
   private void submitInferenceTask() {
 
     if (generateTimeColumn) {
-      interval = (maxTimestamp - minTimestamp) / totalRow;
+      interval = calculateGeneratedTimeInterval(minTimestamp, maxTimestamp, totalRow);
     }
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
-
-    TsBlock finalInputTsBlock = preProcess(inputTsBlock);
-    TWindowParams windowParams = getWindowParams();
 
     inferenceExecutionFuture =
         Futures.submit(
             () -> {
               try (AINodeClient client =
                   AINodeClientManager.getInstance()
-                      .borrowClient(modelInferenceDescriptor.getTargetAINode())) {
+                      .borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
                 return client.inference(
-                    modelInferenceDescriptor.getModelName(),
-                    finalInputTsBlock,
-                    modelInferenceDescriptor.getInferenceAttributes(),
-                    windowParams);
-              } catch (Exception e) {
-                throw new ModelInferenceProcessException(e.getMessage());
+                    new TInferenceReq(
+                            modelInferenceDescriptor.getModelId(), serde.serialize(inputTsBlock))
+                        .setInferenceAttributes(modelInferenceDescriptor.getInferenceAttributes()));
+              } catch (ClientManagerException | TException e) {
+                throw new AINodeConnectionException(e);
               }
             },
             modelInferenceExecutor);
@@ -356,5 +304,30 @@ public class InferenceOperator implements ProcessOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + inputTsBlockBuilder.getRetainedSizeInBytes()
         + (long) columnIndexes.length * Integer.BYTES;
+  }
+
+  static long calculateGeneratedTimeInterval(long minTimestamp, long maxTimestamp, long totalRow) {
+    try {
+      BigInteger interval =
+          BigInteger.valueOf(maxTimestamp)
+              .subtract(BigInteger.valueOf(minTimestamp))
+              .divide(BigInteger.valueOf(totalRow));
+      if (interval.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+        throw new ArithmeticException();
+      }
+      return interval.longValue();
+    } catch (ArithmeticException e) {
+      throw new ModelInferenceProcessException(
+          DataNodeQueryMessages.EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A);
+    }
+  }
+
+  static long calculateGeneratedTime(long maxTimestamp, long interval, long currentRowIndex) {
+    try {
+      return Math.addExact(maxTimestamp, Math.multiplyExact(interval, currentRowIndex));
+    } catch (ArithmeticException e) {
+      throw new ModelInferenceProcessException(
+          DataNodeQueryMessages.EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A);
+    }
   }
 }

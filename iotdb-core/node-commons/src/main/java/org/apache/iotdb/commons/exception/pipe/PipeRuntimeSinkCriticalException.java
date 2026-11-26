@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMetaVersion;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -33,6 +34,10 @@ public class PipeRuntimeSinkCriticalException extends PipeRuntimeCriticalExcepti
 
   public PipeRuntimeSinkCriticalException(final String message) {
     super(message);
+  }
+
+  public PipeRuntimeSinkCriticalException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 
   public PipeRuntimeSinkCriticalException(final String message, final long timeStamp) {
@@ -74,7 +79,8 @@ public class PipeRuntimeSinkCriticalException extends PipeRuntimeCriticalExcepti
       case VERSION_2:
         return new PipeRuntimeSinkCriticalException(message, ReadWriteIOUtils.readLong(byteBuffer));
       default:
-        throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
+        throw new UnsupportedOperationException(
+            String.format(PipeMessages.UNSUPPORTED_VERSION, version));
     }
   }
 
@@ -87,13 +93,14 @@ public class PipeRuntimeSinkCriticalException extends PipeRuntimeCriticalExcepti
       case VERSION_2:
         return new PipeRuntimeSinkCriticalException(message, ReadWriteIOUtils.readLong(stream));
       default:
-        throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
+        throw new UnsupportedOperationException(
+            String.format(PipeMessages.UNSUPPORTED_VERSION, version));
     }
   }
 
   @Override
   public String toString() {
-    return "PipeRuntimeConnectorCriticalException{"
+    return "PipeRuntimeSinkCriticalException{"
         + "message='"
         + getMessage()
         + "', timeStamp="

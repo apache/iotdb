@@ -32,13 +32,18 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteCol
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
+import org.apache.iotdb.confignode.procedure.ProcedureWithPendingCleanup;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.ModFileDeletionProgress;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -54,12 +59,17 @@ import java.util.Map;
 import java.util.Objects;
 
 public class DropTableColumnProcedure
-    extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
+    extends AbstractAlterOrDropTableProcedure<DropTableColumnState>
+    implements ProcedureWithPendingCleanup {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableColumnProcedure.class);
 
   private String columnName;
   private boolean isAttributeColumn;
+  private final ModFileDeletionProgress modProgress =
+      new ModFileDeletionProgress(
+          this::getProcId,
+          () -> !isFinished() && getCurrentState() == DropTableColumnState.EXECUTE_ON_REGIONS);
 
   public DropTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -75,9 +85,39 @@ public class DropTableColumnProcedure
     this.columnName = columnName;
   }
 
+  public String getColumnName() {
+    return columnName;
+  }
+
+  public String getDropProgress() {
+    if (isFinished()) {
+      return getState().name();
+    }
+    final DropTableColumnState state = getCurrentState();
+    return state == null ? getState().name() : state.name();
+  }
+
+  public TDropTableModProgress getModFileProgress() {
+    return modProgress.snapshot();
+  }
+
+  public void updateModFileProgress() {
+    modProgress.update();
+  }
+
+  @Override
+  public boolean hasPendingCleanup() {
+    return modProgress.hasPendingCleanup();
+  }
+
+  @Override
+  public void retryPendingCleanup() {
+    updateModFileProgress();
+  }
+
   @Override
   protected String getActionMessage() {
-    return "drop table column";
+    return ProcedureMessages.MESSAGE_DROP_TABLE_COLUMN_6FA1DB5F;
   }
 
   @Override
@@ -89,7 +129,7 @@ public class DropTableColumnProcedure
       switch (state) {
         case CHECK_AND_INVALIDATE_COLUMN:
           LOGGER.info(
-              "Check and invalidate column {} in {}.{} when dropping column",
+              ProcedureMessages.CHECK_AND_INVALIDATE_COLUMN_IN_WHEN_DROPPING_COLUMN,
               columnName,
               database,
               tableName);
@@ -97,7 +137,7 @@ public class DropTableColumnProcedure
           break;
         case INVALIDATE_CACHE:
           LOGGER.info(
-              "Invalidating cache for column {} in {}.{} when dropping column",
+              ProcedureMessages.INVALIDATING_CACHE_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN,
               columnName,
               database,
               tableName);
@@ -105,24 +145,26 @@ public class DropTableColumnProcedure
           break;
         case EXECUTE_ON_REGIONS:
           LOGGER.info(
-              "Executing on region for column {} in {}.{} when dropping column",
+              ProcedureMessages.EXECUTING_ON_REGION_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN,
               columnName,
               database,
               tableName);
           executeOnRegions(env);
           break;
         case DROP_COLUMN:
-          LOGGER.info("Dropping column {} in {}.{} on configNode", columnName, database, tableName);
+          LOGGER.info(
+              ProcedureMessages.DROPPING_COLUMN_IN_ON_CONFIGNODE, columnName, database, tableName);
           dropColumn(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_DROPTABLECOLUMNSTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DropTableColumn-{}.{}-{} costs {}ms",
+          ProcedureMessages.DROPTABLECOLUMN_COSTS_MS,
           database,
           tableName,
           state,
@@ -147,39 +189,48 @@ public class DropTableColumnProcedure
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateColumnCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE,
-            new TInvalidateColumnCacheReq(database, tableName, columnName, isAttributeColumn),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
-      // All dataNodes must clear the related schemaEngine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            "Failed to invalidate {} column {}'s cache of table {}.{}",
-            isAttributeColumn ? "attribute" : "measurement",
-            columnName,
-            database,
-            tableName);
-        setFailure(
-            new ProcedureException(
-                new MetadataException(
-                    String.format(
-                        "Invalidate column %s cache failed for table %s.%s",
-                        columnName, database, tableName))));
-        return;
-      }
-    }
+    TInvalidateColumnCacheReq req =
+        new TInvalidateColumnCacheReq(database, tableName, columnName, isAttributeColumn);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> broadCastInvalidateCache(req, targets));
 
+    if (!proceeded) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_COLUMN_S_CACHE_OF_TABLE,
+          isAttributeColumn ? "attribute" : "measurement",
+          columnName,
+          database,
+          tableName);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(
+                  String.format(
+                      ProcedureMessages.INVALIDATE_COLUMN_CACHE_FAILED_FOR_TABLE,
+                      columnName,
+                      database,
+                      tableName))));
+      return;
+    }
     // View does not need to be executed on regions
     setNextState(
         this instanceof DropViewColumnProcedure
             ? DropTableColumnState.DROP_COLUMN
             : DropTableColumnState.EXECUTE_ON_REGIONS);
+  }
+
+  private Map<Integer, TSStatus> broadCastInvalidateCache(
+      TInvalidateColumnCacheReq req, Map<Integer, TDataNodeLocation> targets) {
+
+    final DataNodeAsyncRequestContext<TInvalidateColumnCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
   }
 
   private void executeOnRegions(final ConfigNodeProcedureEnv env) {
@@ -189,21 +240,37 @@ public class DropTableColumnProcedure
             : env.getConfigManager().getRelatedDataRegionGroup4TableModel(database);
 
     if (!relatedRegionGroup.isEmpty()) {
+      if (!isAttributeColumn) {
+        modProgress.setRegionCount(relatedRegionGroup.size());
+        modProgress.trackRegionReplicas(relatedRegionGroup);
+      }
       new TableRegionTaskExecutor<>(
-              "delete data for drop table",
+              ProcedureMessages.MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E,
               env,
               relatedRegionGroup,
               CnToDnAsyncRequestType.DELETE_COLUMN_DATA,
-              ((dataNodeLocation, consensusGroupIdList) ->
-                  new TDeleteColumnDataReq(
-                      new ArrayList<>(consensusGroupIdList),
-                      tableName,
-                      columnName,
-                      isAttributeColumn)))
+              ((dataNodeLocation, consensusGroupIdList) -> {
+                if (!isAttributeColumn) {
+                  modProgress.trackRegions(dataNodeLocation, consensusGroupIdList);
+                }
+                return new TDeleteColumnDataReq(
+                        new ArrayList<>(consensusGroupIdList),
+                        tableName,
+                        columnName,
+                        isAttributeColumn)
+                    .setProcedureId(getProcId())
+                    .setTrackModFileProgress(!isAttributeColumn);
+              }))
           .execute();
     }
 
-    setNextState(DropTableColumnState.DROP_COLUMN);
+    if (isAttributeColumn || relatedRegionGroup.isEmpty()) {
+      // Attribute deletion uses schema regions and does not write mod files.
+      modProgress.finishWithoutModFiles();
+      setNextState(DropTableColumnState.DROP_COLUMN);
+    } else {
+      modProgress.finish(() -> setNextState(DropTableColumnState.DROP_COLUMN));
+    }
   }
 
   private void dropColumn(final ConfigNodeProcedureEnv env) {
@@ -220,6 +287,7 @@ public class DropTableColumnProcedure
     }
   }
 
+  /** The rollback of this procedure is a no-op, so it is never rolled back. */
   @Override
   protected boolean isRollbackSupported(final DropTableColumnState state) {
     return false;
@@ -255,6 +323,7 @@ public class DropTableColumnProcedure
             ? ProcedureType.PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode());
     innerSerialize(stream);
+    modProgress.serialize(stream);
   }
 
   protected void innerSerialize(final DataOutputStream stream) throws IOException {
@@ -270,6 +339,9 @@ public class DropTableColumnProcedure
 
     this.columnName = ReadWriteIOUtils.readString(byteBuffer);
     this.isAttributeColumn = ReadWriteIOUtils.readBool(byteBuffer);
+    if (!(this instanceof DropViewColumnProcedure)) {
+      modProgress.deserialize(byteBuffer);
+    }
   }
 
   @Override

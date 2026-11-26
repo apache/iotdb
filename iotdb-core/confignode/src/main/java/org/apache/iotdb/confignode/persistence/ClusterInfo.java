@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import org.apache.thrift.TException;
@@ -51,7 +52,7 @@ public class ClusterInfo implements SnapshotProcessor {
 
   public TSStatus updateClusterId(UpdateClusterIdPlan updateClusterIdPlan) {
     this.clusterId = updateClusterIdPlan.getClusterId();
-    LOGGER.info("clusterID has been generated: {}", clusterId);
+    LOGGER.info(ConfigNodeMessages.CLUSTERID_HAS_BEEN_GENERATED, clusterId);
     return RpcUtils.SUCCESS_STATUS;
   }
 
@@ -60,7 +61,7 @@ public class ClusterInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -84,7 +85,7 @@ public class ClusterInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -93,7 +94,7 @@ public class ClusterInfo implements SnapshotProcessor {
       clusterId = ReadWriteIOUtils.readString(fileInputStream);
     }
 
-    LOGGER.info("clusterID has been recovered from snapshot: {}", clusterId);
+    LOGGER.info(ConfigNodeMessages.CLUSTERID_HAS_BEEN_RECOVERED_FROM_SNAPSHOT, clusterId);
   }
 
   @Override

@@ -20,17 +20,22 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
@@ -86,7 +91,9 @@ public class SingleSeriesCompactionExecutor {
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = measurementSchema;
-    this.chunkWriter = new ChunkWriterImpl(this.schema);
+    this.chunkWriter =
+        new ChunkWriterImpl(
+            this.schema, EncryptUtils.getEncryptParameter(fileWriter.getEncryptParameter()));
     this.cachedChunk = null;
     this.cachedChunkMetadata = null;
     this.targetResource = targetResource;
@@ -126,9 +133,24 @@ public class SingleSeriesCompactionExecutor {
       TsFileSequenceReader reader = readerListPair.left;
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        Chunk currentChunk = reader.readMemChunk(chunkMetadata);
+        Chunk currentChunk =
+            chunkMetadata.getNewType() != null
+                ? reader.readMemChunk(chunkMetadata).rewrite(chunkMetadata.getNewType())
+                : reader.readMemChunk(chunkMetadata);
+        byte chunkType = currentChunk.getHeader().getChunkType();
+        if (chunkType != MetaMarker.CHUNK_HEADER
+            && chunkType != MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          throw new ChunkTypeInconsistentException(
+              reader.getFileName(), device, measurement, chunkMetadata.getOffsetOfChunkHeader());
+        }
         summary.increaseProcessChunkNum(1);
         summary.increaseProcessPointNum(chunkMetadata.getNumOfPoints());
+        if (chunkMetadata.getNewType() != null) {
+          chunkMetadata.setTsDataType(chunkMetadata.getNewType());
+          Statistics<?> statistics = Statistics.getStatsByType(chunkMetadata.getNewType());
+          statistics.mergeStatistics(currentChunk.getChunkStatistic());
+          chunkMetadata.setStatistics(statistics);
+        }
         if (this.chunkWriter == null) {
           constructChunkWriterFromReadChunk(currentChunk);
         }
@@ -175,7 +197,9 @@ public class SingleSeriesCompactionExecutor {
             chunkHeader.getDataType(),
             chunkHeader.getEncodingType(),
             chunkHeader.getCompressionType());
-    this.chunkWriter = new ChunkWriterImpl(this.schema);
+    this.chunkWriter =
+        new ChunkWriterImpl(
+            this.schema, EncryptUtils.getEncryptParameter(fileWriter.getEncryptParameter()));
   }
 
   private long getChunkSize(Chunk chunk) {
@@ -313,32 +337,8 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void writeTimeAndValueToChunkWriter(TimeValuePair timeValuePair) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-      case BLOB:
-      case STRING:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        break;
-      case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        break;
-      case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        break;
-      case BOOLEAN:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        break;
-      case INT32:
-      case DATE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-    }
+    Type.fromTsDataType(chunkWriter.getDataType())
+        .write(chunkWriter, timeValuePair.getTimestamp(), timeValuePair.getValue());
   }
 
   private void flushChunkToFileWriter(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {

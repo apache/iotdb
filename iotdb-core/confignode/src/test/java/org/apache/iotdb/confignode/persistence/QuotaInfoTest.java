@@ -27,8 +27,8 @@ import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPl
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -37,6 +37,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +97,19 @@ public class QuotaInfoTest {
     quotaInfo.processTakeSnapshot(snapshotDir);
     QuotaInfo quotaInfo2 = new QuotaInfo();
     quotaInfo2.processLoadSnapshot(snapshotDir);
+
+    final TSpaceQuota staleQuota = new TSpaceQuota();
+    staleQuota.setDeviceNum(1);
+    staleQuota.setTimeserieNum(1);
+    staleQuota.setDiskSize(1);
+    quotaInfo2.setSpaceQuota(
+        new SetSpaceQuotaPlan(Collections.singletonList("root.stale"), staleQuota));
+    Assert.assertTrue(quotaInfo2.getSpaceQuotaUsage().containsKey("root.stale"));
+
+    quotaInfo2.processLoadSnapshot(snapshotDir);
+
+    Assert.assertFalse(quotaInfo2.getSpaceQuotaLimit().containsKey("root.stale"));
+    Assert.assertFalse(quotaInfo2.getSpaceQuotaUsage().containsKey("root.stale"));
 
     Assert.assertEquals(quotaInfo.getSpaceQuotaLimit(), quotaInfo2.getSpaceQuotaLimit());
     Assert.assertEquals(quotaInfo.getThrottleQuotaLimit(), quotaInfo2.getThrottleQuotaLimit());

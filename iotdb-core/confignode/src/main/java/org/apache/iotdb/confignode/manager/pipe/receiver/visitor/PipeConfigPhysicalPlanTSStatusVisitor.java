@@ -27,6 +27,8 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -34,11 +36,13 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -192,6 +196,16 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
           .setMessage(context.getMessage());
     }
     return super.visitPipeDeactivateTemplate(pipeDeactivateTemplatePlan, context);
+  }
+
+  @Override
+  public TSStatus visitPipeAlterTimeSeries(
+      final PipeAlterTimeSeriesPlan pipeAlterTimeSeriesPlan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitPipeAlterTimeSeries(pipeAlterTimeSeriesPlan, context);
   }
 
   @Override
@@ -524,6 +538,12 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
+  public TSStatus visitSetTableColumnProperties(
+      final SetTableColumnPropertiesPlan setTableColumnPropertiesPlan, final TSStatus context) {
+    return visitCommonTablePlan(setTableColumnPropertiesPlan, context);
+  }
+
+  @Override
   public TSStatus visitCommitDeleteColumn(
       final CommitDeleteColumnPlan commitDeleteColumnPlan, final TSStatus context) {
     return visitCommonTablePlan(commitDeleteColumnPlan, context);
@@ -533,6 +553,12 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   public TSStatus visitRenameTableColumn(
       final RenameTableColumnPlan renameTableColumnPlan, final TSStatus context) {
     return visitCommonTablePlan(renameTableColumnPlan, context);
+  }
+
+  @Override
+  public TSStatus visitAlterColumnDataType(
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final TSStatus context) {
+    return visitCommonTablePlan(alterColumnDataTypePlan, context);
   }
 
   @Override
@@ -575,6 +601,16 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
     }
     if (context.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitPlan(plan, context);
+  }
+
+  @Override
+  public TSStatus visitPipeAlterEncodingCompressor(
+      final PipeAlterEncodingCompressorPlan plan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return visitPlan(plan, context);

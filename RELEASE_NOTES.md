@@ -19,6 +19,218 @@
 
 -->
 
+# Apache IoTDB 2.0.12
+
+## Features & Improvements
+
+**SQL Injection Prevention:** Refactored the table model's PreparedStatement to prevent SQL injection
+**Cluster Management:** Support IPv6 cluster deployment
+**REST:** REST API supports setting the client timezone
+**Data Sync:** Optimized filtering performance for non-first TAG columns in the table model
+**Data Import/Export Tools:** Degradation strategy for Load files
+**Database Management:** `SHOW CREATE DATABASE/TOPIC/PIPE`
+**Computation - Query Execution - SQL Clauses:** Optimize the error message when a `select *` query has too many columns
+**Functions:** Added time-frequency analysis function (FFT)
+**Functions:** Added filtering functions (HighPass, LowPass)
+**Latest Point Cache:** The latest point cache supports being enabled/disabled at table/database granularity
+**Functions:** Built-in rate/increase/irate/delta aggregate functions for the table model
+**Functions:** Added sequence correlation function (XCorr)
+**Functions:** Built-in M4 table-valued function
+**Functions:** Time-series trend matching table-valued function
+**Functions:** Added the built-in table-valued function `read_tsfile`, supporting direct querying from a specified tsfile using SQL
+**Tree Model Metadata:** When creating a new time series under an existing device, ignore the aligned/unaligned attributes specified in the create statement and use the current device's aligned/unaligned attributes instead of reporting an error
+**Measurement:** Optimized the validation result of Measurement during cache writes
+**Device-Granularity Deletion:** Fixed an issue where, after deleting a table with a large amount of data and then re-creating the table and writing data, querying that table had high latency
+**Memory Optimization:** Memory optimization when copying the memtable TVList during queries
+**Pipe Data Sync:** Optimized the matching algorithm for `**`
+**Tree Model Metadata:** Added a boolean flag to device nodes indicating whether there are other devices below, and tuned the query `select measurement from xxx.**`
+**SQL Clauses:** Performance optimization for full-table `order by time + limit` in the table model
+**SQL Clauses:** Memory optimization for full-table queries in the table model
+**Pipe Data Sync:** Optimized the Pipe memory block expansion/contraction algorithm
+
+## Bugs
+
+**Online File Merge:** Fixed an issue where `show disk_usage` caused the merge to hang
+**Tree Model Metadata:** Fixed the "no matched database" issue
+**Data Sync:** Support storing TsFile parsing checkpoint progress, so that on retry after failure there is no need to re-parse the entire file
+**Basic Write:** Fixed an issue where, for the same aligned device, first writing a request with fewer columns and more rows and then writing a request with more columns and one row generated a WAL that, upon restarting the DataNode, caused severe memtable null-value expansion and ultimately caused the DataNode restart to hang
+**TsFile Sync:** When loading a tsfile, modify the replica set comparison logic: when comparing replica sets, no longer care about list order, only compare whether the elements within the sets are exactly identical; change the list comparison to a set comparison
+**Pipe Data Sync:** Fixed an issue where Pipe threw an NPE for null measurement points when converting a partial insert write into a tablet
+**Pipe Data Sync:** Fixed an issue where Pipe stopped after a tsfile parsing timeout
+**Online File Merge:** Fixed an issue where the merge did not fall back to copying when creating hard links failed
+**Pipe Data Sync:** Added per-Pipe independent memory quota limits or fair scheduling
+**Pipe Data Sync:** Implemented exponential backoff and circuit breaker protection for scenarios where the disk is full or the receiver is unavailable
+**Pipe Data Sync:** Added global and per-Pipe limits on in-flight TsFiles
+**Pipe Data Sync:** Fixed an issue where `drop pipe` did not wait for the sink's return
+**Data Import/Export Tools:** Fixed an error when executing `tsfile load` while a database named with a `root.` prefix already exists
+**Table Model Metadata:** Optimized the handling of special characters escaped with backticks in table views
+**Pipe Data Sync:** When deleting a Pipe there are asynchronous processes (e.g., recover); the asynchronous execution result needs to be communicated to the user
+**Pipe Data Sync:** `Drop pipe` no longer waits for the sink's return, ensuring complete removal of the Pipe
+**Pipe Data Sync:** Fixed the lag in the assigner portion when executing Pipe create/start/stop/delete commands
+**Pipe Data Sync:** Fixed the excessive logging issue by reducing the amount of logs on the Pipe receiver side
+**Pipe Data Sync:** Fixed an issue where splitting a tsfile in 1.3.x to sync partial data to 2.x failed
+
+# Apache IoTDB 2.0.11
+
+## Break change
+- This version raises the minimum required JDK version to 17.
+
+## Features & Improvements
+
+- Metadata: SHOW TIMESERIES supports sorting by measurement name.
+- Query: Support SQL statements that contain only a SELECT clause.
+- Region: Support manually repairing partitioned tables using SQL.
+- Views: Support logical views.
+- Metadata: Add the COUNT DATABASE statement for the table model.
+- IoTConsensus: Support multiple directories when IoTConsensus receives snapshots.
+- Region: The EXTEND REGION and REMOVE REGION syntaxes support a regionId list, allowing multiple regions to be processed at once.
+- Query: EXPLAIN ANALYZE supports JSON output format.
+- Mods: Strengthen memory control for queries involving mods. Memory usage must also be controllable for a single large, GB-level mods2 file.
+- Data Ingestion: When deleting data, send requests only to the region group to which the current table belongs.
+- Protocol Layer: Add memory control at the protocol layer.
+- UDF: Add an InternalSession interface to the UDF API.
+- Pipe: Modify the real-time data definition logic.
+- Functions: Support subsequent-value filling.
+- SQL Clauses: GROUP BY and ORDER BY support aliases defined with AS in the SELECT clause.
+- Parameter Configuration: Support hot reloading of cluster runtime configurations.
+- Communication Encryption: Support mutual authentication for encrypted client communications.
+- Query: Support writing query results to a TsFile at a specified path using SQL.
+- High Availability: Support high availability for table management, device management, writable-view management, TTL management, database management, and user privileges.
+- Client: Support a Node.js client. Only version 2.x is supported.
+- Edge Edition: To facilitate use on edge devices with limited memory, introduce an Edge Edition that limits the combined memory usage of the ConfigNode and DataNode to 512 MB. The target workload is approximately 10,000 measurements operating at 1 Hz for read and write workloads. The first version will primarily adjust certain JVM and default configuration parameters; future versions may continue evolving toward a more integrated DataNodeâ€“ConfigNode architecture.
+
+## Bugs
+- Query: In the tree and table models, comparisons between integer and floating-point values in query filter conditions behave inconsistently.
+- Scaling: During scale-in validation, IoTConsensusQueue under IoTConsensus Used Memory on the monitoring dashboard displays a negative value.
+- Load TsFile: When the receiving end has write privileges, LOAD TSFILE fails with No permissions for this operation, please add privilege SYSTEM, and the data is not synchronized.
+- SSL: Fix NullPointerException: Cannot invoke "String.contains(java.lang.CharSequence)" because the return value of "java.lang.Throwable.getMessage()" is null.
+- SSL: Improve the error message displayed when SSL is enabled in the security package but the CLI connects to the cluster without specifying SSL, making the message more explicit.
+- Cluster Management: During validation of Issue 0228, a new problem was encountered: after restarting the cluster, one node remained in the Unknown state and produced no enjoy logs, indicating that the main thread was blocked. However, the node could still perform compaction normally.
+- Scaling: During scale-in, the CompressionRatio field for a DataRegion in the Adding state displays a negative value in SHOW REGIONS.
+- Region: Preserve two decimal places for the CompressionRatio field in SHOW REGIONS results.
+- Scaling: During scale-in, after restarting the cluster, the CompressionRatio field for most DataRegions in SHOW REGIONS is NaN, even though it had a value before the restart.
+- ConfigNode: Fix a ConfigNode thread leak. In an IoTV2 3C3D deployment with three replicas, running SQL covering tree-model test cases caused the number of ConfigNodeRPC-Processor threads to reach 3,000. The cluster could no longer be connected to, and the ConfigNode/DataNode reported NullPointerExceptions.
+- Query: Fix an error in CAST(1.1 AS FLOAT): java.lang.UnsupportedOperationException: org.apache.tsfile.read.common.block.column.DoubleColumn. The operation is expected to succeed.
+- DataNode: PipeTsFileEpochProgressIndexKeeper retains more than 50,000 TsFileResources, causing the DataNode to run out of memory. In an IoTV2 3C3D deployment with two replicas, concurrent reads, writes, and deletes were performed while one DataNode was stopped; after 54 hours of testing, one DataNode ran out of memory and generated a 23-GB OOM dump with ON_HEAP_MEMORY="20G".
+- User Management: Concurrent execution of LIST USER, CREATE USER, and DROP USER may result in 301: Ratis request failed Unknown. The ConfigNode log shows Caused by: java.util.ConcurrentModificationException: null.
+- IoTConsensus: In a 3C3D deployment with two replicas, concurrent reads, writes, and deletes were performed while a DataNode was stopped. One DataNode process exited and generated a 25-GB dump file.
+- Metadata: Prohibit creating devices on template measurements and their subpaths.
+- Region: A frame size error, Frame size (69670459) larger than protect max size (67108864), may cause a query to hang. The system should return an appropriate error message instead.
+
+
+# Apache IoTDB 2.0.10
+
+## Features & Improvements
+
+- Data Query: Support schema-level and table-level storage space statistics
+- Data Query: Add DEBUG SQL capability and optimize the result set of Explain Analyze
+- Data Query: Support set operations (UNION/INTERSECT/EXCEPT) and Common Table Expressions (CTE) in the table model
+- Data Query: Add IF scalar function, binary functions and APPROX_PERCENTILE aggregate function for the table model
+- Data Query: Optimize display fields of the show queries command, add three new columns: client IP that initiates the query, timeout threshold, and total request waiting latency
+- Storage Management: Provide C-language driver SDK interfaces, including parameter binding, automatic failover for multi-node switching and other fault-tolerant capabilities
+- System Management: Add the capability to manually trigger node load balancing
+- System Management: Add progress query capability for the remove datanode operation
+- System Management: Introduce the show configuration statement to view cluster configuration information
+- System Management: Add statistics for the number of slow write requests
+- AI Management: Add two built-in models: Moirai2 and Toto
+- AI Management: Enable AINode to manage multiple models under the same model_type
+- AI Management: Support loading built-in models for CPU inference with isolated inference processes
+
+## Bugs
+
+- Fix the issue that partition tables get lost when leader switch happens on single-node ConfigNode
+- Fix the bug where configurations delivered via set configuration to a single DataNode take effect on all other DataNodes unexpectedly
+- Fix the occasional continuous accumulation of reservedSize for timeout-only queries across multiple devices in tree model, which triggers query errors after hitting the max capacity limit
+- Fix the parsing error in tree-model-to-table conversion logic when tree paths consist entirely of numeric characters
+- Correct abnormal output of show devices root.db.** when root.db itself is a device, making it display root.db properly
+- Fix the failure of kill query and query timeout mechanism when the client holds the connection open without fully consuming all result sets
+- Fix array index out-of-bounds error caused by null values in attribute fields on the receiver side, which blocks the data synchronization pipeline
+- Fix connection pool leakage exceptions in the C# client
+- Fix exceptions occurring in the C++ client when write redirection is enabled while dn_rpc_address is configured to 0.0.0.0 on DataNode server
+- Fix abnormal repeated broadcasting of deletion markers (Deletions) during the load operation
+- Fix the issue that rows with null inserted fields cannot be synchronized to the receiver in real-time data synchronization scenarios
+- Fix incorrect idempotency logic for out-of-order TTL-expired data on the synchronization receiver, which leads to repeated synchronization of expired data
+- Fix the problem that enable-send-tsfile-limit parameter cannot be manually configured for historical Pipes split from full-data Pipe tasks
+- Fix Pipe temporary stoppage triggered by insufficient memory of a single subtask within synchronization jobs
+- Fix the issue that modifying username/password of source or sink in write-back-sink model generates error logs and prevents data from being received on the sink side
+- Fix permission issue preventing non-root users from stopping the AINode process
+- Mitigate memory leaks that tend to occur during long-running continuous inference of models running on CPU
+
+# Apache IoTDB 2.0.8
+
+## Features & Improvements
+- Data Query: Added list display for available DataNode nodes
+- Data Query: Added a system table for statistics on query latency in the table model
+- Data Query: Python SessionDataset supported converting TsBlock to DataFrame and returning DataFrame in batches
+- Storage Management: Supported custom column names for the TIME column
+- Storage Management: Supported viewing the complete definition statement of created tables/views via SQL
+- System Management: Added a system table for DataNode node connection status in the table model
+- Stream Processing: Pipe synchronization supported excluding specified devices / measurement points
+- Stream Processing: Supported specifying multiple exact paths in the path parameter of tree model data synchronization pipe statements
+- Stream Processing: Supported comma-separated mixed use of source.pattern and source.path parameters when filtering paths in Pipe
+- AI Management: Built-in Chronos-2 model supports prediction functions.
+- AI Management: Built-in Timer-XL and Sundial models supported concurrent inference
+- Others: Fixed security vulnerabilities CVE-2025-12183, CVE-2025-66566, and CVE-2025-11226
+- ...
+
+
+## Bugs
+- Fixed the issue where the result set returned by the query was empty after last cache hit.
+- Fixed the issue where reverse query with time filter conditions might miss partial data when a sequence in the memtable contained more than 200,000 points in TVList.
+- Fixed the issue that aligned time series query timed out because canSkip failed to filter out firstTimeseriesMetadata.
+- Fixed the issue where the result returned by LAST query with alias should be adjusted to the measurement alias.
+- Fixed the issue where time filter conditions incorrectly filtered valid data in latest point query under specific cases.
+- Fixed the issue that deletion would fail if performed immediately after a failed write operation.
+- Fixed the potential NPE issue when using the active load function to load TsFiles that use non-default time columns.
+- ...
+
+# Apache IoTDB 2.0.7
+
+## Features & Improvements
+
+- Others: Remove risky RPC interfaces.
+- Others: Remove JEXL functions.
+- Others: Check naming when creating a Pipe.
+- Others: Change the default client RPC service address to 127.0.0.1.
+- Others: Modify code to make internal services bind to the value specified by `dn_internal_address`instead of the default address.
+
+## Bugs
+- Fixed an issue in the partition table automatic deletion logic: Only TTL configured at the DB level takes effect, using the maximum TTL value within the DB.
+- ...
+
+# Apache IoTDB 2.0.6
+
+## Features & Improvements
+- Data Query: Supports table model query and write-back functions.
+- Data Query: The MATCH RECOGNIZE feature for table models supports aggregate functions to capture continuous data for analysis and calculation.
+- Data Query: Added built-in scalar functions - bit manipulation functions for table models.
+- Data Query: Added pushdown-enabled EXTRACT time function for table models.
+- Others: Fixed security vulnerabilities CVE-2025-12183, CVE-2025-66566 and CVE-2025-11226.
+- ...
+## Bugs
+- Fixed the issue where executing queries with CASE WHEN throws an internal server error.
+- Fixed the issue where creating a view succeeds but querying the view fails when the tree model database name is the same as the device name in tree-to-table scenarios.
+- Fixed the issue where the automatic database creation function fails subsequently if a database is deleted after successful table model data synchronization, and the database is not restarted.
+- Fixed the issue where modifying the password of a user that failed to be created throws an internal server error.
+- Fixed the issue where an error is thrown when using the IF PERMITTED clause to modify sequence encoding and compression settings.
+- Fixed the issue where querying BLOB data types via the tree model RESTAPI interface /rest/v2/query returns garbled results.
+- Fixed the issue where incorrect exception information is displayed when checking pipe status after creating a pipe in a table model that only contains tree-to-table views.
+- Fixed the issue where the number of server connections keeps increasing when using a user without MAINTAIN permission (non-root user in table models) in a Session.
+- ...
+
+# Apache IoTDB 2.0.5
+
+## Features & Improvements
+- Data Query: Support manual creation of tree-to-table views
+- Data Query: Table model adds window functions
+- Data Query: Table model adds the aggregate function approx_most_frequent
+- Data Query: Table model JOIN function expansion, supporting LEFT & RIGHT JOIN, ASOF LEFT JOIN
+- Data Query: Table model supports row pattern recognition, enabling capture of continuous data for analysis and calculation
+- Storage Management: Table model adds multiple system tables, such as: VIEWS (table view information), MODELS (model information), etc.
+- AI Management: AINode adds two built-in models: Timer-XL and Timer-Sundial
+- AI Management: AINode supports inference functions for tree models and table models
+- ...
+
 # Apache IoTDB 2.0.4
 
 ## Features & Improvements

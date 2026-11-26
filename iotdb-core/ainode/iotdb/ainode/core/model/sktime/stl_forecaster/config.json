@@ -1,0 +1,22 @@
+{
+  "model_type": "sktime",
+  "model_id": "stl_forecaster",
+  "output_length": 1,
+  "sp": 2,
+  "seasonal": 7,
+  "trend": null,
+  "low_pass": null,
+  "seasonal_deg": 1,
+  "trend_deg": 1,
+  "low_pass_deg": 1,
+  "robust": false,
+  "seasonal_jump": 1,
+  "trend_jump": 1,
+  "low_pass_jump": 1,
+  "inner_iter": null,
+  "outer_iter": null,
+  "forecaster_trend": null,
+  "forecaster_seasonal": null,
+  "forecaster_resid": null
+}
+

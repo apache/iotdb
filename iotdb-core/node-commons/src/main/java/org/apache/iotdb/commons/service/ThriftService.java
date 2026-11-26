@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 
 import org.apache.thrift.TProcessor;
 import org.slf4j.Logger;
@@ -47,14 +48,15 @@ public abstract class ThriftService implements IService {
 
   public String getRPCServiceStatus() {
     if (thriftServiceThread == null) {
-      logger.debug("Start latch is null when getting status");
+      logger.debug(ServiceMessages.START_LATCH_NULL_WHEN_GETTING_STATUS);
     } else {
-      logger.debug("Start status is {} when getting status", thriftServiceThread.isServing());
+      logger.debug(
+          ServiceMessages.START_STATUS_WHEN_GETTING_STATUS, thriftServiceThread.isServing());
     }
     if (stopLatch == null) {
-      logger.debug("Stop latch is null when getting status");
+      logger.debug(ServiceMessages.STOP_LATCH_NULL_WHEN_GETTING_STATUS);
     } else {
-      logger.debug("Stop latch is {} when getting status", stopLatch.getCount());
+      logger.debug(ServiceMessages.STOP_LATCH_WHEN_GETTING_STATUS, stopLatch.getCount());
     }
 
     if (thriftServiceThread != null && thriftServiceThread.isServing()) {
@@ -98,12 +100,13 @@ public abstract class ThriftService implements IService {
   public void startService() throws StartupException {
     if (STATUS_UP.equals(getRPCServiceStatus())) {
       logger.info(
-          "{}: {} has been already running now",
+          ServiceMessages.SERVICE_ALREADY_RUNNING,
           IoTDBConstant.GLOBAL_DB_NAME,
           this.getID().getName());
       return;
     }
-    logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.info(
+        ServiceMessages.START_SERVICE, IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
       reset();
       initTProcessor();
@@ -115,18 +118,22 @@ public abstract class ThriftService implements IService {
         // sleep 100ms for waiting the rpc server start.
         Thread.sleep(100);
       }
-    } catch (InterruptedException
-        | ClassNotFoundException
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new StartupException(this.getID().getName(), e.getMessage());
+    } catch (ClassNotFoundException
         | IllegalAccessException
         | InstantiationException
         | NoSuchMethodException
         | InvocationTargetException e) {
-      Thread.currentThread().interrupt();
+      // only an interruption re-sets the interrupt flag; a failed start (e.g. the port is in use,
+      // reported as IllegalAccessException) must not leave the calling thread interrupted, or the
+      // cleanup after it runs on an interrupted thread
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
 
     logger.info(
-        "{}: start {} successfully, listening on ip {} port {}",
+        ServiceMessages.START_SERVICE_SUCCESSFULLY,
         IoTDBConstant.GLOBAL_DB_NAME,
         this.getID().getName(),
         getBindIP(),
@@ -145,10 +152,14 @@ public abstract class ThriftService implements IService {
 
   public void stopService() {
     if (STATUS_DOWN.equals(getRPCServiceStatus())) {
-      logger.info("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+      logger.info(
+          ServiceMessages.SERVICE_NOT_RUNNING,
+          IoTDBConstant.GLOBAL_DB_NAME,
+          this.getID().getName());
       return;
     }
-    logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.info(
+        ServiceMessages.CLOSING_SERVICE, IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     if (thriftServiceThread != null) {
       thriftServiceThread.close();
     }
@@ -156,10 +167,15 @@ public abstract class ThriftService implements IService {
       stopLatch.await();
       reset();
       logger.info(
-          "{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+          ServiceMessages.CLOSE_SERVICE_SUCCESSFULLY,
+          IoTDBConstant.GLOBAL_DB_NAME,
+          this.getID().getName());
     } catch (InterruptedException e) {
       logger.error(
-          "{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
+          ServiceMessages.CLOSE_SERVICE_FAILED,
+          IoTDBConstant.GLOBAL_DB_NAME,
+          this.getID().getName(),
+          e);
       Thread.currentThread().interrupt();
     }
   }

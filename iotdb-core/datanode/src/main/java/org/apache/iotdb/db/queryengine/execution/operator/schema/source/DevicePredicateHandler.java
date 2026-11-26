@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.satisfy;
+import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.satisfy;
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTableDeviceTsBlockColumns;
 
 public abstract class DevicePredicateHandler implements AutoCloseable {
@@ -47,7 +47,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected final ColumnTransformer filterOutputTransformer;
   private final List<TSDataType> inputDataTypes;
   private final List<TsTableColumnSchema> columnSchemaList;
-  private final int idIndex;
+  private final int tagIndex;
 
   // Batch logic
   protected static final int DEFAULT_MAX_TS_BLOCK_LINE_NUMBER =
@@ -72,7 +72,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
         columnSchemaList.stream()
             .map(TsTableColumnSchema::getDataType)
             .collect(Collectors.toList());
-    this.idIndex =
+    this.tagIndex =
         PathUtils.isTableModelDatabase(database)
             ? 3
             : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length;
@@ -100,7 +100,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
             transformToTableDeviceTsBlockColumns(
-                deviceSchemaInfo, builder, columnSchemaList, idIndex));
+                deviceSchemaInfo, builder, columnSchemaList, tagIndex));
     curBlock = builder.build();
     if (withoutFilter()) {
       return;

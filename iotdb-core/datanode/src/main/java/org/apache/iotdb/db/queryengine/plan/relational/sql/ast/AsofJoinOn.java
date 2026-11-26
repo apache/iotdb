@@ -19,20 +19,33 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.JoinCriteria;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.JoinOn;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.List;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class AsofJoinOn extends JoinOn {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AsofJoinOn.class);
 
   // record main expression of ASOF join
   // .e.g 'ASOF (tolerance 1) JOIN ON t1.device = t2.device and t1.time > t2.time' =>
@@ -42,9 +55,11 @@ public class AsofJoinOn extends JoinOn {
   private final Expression asofExpression;
 
   private static final String joinErrMsg =
-      "The join expression of ASOF should be single Comparison or Logical 'AND'";
+      DataNodeQueryMessages
+          .EXCEPTION_THE_JOIN_EXPRESSION_OF_ASOF_SHOULD_BE_SINGLE_COMPARISON_OR_LOGICAL_AND_02DC061A;
   private static final String asofErrMsg =
-      "The main join expression of ASOF should only be Comparison '>, >=, <, <=', actual is %s";
+      DataNodeQueryMessages
+          .EXCEPTION_THE_MAIN_JOIN_EXPRESSION_OF_ASOF_SHOULD_ONLY_BE_COMPARISON_ACTUAL_IS_ARG_9A7F3C7F;
 
   public AsofJoinOn(Expression otherExpression, Expression asofExpression) {
     super(otherExpression);
@@ -159,5 +174,13 @@ public class AsofJoinOn extends JoinOn {
   @Override
   public List<Node> getNodes() {
     return ImmutableList.of(expression, asofExpression);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += ramBytesUsedExcludingInstanceSize();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(asofExpression);
+    return size;
   }
 }

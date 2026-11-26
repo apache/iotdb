@@ -1,0 +1,83 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate;
+
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.ExtrapolationUtil;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionType;
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.exception.SemanticException;
+
+import org.apache.tsfile.enums.TSDataType;
+
+abstract class AbstractGroupedIrateAccumulator implements GroupedAccumulator {
+
+  protected final TSDataType valueDataType;
+
+  protected AbstractGroupedIrateAccumulator(TSDataType valueDataType) {
+    this.valueDataType = valueDataType;
+  }
+
+  protected final double calculateIrate(
+      long previousTime, double previousValue, long lastTime, double lastValue) {
+    double increase = lastValue >= previousValue ? lastValue - previousValue : lastValue;
+    return validateFinite(
+        increase / ExtrapolationUtil.timestampDiffToSeconds(lastTime, previousTime));
+  }
+
+  protected final SemanticException duplicateTimestamp(long time) {
+    return new SemanticException(
+        String.format(
+            CalcMessages
+                .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_DUPLICATE_TIME_COL_VALUES_IN_THE_SAME_AGGREGATION_GROUP_ARG_087A91BC,
+            RateFunctionType.IRATE.getFunctionName(),
+            time));
+  }
+
+  protected final SemanticException orderedInputViolation(long time, long previousTime) {
+    return new SemanticException(
+        String.format(
+            CalcMessages
+                .EXCEPTION_AGGREGATE_FUNCTION_ARG_EXPECTED_TIME_COL_IN_STRICTLY_ASCENDING_ORDER_BUT_GOT_ARG_AFTER_ARG_9289E0F9,
+            RateFunctionType.IRATE.getFunctionName(),
+            time,
+            previousTime));
+  }
+
+  protected final UnsupportedOperationException unsupportedIntermediate() {
+    return new UnsupportedOperationException(
+        String.format(
+            CalcMessages
+                .EXCEPTION_ORDERED_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_INTERMEDIATE_STATE_6B4B2B1B,
+            RateFunctionType.IRATE.getFunctionName()));
+  }
+
+  protected final double validateFinite(double value) {
+    if (!Double.isFinite(value)) {
+      throw new SemanticException(
+          CalcMessages
+              .EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_INTERMEDIATE_RESULT_D46B30CD);
+    }
+    return value;
+  }
+
+  @Override
+  public final void prepareFinal() {}
+}

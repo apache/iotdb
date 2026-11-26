@@ -20,7 +20,6 @@
 package org.apache.iotdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonParser;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -40,6 +39,7 @@ import java.util.Map;
 public class HttpExample {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpExample.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final String UTF8 = "utf-8";
 
@@ -53,6 +53,7 @@ public class HttpExample {
     httpExample.ping();
     httpExample.insertTablet();
     httpExample.query();
+    httpExample.queryWithTimeZone();
   }
 
   public void ping() {
@@ -63,7 +64,7 @@ public class HttpExample {
       response = httpClient.execute(httpGet);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      String result = JsonParser.parseString(message).getAsJsonObject().toString();
+      String result = MAPPER.readTree(message).toString();
       LOGGER.info(result);
     } catch (IOException e) {
       LOGGER.error("The ping rest api failed", e);
@@ -99,7 +100,7 @@ public class HttpExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      String result = JsonParser.parseString(message).getAsJsonObject().toString();
+      String result = MAPPER.readTree(message).toString();
       LOGGER.info(result);
     } catch (IOException e) {
       LOGGER.error("The insertTablet rest api failed", e);
@@ -124,10 +125,34 @@ public class HttpExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      ObjectMapper mapper = new ObjectMapper();
-      LOGGER.info("message  = {}", mapper.readValue(message, Map.class));
+      LOGGER.info("message  = {}", MAPPER.readValue(message, Map.class));
     } catch (IOException e) {
       LOGGER.error("The query rest api failed", e);
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        LOGGER.error("Response close error", e);
+      }
+    }
+  }
+
+  public void queryWithTimeZone() {
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
+      httpPost.setHeader("Time-Zone", "Asia/Shanghai");
+      String sql = "{\"sql\":\"select * from root.sg25 where time <= 2026-03-28T00:00:00\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, UTF8);
+      LOGGER.info("message with time zone = {}", MAPPER.readValue(message, Map.class));
+    } catch (IOException e) {
+      LOGGER.error("The query with time zone rest api failed", e);
     } finally {
       try {
         if (response != null) {

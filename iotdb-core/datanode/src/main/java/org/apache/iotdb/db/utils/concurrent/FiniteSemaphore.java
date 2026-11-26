@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils.concurrent;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import java.util.concurrent.Semaphore;
 
 /**
@@ -31,7 +33,7 @@ public class FiniteSemaphore {
 
   public FiniteSemaphore(int capacity, int permit) {
     if (capacity < permit) {
-      throw new IllegalArgumentException("Capacity should be larger than initial permits.");
+      throw new IllegalArgumentException(DataNodeMiscMessages.CAPACITY_LARGER_THAN_INITIAL_PERMITS);
     }
     this.capacity = capacity;
     this.semaphore = new Semaphore(permit);

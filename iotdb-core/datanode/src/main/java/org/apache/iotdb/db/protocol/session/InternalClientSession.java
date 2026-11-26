@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.protocol.session;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +43,7 @@ public class InternalClientSession extends IClientSession {
 
   @Override
   public String getClientAddress() {
-    return clientID;
+    return "";
   }
 
   @Override
@@ -79,13 +81,48 @@ public class InternalClientSession extends IClientSession {
     Set<Long> queryIds = statementIdToQueryId.get(statementId);
     if (queryIds == null) {
       throw new IllegalStateException(
-          "StatementId: " + statementId + "doesn't exist in this session " + this);
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733,
+              statementId,
+              this));
     }
     queryIds.add(queryId);
   }
 
   @Override
+  public boolean containsQueryId(Long statementId, long queryId) {
+    return ClientSession.containsQueryId(statementIdToQueryId, statementId, queryId);
+  }
+
+  @Override
   public void removeQueryId(Long statementId, Long queryId) {
     ClientSession.removeQueryId(statementIdToQueryId, statementId, queryId);
+  }
+
+  @Override
+  public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
+    throw new UnsupportedOperationException(
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC);
+  }
+
+  @Override
+  public PreparedStatementInfo removePreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC);
+  }
+
+  @Override
+  public PreparedStatementInfo getPreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC);
+  }
+
+  @Override
+  public Set<String> getPreparedStatementNames() {
+    return Collections.emptySet();
   }
 }

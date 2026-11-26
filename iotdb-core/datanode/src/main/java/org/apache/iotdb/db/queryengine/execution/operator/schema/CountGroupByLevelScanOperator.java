@@ -21,18 +21,19 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -47,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements SourceOperator {
 
@@ -95,6 +96,10 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     return operatorContext;
   }
 
+  private ISchemaRegion getSchemaRegion() {
+    return ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion();
+  }
+
   @Override
   public ListenableFuture<?> isBlocked() {
     if (isBlocked == null) {
@@ -109,6 +114,11 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
    */
   private ListenableFuture<?> tryGetNext() {
     if (schemaReader == null) {
+      if (schemaSource.shouldSkipSchemaRegion(getSchemaRegion())) {
+        next = null;
+        isFinished = true;
+        return NOT_BLOCKED;
+      }
       schemaReader = createTimeSeriesReader();
     }
     while (true) {
@@ -172,15 +182,14 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   @Override
   public boolean hasNext() throws Exception {
     isBlocked().get(); // wait for the next TsBlock
-    if (!schemaReader.isSuccess()) {
+    if (schemaReader != null && !schemaReader.isSuccess()) {
       throw new SchemaExecutionException(schemaReader.getFailure());
     }
     return next != null;
   }
 
   public ISchemaReader<T> createTimeSeriesReader() {
-    return schemaSource.getSchemaReader(
-        ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
+    return schemaSource.getSchemaReader(getSchemaRegion());
   }
 
   private TsBlock constructTsBlockAndClearMap(Map<PartialPath, Long> countMap) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,7 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
 
     register(this::countAndReportPendingFile);
     register(this::countAndReportFailedFile);
-    LOGGER.info("Active load metric collector periodical jobs registered");
+    LOGGER.info(StorageEngineMessages.ACTIVE_LOAD_METRIC_COLLECTOR_REGISTERED);
   }
 
   private void countAndReportPendingFile() {

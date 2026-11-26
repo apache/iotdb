@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.StopTTLCheckException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,9 +67,26 @@ public class TTLScheduleTask implements Callable<Void> {
             dataRegionListSnapshot.get(i).executeTTLCheck();
           }
         }
-      } catch (InterruptedException ignored) {
-        logger.info("[TTLCheckTask-{}] TTL checker is interrupted", workerId);
-        return null;
+      } catch (StopTTLCheckException | InterruptedException ignored) {
+        boolean isStoppedByUser =
+            CompactionScheduleTaskManager.getInstance().isStoppingAllScheduleTask();
+        logger.info(
+            StorageEngineMessages
+                .STORAGE_LOG_TTLCHECKTASK_TTL_CHECKER_IS_INTERRUPTED_ISSTOPPEDBYUSER_B1E45A2E,
+            workerId,
+            isStoppedByUser);
+        if (isStoppedByUser) {
+          return null;
+        }
+      } catch (Exception e) {
+        logger.error(StorageEngineMessages.TTL_CHECK_TASK_FAILED, workerId, e);
+      } catch (Throwable t) {
+        logger.error(
+            StorageEngineMessages
+                .STORAGE_LOG_TTLCHECKTASK_FAILED_TO_EXECUTE_TTL_CHECK_AND_CANNOT_RECOVER_6F4E4A13,
+            workerId,
+            t);
+        throw t;
       }
     }
   }

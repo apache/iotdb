@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.library.dmatch.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /** util for UDTFXCorr and UDTFACF. */
 public class CrossCorrelation {
   private CrossCorrelation() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(LibraryUdfMessages.UTILITY_CLASS);
   }
 
   public static List<Double> calculateCrossCorrelation(

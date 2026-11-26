@@ -338,14 +338,14 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
         Tag.NAME.toString(),
         RECEIVER,
         Tag.TYPE.toString(),
-        "handshakeDatanodeV1");
+        "handshakeDataNodeV1");
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_DATANODE_RECEIVER.toString(),
         Tag.NAME.toString(),
         RECEIVER,
         Tag.TYPE.toString(),
-        "handshakeDatanodeV2");
+        "handshakeDataNodeV2");
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_DATANODE_RECEIVER.toString(),

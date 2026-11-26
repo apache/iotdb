@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.NoViableAltException;
 import org.antlr.v4.runtime.Parser;
@@ -39,6 +41,7 @@ import org.antlr.v4.runtime.atn.RuleTransition;
 import org.antlr.v4.runtime.atn.Transition;
 import org.antlr.v4.runtime.atn.WildcardTransition;
 import org.antlr.v4.runtime.misc.IntervalSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +54,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
 import static org.antlr.v4.runtime.atn.ATNState.RULE_START;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.firstNonNull;
 
 public class ErrorHandler extends BaseErrorListener {
 
@@ -84,17 +87,20 @@ public class ErrorHandler extends BaseErrorListener {
 
       Result result = analyze(e, parser);
 
-      // pick the candidate tokens associated largest token index processed (i.e., the path that
+      // pick the candidate tokens associated largest token index processed (i.e., the
+      // path that
       // consumed the most input)
       String expected = result.getExpected().stream().sorted().collect(Collectors.joining(", "));
 
       message =
           String.format(
-              "mismatched input '%s'. Expecting: %s",
-              parser.getTokenStream().get(result.getErrorTokenIndex()).getText(), expected);
+              DataNodeQueryMessages.EXCEPTION_MISMATCHED_INPUT_ARG_EXPECTING_ARG_CC10F881,
+              parser.getTokenStream().get(result.getErrorTokenIndex()).getText(),
+              expected);
     } catch (Exception exception) {
       LOGGER.warn(
-          "Unexpected failure when handling parsing error. This is likely a bug in the implementation",
+          DataNodeQueryMessages
+              .UNEXPECTED_FAILURE_WHEN_HANDLING_PARSING_ERROR_THIS_IS_LIKELY_A_BUG_IN_THE,
           exception);
     }
 
@@ -209,10 +215,13 @@ public class ErrorHandler extends BaseErrorListener {
       RuleStartState startState = atn.ruleToStartState[currentState.ruleIndex];
 
       if (isReachable(currentState, startState)) {
-        // We've been dropped inside a rule in a state that's reachable via epsilon transitions.
+        // We've been dropped inside a rule in a state that's reachable via epsilon
+        // transitions.
         // This is,
-        // effectively, equivalent to starting at the beginning (or immediately outside) the rule.
-        // In that case, backtrack to the beginning to be able to take advantage of logic that
+        // effectively, equivalent to starting at the beginning (or immediately outside)
+        // the rule.
+        // In that case, backtrack to the beginning to be able to take advantage of
+        // logic that
         // remaps
         // some rules to well-known names for reporting purposes
         currentState = startState;
@@ -238,6 +247,8 @@ public class ErrorHandler extends BaseErrorListener {
     private boolean isReachable(ATNState target, RuleStartState from) {
       Deque<ATNState> activeStates = new ArrayDeque<>();
       activeStates.add(from);
+      Set<Integer> visited = new HashSet<>();
+      visited.add(from.stateNumber);
 
       while (!activeStates.isEmpty()) {
         ATNState current = activeStates.pop();
@@ -250,7 +261,10 @@ public class ErrorHandler extends BaseErrorListener {
           Transition transition = current.transition(i);
 
           if (transition.isEpsilon()) {
-            activeStates.push(transition.target);
+            if (!visited.contains(transition.target.stateNumber)) {
+              activeStates.push(transition.target);
+              visited.add(transition.target.stateNumber);
+            }
           }
         }
       }
@@ -270,9 +284,13 @@ public class ErrorHandler extends BaseErrorListener {
       // The ATN can be in multiple states (similar to an NFA)
       Deque<ParsingState> activeStates = new ArrayDeque<>();
       activeStates.add(start);
+      Set<ParsingState> processedStates = new HashSet<>();
 
       while (!activeStates.isEmpty()) {
         ParsingState current = activeStates.pop();
+        if (!processedStates.add(current)) {
+          continue;
+        }
 
         ATNState state = current.state;
         int tokenIndex = current.tokenIndex;
@@ -316,7 +334,7 @@ public class ErrorHandler extends BaseErrorListener {
                   new ParsingState(
                       ruleTransition.followState,
                       endToken,
-                      suppressed && endToken == currentToken,
+                      suppressed && endToken == tokenIndex,
                       parser));
             }
           } else if (transition instanceof PrecedencePredicateTransition) {
@@ -327,7 +345,8 @@ public class ErrorHandler extends BaseErrorListener {
           } else if (transition.isEpsilon()) {
             activeStates.push(new ParsingState(transition.target, tokenIndex, suppressed, parser));
           } else if (transition instanceof WildcardTransition) {
-            throw new UnsupportedOperationException("not yet implemented: wildcard transition");
+            throw new UnsupportedOperationException(
+                DataNodeQueryMessages.NOT_YET_IMPLEMENTED_WILDCARD_TRANSITION);
           } else {
             IntervalSet labels = transition.label();
 
@@ -336,13 +355,17 @@ public class ErrorHandler extends BaseErrorListener {
                   labels.complement(IntervalSet.of(Token.MIN_USER_TOKEN_TYPE, atn.maxTokenType));
             }
 
-            // Surprisingly, TokenStream (i.e. BufferedTokenStream) may not have loaded all the
+            // Surprisingly, TokenStream (i.e. BufferedTokenStream) may not have loaded all
+            // the
             // tokens from the
-            // underlying stream. TokenStream.get() does not force tokens to be buffered -- it just
+            // underlying stream. TokenStream.get() does not force tokens to be buffered --
+            // it just
             // returns what's
-            // in the current buffer, or fail with an IndexOutOfBoundsError. Since Antlr decided the
+            // in the current buffer, or fail with an IndexOutOfBoundsError. Since Antlr
+            // decided the
             // error occurred
-            // within the current set of buffered tokens, stop when we reach the end of the buffer.
+            // within the current set of buffered tokens, stop when we reach the end of the
+            // buffer.
             if (labels.contains(currentToken) && tokenIndex < stream.size() - 1) {
               activeStates.push(new ParsingState(transition.target, tokenIndex + 1, false, parser));
             } else {

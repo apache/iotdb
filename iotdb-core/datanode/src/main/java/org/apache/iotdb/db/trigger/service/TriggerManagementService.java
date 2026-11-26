@@ -30,11 +30,12 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.trigger.api.Trigger;
 
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -222,9 +223,10 @@ public class TriggerManagementService {
       // same jar name with different md5
       String errorMessage =
           String.format(
-              "Failed to registered trigger %s, because existed"
-                  + " md5 of jar file for trigger %s is different from the new jar file. ",
-              triggerName, triggerName);
+              DataNodeMiscMessages
+                  .EXCEPTION_FAILED_TO_REGISTERED_TRIGGER_ARG_BECAUSE_EXISTED_MD5_OF_JAR_FILE_FOR_TRIGGER_ARG_IS_DIFFERENT_FROM_THE_NEW_JAR_FILE_4069F2F9,
+              triggerName,
+              triggerName);
       LOGGER.warn(errorMessage);
       throw new TriggerManagementException(errorMessage);
     }
@@ -251,7 +253,7 @@ public class TriggerManagementService {
             TriggerExecutableManager.getInstance().readTextFromFileUnderTemporaryRoot(md5FilePath);
         hasComputed = true;
       } catch (IOException e) {
-        LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
+        LOGGER.warn(DataNodeMiscMessages.ERROR_READING_MD5, md5FilePath);
       }
     }
     if (!hasComputed) {
@@ -269,9 +271,10 @@ public class TriggerManagementService {
       } catch (IOException e) {
         String errorMessage =
             String.format(
-                "Failed to registered trigger %s, because error "
-                    + "occurred when trying to compute md5 of jar file for trigger %s ",
-                triggerName, triggerName);
+                DataNodeMiscMessages
+                    .EXCEPTION_FAILED_TO_REGISTERED_TRIGGER_ARG_BECAUSE_ERROR_OCCURRED_WHEN_TRYING_TO_COMPUTE_MD5_OF_JAR_FILE_FOR_TRIGGER_ARG_27F35B86,
+                triggerName,
+                triggerName);
         LOGGER.warn(errorMessage, e);
         throw new TriggerManagementException(errorMessage);
       }
@@ -312,8 +315,11 @@ public class TriggerManagementService {
     } catch (Exception e) {
       String errorMessage =
           String.format(
-              "Failed to register trigger %s with className: %s. The cause is: %s",
-              triggerInformation.getTriggerName(), triggerInformation.getClassName(), e);
+              DataNodeMiscMessages
+                  .EXCEPTION_FAILED_TO_REGISTER_TRIGGER_ARG_WITH_CLASSNAME_ARG_THE_CAUSE_IS_ARG_D08E9589,
+              triggerInformation.getTriggerName(),
+              triggerInformation.getClassName(),
+              e);
       LOGGER.warn(errorMessage);
       throw e;
     }
@@ -332,7 +338,10 @@ public class TriggerManagementService {
         | ClassCastException e) {
       throw new TriggerManagementException(
           String.format(
-              "Failed to reflect trigger instance with className(%s), because %s", className, e));
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_FAILED_TO_REFLECT_TRIGGER_INSTANCE_WITH_CLASSNAME_S_BECAUSE_C0CC44E2,
+              className,
+              e));
     }
   }
 

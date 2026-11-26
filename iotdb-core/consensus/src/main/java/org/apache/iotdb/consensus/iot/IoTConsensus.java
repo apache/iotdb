@@ -21,27 +21,32 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.IStateMachine.Registry;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
@@ -50,6 +55,8 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool.AsyncIoTConsensusServiceClientPoolFactory;
 import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool.SyncIoTConsensusServiceClientPoolFactory;
@@ -61,7 +68,7 @@ import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,13 +82,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class IoTConsensus implements IConsensus {
@@ -92,12 +101,37 @@ public class IoTConsensus implements IConsensus {
   private final TEndPoint thisNode;
   private final int thisNodeId;
   private final File storageDir;
+  private final List<String> recvSnapshotDirs;
+  private final DirectoryStrategyType recvFolderStrategyType;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, IoTConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
+  private final Set<ConsensusGroupId> pendingPeerCreatedCallbacks = ConcurrentHashMap.newKeySet();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
+  private final UserDataTransferAuditHandler userDataTransferAuditHandler;
+  private final UserDataTransferAuditClassifier userDataTransferAuditClassifier;
   private IoTConsensusConfig config;
+
+  /**
+   * Optional callback invoked after a local peer is started, either during recovery or via {@link
+   * #createLocalPeer}. Used by the subscription system to auto-bind prefetching queues to available
+   * DataRegions.
+   */
+  public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onNewPeerCreated;
+
+  /**
+   * Optional callback invoked after a recovered local peer is constructed and before it starts.
+   * Used by the subscription system to restore WAL-retention guards before WAL cleanup is enabled.
+   */
+  public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onPeerRecovering;
+
+  /**
+   * Optional callback invoked before a local peer is deleted via {@link #deleteLocalPeer}. Used by
+   * the subscription system to unbind and clean up prefetching queues before the region is removed.
+   */
+  public static volatile Consumer<ConsensusGroupId> onPeerRemoved;
+
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
@@ -108,9 +142,15 @@ public class IoTConsensus implements IConsensus {
     this.thisNode = config.getThisNodeEndPoint();
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
+    this.recvSnapshotDirs = config.getRecvSnapshotDirs();
+    this.recvFolderStrategyType = config.getDirectoryStrategyType();
     this.config = config.getIotConsensusConfig();
+    this.userDataTransferAuditHandler = config.getUserDataTransferAuditHandler();
+    this.userDataTransferAuditClassifier = config.getUserDataTransferAuditClassifier();
     this.registry = registry;
-    this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
+    this.service =
+        new IoTConsensusRPCService(
+            thisNode, config.getIotConsensusConfig(), config.getTrustedChannelFailureHandler());
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncIoTConsensusServiceClient>()
             .createClientManager(
@@ -138,31 +178,54 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public synchronized void start() throws IOException {
-    initAndRecover();
-    service.initSyncedServiceImpl(new IoTConsensusRPCServiceProcessor(this));
     try {
-      registerManager.register(service);
-    } catch (StartupException e) {
-      throw new IOException(e);
+      initAndRecover();
+      service.initSyncedServiceImpl(new IoTConsensusRPCServiceProcessor(this));
+      try {
+        registerManager.register(service);
+      } catch (StartupException e) {
+        throw new IOException(e);
+      }
+      if (updateReaderFuture == null) {
+        updateReaderFuture =
+            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+                backgroundTaskService,
+                () ->
+                    stateMachineMap
+                        .values()
+                        .forEach(impl -> impl.getLogDispatcher().checkAndFlushIndex()),
+                READER_UPDATE_INTERVAL_IN_MINUTES,
+                READER_UPDATE_INTERVAL_IN_MINUTES,
+                TimeUnit.MINUTES);
+      }
+    } catch (IOException | RuntimeException e) {
+      cleanupAfterFailedStart(e);
+      throw e;
     }
-    if (updateReaderFuture == null) {
-      updateReaderFuture =
-          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-              backgroundTaskService,
-              () ->
-                  stateMachineMap
-                      .values()
-                      .forEach(impl -> impl.getLogDispatcher().checkAndFlushIndex()),
-              READER_UPDATE_INTERVAL_IN_MINUTES,
-              READER_UPDATE_INTERVAL_IN_MINUTES,
-              TimeUnit.MINUTES);
+  }
+
+  private void cleanupAfterFailedStart(final Throwable startupFailure) {
+    if (updateReaderFuture != null) {
+      updateReaderFuture.cancel(false);
+      updateReaderFuture = null;
     }
+    registerManager.deregisterAll();
+    for (IoTConsensusServerImpl impl : stateMachineMap.values()) {
+      try {
+        impl.stop();
+      } catch (RuntimeException e) {
+        startupFailure.addSuppressed(e);
+      }
+    }
+    stateMachineMap.clear();
+    pendingPeerCreatedCallbacks.clear();
   }
 
   private void initAndRecover() throws IOException {
     if (!storageDir.exists()) {
       if (!storageDir.mkdirs()) {
-        throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
+        throw new IOException(
+            String.format(ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FMT, storageDir));
       }
     } else {
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
@@ -174,18 +237,26 @@ public class IoTConsensus implements IConsensus {
           IoTConsensusServerImpl consensus =
               new IoTConsensusServerImpl(
                   path.toString(),
+                  recvSnapshotDirs,
+                  recvFolderStrategyType,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
-                  new TreeSet<>(),
+                  Collections.emptyList(),
                   registry.apply(consensusGroupId),
                   backgroundTaskService,
                   clientManager,
                   syncClientManager,
-                  config);
+                  config,
+                  userDataTransferAuditHandler,
+                  userDataTransferAuditClassifier);
+          pendingPeerCreatedCallbacks.add(consensusGroupId);
           stateMachineMap.put(consensusGroupId, consensus);
         }
+      } catch (DiskSpaceInsufficientException e) {
+        throw new IOException(e);
       }
     }
     if (correctPeerListBeforeStart != null) {
+      final AtomicReference<Exception> peerListResetFailure = new AtomicReference<>();
       BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
           (consensusGroupId, peers) -> {
             try {
@@ -193,7 +264,8 @@ public class IoTConsensus implements IConsensus {
             } catch (ConsensusGroupNotExistException ignore) {
 
             } catch (Exception e) {
-              logger.warn("Failed to reset peer list while start", e);
+              peerListResetFailure.compareAndSet(null, e);
+              logger.warn(ConsensusMessages.FAILED_TO_RESET_PEER_LIST_WHILE_START, e);
             }
           };
       // make peers which are in list correct
@@ -206,8 +278,38 @@ public class IoTConsensus implements IConsensus {
           .forEach(
               consensusGroupId ->
                   resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+      final Exception resetFailure = peerListResetFailure.get();
+      if (resetFailure != null) {
+        throw new IOException(
+            ConsensusMessages.FAILED_TO_RESET_PEER_LIST_WHILE_START, resetFailure);
+      }
     }
-    stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
+    for (Map.Entry<ConsensusGroupId, IoTConsensusServerImpl> entry : stateMachineMap.entrySet()) {
+      final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onPeerRecovering;
+      if (callback != null) {
+        try {
+          callback.accept(entry.getKey(), entry.getValue());
+        } catch (RuntimeException e) {
+          throw new IOException(e);
+        }
+      }
+    }
+    if (correctPeerListBeforeStart != null) {
+      stateMachineMap.values().forEach(IoTConsensusServerImpl::markPeerConfigurationRecovered);
+    }
+    for (Map.Entry<ConsensusGroupId, IoTConsensusServerImpl> entry : stateMachineMap.entrySet()) {
+      try {
+        entry.getValue().start();
+        // Subscription metadata may have been loaded before any local consensus peers existed.
+        // Recovered peers must trigger the same binding as newly created peers, after startup has
+        // restored their indices and installed the pre-start WAL-retention guards.
+        notifyPeerCreated(entry.getKey(), entry.getValue());
+      } catch (RuntimeException e) {
+        throw new IOException(e);
+      } finally {
+        pendingPeerCreatedCallbacks.remove(entry.getKey());
+      }
+    }
   }
 
   @Override
@@ -221,7 +323,7 @@ public class IoTConsensus implements IConsensus {
     try {
       backgroundTaskService.awaitTermination(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
+      logger.warn(ConsensusMessages.INTERRUPTED_WHEN_SHUTTING_DOWN_EXECUTOR, this, e);
       Thread.currentThread().interrupt();
     }
   }
@@ -237,8 +339,9 @@ public class IoTConsensus implements IConsensus {
     } else if (!impl.isActive()) {
       String message =
           String.format(
-              "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
-              groupId.toString(), impl.getThisNode().getNodeId());
+              ConsensusMessages.PEER_INACTIVE_NOT_READY_WRITE,
+              groupId.toString(),
+              impl.getThisNode().getNodeId());
       return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, message);
     } else {
       return impl.write(request);
@@ -273,37 +376,88 @@ public class IoTConsensus implements IConsensus {
 
                   String path = buildPeerDir(storageDir, groupId);
                   File file = new File(path);
-                  if (!file.mkdirs()) {
-                    logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
+                  if (!file.exists() && !file.mkdirs()) {
+                    logger.warn(
+                        ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FOR_GROUP, groupId, path);
                     return null;
                   }
 
-                  IoTConsensusServerImpl impl =
-                      new IoTConsensusServerImpl(
-                          path,
-                          new Peer(groupId, thisNodeId, thisNode),
-                          new TreeSet<>(peers),
-                          registry.apply(groupId),
-                          backgroundTaskService,
-                          clientManager,
-                          syncClientManager,
-                          config);
+                  IoTConsensusServerImpl impl = null;
+                  try {
+                    impl =
+                        new IoTConsensusServerImpl(
+                            path,
+                            recvSnapshotDirs,
+                            recvFolderStrategyType,
+                            new Peer(groupId, thisNodeId, thisNode),
+                            peers,
+                            registry.apply(groupId),
+                            backgroundTaskService,
+                            clientManager,
+                            syncClientManager,
+                            config,
+                            userDataTransferAuditHandler,
+                            userDataTransferAuditClassifier);
+                  } catch (DiskSpaceInsufficientException e) {
+                    throw new RuntimeException(e);
+                  }
                   impl.start();
+                  pendingPeerCreatedCallbacks.add(groupId);
                   return impl;
                 }))
         .orElseThrow(
             () ->
                 new ConsensusException(
-                    String.format("Unable to create consensus dir for group %s", groupId)));
+                    String.format(
+                        ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FOR_GROUP_FMT, groupId)));
     KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
+    }
+
+    try {
+      notifyPeerCreated(groupId, stateMachineMap.get(groupId));
+    } finally {
+      pendingPeerCreatedCallbacks.remove(groupId);
+    }
+  }
+
+  /** Returns whether a new or recovered local peer is still waiting for its creation callback. */
+  public boolean isPeerCreationCallbackPending(final ConsensusGroupId groupId) {
+    return pendingPeerCreatedCallbacks.contains(groupId);
+  }
+
+  private void notifyPeerCreated(
+      final ConsensusGroupId groupId, final IoTConsensusServerImpl serverImpl) {
+    final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onNewPeerCreated;
+    if (callback != null) {
+      try {
+        callback.accept(groupId, serverImpl);
+      } catch (final Exception e) {
+        logger.warn(
+            IoTConsensusMessages.LOG_ONNEWPEERCREATED_CALLBACK_FAILED_GROUP_ARG_2671FCDA,
+            groupId,
+            e);
+      }
     }
   }
 
   @Override
   public void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException {
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
+
+    // Notify subscription system before stopping the peer, so that subscription queues can
+    // properly unregister from the still-alive serverImpl.
+    final Consumer<ConsensusGroupId> removeCallback = onPeerRemoved;
+    if (removeCallback != null) {
+      try {
+        removeCallback.accept(groupId);
+      } catch (final Exception e) {
+        logger.warn(
+            IoTConsensusMessages.LOG_ONPEERREMOVED_CALLBACK_FAILED_GROUP_ARG_9B79CBAF, groupId, e);
+      }
+    }
+
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
@@ -315,7 +469,10 @@ public class IoTConsensus implements IConsensus {
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
+    pendingPeerCreatedCallbacks.remove(groupId);
+    FileUtils.deleteFileOrDirectoryWithRateLimiter(
+        new File(buildPeerDir(storageDir, groupId)),
+        RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 
@@ -330,47 +487,48 @@ public class IoTConsensus implements IConsensus {
       }
       try {
         // step 1: inactive new Peer to prepare for following steps
-        logger.info("[IoTConsensus] inactivate new peer: {}", peer);
+        logger.info(IoTConsensusMessages.INACTIVATE_NEW_PEER, peer);
         impl.inactivatePeer(peer, false);
 
         // step 2: notify all the other Peers to build the sync connection to newPeer
-        logger.info("[IoTConsensus] notify current peers to build sync log...");
+        logger.info(IoTConsensusMessages.NOTIFY_PEERS_BUILD_SYNC_LOG);
         impl.notifyPeersToBuildSyncLogChannel(peer);
 
         // step 3: take snapshot
-        logger.info("[IoTConsensus] start to take snapshot...");
+        logger.info(IoTConsensusMessages.START_TAKE_SNAPSHOT);
 
         impl.takeSnapshot();
 
         // step 4: transit snapshot
-        logger.info("[IoTConsensus] start to transmit snapshot...");
+        logger.info(IoTConsensusMessages.START_TRANSMIT_SNAPSHOT);
         impl.transmitSnapshot(peer);
 
         // step 5: let the new peer load snapshot
-        logger.info("[IoTConsensus] trigger new peer to load snapshot...");
+        logger.info(IoTConsensusMessages.TRIGGER_LOAD_SNAPSHOT);
         impl.triggerSnapshotLoad(peer);
         KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
         // step 6: active new Peer
-        logger.info("[IoTConsensus] activate new peer...");
+        logger.info(IoTConsensusMessages.ACTIVATE_NEW_PEER);
         impl.activePeer(peer);
+        impl.waitNewPeerUntilSyncLogCompleted(peer);
 
         // step 7: notify remote peer to clean up transferred snapshot
-        logger.info("[IoTConsensus] clean up remote snapshot...");
+        logger.info(IoTConsensusMessages.CLEANUP_REMOTE_SNAPSHOT);
         try {
           impl.cleanupRemoteSnapshot(peer);
         } catch (ConsensusGroupModifyPeerException e) {
-          logger.warn("[IoTConsensus] failed to cleanup remote snapshot", e);
+          logger.warn(IoTConsensusMessages.FAILED_CLEANUP_REMOTE_SNAPSHOT, e);
         }
         KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
 
       } catch (ConsensusGroupModifyPeerException e) {
-        logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
+        logger.info(IoTConsensusMessages.ADD_REMOTE_PEER_FAILED_CLEANUP);
         // try to clean up the sync log channel
         impl.notifyPeersToRemoveSyncLogChannel(peer);
         throw new ConsensusException(e);
       } finally {
-        logger.info("[IoTConsensus] clean up local snapshot...");
+        logger.info(IoTConsensusMessages.CLEANUP_LOCAL_SNAPSHOT);
         impl.cleanupLocalSnapshot();
       }
     }
@@ -412,7 +570,7 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
-    throw new ConsensusException("IoTConsensus does not support leader transfer");
+    throw new ConsensusException(IoTConsensusMessages.NOT_SUPPORT_LEADER_TRANSFER);
   }
 
   @Override
@@ -484,7 +642,7 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void recordCorrectPeerListBeforeStarting(
       Map<ConsensusGroupId, List<Peer>> correctPeerList) {
-    logger.info("Record correct peer list: {}", correctPeerList);
+    logger.info(ConsensusMessages.RECORD_CORRECT_PEER_LIST, correctPeerList);
     this.correctPeerListBeforeStart = correctPeerList;
   }
 
@@ -503,9 +661,7 @@ public class IoTConsensus implements IConsensus {
 
     Peer localPeer = new Peer(groupId, thisNodeId, thisNode);
     if (!correctPeers.contains(localPeer)) {
-      logger.info(
-          "[RESET PEER LIST] {} Local peer is not in the correct configuration, delete it.",
-          groupId);
+      logger.info(ConsensusMessages.RESET_PEER_LIST_NOT_IN_CORRECT, groupId);
       deleteLocalPeer(groupId);
       return;
     }
@@ -518,9 +674,9 @@ public class IoTConsensus implements IConsensus {
         if (!correctPeers.contains(peer)) {
           if (!impl.removeSyncLogChannel(peer)) {
             logger.error(
-                "[RESET PEER LIST] {} Failed to remove sync channel with: {}", groupId, peer);
+                ConsensusMessages.RESET_PEER_LIST_FAILED_TO_REMOVE_SYNC_CHANNEL, groupId, peer);
           } else {
-            logger.info("[RESET PEER LIST] {} Remove sync channel with: {}", groupId, peer);
+            logger.info(ConsensusMessages.RESET_PEER_LIST_REMOVE_SYNC_CHANNEL, groupId, peer);
           }
         }
       }
@@ -528,22 +684,20 @@ public class IoTConsensus implements IConsensus {
       for (Peer peer : correctPeers) {
         if (!impl.getConfiguration().contains(peer)) {
           impl.buildSyncLogChannel(peer, startNow);
-          logger.info("[RESET PEER LIST] {} Build sync channel with: {}", groupId, peer);
+          logger.info(ConsensusMessages.RESET_PEER_LIST_BUILD_SYNC_CHANNEL, groupId, peer);
         }
       }
       // show result
       String newPeerListStr = impl.getConfiguration().toString();
       if (!previousPeerListStr.equals(newPeerListStr)) {
         logger.info(
-            "[RESET PEER LIST] {} Local peer list has been reset: {} -> {}",
+            ConsensusMessages.RESET_PEER_LIST_RESET_RESULT,
             groupId,
             previousPeerListStr,
             newPeerListStr);
       } else {
         logger.info(
-            "[RESET PEER LIST] {} The current peer list is correct, nothing need to be reset: {}",
-            groupId,
-            previousPeerListStr);
+            ConsensusMessages.RESET_PEER_LIST_NOTHING_TO_RESET, groupId, previousPeerListStr);
       }
     }
   }

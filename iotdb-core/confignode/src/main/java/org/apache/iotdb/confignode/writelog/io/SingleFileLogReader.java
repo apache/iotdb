@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.confignode.writelog.io;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,10 +30,8 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
 
@@ -75,10 +75,7 @@ public class SingleFileLogReader implements ILogReader {
       }
       buffer = new byte[logSize];
 
-      int readLen = logStream.read(buffer, 0, logSize);
-      if (readLen < logSize) {
-        throw new IOException("Reach eof");
-      }
+      logStream.readFully(buffer, 0, logSize);
 
       final long checkSum = logStream.readLong();
       checkSummer.reset();
@@ -86,10 +83,12 @@ public class SingleFileLogReader implements ILogReader {
       if (checkSummer.getValue() != checkSum) {
         throw new IOException(
             String.format(
-                "The check sum of the No.%d log batch is incorrect! In "
-                    + "file: "
-                    + "%d Calculated: %d.",
-                idx, checkSum, checkSummer.getValue()));
+                ConfigNodeMessages.THE_CHECK_SUM_OF_THE_NO_LOG_BATCH_IS_INCORRECT
+                    + ConfigNodeMessages.EXCEPTION_FILE_11296840
+                    + ConfigNodeMessages.EXCEPTION_ARG_CALCULATED_ARG_0EEEE191,
+                idx,
+                checkSum,
+                checkSummer.getValue()));
       }
 
       batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
@@ -101,7 +100,8 @@ public class SingleFileLogReader implements ILogReader {
       fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
     } catch (Exception e) {
       logger.error(
-          "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is",
+          ConfigNodeMessages
+              .LOG_CANNOT_READ_MORE_PHYSICALPLANS_ARG_SUCCESSFULLY_READ_INDEX_ARG_REASON_2EC90E78,
           idx,
           filepath,
           e);
@@ -128,7 +128,7 @@ public class SingleFileLogReader implements ILogReader {
       try {
         logStream.close();
       } catch (IOException e) {
-        logger.error("Cannot close log file {}", filepath, e);
+        logger.error(ConfigNodeMessages.CANNOT_CLOSE_LOG_FILE, filepath, e);
       }
     }
   }
@@ -136,7 +136,7 @@ public class SingleFileLogReader implements ILogReader {
   public void open(File logFile) throws FileNotFoundException {
     close();
     logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
-    logger.info("open WAL file: {} size is {}", logFile.getName(), logFile.length());
+    logger.info(ConfigNodeMessages.OPEN_WAL_FILE_SIZE_IS, logFile.getName(), logFile.length());
     this.filepath = logFile.getPath();
     idx = 0;
   }
@@ -146,11 +146,10 @@ public class SingleFileLogReader implements ILogReader {
   }
 
   private void truncateBrokenLogs() {
-    try (FileOutputStream outputStream = new FileOutputStream(filepath, true);
-        FileChannel channel = outputStream.getChannel()) {
-      channel.truncate(unbrokenLogsSize);
+    try {
+      FileUtils.truncateFile(new File(filepath), unbrokenLogsSize);
     } catch (IOException e) {
-      logger.error("Fail to truncate log file to size {}", unbrokenLogsSize, e);
+      logger.error(ConfigNodeMessages.FAIL_TO_TRUNCATE_LOG_FILE_TO_SIZE, unbrokenLogsSize, e);
     }
   }
 }

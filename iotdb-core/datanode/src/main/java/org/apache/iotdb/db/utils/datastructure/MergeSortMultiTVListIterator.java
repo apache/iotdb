@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.TypeServices;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
@@ -33,25 +37,56 @@ import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
-
 public class MergeSortMultiTVListIterator extends MultiTVListIterator {
 
   private final List<Integer> probeIterators;
-  private final PriorityQueue<Pair<Long, Integer>> minHeap =
-      new PriorityQueue<>(
-          (a, b) -> a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left));
+  private final PriorityQueue<Pair<Long, Integer>> heap;
 
   public MergeSortMultiTVListIterator(
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       TSDataType tsDataType,
       List<TVList> tvLists,
+      List<Integer> tvListRowCounts,
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
-      int maxNumberOfPointsInPage) {
-    super(tsDataType, tvLists, deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    super(
+        scanOrder,
+        globalTimeFilter,
+        tsDataType,
+        tvLists,
+        tvListRowCounts,
+        deletionList,
+        floatPrecision,
+        encoding,
+        maxNumberOfPointsInPage,
+        queryContext);
     this.probeIterators =
         IntStream.range(0, tvListIterators.size()).boxed().collect(Collectors.toList());
+    this.heap =
+        new PriorityQueue<>(
+            scanOrder.isAscending()
+                ? (a, b) ->
+                    a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left)
+                : (a, b) ->
+                    a.left.equals(b.left) ? a.right.compareTo(b.right) : b.left.compareTo(a.left));
+  }
+
+  @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    probeIterators.clear();
+    for (int i = 0; i < tvListIterators.size(); i++) {
+      TVList.TVListIterator iterator = tvListIterators.get(i);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (iterator.hasNextTimeValuePair()) {
+        probeIterators.add(i);
+      }
+    }
+    probeNext = false;
   }
 
   @Override
@@ -60,13 +95,13 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
     for (int i : probeIterators) {
       TVList.TVListIterator iterator = tvListIterators.get(i);
       if (iterator.hasNextTimeValuePair()) {
-        minHeap.add(new Pair<>(iterator.currentTime(), i));
+        heap.add(new Pair<>(iterator.currentTime(), i));
       }
     }
     probeIterators.clear();
 
-    if (!minHeap.isEmpty()) {
-      Pair<Long, Integer> top = minHeap.poll();
+    if (!heap.isEmpty()) {
+      Pair<Long, Integer> top = heap.poll();
       currentTime = top.left;
       probeIterators.add(top.right);
 
@@ -75,8 +110,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
       hasNext = true;
 
       // duplicated timestamps
-      while (!minHeap.isEmpty() && minHeap.peek().left == currentTime) {
-        Pair<Long, Integer> element = minHeap.poll();
+      while (!heap.isEmpty() && heap.peek().left == currentTime) {
+        Pair<Long, Integer> element = heap.poll();
         probeIterators.add(element.right);
       }
     }
@@ -94,6 +129,9 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
   @Override
   public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+    TypeServices.TVListChunkWriter valueWriter =
+        TypeServices.StorageEngine.TV_LIST_CHUNK_WRITER_SERVICE.call(
+            Type.fromTsDataType(tsDataType));
     while (hasNextTimeValuePair()) {
       // remember current iterator and row index
       TVList.TVListIterator currIterator = tvListIterators.get(iteratorIndex);
@@ -106,40 +144,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
         chunkWriterImpl.setLastPoint(true);
       }
 
-      switch (tsDataType) {
-        case BOOLEAN:
-          chunkWriterImpl.write(time, currIterator.getTVList().getBoolean(row));
-          encodeInfo.dataSizeInChunk += 8L + 1L;
-          break;
-        case INT32:
-        case DATE:
-          chunkWriterImpl.write(time, currIterator.getTVList().getInt(row));
-          encodeInfo.dataSizeInChunk += 8L + 4L;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          chunkWriterImpl.write(time, currIterator.getTVList().getLong(row));
-          encodeInfo.dataSizeInChunk += 8L + 8L;
-          break;
-        case FLOAT:
-          chunkWriterImpl.write(time, currIterator.getTVList().getFloat(row));
-          encodeInfo.dataSizeInChunk += 8L + 4L;
-          break;
-        case DOUBLE:
-          chunkWriterImpl.write(time, currIterator.getTVList().getDouble(row));
-          encodeInfo.dataSizeInChunk += 8L + 8L;
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          Binary value = currIterator.getTVList().getBinary(row);
-          chunkWriterImpl.write(time, value);
-          encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", tsDataType));
-      }
+      encodeInfo.dataSizeInChunk +=
+          valueWriter.write(chunkWriterImpl, time, currIterator.getTVList(), row);
       encodeInfo.pointNumInChunk++;
 
       if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
@@ -147,5 +153,13 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
         break;
       }
     }
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (TVList.TVListIterator tvListIterator : this.tvListIterators) {
+      tvListIterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

@@ -265,6 +265,7 @@ public abstract class SeriesCompactionExecutor {
           // finish writing this page
           break;
         }
+        point = pointPriorityReader.currentPointForOutput();
         compactionWriter.write(point, subTaskId);
         pointPriorityReader.next();
       }
@@ -306,7 +307,7 @@ public abstract class SeriesCompactionExecutor {
       }
 
       // write data point into chunk writer
-      compactionWriter.write(currentPoint, subTaskId);
+      compactionWriter.write(pointPriorityReader.currentPointForOutput(), subTaskId);
       pointPriorityReader.next();
     }
   }
@@ -474,11 +475,16 @@ public abstract class SeriesCompactionExecutor {
    * modification from ttl cache.
    */
   protected List<ModEntry> getModificationsFromCache(
-      TsFileResource tsFileResource, IDeviceID deviceId, String measurement)
+      TsFileResource tsFileResource, IDeviceID deviceId, String measurement, boolean isTableModel)
       throws IllegalPathException {
     PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allModifications =
         modificationCacheMap.get(tsFileResource.getTsFile().getName());
-    return CompactionUtils.getMatchedModifications(allModifications, deviceId, measurement);
+    return CompactionUtils.getMatchedModifications(
+        allModifications,
+        deviceId,
+        measurement,
+        compactionWriter.getTTLLowerBoundForCurrentDevice(),
+        isTableModel);
   }
 
   @SuppressWarnings("squid:S3776")

@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -62,7 +64,8 @@ class SubscriptionAgentLauncher {
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           final String exceptionMessage =
               String.format(
-                  "Failed to get all topic info in config node, status is %s",
+                  DataNodePipeMessages
+                      .EXCEPTION_FAILED_TO_GET_ALL_TOPIC_INFO_IN_CONFIG_NODE_STATUS_IS_ARG_68B91348,
                   getAllTopicInfoResp.getStatus());
           LOGGER.warn(exceptionMessage);
           throw new SubscriptionException(exceptionMessage);
@@ -76,7 +79,8 @@ class SubscriptionAgentLauncher {
                             byteBuffer -> {
                               final TopicMeta topicMeta = TopicMeta.deserialize(byteBuffer);
                               LOGGER.info(
-                                  "Pulled topic meta from config node: {}, recovering ...",
+                                  DataNodePipeMessages
+                                      .PIPE_LOG_PULLED_TOPIC_META_FROM_CONFIG_NODE_RECOVERING_5C4B1AEE,
                                   topicMeta);
                               return topicMeta;
                             })
@@ -90,23 +94,25 @@ class SubscriptionAgentLauncher {
       } catch (final SubscriptionException | ClientManagerException | TException e) {
         retry++;
         LOGGER.warn(
-            "Failed to get topic meta from config node for {} times, will retry at most {} times.",
+            DataNodePipeMessages
+                .PIPE_LOG_FAILED_TO_GET_TOPIC_META_FROM_CONFIG_NODE_FOR_TIMES_WILL_E8D0B7F8,
             retry,
             MAX_RETRY_TIMES,
             e);
         try {
-          Thread.sleep(
+          SubscriptionAgentLauncher.class.wait(
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
-              "Interrupted while sleeping, will retry to get topic meta from config node.",
+              DataNodePipeMessages
+                  .PIPE_LOG_INTERRUPTED_WHILE_SLEEPING_WILL_RETRY_TO_GET_TOPIC_META_976E4BE2,
               interruptedException);
           Thread.currentThread().interrupt();
         }
       }
     }
 
-    throw new StartupException("Failed to get topic meta from config node.");
+    throw new StartupException(DataNodeMiscMessages.FAILED_TO_GET_TOPIC_META);
   }
 
   public static synchronized void launchSubscriptionConsumerAgent() throws StartupException {
@@ -120,7 +126,8 @@ class SubscriptionAgentLauncher {
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           final String exceptionMessage =
               String.format(
-                  "Failed to get all subscription info in config node, status is %s",
+                  DataNodePipeMessages
+                      .EXCEPTION_FAILED_TO_GET_ALL_SUBSCRIPTION_INFO_IN_CONFIG_NODE_STATUS_IS_ARG_1522CE8B,
                   getAllSubscriptionInfoResp.getStatus());
           LOGGER.warn(exceptionMessage);
           throw new SubscriptionException(exceptionMessage);
@@ -135,7 +142,8 @@ class SubscriptionAgentLauncher {
                               final ConsumerGroupMeta consumerGroupMeta =
                                   ConsumerGroupMeta.deserialize(byteBuffer);
                               LOGGER.info(
-                                  "Pulled consumer group meta from config node: {}, recovering ...",
+                                  DataNodePipeMessages
+                                      .PIPE_LOG_PULLED_CONSUMER_GROUP_META_FROM_CONFIG_NODE_RECOVERING_A85B948F,
                                   consumerGroupMeta);
                               return consumerGroupMeta;
                             })
@@ -149,22 +157,24 @@ class SubscriptionAgentLauncher {
       } catch (final SubscriptionException | ClientManagerException | TException e) {
         retry++;
         LOGGER.warn(
-            "Failed to get consumer group meta from config node for {} times, will retry at most {} times.",
+            DataNodePipeMessages
+                .PIPE_LOG_FAILED_TO_GET_CONSUMER_GROUP_META_FROM_CONFIG_NODE_FOR_TIMES_3E4C727C,
             retry,
             MAX_RETRY_TIMES,
             e);
         try {
-          Thread.sleep(
+          SubscriptionAgentLauncher.class.wait(
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
-              "Interrupted while sleeping, will retry to get consumer group meta from config node.",
+              DataNodePipeMessages
+                  .PIPE_LOG_INTERRUPTED_WHILE_SLEEPING_WILL_RETRY_TO_GET_CONSUMER_GROUP_7E161F39,
               interruptedException);
           Thread.currentThread().interrupt();
         }
       }
     }
 
-    throw new StartupException("Failed to get consumer group meta from config node.");
+    throw new StartupException(DataNodeMiscMessages.FAILED_TO_GET_CONSUMER_GROUP_META);
   }
 }

@@ -1,0 +1,429 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.storageengine.load.active;
+
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
+
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
+
+import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+/** Utility methods for encoding and decoding load attributes into directory structures. */
+public final class ActiveLoadPathHelper {
+
+  private static final String SEGMENT_SEPARATOR = "-";
+  public static final String USER_KEY = "user";
+  public static final String PIPE_CONVERSION_TASK_ID_KEY = "pipe-conversion-task-id";
+
+  /**
+   * Prefix for directories used while a load handoff is being assembled. Active-load scanning must
+   * ignore these directories until the completed directory is published with a rename.
+   */
+  private static final String TRANSFER_STAGING_DIRECTORY_PREFIX = ".iotdb-load-staging-";
+
+  // Keep a version in the user path segment so future encryption algorithms can be added safely.
+  private static final String USER_VALUE_MASK_PREFIX = "v1-";
+  private static final BaseEncoding USER_VALUE_ENCODING = BaseEncoding.base32().omitPadding();
+
+  private static final List<String> KEY_ORDER =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              USER_KEY,
+              PIPE_CONVERSION_TASK_ID_KEY,
+              LoadTsFileConfigurator.DATABASE_NAME_KEY,
+              LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
+              LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
+              LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
+              LoadTsFileConfigurator.VERIFY_KEY,
+              LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY,
+              LoadTsFileConfigurator.DATABASE_KEY,
+              LoadTsFileConfigurator.PIPE_GENERATED_KEY));
+
+  private ActiveLoadPathHelper() {
+    throw new IllegalStateException(StorageEngineMessages.UTILITY_CLASS);
+  }
+
+  public static Map<String, String> buildAttributes(
+      final String databaseName,
+      final Integer databaseLevel,
+      final Boolean convertOnTypeMismatch,
+      final Boolean verify,
+      final Boolean autoCreateSchema,
+      final Long tabletConversionThresholdBytes,
+      final Boolean pipeGenerated,
+      final String userName) {
+    final Map<String, String> attributes = new LinkedHashMap<>();
+    if (Objects.nonNull(userName) && !userName.isEmpty()) {
+      attributes.put(USER_KEY, userName);
+    }
+
+    if (Objects.nonNull(databaseName) && !databaseName.isEmpty()) {
+      attributes.put(LoadTsFileConfigurator.DATABASE_NAME_KEY, databaseName);
+    }
+
+    if (Objects.nonNull(databaseLevel)) {
+      attributes.put(LoadTsFileConfigurator.DATABASE_LEVEL_KEY, databaseLevel.toString());
+    }
+
+    if (Objects.nonNull(convertOnTypeMismatch)) {
+      attributes.put(
+          LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
+          Boolean.toString(convertOnTypeMismatch));
+    }
+
+    if (Objects.nonNull(tabletConversionThresholdBytes)) {
+      attributes.put(
+          LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
+          tabletConversionThresholdBytes.toString());
+    }
+
+    if (Objects.nonNull(verify)) {
+      attributes.put(LoadTsFileConfigurator.VERIFY_KEY, Boolean.toString(verify));
+    }
+
+    if (Objects.nonNull(autoCreateSchema)) {
+      attributes.put(
+          LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY, Boolean.toString(autoCreateSchema));
+    }
+
+    if (Objects.nonNull(pipeGenerated) && pipeGenerated) {
+      attributes.put(LoadTsFileConfigurator.PIPE_GENERATED_KEY, Boolean.TRUE.toString());
+    }
+    return attributes;
+  }
+
+  public static Map<String, String> buildAttributes(
+      final String databaseName,
+      final Integer databaseLevel,
+      final Boolean convertOnTypeMismatch,
+      final Boolean verify,
+      final Boolean autoCreateSchema,
+      final Long tabletConversionThresholdBytes,
+      final Boolean pipeGenerated,
+      final String userName,
+      final String conversionTaskId) {
+    final Map<String, String> attributes =
+        buildAttributes(
+            databaseName,
+            databaseLevel,
+            convertOnTypeMismatch,
+            verify,
+            autoCreateSchema,
+            tabletConversionThresholdBytes,
+            pipeGenerated,
+            userName);
+    if (conversionTaskId != null && !conversionTaskId.isEmpty()) {
+      attributes.put(PIPE_CONVERSION_TASK_ID_KEY, conversionTaskId);
+    }
+    return attributes;
+  }
+
+  public static File resolveTargetDir(final File baseDir, final Map<String, String> attributes) {
+    File current = baseDir;
+    for (final String key : KEY_ORDER) {
+      final String value = attributes.get(key);
+      if (value == null) {
+        continue;
+      }
+      current = new File(current, formatSegment(key, value));
+    }
+    return current;
+  }
+
+  /**
+   * Resolves the shared attribute directory used by a pipe transfer. The conversion task id is
+   * deliberately kept out of this path because it is unique per file and belongs in the transfer
+   * directory itself (see {@link #formatPipeTaskTransferDirectoryName(String)}).
+   */
+  public static File resolvePipeTransferTargetDir(
+      final File baseDir, final Map<String, String> attributes) {
+    File current = baseDir;
+    for (final String key : KEY_ORDER) {
+      if (PIPE_CONVERSION_TASK_ID_KEY.equals(key)) {
+        continue;
+      }
+      final String value = attributes.get(key);
+      if (value == null) {
+        continue;
+      }
+      current = new File(current, formatSegment(key, value));
+    }
+    return current;
+  }
+
+  public static String formatPipeTaskTransferDirectoryName(final String conversionTaskId) {
+    return formatSegment(PIPE_CONVERSION_TASK_ID_KEY, conversionTaskId);
+  }
+
+  public static String formatTransferStagingDirectoryName(final String uniqueSuffix) {
+    return TRANSFER_STAGING_DIRECTORY_PREFIX + uniqueSuffix;
+  }
+
+  /**
+   * Returns whether a path is below an internal transfer staging directory. The pending directory
+   * bounds the walk so a user directory outside active-load roots cannot accidentally affect the
+   * result.
+   */
+  public static boolean isTransferStagingFile(final File file, final File pendingDir) {
+    if (file == null) {
+      return false;
+    }
+    final File normalizedPendingDir = pendingDir == null ? null : pendingDir.getAbsoluteFile();
+    File current = file.getAbsoluteFile();
+    while (current != null) {
+      if (normalizedPendingDir != null && current.equals(normalizedPendingDir)) {
+        return false;
+      }
+      if (current.getName().startsWith(TRANSFER_STAGING_DIRECTORY_PREFIX)) {
+        return true;
+      }
+      current = current.getParentFile();
+    }
+    return false;
+  }
+
+  public static Map<String, String> parseAttributes(final File file, final File pendingDir) {
+    if (file == null) {
+      return Collections.emptyMap();
+    }
+
+    final Map<String, String> attributes = new HashMap<>();
+    File current = file.getParentFile();
+    while (current != null) {
+      final String dirName = current.getName();
+      if (pendingDir != null && current.equals(pendingDir)) {
+        break;
+      }
+      for (final String key : KEY_ORDER) {
+        final String prefix = key + SEGMENT_SEPARATOR;
+        if (dirName.startsWith(prefix)) {
+          extractAndValidateAttributeValue(key, dirName, prefix.length())
+              .ifPresent(value -> attributes.putIfAbsent(key, value));
+          break;
+        }
+      }
+      current = current.getParentFile();
+    }
+    return attributes;
+  }
+
+  public static File findPendingDirectory(final File file) {
+    if (file == null) {
+      return null;
+    }
+    String[] dirs = IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
+    File current = file;
+    while (current != null) {
+      for (final String dir : dirs) {
+        if (current.isDirectory() && current.getAbsolutePath().equals(dir)) {
+          return current;
+        }
+      }
+      current = current.getParentFile();
+    }
+    return null;
+  }
+
+  public static void applyAttributesToStatement(
+      final Map<String, String> attributes,
+      final LoadTsFileStatement statement,
+      final boolean defaultVerify) {
+
+    Optional.ofNullable(attributes.get(LoadTsFileConfigurator.DATABASE_NAME_KEY))
+        .filter(name -> !name.isEmpty())
+        .ifPresent(statement::setDatabase);
+
+    if (statement.getDatabase() == null || statement.getDatabase().isEmpty()) {
+      Optional.ofNullable(attributes.get(LoadTsFileConfigurator.DATABASE_KEY))
+          .filter(name -> !name.isEmpty())
+          .ifPresent(statement::setDatabase);
+    }
+
+    Optional.ofNullable(attributes.get(LoadTsFileConfigurator.DATABASE_LEVEL_KEY))
+        .ifPresent(
+            level -> {
+              try {
+                statement.setDatabaseLevel(Integer.parseInt(level));
+              } catch (final NumberFormatException ignored) {
+                // keep the default when parsing fails
+              }
+            });
+
+    Optional.ofNullable(attributes.get(LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY))
+        .ifPresent(value -> statement.setConvertOnTypeMismatch(Boolean.parseBoolean(value)));
+
+    Optional.ofNullable(attributes.get(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY))
+        .ifPresent(
+            threshold -> {
+              try {
+                statement.setTabletConversionThresholdBytes(Long.parseLong(threshold));
+              } catch (final NumberFormatException ignored) {
+                // keep the default when parsing fails
+              }
+            });
+
+    if (attributes.containsKey(LoadTsFileConfigurator.VERIFY_KEY)) {
+      statement.setVerifySchema(
+          Boolean.parseBoolean(attributes.get(LoadTsFileConfigurator.VERIFY_KEY)));
+    } else {
+      statement.setVerifySchema(defaultVerify);
+    }
+
+    Optional.ofNullable(attributes.get(LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY))
+        .ifPresent(value -> statement.setAutoCreateSchema(Boolean.parseBoolean(value)));
+
+    if (attributes.containsKey(LoadTsFileConfigurator.PIPE_GENERATED_KEY)
+        && Boolean.parseBoolean(attributes.get(LoadTsFileConfigurator.PIPE_GENERATED_KEY))) {
+      statement.markIsGeneratedByPipe();
+    }
+  }
+
+  public static boolean containsDatabaseName(final Map<String, String> attributes) {
+    return attributes.containsKey(LoadTsFileConfigurator.DATABASE_NAME_KEY)
+        || attributes.containsKey(LoadTsFileConfigurator.DATABASE_KEY);
+  }
+
+  private static String formatSegment(final String key, final String value) {
+    return key + SEGMENT_SEPARATOR + encodeValue(maskValueIfNecessary(key, value));
+  }
+
+  private static String maskValueIfNecessary(final String key, final String value) {
+    if (!USER_KEY.equals(key)) {
+      return value;
+    }
+    return USER_VALUE_MASK_PREFIX
+        + USER_VALUE_ENCODING.encode(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static String encodeValue(final String value) {
+    try {
+      return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
+    } catch (final UnsupportedEncodingException e) {
+      // UTF-8 should always be supported; fallback to raw value when unexpected
+      return value;
+    }
+  }
+
+  private static Optional<String> extractAndValidateAttributeValue(
+      final String key, final String dirName, final int prefixLength) {
+    if (dirName.length() <= prefixLength) {
+      return Optional.empty();
+    }
+
+    final String encodedValue = dirName.substring(prefixLength);
+    final String rawDecodedValue = decodeValue(encodedValue);
+    if (USER_KEY.equals(key) && !rawDecodedValue.startsWith(USER_VALUE_MASK_PREFIX)) {
+      return Optional.empty();
+    }
+    final String decodedValue = unmaskValueIfNecessary(key, rawDecodedValue);
+    try {
+      validateAttributeValue(key, decodedValue);
+      return Optional.of(decodedValue);
+    } catch (final SemanticException e) {
+      return Optional.empty();
+    }
+  }
+
+  private static void validateAttributeValue(final String key, final String value) {
+    switch (key) {
+      case LoadTsFileConfigurator.DATABASE_NAME_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException(StorageEngineMessages.DATABASE_NAME_MUST_NOT_BE_EMPTY);
+        }
+        break;
+      case LoadTsFileConfigurator.DATABASE_LEVEL_KEY:
+        LoadTsFileConfigurator.validateDatabaseLevelParam(value);
+        break;
+      case LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY:
+        LoadTsFileConfigurator.validateConvertOnTypeMismatchParam(value);
+        break;
+      case LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY:
+        validateTabletConversionThreshold(value);
+        break;
+      case LoadTsFileConfigurator.VERIFY_KEY:
+        LoadTsFileConfigurator.validateVerifyParam(value);
+        break;
+      case PIPE_CONVERSION_TASK_ID_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException(
+              StorageEngineMessages.EXCEPTION_CONVERSION_TASK_ID_MUST_NOT_BE_EMPTY_411D064E);
+        }
+        break;
+      case USER_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException(StorageEngineMessages.USER_NAME_MUST_NOT_BE_EMPTY);
+        }
+        break;
+      default:
+        LoadTsFileConfigurator.validateParameters(key, value);
+    }
+  }
+
+  private static void validateTabletConversionThreshold(final String value) {
+    try {
+      final long threshold = Long.parseLong(value);
+      if (threshold < 0) {
+        throw new SemanticException(StorageEngineMessages.TABLET_CONVERSION_THRESHOLD_NON_NEGATIVE);
+      }
+    } catch (final NumberFormatException e) {
+      throw new SemanticException(
+          String.format(StorageEngineMessages.TABLET_CONVERSION_THRESHOLD_NOT_VALID_LONG, value));
+    }
+  }
+
+  private static String decodeValue(final String value) {
+    try {
+      return URLDecoder.decode(value, StandardCharsets.UTF_8.toString());
+    } catch (final UnsupportedEncodingException e) {
+      return value;
+    }
+  }
+
+  private static String unmaskValueIfNecessary(final String key, final String value) {
+    if (!USER_KEY.equals(key) || !value.startsWith(USER_VALUE_MASK_PREFIX)) {
+      return value;
+    }
+    return decodeUserName(value.substring(USER_VALUE_MASK_PREFIX.length()), value);
+  }
+
+  private static String decodeUserName(final String encodedUserName, final String fallback) {
+    try {
+      return new String(USER_VALUE_ENCODING.decode(encodedUserName), StandardCharsets.UTF_8);
+    } catch (final IllegalArgumentException e) {
+      return fallback;
+    }
+  }
+}

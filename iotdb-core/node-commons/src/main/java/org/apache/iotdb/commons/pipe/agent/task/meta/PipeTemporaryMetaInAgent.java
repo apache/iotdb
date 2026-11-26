@@ -20,16 +20,22 @@
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.resource.PipeRecentFailureCounter;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   // Statistics
   private final AtomicLong floatingMemoryUsageInByte = new AtomicLong(0L);
+  private final PipeRecentFailureCounter recentFailureCounter = new PipeRecentFailureCounter();
+  private final ConcurrentMap<Integer, Boolean> regionId2TsFileEpochDegradedMap =
+      new ConcurrentHashMap<>();
 
   // Object pool
   private final String pipeNameWithCreationTime;
@@ -51,6 +57,29 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   public long getFloatingMemoryUsageInByte() {
     return floatingMemoryUsageInByte.get();
+  }
+
+  public void setTsFileEpochDegraded(final int regionId, final boolean isDegraded) {
+    regionId2TsFileEpochDegradedMap.put(regionId, isDegraded);
+  }
+
+  public void clearTsFileEpochDegraded(final int regionId) {
+    regionId2TsFileEpochDegradedMap.remove(regionId);
+  }
+
+  public Boolean getGlobalTsFileEpochDegraded() {
+    if (regionId2TsFileEpochDegradedMap.values().stream().anyMatch(Boolean.TRUE::equals)) {
+      return true;
+    }
+    return regionId2TsFileEpochDegradedMap.isEmpty() ? null : false;
+  }
+
+  public void recordResourceFailure(final PipeResourceFailureType failureType) {
+    recentFailureCounter.record(failureType);
+  }
+
+  public Map<String, Long> getRecentFailures() {
+    return recentFailureCounter.getRecentFailures();
   }
 
   public String getPipeNameWithCreationTime() {
@@ -87,12 +116,19 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     final PipeTemporaryMetaInAgent that = (PipeTemporaryMetaInAgent) o;
     return Objects.equals(
             this.floatingMemoryUsageInByte.get(), that.floatingMemoryUsageInByte.get())
+        && Objects.equals(
+            this.regionId2TsFileEpochDegradedMap, that.regionId2TsFileEpochDegradedMap)
+        && Objects.equals(this.getRecentFailures(), that.getRecentFailures())
         && Objects.equals(this.regionId2CommitterKeyMap, that.regionId2CommitterKeyMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(floatingMemoryUsageInByte, regionId2CommitterKeyMap);
+    return Objects.hash(
+        floatingMemoryUsageInByte.get(),
+        regionId2TsFileEpochDegradedMap,
+        getRecentFailures(),
+        regionId2CommitterKeyMap);
   }
 
   @Override
@@ -100,6 +136,10 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     return "PipeTemporaryMeta{"
         + "floatingMemoryUsage="
         + floatingMemoryUsageInByte
+        + ", regionId2TsFileEpochDegradedMap="
+        + regionId2TsFileEpochDegradedMap
+        + ", recentFailures="
+        + getRecentFailures()
         + ", regionId2CommitterKeyMap="
         + regionId2CommitterKeyMap
         + '}';

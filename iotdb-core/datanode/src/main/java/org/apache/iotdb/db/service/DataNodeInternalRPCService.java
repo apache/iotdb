@@ -19,24 +19,44 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.commons.service.TrustedChannelAuditServerEventHandler;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.thrift.InternalClientRPCServiceProcessor;
 import org.apache.iotdb.db.protocol.thrift.handler.InternalServiceThriftHandler;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
+import org.apache.iotdb.db.protocol.thrift.impl.IClientRPCServiceWithHandler;
+import org.apache.iotdb.db.protocol.thrift.impl.InternalClientRPCServiceImpl;
+import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.service.metrics.DataNodeInternalRPCServiceMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
+import org.apache.iotdb.rpc.RpcServiceConstants;
+
+import org.apache.thrift.TMultiplexedProcessor;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 public class DataNodeInternalRPCService extends ThriftService
     implements DataNodeInternalRPCServiceMBean {
 
-  private DataNodeInternalRPCServiceImpl impl;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
+  protected final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
+  protected final AtomicReference<IClientRPCServiceWithHandler> clientImpl =
+      new AtomicReference<>();
+  protected DataNodeContext dataNodeContext;
 
   private DataNodeInternalRPCService() {}
 
@@ -46,30 +66,59 @@ public class DataNodeInternalRPCService extends ThriftService
   }
 
   @Override
-  public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    impl = new DataNodeInternalRPCServiceImpl();
+  public void initTProcessor() {
+    DataNodeInternalRPCServiceImpl service = getImpl();
+    IClientRPCServiceWithHandler clientService = getClientImpl();
     initSyncedServiceImpl(null);
-    processor = new Processor<>(impl);
+    final TMultiplexedProcessor multiplexedProcessor = new TMultiplexedProcessor();
+    // This processor lazily registers an IClientSession. Its matching connection-close cleanup is
+    // installed through InternalServiceThriftHandler in initThriftServiceThread().
+    multiplexedProcessor.registerProcessor(
+        RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE,
+        new InternalClientRPCServiceProcessor(clientService));
+    multiplexedProcessor.registerDefault(new Processor<>(service));
+    processor = multiplexedProcessor;
   }
 
   @Override
-  public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+  public void initThriftServiceThread() throws IllegalAccessException {
+    // Internal client sessions intentionally share this server with cluster RPC traffic. Their
+    // connection capacity is bounded together by rpcMaxConcurrentClientNum and must be sized for
+    // both workloads.
+    // InternalServiceThriftHandler is the transport-level counterpart to the lazy session
+    // registration in InternalClientRPCServiceProcessor.process().
     try {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       thriftServiceThread =
-          new ThriftServiceThread(
-              processor,
-              getID().getName(),
-              ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
-              getBindIP(),
-              getBindPort(),
-              config.getRpcMaxConcurrentClientNum(),
-              config.getThriftServerAwaitTimeForStopService(),
-              new InternalServiceThriftHandler(),
-              config.isRpcThriftCompressionEnable(),
-              DeepCopyRpcTransportFactory.INSTANCE);
+          commonConfig.isEnableInternalSSL()
+              ? new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpcMaxConcurrentClientNum(),
+                  config.getThriftServerAwaitTimeForStopService(),
+                  new TrustedChannelAuditServerEventHandler(
+                      new InternalServiceThriftHandler(getClientImpl()),
+                      new TEndPoint(getBindIP(), getBindPort()),
+                      DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary),
+                  config.isRpcThriftCompressionEnable(),
+                  commonConfig.getKeyStorePath(),
+                  commonConfig.getKeyStorePwd(),
+                  commonConfig.getTrustStorePath(),
+                  commonConfig.getTrustStorePwd(),
+                  DeepCopyRpcTransportFactory.INSTANCE)
+              : new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpcMaxConcurrentClientNum(),
+                  config.getThriftServerAwaitTimeForStopService(),
+                  new InternalServiceThriftHandler(getClientImpl()),
+                  config.isRpcThriftCompressionEnable(),
+                  DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -80,16 +129,30 @@ public class DataNodeInternalRPCService extends ThriftService
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    return config.getInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    return config.getInternalPort();
   }
 
   public DataNodeInternalRPCServiceImpl getImpl() {
-    return impl;
+    DataNodeInternalRPCServiceImpl current = impl.get();
+    if (current != null) {
+      return current;
+    }
+    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl(dataNodeContext));
+    return impl.get();
+  }
+
+  private IClientRPCServiceWithHandler getClientImpl() {
+    IClientRPCServiceWithHandler current = clientImpl.get();
+    if (current != null) {
+      return current;
+    }
+    clientImpl.compareAndSet(null, new InternalClientRPCServiceImpl());
+    return clientImpl.get();
   }
 
   private static class DataNodeInternalRPCServiceHolder {
@@ -100,5 +163,9 @@ public class DataNodeInternalRPCService extends ThriftService
 
   public static DataNodeInternalRPCService getInstance() {
     return DataNodeInternalRPCServiceHolder.INSTANCE;
+  }
+
+  public void setDataNodeContext(DataNodeContext dataNodeContext) {
+    this.dataNodeContext = dataNodeContext;
   }
 }

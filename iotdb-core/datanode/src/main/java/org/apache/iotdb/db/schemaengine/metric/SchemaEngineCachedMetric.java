@@ -129,4 +129,14 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
         Tag.NAME.toString(),
         RELEASE_FLUSH_THREAD_NUM);
   }
+
+  @Override
+  public void bindTableMetrics(final String tableName) {
+    schemaEngineMemMetric.bindTableMetrics(tableName);
+  }
+
+  @Override
+  public void unbindTableMetrics(final String tableName) {
+    schemaEngineMemMetric.unbindTableMetrics(tableName);
+  }
 }

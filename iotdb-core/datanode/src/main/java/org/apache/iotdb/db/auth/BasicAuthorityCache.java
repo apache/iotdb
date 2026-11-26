@@ -21,10 +21,10 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +60,9 @@ public class BasicAuthorityCache implements IAuthorCache {
 
   @Override
   public void putUserCache(String userName, User user) {
+    if (user.getUserId() == AuthorityChecker.SUPER_USER_ID) {
+      AuthorityChecker.setSuperUser(user.getName());
+    }
     userCache.put(userName, user);
   }
 
@@ -78,25 +81,18 @@ public class BasicAuthorityCache implements IAuthorCache {
   @Override
   public boolean invalidateCache(final String userName, final String roleName) {
     if (userName != null) {
-      if (userCache.getIfPresent(userName) != null) {
-        Set<String> roleSet = userCache.getIfPresent(userName).getRoleSet();
+      final User user = userCache.getIfPresent(userName);
+      if (user != null) {
+        final Set<String> roleSet = user.getRoleSet();
         if (!roleSet.isEmpty()) {
           roleCache.invalidateAll(roleSet);
         }
         userCache.invalidate(userName);
       }
-      if (userCache.getIfPresent(userName) != null) {
-        LOGGER.error("datanode cache initialization failed");
-        return false;
-      }
     }
     if (roleName != null) {
       if (roleCache.getIfPresent(roleName) != null) {
         roleCache.invalidate(roleName);
-      }
-      if (roleCache.getIfPresent(roleName) != null) {
-        LOGGER.error("datanode cache initialization failed");
-        return false;
       }
     }
     return true;

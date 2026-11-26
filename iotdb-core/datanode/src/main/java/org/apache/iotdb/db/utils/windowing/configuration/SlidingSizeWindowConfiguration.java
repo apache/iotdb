@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.windowing.configuration;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -44,11 +45,17 @@ public class SlidingSizeWindowConfiguration extends Configuration {
   public void check() throws WindowingException {
     if (windowSize <= 0) {
       throw new WindowingException(
-          String.format("Parameter windowSize(%d) should be positive.", windowSize));
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_PARAMETER_WINDOWSIZE_D_SHOULD_BE_POSITIVE_D95CBF33,
+              windowSize));
     }
     if (slidingStep <= 0) {
       throw new WindowingException(
-          String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_PARAMETER_SLIDINGSTEP_D_SHOULD_BE_POSITIVE_C0C25C2C,
+              slidingStep));
     }
   }
 

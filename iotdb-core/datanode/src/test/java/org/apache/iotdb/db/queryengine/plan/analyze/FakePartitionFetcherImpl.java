@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -112,13 +113,18 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
+    return getSchemaPartition(patternTree);
+  }
+
+  @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree, String userName) {
     return null;
   }
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+      PathPatternTree patternTree, PathPatternTree scope, Integer level, boolean canSeeAuditDB) {
     return null;
   }
 
@@ -212,9 +218,25 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
+  public DataPartition getDataPartition(
+      String database, DeviceEntryDataSet dataSet, List<TTimePartitionSlot> timePartitionSlots) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return getDataPartition(sgNameToQueryParamsMap);
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      String database,
+      DeviceEntryDataSet dataSet,
+      List<TTimePartitionSlot> timePartitionSlots,
+      boolean needLeftAll,
+      boolean needRightAll) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

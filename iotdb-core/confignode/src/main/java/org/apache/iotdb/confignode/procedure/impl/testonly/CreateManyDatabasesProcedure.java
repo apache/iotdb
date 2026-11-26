@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.testonly;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -77,10 +78,10 @@ public class CreateManyDatabasesProcedure
       if (!createFailedOnce) {
         createFailedOnce = true;
       } else {
-        throw new ProcedureException("createDatabase fail twice");
+        throw new ProcedureException(ProcedureMessages.CREATEDATABASE_FAIL_TWICE);
       }
     } else if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-      throw new ProcedureException("Unexpected fail, tsStatus is " + status);
+      throw new ProcedureException(ProcedureMessages.UNEXPECTED_FAIL_TSSTATUS_IS + status);
     }
   }
 

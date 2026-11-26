@@ -21,24 +21,28 @@
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SegmentOverflowException extends MetadataException {
 
   public SegmentOverflowException(int tarIndex) {
     super(
-        String.format("Segment overflow  : %d", tarIndex),
+        String.format(DataNodeSchemaMessages.SEGMENT_OVERFLOW_FMT, tarIndex),
         TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
         true);
   }
 
   public SegmentOverflowException() {
-    super("Segment not enough space", TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(), true);
+    super(
+        DataNodeSchemaMessages.SEGMENT_NOT_ENOUGH_SPACE,
+        TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
+        true);
   }
 
   public SegmentOverflowException(String key) {
     super(
-        String.format("Segment not enough space even after split and compact to insert: %s", key),
+        String.format(DataNodeSchemaMessages.SEGMENT_NOT_ENOUGH_SPACE_AFTER_SPLIT_FMT, key),
         TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
         true);
   }

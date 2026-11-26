@@ -29,6 +29,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
     return this;
   }
@@ -49,8 +54,30 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds) {
     return this;
   }
 
@@ -66,6 +93,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
     return this;
   }
 
@@ -91,6 +123,32 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnDataDirs(String dnDataDirs) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(
+      int mppDataExchangeMaxPayloadSizeInBytes) {
     return this;
   }
 }

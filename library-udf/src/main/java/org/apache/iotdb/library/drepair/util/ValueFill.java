@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.drepair.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
@@ -72,7 +73,7 @@ public abstract class ValueFill {
       }
     }
     if (notNanNumber == 0) {
-      throw new UDFException("All values are NaN");
+      throw new UDFException(LibraryUdfMessages.ALL_VALUES_ARE_NAN);
     }
     mean /= notNanNumber;
     for (double v : original) {

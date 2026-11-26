@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.transformation.datastructure.iterator.RowListForwardIterator;
+import org.apache.iotdb.calc.transformation.datastructure.row.ElasticSerializableRowList;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -28,8 +31,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.adapter.ElasticSeriali
 import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.TVColumns;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.RowListForwardIterator;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
@@ -42,7 +43,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +50,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataSet {
 
@@ -143,8 +145,8 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
         if (layerReaders[i].isConstantPointReader()) {
           inputTVColumnsList[i] = new TVColumns(columns[0]);
         } else {
-          inputTVColumnsList[i] = new TVColumns((TimeColumn) columns[1], columns[0]);
-          timeHeap.add(((TimeColumn) columns[1]).getStartTime());
+          inputTVColumnsList[i] = new TVColumns(columns[1], columns[0]);
+          timeHeap.add(columns[1].getLong(0));
         }
 
         currentConsumedIndexes[i] = 0;
@@ -273,7 +275,8 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              DataNodeQueryMessages
+                  .LAYERROWWINDOWREADER_INDEX_OVERFLOW_BEGININDEX_ARG_ENDINDEX_ARG_WINDOWSIZE_ARG,
               beginIndex,
               endIndex,
               windowSize);
@@ -354,10 +357,10 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
       private long currentEndTime = Long.MAX_VALUE;
 
       private final RowListForwardIterator beginIterator = rowRecordList.constructIterator();
-      private TimeColumn cachedBeginTimeColumn;
+      private Column cachedBeginTimeColumn;
       private int cachedBeginConsumed;
 
-      private TimeColumn cachedEndTimeColumn;
+      private Column cachedEndTimeColumn;
       private int cachedEndConsumed;
 
       @Override
@@ -370,7 +373,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
             }
 
             Column[] columns = udfInputDataSet.currentBlock();
-            TimeColumn times = (TimeColumn) columns[columns.length - 1];
+            Column times = columns[columns.length - 1];
 
             rowRecordList.put(columns);
 
@@ -379,11 +382,12 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           if (nextWindowTimeBegin == Long.MIN_VALUE) {
             // display window begin should be set to the same as the min timestamp of the query
             // result set
-            nextWindowTimeBegin = cachedEndTimeColumn.getStartTime();
+            nextWindowTimeBegin = cachedEndTimeColumn.getLong(0);
           }
           hasAtLeastOneRow = rowRecordList.size() != 0;
           if (hasAtLeastOneRow) {
-            currentEndTime = cachedEndTimeColumn.getEndTime();
+            currentEndTime =
+                cachedEndTimeColumn.getLong(cachedEndTimeColumn.getPositionCount() - 1);
           }
           isFirstIteration = false;
         }
@@ -396,7 +400,8 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
-        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        long nextWindowTimeEnd =
+            Math.min(saturatedAdd(nextWindowTimeBegin, timeInterval), displayWindowEnd);
         while (currentEndTime < nextWindowTimeEnd) {
           final YieldableState state = udfInputDataSet.yield();
           if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -407,10 +412,10 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           }
           // Generate data
           Column[] columns = udfInputDataSet.currentBlock();
-          TimeColumn times = (TimeColumn) columns[columns.length - 1];
+          Column times = columns[columns.length - 1];
           // Put data into container
           rowRecordList.put(columns);
-          currentEndTime = times.getEndTime();
+          currentEndTime = times.getLong(times.getPositionCount() - 1);
           // Increase nextIndexEnd
           nextIndexEnd += cachedEndTimeColumn.getPositionCount() - cachedEndConsumed;
           // Update cache
@@ -446,7 +451,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
 
               cachedBeginConsumed = 0;
               Column[] columns = beginIterator.currentBlock();
-              cachedBeginTimeColumn = (TimeColumn) columns[columns.length - 1];
+              cachedBeginTimeColumn = columns[columns.length - 1];
             } else {
               // No more data
               // Set nextIndexBegin to list's size
@@ -456,7 +461,8 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
         }
 
         if ((nextIndexEnd == nextIndexBegin)
-            && nextWindowTimeEnd < cachedEndTimeColumn.getEndTime()) {
+            && nextWindowTimeEnd
+                < cachedEndTimeColumn.getLong(cachedEndTimeColumn.getPositionCount() - 1)) {
           window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
           return YieldableState.YIELDABLE;
         }
@@ -465,7 +471,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
-            nextWindowTimeBegin + timeInterval - 1);
+            saturatedAdd(nextWindowTimeBegin, timeInterval - 1));
 
         hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == rowRecordList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
@@ -474,7 +480,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
       @Override
       public void readyForNext() {
         hasCached = false;
-        nextWindowTimeBegin += slidingStep;
+        nextWindowTimeBegin = saturatedAdd(nextWindowTimeBegin, slidingStep);
 
         rowRecordList.setEvictionUpperBound(nextIndexBegin + 1);
       }
@@ -514,7 +520,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
       private int nextIndexBegin = 0;
       private int nextIndexEnd = 0;
 
-      private TimeColumn cachedTimes;
+      private Column cachedTimes;
       private int cachedConsumed;
 
       @Override
@@ -557,7 +563,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           }
 
           if (!findWindow) {
-            if (cachedTimes.getEndTime() < displayWindowEnd) {
+            if (cachedTimes.getLong(cachedTimes.getPositionCount() - 1) < displayWindowEnd) {
               YieldableState state = yieldAndCache();
               if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
                 return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
@@ -586,12 +592,12 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           }
         }
         // Initialize essential information
-        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getStartTime());
+        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getLong(0));
         hasAtLeastOneRow = rowRecordList.size() != 0;
         isFirstIteration = false;
 
         // Set initial nextIndexBegin
-        long currentEndTime = cachedTimes.getEndTime();
+        long currentEndTime = cachedTimes.getLong(cachedTimes.getPositionCount() - 1);
         // Find corresponding block
         while (currentEndTime < nextWindowTimeBegin) {
           // Consume all data
@@ -625,7 +631,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           return state;
         }
         Column[] columns = udfInputDataSet.currentBlock();
-        TimeColumn times = (TimeColumn) columns[columns.length - 1];
+        Column times = columns[columns.length - 1];
 
         rowRecordList.put(columns);
 
@@ -660,6 +666,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
   protected LayerRowWindowReader constructRowStateWindowReader(
       StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
     throw new UnsupportedOperationException(
-        "StateWindowAccessStrategy only support one input series for now.");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_STATEWINDOWACCESSSTRATEGY_ONLY_SUPPORT_ONE_INPUT_SERIES_6856E52C);
   }
 }

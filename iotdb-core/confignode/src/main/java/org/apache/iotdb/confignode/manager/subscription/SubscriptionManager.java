@@ -20,17 +20,38 @@
 package org.apache.iotdb.confignode.manager.subscription;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.subscription.runtime.SubscriptionLeaderChangeHandler;
+import org.apache.iotdb.confignode.manager.subscription.runtime.SubscriptionRuntimeCoordinator;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 
 public class SubscriptionManager {
 
   private final SubscriptionCoordinator subscriptionCoordinator;
+  private final SubscriptionRuntimeCoordinator subscriptionRuntimeCoordinator;
+  private final SubscriptionLeaderChangeHandler subscriptionLeaderChangeHandler;
+  private final SubscriptionReadyDataNodeTracker subscriptionReadyDataNodeTracker =
+      new SubscriptionReadyDataNodeTracker();
 
   public SubscriptionManager(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.subscriptionCoordinator = new SubscriptionCoordinator(configManager, subscriptionInfo);
+    this.subscriptionRuntimeCoordinator = new SubscriptionRuntimeCoordinator(configManager);
+    this.subscriptionLeaderChangeHandler =
+        new SubscriptionLeaderChangeHandler(subscriptionRuntimeCoordinator);
   }
 
   public SubscriptionCoordinator getSubscriptionCoordinator() {
     return subscriptionCoordinator;
+  }
+
+  public SubscriptionRuntimeCoordinator getSubscriptionRuntimeCoordinator() {
+    return subscriptionRuntimeCoordinator;
+  }
+
+  public SubscriptionLeaderChangeHandler getSubscriptionLeaderChangeHandler() {
+    return subscriptionLeaderChangeHandler;
+  }
+
+  public SubscriptionReadyDataNodeTracker getSubscriptionReadyDataNodeTracker() {
+    return subscriptionReadyDataNodeTracker;
   }
 }

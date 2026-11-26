@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
 import java.util.List;
@@ -69,7 +70,7 @@ public class IoTDBTracingInfo {
       case "overlappedPageNum":
         return tsTracingInfo.getOverlappedPageNum();
       default:
-        throw new Exception("Invalid statistics name!");
+        throw new Exception(JdbcMessages.INVALID_STATISTICS_NAME);
     }
   }
 
@@ -101,7 +102,7 @@ public class IoTDBTracingInfo {
             tsTracingInfo.getOverlappedPageNum(),
             (double) tsTracingInfo.getOverlappedPageNum() / tsTracingInfo.getTotalPageNum() * 100);
       default:
-        throw new Exception("Invalid statistics name!");
+        throw new Exception(JdbcMessages.INVALID_STATISTICS_NAME);
     }
   }
 }

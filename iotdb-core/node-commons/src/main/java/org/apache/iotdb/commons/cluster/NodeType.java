@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.cluster;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 public enum NodeType {
   ConfigNode("ConfigNode"),
   DataNode("DataNode"),
@@ -40,6 +42,6 @@ public enum NodeType {
         return nodeType;
       }
     }
-    throw new RuntimeException(String.format("NodeType %s doesn't exist.", type));
+    throw new RuntimeException(String.format(CommonMessages.NODE_TYPE_NOT_EXIST, type));
   }
 }

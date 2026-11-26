@@ -19,28 +19,67 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTree2TableView;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.util.Map;
+
 public interface ITableCache {
+
+  long getInstanceVersion();
 
   void init(final byte[] tableInitializationBytes);
 
   void preUpdateTable(final String database, final TsTable table, final @Nullable String oldName);
 
   void rollbackUpdateTable(
-      final String database, final String tableName, final @Nullable String oldName);
+      final String database,
+      final String tableName,
+      final @Nullable String oldName,
+      TUpdateTree2TableView updateTree2TableViewInfo);
 
   void commitUpdateTable(
-      final String database, final String tableName, final @Nullable String oldName);
+      final String database,
+      final String tableName,
+      final @Nullable String oldName,
+      TUpdateTree2TableView updateTree2TableViewInfo);
 
   /**
    * @param database shouldn't start with `root.`
    */
   void invalid(final String database);
 
-  void invalid(final String database, final String tableName);
-
   void invalid(final String database, final String tableName, final String columnName);
+
+  void invalidateAll();
+
+  TsTable getTableInWrite(final String database, final String tableName);
+
+  /** Returns the committed local schema without contacting ConfigNode. */
+  TsTable getTableInCache(final String database, final String tableName);
+
+  TsTable getTable(final String database, final String tableName);
+
+  TsTable getTable(String database, final String tableName, final boolean force);
+
+  TsTable getTable(
+      String database,
+      final String tableName,
+      final boolean force,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy);
+
+  Map<String, Map<String, TsTable>> getTableSnapshot();
+
+  String tryGetInternColumnName(
+      final @Nonnull String database,
+      final @Nonnull String tableName,
+      final @Nonnull String columnName);
+
+  boolean isDatabaseExist(final String database);
+
+  void reloadTableCacheAfterLeaseRecovery();
 }

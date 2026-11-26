@@ -19,18 +19,20 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -38,29 +40,19 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
-import com.google.common.base.Throwables;
-import io.airlift.airline.Cli;
-import io.airlift.airline.Help;
-import io.airlift.airline.ParseArgumentsMissingException;
-import io.airlift.airline.ParseArgumentsUnexpectedException;
-import io.airlift.airline.ParseCommandMissingException;
-import io.airlift.airline.ParseCommandUnrecognizedException;
-import io.airlift.airline.ParseOptionConversionException;
-import io.airlift.airline.ParseOptionMissingException;
-import io.airlift.airline.ParseOptionMissingValueException;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.type.Type;
 
-import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@SuppressWarnings("java:S106") // for console outputs
+import static org.apache.iotdb.db.utils.TypeServices.ValueConversion.VALUE_PARSER_SERVICE;
+
 public class CommonUtils {
 
   private static final int MAX_SLOW_NATIVE_API_OUTPUT_NUM = 10;
@@ -79,89 +71,10 @@ public class CommonUtils {
       if ("null".equals(value) || "NULL".equals(value)) {
         return null;
       }
-      switch (dataType) {
-        case BOOLEAN:
-          return parseBoolean(value);
-        case INT32:
-          try {
-            return Integer.parseInt(StringUtils.trim(value));
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
-        case INT64:
-          try {
-            return Long.parseLong(StringUtils.trim(value));
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
-        case TIMESTAMP:
-          try {
-            if (TypeInferenceUtils.isNumber(value)) {
-              return Long.parseLong(value);
-            } else {
-              return DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), zoneId);
-            }
-          } catch (Throwable e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input "
-                    + value
-                    + ", registered "
-                    + dataType
-                    + " because "
-                    + e.getMessage());
-          }
-        case DATE:
-          return parseIntFromString(value);
-        case FLOAT:
-          float f;
-          try {
-            f = Float.parseFloat(value);
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
-          if (Float.isInfinite(f)) {
-            throw new NumberFormatException("The input float value is Infinity");
-          }
-          return f;
-        case DOUBLE:
-          double d;
-          try {
-            d = Double.parseDouble(value);
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
-          if (Double.isInfinite(d)) {
-            throw new NumberFormatException("The input double value is Infinity");
-          }
-          return d;
-        case TEXT:
-        case STRING:
-          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
-              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
-            if (value.length() == 1) {
-              return new Binary(value, TSFileConfig.STRING_CHARSET);
-            } else {
-              return new Binary(
-                  value.substring(1, value.length() - 1), TSFileConfig.STRING_CHARSET);
-            }
-          }
-          return new Binary(value, TSFileConfig.STRING_CHARSET);
-        case BLOB:
-          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
-              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
-            if (value.length() == 1) {
-              return new Binary(parseBlobStringToByteArray(value));
-            } else {
-              return new Binary(parseBlobStringToByteArray(value.substring(1, value.length() - 1)));
-            }
-          }
-          return new Binary(parseBlobStringToByteArray(value));
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
+      try {
+        return VALUE_PARSER_SERVICE.call(Type.fromTsDataType(dataType)).parse(value, zoneId);
+      } catch (final UnsupportedOperationException ignored) {
+        throw new QueryProcessException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
       }
     } catch (NumberFormatException e) {
       throw new QueryProcessException(e.getMessage());
@@ -179,16 +92,16 @@ public class CommonUtils {
       }
     } catch (Throwable e) {
       throw new NumberFormatException(
-          "data type is not consistent, input "
-              + value
-              + ", registered "
-              + TSDataType.DATE
-              + " because "
-              + e.getMessage());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_BECAUSE_50C4BF31,
+              value,
+              TSDataType.DATE,
+              e.getMessage()));
     }
   }
 
-  private static boolean parseBoolean(String value) throws QueryProcessException {
+  static boolean parseBoolean(String value) throws QueryProcessException {
     value = value.toLowerCase();
     if (SqlConstant.BOOLEAN_FALSE_NUM.equals(value) || SqlConstant.BOOLEAN_FALSE.equals(value)) {
       return false;
@@ -196,7 +109,7 @@ public class CommonUtils {
     if (SqlConstant.BOOLEAN_TRUE_NUM.equals(value) || SqlConstant.BOOLEAN_TRUE.equals(value)) {
       return true;
     }
-    throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+    throw new QueryProcessException(DataNodeMiscMessages.BOOLEAN_PARSE_ERROR);
   }
 
   public static String getContentOfRequest(
@@ -217,9 +130,12 @@ public class CommonUtils {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSRawDataQueryReq, paths size: %s, starTime: %s, "
-              + "endTime: %s, some paths: %s",
-          req.getPathsSize(), req.getStartTime(), req.getEndTime(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSRAWDATAQUERYREQ_PATHS_SIZE_ARG_STARTIME_ARG_ENDTIME_ARG_SOME_PATHS_ARG_92B722A4,
+          req.getPathsSize(),
+          req.getStartTime(),
+          req.getEndTime(),
+          sb);
     } else if (request instanceof TSLastDataQueryReq) {
       TSLastDataQueryReq req = (TSLastDataQueryReq) request;
       StringBuilder sb = new StringBuilder();
@@ -227,8 +143,10 @@ public class CommonUtils {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSLastDataQueryReq, paths size: %s, some paths: %s",
-          req.getPathsSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSLASTDATAQUERYREQ_PATHS_SIZE_ARG_SOME_PATHS_ARG_46D12DFF,
+          req.getPathsSize(),
+          sb);
     } else if (request instanceof TSAggregationQueryReq) {
       TSAggregationQueryReq req = (TSAggregationQueryReq) request;
       StringBuilder sb = new StringBuilder();
@@ -239,9 +157,12 @@ public class CommonUtils {
             .append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSAggregationQueryReq, startTime: %s, endTime: %s, "
-              + "paths size: %s, some paths: %s",
-          req.getStartTime(), req.getEndTime(), req.getPathsSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSAGGREGATIONQUERYREQ_STARTTIME_ARG_ENDTIME_ARG_PATHS_SIZE_ARG_SOME_PATHS_ARG_9E59CBB8,
+          req.getStartTime(),
+          req.getEndTime(),
+          req.getPathsSize(),
+          sb);
     } else if (request instanceof TSFastLastDataQueryForOneDeviceReq) {
       TSFastLastDataQueryForOneDeviceReq req = (TSFastLastDataQueryForOneDeviceReq) request;
       return getContentOfTSFastLastDataQueryForOneDeviceReq(req);
@@ -255,10 +176,12 @@ public class CommonUtils {
             .append(queryExecution.getDatasetHeader().getRespColumns().get(i));
       }
       return String.format(
-          "Request name: TSFetchResultsReq, "
-              + "queryId: %s, output value column count: %s, fetchSize: %s, "
-              + "some response headers: %s",
-          req.getQueryId(), queryExecution.getOutputValueColumnCount(), req.getFetchSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSFETCHRESULTSREQ_QUERYID_ARG_OUTPUT_VALUE_COLUMN_COUNT_ARG_FETCHSIZE_ARG_SOME_RESPONSE_HEADERS_ARG_15468822,
+          req.getQueryId(),
+          queryExecution.getOutputValueColumnCount(),
+          req.getFetchSize(),
+          sb);
     } else {
       return UNKNOWN_RESULT;
     }
@@ -267,42 +190,12 @@ public class CommonUtils {
   public static String getContentOfTSFastLastDataQueryForOneDeviceReq(
       TSFastLastDataQueryForOneDeviceReq req) {
     return String.format(
-        "Request name: TSFastLastDataQueryForOneDeviceReq, "
-            + "db: %s, deviceId: %s, sensorSize: %s, sensors: %s",
-        req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
-  }
-
-  public static int runCli(
-      List<Class<? extends Runnable>> commands,
-      String[] args,
-      String cliName,
-      String cliDescription) {
-    Cli.CliBuilder<Runnable> builder = Cli.builder(cliName);
-
-    builder.withDescription(cliDescription).withDefaultCommand(Help.class).withCommands(commands);
-
-    Cli<Runnable> parser = builder.build();
-
-    int status = 0;
-    try {
-      Runnable parse = parser.parse(args);
-      parse.run();
-    } catch (IllegalArgumentException
-        | IllegalStateException
-        | ParseArgumentsMissingException
-        | ParseArgumentsUnexpectedException
-        | ParseOptionConversionException
-        | ParseOptionMissingException
-        | ParseOptionMissingValueException
-        | ParseCommandMissingException
-        | ParseCommandUnrecognizedException e) {
-      badUse(e);
-      status = 1;
-    } catch (Exception e) {
-      err(Throwables.getRootCause(e));
-      status = 2;
-    }
-    return status;
+        DataNodeMiscMessages
+            .EXCEPTION_REQUEST_NAME_TSFASTLASTDATAQUERYFORONEDEVICEREQ_DB_ARG_DEVICEID_ARG_SENSORSIZE_ARG_SENSORS_ARG_D1F9A498,
+        req.getDb(),
+        req.getDeviceId(),
+        req.getSensorsSize(),
+        req.getSensors());
   }
 
   /**
@@ -319,17 +212,6 @@ public class CommonUtils {
     } catch (SemanticException e) {
       throw new IllegalArgumentException(e.getMessage());
     }
-  }
-
-  private static void badUse(Exception e) {
-    System.out.println("node-tool: " + e.getMessage());
-    System.out.println("See 'node-tool help' or 'node-tool help <command>'.");
-  }
-
-  private static void err(Throwable e) {
-    System.err.println("error: " + e.getMessage());
-    System.err.println("-- StackTrace --");
-    System.err.println(Throwables.getStackTraceAsString(e));
   }
 
   public static String[] deviceIdToStringArray(IDeviceID deviceID) {
@@ -354,42 +236,29 @@ public class CommonUtils {
    * @return whether the given time falls in ttl
    */
   public static boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || time >= getTTLLowerBound(dataTTL);
+  }
+
+  public static long getTTLLowerBound(long dataTTL) {
+    if (dataTTL == Long.MAX_VALUE) {
+      return Long.MIN_VALUE;
+    }
+
+    long currentTime = CommonDateTimeUtils.currentTime();
+    if (dataTTL >= 0 && currentTime < Long.MIN_VALUE + dataTTL) {
+      return Long.MIN_VALUE;
+    }
+    if (dataTTL < 0 && currentTime > Long.MAX_VALUE + dataTTL) {
+      return Long.MAX_VALUE;
+    }
+    return currentTime - dataTTL;
   }
 
   public static Object createValueColumnOfDataType(
       TSDataType dataType, TsTableColumnCategory columnCategory, int rowNum) {
-    Object valueColumn;
-    switch (dataType) {
-      case INT32:
-        valueColumn = new int[rowNum];
-        break;
-      case INT64:
-      case TIMESTAMP:
-        valueColumn = new long[rowNum];
-        break;
-      case FLOAT:
-        valueColumn = new float[rowNum];
-        break;
-      case DOUBLE:
-        valueColumn = new double[rowNum];
-        break;
-      case BOOLEAN:
-        valueColumn = new boolean[rowNum];
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-        valueColumn = new Binary[rowNum];
-        break;
-      case DATE:
-        valueColumn = new LocalDate[rowNum];
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-    return valueColumn;
+    return TypeServices.StorageEngine.TABLET_COLUMN_ALLOCATOR_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(rowNum);
   }
 
   public static void swapArray(Object[] array, int i, int j) {
@@ -432,5 +301,21 @@ public class CommonUtils {
             OperationType.QUERY_LATENCY.toString(),
             Tag.TYPE.toString(),
             statementType.name());
+  }
+
+  public static String toString(TsBlock tsBlock) {
+    StringBuilder tsBlockBuilder = new StringBuilder();
+    for (Column column : tsBlock.getAllColumns()) {
+      tsBlockBuilder.append("[");
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (column instanceof TimeColumn) {
+          tsBlockBuilder.append(column.getLong(i)).append(",");
+        } else {
+          tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
+        }
+      }
+      tsBlockBuilder.append("] ");
+    }
+    return tsBlockBuilder.toString();
   }
 }

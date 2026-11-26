@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -47,6 +48,11 @@ import java.util.stream.Collectors;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
+  private final QueryChunkReaders queryChunkReaders = new QueryChunkReaders();
+
+  public QueryChunkReaders getQueryChunkReaders() {
+    return queryChunkReaders;
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryContext.class);
   private QueryStatistics queryStatistics = new QueryStatistics();
@@ -63,7 +69,8 @@ public class QueryContext {
 
   protected long queryId;
 
-  private boolean debug;
+  private final boolean debug;
+  private boolean verbose;
 
   private long startTime;
   private long timeout;
@@ -79,10 +86,13 @@ public class QueryContext {
 
   protected Set<String> tables;
 
-  public QueryContext() {}
+  public QueryContext(boolean debug, boolean verbose) {
+    this.debug = debug;
+    this.verbose = verbose;
+  }
 
-  public QueryContext(long queryId) {
-    this(queryId, false, System.currentTimeMillis(), 0);
+  public QueryContext(long queryId, boolean debug) {
+    this(queryId, debug, System.currentTimeMillis(), 0);
   }
 
   /** Every time we generate the queryContext, register it to queryTimeManager. */
@@ -91,6 +101,10 @@ public class QueryContext {
     this.debug = debug;
     this.startTime = startTime;
     this.timeout = timeout;
+  }
+
+  public boolean isExternalTsFileScan() {
+    return false;
   }
 
   // Only used for query with table data(Tree view is not included)
@@ -123,18 +137,27 @@ public class QueryContext {
       TsFileResource resource) {
     PatternTreeMap<ModEntry, ModsSerializer> modifications =
         PatternTreeMapFactory.getModsPatternTreeMap();
-    TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator();
-    while (modEntryIterator.hasNext()) {
-      ModEntry modification = modEntryIterator.next();
-      if (tables != null && modification instanceof TableDeletionEntry) {
-        String tableName = ((TableDeletionEntry) modification).getTableName();
-        if (!tables.contains(tableName)) {
+    try (TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator()) {
+      while (modEntryIterator.hasNext()) {
+        ModEntry modification = modEntryIterator.next();
+        if (shouldSkipModification(modification)) {
           continue;
         }
+        modifications.append(modification.keyOfPatternTree(), modification);
       }
-      modifications.append(modification.keyOfPatternTree(), modification);
     }
     return modifications;
+  }
+
+  protected boolean shouldSkipModification(ModEntry modification) {
+    // tables is only collected by the table model query planning. Compaction and other contexts
+    // leave it null, which means that there is no table filter at all, so no modification can be
+    // skipped.
+    if (tables != null && modification instanceof TableDeletionEntry) {
+      String tableName = ((TableDeletionEntry) modification).getTableName();
+      return !tables.contains(tableName);
+    }
+    return false;
   }
 
   public List<ModEntry> getPathModifications(
@@ -155,7 +178,7 @@ public class QueryContext {
       return Collections.emptyList();
     }
     List<ModEntry> modEntries = fileModEntries.getOverlapped(deviceID, measurement);
-    if (deviceID.isTableModel()) {
+    if (isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
       modEntries =
@@ -185,7 +208,7 @@ public class QueryContext {
     }
     List<ModEntry> modEntries =
         fileModEntries.getOverlapped(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
-    if (deviceID.isTableModel()) {
+    if (isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
       modEntries =
@@ -215,6 +238,10 @@ public class QueryContext {
 
   public boolean isDebug() {
     return debug;
+  }
+
+  public boolean isVerbose() {
+    return verbose;
   }
 
   public long getStartTime() {
@@ -255,11 +282,33 @@ public class QueryContext {
     return ignoreAllNullRows;
   }
 
+  // ignoreAllNullRows is true only for tree-model queries.
+  public boolean isTableModel() {
+    return !ignoreAllNullRows;
+  }
+
   public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
-  public void addTVListToSet(Map<TVList, Integer> tvListMap) {
-    tvListSet.addAll(tvListMap.keySet());
+  public void addTVListToSet(Set<TVList> set) {
+    tvListSet.addAll(set);
+  }
+
+  /**
+   * Get columns of the TVList accessed by this query, or null if the query does not track
+   * column-level access for the TVList (e.g. a non-FragmentInstanceContext query, or a TVList not
+   * tracked by a FragmentInstanceContext). An empty (non-null) set means the TVList is tracked but
+   * only the time column is accessed (e.g. a time-only scan), which is different from being
+   * untracked.
+   */
+  public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
+    return null;
+  }
+
+  public void addRowLevelFilteredCount(long count) {
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_THE_QUERYCONTEXT_DOES_NOT_SUPPORT_ROW_LEVEL_FILTERING_D4CD0678);
   }
 }

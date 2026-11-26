@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.tsfile;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -68,7 +69,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
   private static String host;
   private static String port;
 
+  private static String userId = "-1";
   private static String username = SessionConfig.DEFAULT_USER;
+  private static String cliHostname = "";
   private static String password = SessionConfig.DEFAULT_PASSWORD;
   private static boolean validateTsFile;
 
@@ -94,13 +97,17 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
           processSuccessFile(filePath);
         } catch (final Exception e) {
           IOT_PRINTER.println(
-              "Connect is abort, try to reconnect, max retry count: " + MAX_RETRY_COUNT);
+              String.format(
+                  CliMessages.LOG_CONNECT_IS_ABORT_TRY_TO_RECONNECT_MAX_RETRY_COUNT_ARG_EBF7D348,
+                  Objects.toString(MAX_RETRY_COUNT)));
 
           boolean isReconnectAndLoadSuccessFul = false;
 
           for (int i = 1; i <= MAX_RETRY_COUNT; i++) {
             try {
-              IOT_PRINTER.println(String.format("The %sth retry will after %s seconds.", i, i * 2));
+              IOT_PRINTER.println(
+                  String.format(
+                      CliMessages.LOG_THE_ARG_TH_RETRY_WILL_AFTER_ARG_SECONDS_F4AECD33, i, i * 2));
               LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(i * 2L));
 
               close();
@@ -116,10 +123,11 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
               processSuccessFile(filePath);
               isReconnectAndLoadSuccessFul = true;
 
-              IOT_PRINTER.println("Reconnect successful.");
+              IOT_PRINTER.println(CliMessages.LOG_RECONNECT_SUCCESSFUL_B741C2DE);
               break;
             } catch (final Exception e1) {
-              IOT_PRINTER.println(String.format("The %sth reconnect failed", i));
+              IOT_PRINTER.println(
+                  String.format(CliMessages.LOG_THE_ARG_TH_RECONNECT_FAILED_F5DEEF49, i));
             }
           }
 
@@ -133,7 +141,10 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
         }
       }
     } catch (final Exception e) {
-      IOT_PRINTER.println("Unexpected error occurred: " + e.getMessage());
+      IOT_PRINTER.println(
+          String.format(
+              CliMessages.EXCEPTION_UNEXPECTED_ERROR_OCCURRED_ARG_402FA331,
+              Objects.toString(e.getMessage())));
     } finally {
       close();
     }
@@ -148,9 +159,11 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
         IOT_PRINTER.println(
             String.format(
-                "Handshake error with target server ip: %s, port: %s, because: %s. "
-                    + "Retry to handshake by PipeTransferHandshakeV1Req.",
-                client.getIpAddress(), client.getPort(), resp.getStatus()));
+                CliMessages
+                    .LOG_HANDSHAKE_ERROR_WITH_TARGET_SERVER_IP_ARG_PORT_ARG_BECAUSE_ARG_RETRY_TO_HANDSHAKE_BY_PIPETRANSFERHANDSHAKEV1REQ_42529EF7,
+                client.getIpAddress(),
+                client.getPort(),
+                resp.getStatus()));
         resp =
             client.pipeTransfer(
                 PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(getTimePrecision()));
@@ -159,20 +172,27 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new PipeConnectionException(
             String.format(
-                "Handshake error with target server ip: %s, port: %s, because: %s.",
-                client.getIpAddress(), client.getPort(), resp.getStatus()));
+                CliMessages
+                    .EXCEPTION_HANDSHAKE_ERROR_TARGET_SERVER_IP_ARG_PORT_ARG_BECAUSE_ARG_9D522E62,
+                client.getIpAddress(),
+                client.getPort(),
+                resp.getStatus()));
       } else {
-        client.setTimeout(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+        client.setTimeout(PipeConfig.getInstance().getPipeSinkTransferTimeoutMs());
         IOT_PRINTER.println(
             String.format(
-                "Handshake success. Target server ip: %s, port: %s",
-                client.getIpAddress(), client.getPort()));
+                CliMessages.LOG_HANDSHAKE_SUCCESS_TARGET_SERVER_IP_ARG_PORT_ARG_8FA76B58,
+                client.getIpAddress(),
+                client.getPort()));
       }
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
-              "Handshake error with target server ip: %s, port: %s, because: %s.",
-              client.getIpAddress(), client.getPort(), e.getMessage()));
+              CliMessages
+                  .EXCEPTION_HANDSHAKE_ERROR_TARGET_SERVER_IP_ARG_PORT_ARG_BECAUSE_ARG_9D522E62,
+              client.getIpAddress(),
+              client.getPort(),
+              e.getMessage()));
     }
   }
 
@@ -184,7 +204,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
         Boolean.toString(true));
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, LOAD_STRATEGY);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID, userId);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, cliHostname);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
@@ -213,22 +235,31 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
       resp = client.pipeTransfer(req);
     } catch (final Exception e) {
       throw new PipeConnectionException(
-          String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
+          String.format(
+              CliMessages.EXCEPTION_NETWORK_ERROR_SEAL_FILE_ARG_BECAUSE_ARG_62E92EE8,
+              tsFile,
+              e.getMessage()),
+          e);
     }
 
     final TSStatus status = resp.getStatus();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       throw new PipeConnectionException(
-          String.format("Seal file %s error, result status %s.", tsFile, status));
+          String.format(
+              CliMessages.EXCEPTION_SEAL_FILE_ARG_ERROR_RESULT_STATUS_ARG_FE3B82AC,
+              tsFile,
+              status));
     }
 
-    IOT_PRINTER.println("Successfully transferred file " + tsFile);
+    IOT_PRINTER.println(
+        String.format(
+            CliMessages.LOG_SUCCESSFULLY_TRANSFERRED_FILE_ARG_303718B9, Objects.toString(tsFile)));
   }
 
   private void transferFilePieces(final File file, final boolean isMultiFile)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
@@ -252,7 +283,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
         } catch (final Exception e) {
           throw new PipeConnectionException(
               String.format(
-                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                  CliMessages.EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C,
+                  file,
+                  e.getMessage()),
               e);
         }
 
@@ -262,7 +295,8 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
         if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
-          IOT_PRINTER.println(String.format("Redirect file position to %s.", position));
+          IOT_PRINTER.println(
+              String.format(CliMessages.LOG_REDIRECT_FILE_POSITION_TO_ARG_2690B376, position));
           continue;
         }
 
@@ -274,7 +308,10 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           throw new PipeException(
-              String.format("Transfer file %s error, result status %s.", file, status));
+              String.format(
+                  CliMessages.EXCEPTION_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD,
+                  file,
+                  status));
         }
       }
     }
@@ -295,10 +332,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
       this.client =
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(
-                      PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs())
+                  .setConnectionTimeoutMs(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
-                      PipeConfig.getInstance().isPipeConnectorRPCThriftCompressionEnabled())
+                      PipeConfig.getInstance().isPipeSinkRPCThriftCompressionEnabled())
                   .build(),
               getEndPoint().getIp(),
               getEndPoint().getPort(),
@@ -306,7 +342,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
               "",
               "");
     } catch (final TTransportException e) {
-      throw new PipeException("Sync client init error because " + e.getMessage());
+      throw new PipeException(String.format(CliMessages.SYNC_CLIENT_INIT_ERROR, e.getMessage()));
     }
   }
 
@@ -327,7 +363,10 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
         this.client.close();
       }
     } catch (final Exception e) {
-      IOT_PRINTER.println("Failed to close client because " + e.getMessage());
+      IOT_PRINTER.println(
+          String.format(
+              CliMessages.LOG_FAILED_TO_CLOSE_CLIENT_BECAUSE_ARG_8EBA5673,
+              Objects.toString(e.getMessage())));
     }
   }
 
@@ -339,8 +378,16 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
     ImportTsFileRemotely.port = port;
   }
 
+  public static void setUserId(String userId) {
+    ImportTsFileRemotely.userId = userId;
+  }
+
   public static void setUsername(final String username) {
     ImportTsFileRemotely.username = username;
+  }
+
+  public static void setCliHostname(String cliHostname) {
+    ImportTsFileRemotely.cliHostname = cliHostname;
   }
 
   public static void setPassword(final String password) {

@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinScalarFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -34,13 +36,12 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
-import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.udf.TreeUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
@@ -158,6 +159,11 @@ public class ShowFunctionsTask implements IConfigTask {
         TableBuiltinTableFunction.getBuiltInTableFunctionName(),
         BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
         BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
+    appendFunctions(
+        builder,
+        DataNodeTableBuiltinTableFunction.getBuiltInTableFunctionName(),
+        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
+        BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
@@ -266,14 +272,12 @@ public class ShowFunctionsTask implements IConfigTask {
         } else if (TreeUDFUtils.isUDAF(udfInformation.getFunctionName())) {
           return BINARY_MAP.get(FUNCTION_TYPE_EXTERNAL_UDAF);
         }
-      } else {
-        if (TableUDFUtils.isScalarFunction(udfInformation.getFunctionName())) {
-          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC);
-        } else if (TableUDFUtils.isAggregateFunction(udfInformation.getFunctionName())) {
-          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC);
-        } else if (TableUDFUtils.isTableFunction(udfInformation.getFunctionName())) {
-          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC);
-        }
+      } else if (FunctionType.SCALAR.equals(type.getType())) {
+        return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC);
+      } else if (FunctionType.AGGREGATE.equals(type.getType())) {
+        return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC);
+      } else if (FunctionType.TABLE.equals(type.getType())) {
+        return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC);
       }
     }
     return BINARY_MAP.get(FUNCTION_TYPE_UNKNOWN);

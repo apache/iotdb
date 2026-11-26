@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -33,9 +35,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
-  private Boolean isAligned;
-  private int templateId;
+public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo, Accountable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowDevicesResult.class);
+
+  private final Boolean isAligned;
+  private final int templateId;
 
   private Function<String, Binary> attributeProvider;
 
@@ -136,5 +141,22 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   @Override
   public int hashCode() {
     return Objects.hash(path, isAligned, templateId);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    if (path != null) {
+      size += RamUsageEstimator.sizeOf(path);
+    }
+    if (rawNodes != null) {
+      size += RamUsageEstimator.shallowSizeOf(rawNodes);
+      for (String node : rawNodes) {
+        if (node != null) {
+          size += RamUsageEstimator.sizeOf(node);
+        }
+      }
+    }
+    return size;
   }
 }

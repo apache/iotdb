@@ -21,17 +21,23 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class TreeViewSchema {
   public static final String ORIGINAL_NAME = "__original_name";
   public static final String TREE_PATH_PATTERN = "__tree_path_pattern";
   public static final String RESTRICT = "__restrict";
+  public static final String UNSUPPORTED_NEED_LAST_CACHE_PROPERTY =
+      SchemaMessages.MESSAGE_THE_TREE_VIEW_DOES_NOT_SUPPORT_NEED_LAST_CACHE_PROPERTY_F42719A1;
 
   public static boolean isTreeViewTable(final TsTable table) {
     return table.getPropValue(TREE_PATH_PATTERN).isPresent();
@@ -45,8 +51,10 @@ public class TreeViewSchema {
             () ->
                 new IoTDBRuntimeException(
                     String.format(
-                        "Failed to get the original database, because the %s is null for table %s",
-                        TreeViewSchema.TREE_PATH_PATTERN, table.getTableName()),
+                        SchemaMessages
+                            .EXCEPTION_FAILED_GET_ORIGINAL_DATABASE_BECAUSE_ARG_NULL_TABLE_ARG_5AE54514,
+                        TreeViewSchema.TREE_PATH_PATTERN,
+                        table.getTableName()),
                     TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
   }
 
@@ -57,7 +65,8 @@ public class TreeViewSchema {
     } catch (final IllegalPathException e) {
       throw new IoTDBRuntimeException(
           String.format(
-              "Failed to parse the tree view string %s when convert to IDeviceID", string),
+              SchemaMessages.EXCEPTION_FAILED_PARSE_TREE_VIEW_STRING_ARG_CONVERT_IDEVICEID_6E735586,
+              string),
           TSStatusCode.SEMANTIC_ERROR.getStatusCode());
     }
     return partialPath;
@@ -77,6 +86,22 @@ public class TreeViewSchema {
     schema.getProps().put(ORIGINAL_NAME, name);
   }
 
+  /**
+   * Source measurements already referenced by the view's FIELD columns, so this set decides whether
+   * a column may still be added for one. TAG/TIME/ATTRIBUTE columns do not reference tree
+   * measurements and therefore do not occupy the source-name namespace.
+   */
+  public static Set<String> getSourceNames(final TsTable view) {
+    final Set<String> sourceNames = new HashSet<>();
+    for (final TsTableColumnSchema schema : view.getColumnList()) {
+      if (schema.getColumnCategory() != TsTableColumnCategory.FIELD) {
+        continue;
+      }
+      sourceNames.add(getSourceName(schema));
+    }
+    return sourceNames;
+  }
+
   public static boolean isRestrict(final TsTable table) {
     return table.getPropValue(RESTRICT).isPresent();
   }
@@ -88,11 +113,12 @@ public class TreeViewSchema {
   public static String setPathPattern(final TsTable table, final PartialPath pathPattern) {
     final String[] nodes = pathPattern.getNodes();
     if (!PathPatternUtil.isMultiLevelMatchWildcard(nodes[nodes.length - 1])) {
-      return "The last node must be '**'";
+      return SchemaMessages.MESSAGE_THE_LAST_NODE_MUST_BE_5EB138C7;
     }
     for (int i = nodes.length - 2; i >= 0; --i) {
       if (PathPatternUtil.hasWildcard(nodes[i])) {
-        return "The wildCard is not permitted to set before the last node";
+        return SchemaMessages
+            .MESSAGE_THE_WILDCARD_IS_NOT_PERMITTED_TO_SET_BEFORE_THE_LAST_NODE_D7BCF29C;
       }
     }
     table.addProp(TREE_PATH_PATTERN, pathPattern.toString());

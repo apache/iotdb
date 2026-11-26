@@ -19,20 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceFinishedException;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryMetricsManager;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,14 +51,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Throwables.throwIfUnchecked;
-import static com.google.common.base.Verify.verify;
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
-import static org.apache.iotdb.db.queryengine.execution.operator.Operator.NOT_BLOCKED;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
+import static org.apache.iotdb.calc.execution.operator.Operator.NOT_BLOCKED;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
+import static org.apache.ratis.thirdparty.com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.ratis.thirdparty.com.google.common.base.Verify.verify;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public abstract class Driver implements IDriver {
 
@@ -82,8 +84,9 @@ public abstract class Driver implements IDriver {
   }
 
   protected Driver(Operator root, DriverContext driverContext) {
-    checkNotNull(root, "root Operator should not be null");
-    checkNotNull(driverContext.getSink(), "Sink should not be null");
+    checkNotNull(root, DataNodeQueryMessages.EXCEPTION_ROOT_OPERATOR_SHOULD_NOT_BE_NULL_F4890A7A);
+    checkNotNull(
+        driverContext.getSink(), DataNodeQueryMessages.EXCEPTION_SINK_SHOULD_NOT_BE_NULL_3CC4F006);
     this.driverContext = driverContext;
     this.root = root;
     this.sink = driverContext.getSink();
@@ -96,7 +99,9 @@ public abstract class Driver implements IDriver {
 
   @Override
   public boolean isFinished() {
-    checkLockNotHeld("Cannot check finished status while holding the driver lock");
+    checkLockNotHeld(
+        DataNodeQueryMessages
+            .EXCEPTION_CANNOT_CHECK_FINISHED_STATUS_WHILE_HOLDING_THE_DRIVER_LOCK_E3421709);
 
     // if we can get the lock, attempt a clean shutdown; otherwise someone else will shutdown
     Optional<Boolean> result = tryWithLockUnInterruptibly(this::isFinishedInternal);
@@ -207,14 +212,15 @@ public abstract class Driver implements IDriver {
   @SuppressWarnings("squid:S112")
   @GuardedBy("exclusiveLock")
   private boolean isFinishedInternal() {
-    checkLockHeld("Lock must be held to call isFinishedInternal");
+    checkLockHeld(
+        DataNodeQueryMessages.EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_ISFINISHEDINTERNAL_9D600B8D);
 
     boolean finished;
     try {
       finished =
           state.get() != State.ALIVE
               || driverContext.isDone()
-              || root.isFinished()
+              || (isInit() && root.isFinished())
               || sink.isClosed();
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -224,6 +230,8 @@ public abstract class Driver implements IDriver {
     }
     return finished;
   }
+
+  abstract boolean isInit();
 
   @SuppressWarnings({"squid:S1181", "squid:S112"})
   private ListenableFuture<?> processInternal() {
@@ -244,6 +252,11 @@ public abstract class Driver implements IDriver {
         }
       }
       return NOT_BLOCKED;
+    } catch (FragmentInstanceFinishedException e) {
+      // The fragment may finish before its notification thread closes this driver. Release the
+      // driver through the normal cleanup path without aborting other fragments of the query.
+      state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION);
+      return NOT_BLOCKED;
     } catch (Throwable t) {
       Throwable actualCause = t;
       if (actualCause.getCause() instanceof IoTDBRuntimeException) {
@@ -262,9 +275,12 @@ public abstract class Driver implements IDriver {
       // Driver thread was interrupted which should only happen if the task is already finished.
       // If this becomes the actual cause of a failed query there is a bug in the task state
       // machine.
-      Exception exception = new Exception("Interrupted By");
+      Exception exception =
+          new Exception(DataNodeQueryMessages.QUERY_EXCEPTION_INTERRUPTED_BY_92FAED2D);
       exception.setStackTrace(interrupterStack.toArray(new StackTraceElement[0]));
-      RuntimeException newException = new RuntimeException("Driver was interrupted", exception);
+      RuntimeException newException =
+          new RuntimeException(
+              DataNodeQueryMessages.QUERY_EXCEPTION_DRIVER_WAS_INTERRUPTED_737358E4, exception);
       newException.addSuppressed(actualCause);
       driverContext.failed(newException);
       throw newException;
@@ -318,7 +334,7 @@ public abstract class Driver implements IDriver {
    */
   private <T> Optional<T> tryWithLock(
       long timeout, TimeUnit unit, boolean interruptOnClose, Supplier<T> task) {
-    checkLockNotHeld("Lock cannot be reacquired");
+    checkLockNotHeld(DataNodeQueryMessages.EXCEPTION_LOCK_CANNOT_BE_REACQUIRED_073CBCAD);
 
     boolean acquired = false;
     try {
@@ -370,14 +386,15 @@ public abstract class Driver implements IDriver {
       throw new AssertionError(failure);
     }
 
-    verify(result != null, "result is null");
+    verify(result != null, DataNodeQueryMessages.EXCEPTION_RESULT_IS_NULL_031E2F89);
     return Optional.of(result);
   }
 
   @SuppressWarnings({"squid:S1181", "squid:S112"})
   @GuardedBy("exclusiveLock")
   private void destroyIfNecessary() {
-    checkLockHeld("Lock must be held to call destroyIfNecessary");
+    checkLockHeld(
+        DataNodeQueryMessages.EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_DESTROYIFNECESSARY_A70D64C2);
 
     if (!state.compareAndSet(State.NEED_DESTRUCTION, State.DESTROYED)) {
       return;
@@ -394,7 +411,7 @@ public abstract class Driver implements IDriver {
           addSuppressedException(
               inFlightException,
               t,
-              "Error destroying driver for task %s",
+              DataNodeQueryMessages.EXCEPTION_ERROR_DESTROYING_DRIVER_FOR_TASK_ARG_D695D81F,
               driverContext.getDriverTaskID());
     } finally {
       releaseResource();
@@ -445,7 +462,8 @@ public abstract class Driver implements IDriver {
           addSuppressedException(
               inFlightException,
               t,
-              "Error closing operator {} for driver task {}",
+              DataNodeQueryMessages
+                  .EXCEPTION_ERROR_CLOSING_OPERATOR_ARG_FOR_DRIVER_TASK_ARG_4DE74330,
               root.getOperatorContext().getOperatorId(),
               driverContext.getDriverTaskID());
     } finally {
@@ -508,7 +526,9 @@ public abstract class Driver implements IDriver {
     }
 
     public boolean tryLock(boolean currentThreadInterruptionAllowed) {
-      checkState(!lock.isHeldByCurrentThread(), "Lock is not reentrant");
+      checkState(
+          !lock.isHeldByCurrentThread(),
+          DataNodeQueryMessages.EXCEPTION_LOCK_IS_NOT_REENTRANT_7967C13E);
       boolean acquired = lock.tryLock();
       if (acquired) {
         setOwner(currentThreadInterruptionAllowed);
@@ -518,7 +538,9 @@ public abstract class Driver implements IDriver {
 
     public boolean tryLock(long timeout, TimeUnit unit, boolean currentThreadInterruptionAllowed)
         throws InterruptedException {
-      checkState(!lock.isHeldByCurrentThread(), "Lock is not reentrant");
+      checkState(
+          !lock.isHeldByCurrentThread(),
+          DataNodeQueryMessages.EXCEPTION_LOCK_IS_NOT_REENTRANT_7967C13E);
       boolean acquired = lock.tryLock(timeout, unit);
       if (acquired) {
         setOwner(currentThreadInterruptionAllowed);
@@ -527,7 +549,9 @@ public abstract class Driver implements IDriver {
     }
 
     private synchronized void setOwner(boolean interruptionAllowed) {
-      checkState(lock.isHeldByCurrentThread(), "Current thread does not hold lock");
+      checkState(
+          lock.isHeldByCurrentThread(),
+          DataNodeQueryMessages.EXCEPTION_CURRENT_THREAD_DOES_NOT_HOLD_LOCK_68FFB1D9);
       currentOwner = Thread.currentThread();
       currentOwnerInterruptionAllowed = interruptionAllowed;
       // NOTE: We do not use interrupted stack information to know that another
@@ -538,7 +562,9 @@ public abstract class Driver implements IDriver {
     }
 
     public synchronized void unlock() {
-      checkState(lock.isHeldByCurrentThread(), "Current thread does not hold lock");
+      checkState(
+          lock.isHeldByCurrentThread(),
+          DataNodeQueryMessages.EXCEPTION_CURRENT_THREAD_DOES_NOT_HOLD_LOCK_68FFB1D9);
       currentOwner = null;
       currentOwnerInterruptionAllowed = false;
       lock.unlock();

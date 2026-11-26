@@ -20,8 +20,11 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.DataNodeTransportFailureUtils;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,43 +52,39 @@ public class ConsumerGroupPushMetaRPCHandler
 
   @Override
   public void onComplete(TPushConsumerGroupMetaResp response) {
-    // Put response
     responseMap.put(requestId, response);
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      LOGGER.debug(
+          ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
     } else {
-      LOGGER.error(
-          "Failed to {} on DataNode: {}, response: {}",
+      LOGGER.warn(
+          ConfigNodeMessages.FAILED_TO_ON_DATANODE_RESPONSE,
           requestType,
           formattedTargetLocation,
           response);
     }
 
-    // Always remove to avoid retrying
     nodeLocationMap.remove(requestId);
-
-    // Always CountDown
     countDownLatch.countDown();
   }
 
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
-    LOGGER.error(errorMsg, e);
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            String.valueOf(requestType),
+            String.valueOf(formattedTargetLocation),
+            String.valueOf(e.getMessage()));
+    LOGGER.warn(errorMsg);
 
-    responseMap.put(
-        requestId,
-        new TPushConsumerGroupMetaResp(
-            RpcUtils.getStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR, errorMsg)));
+    final TSStatus status = RpcUtils.getStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR, errorMsg);
+    if (DataNodeTransportFailureUtils.isTransportException(e)) {
+      DataNodeTransportFailureUtils.markTransportFailure(status);
+    }
+    responseMap.put(requestId, new TPushConsumerGroupMetaResp(status));
 
-    // Always CountDown
     countDownLatch.countDown();
   }
 }

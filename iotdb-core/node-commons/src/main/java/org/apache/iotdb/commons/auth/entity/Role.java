@@ -21,17 +21,12 @@ package org.apache.iotdb.commons.auth.entity;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,6 +39,8 @@ import java.util.Set;
 public class Role {
 
   protected String name;
+  protected int maxSessionPerUser = -1;
+  protected int minSessionPerUser = -1;
   protected List<PathPrivilege> pathPrivilegeList;
 
   protected Map<String, DatabasePrivilege> objectPrivilegeMap;
@@ -79,6 +76,14 @@ public class Role {
   /** ------------- get func -----------------* */
   public String getName() {
     return name;
+  }
+
+  public int getMaxSessionPerUser() {
+    return maxSessionPerUser;
+  }
+
+  public int getMinSessionPerUser() {
+    return minSessionPerUser;
   }
 
   public List<PathPrivilege> getPathPrivilegeList() {
@@ -123,7 +128,7 @@ public class Role {
   }
 
   public List<TPathPrivilege> getTreePrivilegeInfo() {
-    List<TPathPrivilege> privilegeList = new ArrayList<>();
+    List<TPathPrivilege> privilegeList = new ArrayList<>(pathPrivilegeList.size());
     for (PathPrivilege pathPrivilege : pathPrivilegeList) {
       TPathPrivilege pathPriv = new TPathPrivilege();
       pathPriv.setPath(pathPrivilege.getPath().getFullPath());
@@ -248,6 +253,14 @@ public class Role {
   /** -------------- set func ----------------* */
   public void setName(String name) {
     this.name = name;
+  }
+
+  public void setMaxSessionPerUser(int maxSessionPerUser) {
+    this.maxSessionPerUser = maxSessionPerUser;
+  }
+
+  public void setMinSessionPerUser(int minSessionPerUser) {
+    this.minSessionPerUser = minSessionPerUser;
   }
 
   public void setPrivilegeList(List<PathPrivilege> privilegeList) {
@@ -515,7 +528,8 @@ public class Role {
   }
 
   public boolean checkSysPrivilege(PrivilegeType priv) {
-    return sysPrivilegeSet.contains(priv);
+    return priv.getAllPrivilegesContainingCurrentPrivilege().stream()
+        .anyMatch(sysPrivilegeSet::contains);
   }
 
   public boolean checkSysPriGrantOpt(PrivilegeType priv) {
@@ -600,65 +614,6 @@ public class Role {
         anyScopePrivilegeSet,
         anyScopePrivilegeGrantOptSet,
         objectPrivilegeMap);
-  }
-
-  public ByteBuffer serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-
-    SerializeUtils.serialize(name, dataOutputStream);
-
-    try {
-      SerializeUtils.serializePrivilegeTypeSet(sysPrivilegeSet, dataOutputStream);
-      SerializeUtils.serializePrivilegeTypeSet(sysPriGrantOpt, dataOutputStream);
-      dataOutputStream.writeInt(pathPrivilegeList.size());
-      for (PathPrivilege pathPrivilege : pathPrivilegeList) {
-        dataOutputStream.write(pathPrivilege.serialize().array());
-      }
-      SerializeUtils.serializePrivilegeTypeSet(anyScopePrivilegeSet, dataOutputStream);
-      SerializeUtils.serializePrivilegeTypeSet(anyScopePrivilegeGrantOptSet, dataOutputStream);
-      dataOutputStream.writeInt(objectPrivilegeMap.size());
-      for (Map.Entry<String, DatabasePrivilege> item : objectPrivilegeMap.entrySet()) {
-        SerializeUtils.serialize(item.getKey(), dataOutputStream);
-        dataOutputStream.write(item.getValue().serialize().array());
-      }
-    } catch (IOException e) {
-      // unreachable
-    }
-
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-  }
-
-  public void deserialize(ByteBuffer buffer) {
-    name = SerializeUtils.deserializeString(buffer);
-    int sysPrivilegeSize = buffer.getInt();
-    sysPrivilegeSet = new HashSet<>();
-    for (int i = 0; i < sysPrivilegeSize; i++) {
-      sysPrivilegeSet.add(PrivilegeType.values()[buffer.getInt()]);
-    }
-    int sysPriGrantOptSize = buffer.getInt();
-    sysPriGrantOpt = new HashSet<>();
-    for (int i = 0; i < sysPriGrantOptSize; i++) {
-      sysPriGrantOpt.add(PrivilegeType.values()[buffer.getInt()]);
-    }
-    int privilegeListSize = buffer.getInt();
-    pathPrivilegeList = new ArrayList<>(privilegeListSize);
-    for (int i = 0; i < privilegeListSize; i++) {
-      PathPrivilege pathPrivilege = new PathPrivilege();
-      pathPrivilege.deserialize(buffer);
-      pathPrivilegeList.add(pathPrivilege);
-    }
-
-    SerializeUtils.deserializePrivilegeTypeSet(anyScopePrivilegeSet, buffer);
-    SerializeUtils.deserializePrivilegeTypeSet(anyScopePrivilegeGrantOptSet, buffer);
-
-    int objectPrivilegesSize = buffer.getInt();
-    for (int i = 0; i < objectPrivilegesSize; i++) {
-      DatabasePrivilege databasePrivilege = new DatabasePrivilege();
-      String objectName = SerializeUtils.deserializeString(buffer);
-      databasePrivilege.deserialize(buffer);
-      this.objectPrivilegeMap.put(objectName, databasePrivilege);
-    }
   }
 
   @Override

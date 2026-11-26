@@ -56,9 +56,11 @@ public class IoTDBDistinctTagIT {
         "flush",
         "insert into t1(time, deviceId, attr1, s1) values(5000, 'd3', 'a3', 10)",
         "insert into t1(time, deviceId, attr1, s1) values(6000, 'd4', 'a4', 11)",
+        "clear attribute cache",
         "insert into t1(time, deviceId, attr1, s1) values(3000, 'd2', 'a2', 12)",
         "insert into t1(time, deviceId, attr1, s1) values(2000, 'd1', 'a1', 13)",
         "flush",
+        "clear attribute cache",
 
         // test memory
         "CREATE TABLE IF NOT EXISTS t2(deviceId STRING TAG, attr1 STRING ATTRIBUTE, s1 INT64 FIELD)",
@@ -68,8 +70,12 @@ public class IoTDBDistinctTagIT {
         "insert into t2(time, deviceId, attr1, s1) values(4000, 'd1', 'a1', 13)",
         "insert into t2(time, deviceId, attr1, s1) values(5000, 'd3', 'a3', 10)",
         "insert into t2(time, deviceId, attr1, s1) values(6000, 'd4', 'a4', 11)",
+        "clear attribute cache",
         "insert into t2(time, deviceId, attr1, s1) values(3000, 'd2', 'a2', 12)",
         "insert into t2(time, deviceId, attr1, s1) values(2000, 'd1', 'a1', 13)",
+        "clear attribute cache",
+        // Cache clearing completes on all DataNodes before the statement returns.
+        "clear all cache",
       };
 
   @BeforeClass
@@ -84,6 +90,7 @@ public class IoTDBDistinctTagIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // DISTINCT returns each tag and latest attribute once for both flushed and in-memory tables.
   @Test
   public void testDistinct() {
     // distinct(deviceId)
@@ -117,6 +124,7 @@ public class IoTDBDistinctTagIT {
         DATABASE_NAME);
   }
 
+  // Time filters restrict distinct tags and attributes to the matching rows in both tables.
   @Test
   public void testDistinctWithTimeFilter() {
     // distinct(deviceId) ... where time > 3000;
@@ -150,6 +158,7 @@ public class IoTDBDistinctTagIT {
         DATABASE_NAME);
   }
 
+  // Pushed-down field filters preserve the expected distinct tags and attributes in both tables.
   @Test
   public void testDistinctWithPushDownFilter() {
     // distinct(deviceId) ... where s1 = 11;
@@ -183,6 +192,7 @@ public class IoTDBDistinctTagIT {
         DATABASE_NAME);
   }
 
+  // Deleting all flushed or in-memory rows leaves no distinct tags or attributes to query.
   @Test
   public void testDistinctWithDelete() throws SQLException {
     String[] sqls =
@@ -196,6 +206,7 @@ public class IoTDBDistinctTagIT {
           "insert into t3(time, deviceId, attr1, s1) values(4000, 'd1', 'a1', 13)",
           "flush",
           "delete from test.t3",
+          "clear all cache",
 
           // test memory
           "CREATE TABLE IF NOT EXISTS t4(deviceId STRING TAG, attr1 STRING ATTRIBUTE, s1 INT64 FIELD)",
@@ -204,6 +215,7 @@ public class IoTDBDistinctTagIT {
           "insert into t4(time, deviceId, attr1, s1) values(2000, 'd2', 'xx', 12)",
           "insert into t4(time, deviceId, attr1, s1) values(4000, 'd1', 'a1', 13)",
           "delete from test.t4",
+          "clear all cache",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

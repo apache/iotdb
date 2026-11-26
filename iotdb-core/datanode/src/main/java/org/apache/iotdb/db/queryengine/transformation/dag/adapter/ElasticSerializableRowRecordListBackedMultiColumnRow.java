@@ -62,7 +62,7 @@ public class ElasticSerializableRowRecordListBackedMultiColumnRow implements Row
 
   @Override
   public double getDouble(int columnIndex) {
-    return (double) rowRecord[columnIndex];
+    return ((Number) rowRecord[columnIndex]).doubleValue();
   }
 
   @Override

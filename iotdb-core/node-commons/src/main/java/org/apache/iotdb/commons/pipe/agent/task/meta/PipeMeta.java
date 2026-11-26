@@ -36,6 +36,9 @@ public class PipeMeta {
   // This is temporary information of pipe and will not be serialized.
   private final PipeTemporaryMeta temporaryMeta;
 
+  // Local task installation state, guarded by the task agent's metadata lock.
+  private boolean taskInstallationIncomplete;
+
   public PipeMeta(final PipeStaticMeta staticMeta, final PipeRuntimeMeta runtimeMeta) {
     this(staticMeta, runtimeMeta, new PipeTemporaryMetaInCoordinator());
   }
@@ -59,6 +62,14 @@ public class PipeMeta {
 
   public PipeTemporaryMeta getTemporaryMeta() {
     return temporaryMeta;
+  }
+
+  public boolean isTaskInstallationIncomplete() {
+    return taskInstallationIncomplete;
+  }
+
+  public void setTaskInstallationIncomplete(final boolean taskInstallationIncomplete) {
+    this.taskInstallationIncomplete = taskInstallationIncomplete;
   }
 
   public ByteBuffer serialize() throws IOException {

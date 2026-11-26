@@ -20,6 +20,7 @@
 package org.apache.iotdb.udf.api.utils;
 
 import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -46,7 +47,7 @@ public class RowImpl implements Row {
   @Override
   public int getInt(int columnIndex) {
     if (columnIndex >= size()) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(UdfApiMessages.INDEX_OUT_OF_BOUND);
     }
     return (int) rowRecord[columnIndex];
   }
@@ -54,7 +55,7 @@ public class RowImpl implements Row {
   @Override
   public long getLong(int columnIndex) {
     if (columnIndex >= size()) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(UdfApiMessages.INDEX_OUT_OF_BOUND);
     }
     return (long) rowRecord[columnIndex];
   }
@@ -62,7 +63,7 @@ public class RowImpl implements Row {
   @Override
   public float getFloat(int columnIndex) {
     if (columnIndex >= size()) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(UdfApiMessages.INDEX_OUT_OF_BOUND);
     }
     return (float) rowRecord[columnIndex];
   }
@@ -70,15 +71,15 @@ public class RowImpl implements Row {
   @Override
   public double getDouble(int columnIndex) {
     if (columnIndex >= size()) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(UdfApiMessages.INDEX_OUT_OF_BOUND);
     }
-    return (double) rowRecord[columnIndex];
+    return ((Number) rowRecord[columnIndex]).doubleValue();
   }
 
   @Override
   public boolean getBoolean(int columnIndex) {
     if (columnIndex >= size()) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(UdfApiMessages.INDEX_OUT_OF_BOUND);
     }
     return (boolean) rowRecord[columnIndex];
   }
@@ -86,7 +87,7 @@ public class RowImpl implements Row {
   @Override
   public Binary getBinary(int columnIndex) {
     if (columnIndex >= size()) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(UdfApiMessages.INDEX_OUT_OF_BOUND);
     }
     return transformToUDFBinary((org.apache.tsfile.utils.Binary) rowRecord[columnIndex]);
   }
@@ -94,7 +95,7 @@ public class RowImpl implements Row {
   @Override
   public String getString(int columnIndex) {
     if (columnIndex >= size()) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(UdfApiMessages.INDEX_OUT_OF_BOUND);
     }
     return rowRecord[columnIndex].toString();
   }
@@ -128,30 +129,10 @@ public class RowImpl implements Row {
     if (tsDataType == null) {
       return null;
     }
-    byte type = tsDataType.getType();
-    switch (type) {
-      case 0:
-        return Type.BOOLEAN;
-      case 1:
-        return Type.INT32;
-      case 2:
-        return Type.INT64;
-      case 3:
-        return Type.FLOAT;
-      case 4:
-        return Type.DOUBLE;
-      case 5:
-        return Type.TEXT;
-      case 8:
-        return Type.TIMESTAMP;
-      case 9:
-        return Type.DATE;
-      case 10:
-        return Type.BLOB;
-      case 11:
-        return Type.STRING;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+    try {
+      return Type.valueOf(tsDataType.getType());
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(UdfApiMessages.INVALID_INPUT + tsDataType.getType(), e);
     }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class IllegalPathException extends MetadataException {
@@ -26,14 +27,14 @@ public class IllegalPathException extends MetadataException {
 
   public IllegalPathException(final String path) {
     super(
-        String.format("%s is not a legal path", path),
+        String.format(CommonMessages.ILLEGAL_PATH, path),
         TSStatusCode.ILLEGAL_PATH.getStatusCode(),
         true);
   }
 
   public IllegalPathException(final String path, final String reason) {
     super(
-        String.format("%s is not a legal path, because %s", path, reason),
+        String.format(CommonMessages.ILLEGAL_PATH_WITH_REASON, path, reason),
         TSStatusCode.ILLEGAL_PATH.getStatusCode(),
         true);
   }

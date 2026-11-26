@@ -90,10 +90,16 @@ struct TGetDataBlockRequest {
   3: required i32 endSequenceId
   // Index of upstream SinkChannel
   4: required i32 index
+  // Optional byte range for fetching one serialized TsBlock in fragments.
+  5: optional i32 offset
 }
 
 struct TGetDataBlockResponse {
   1: required list<binary> tsBlocks
+  // The start offset of the next fragment. It is set only when the last element in tsBlocks is a fragment.
+  2: optional i32 offset
+  // Total serialized length of the TsBlock when the response starts its first fragment.
+  3: optional i32 totalLength
 }
 
 struct TAcknowledgeDataBlockEvent {
@@ -133,9 +139,21 @@ struct TPlanNode {
   1: required binary body
 }
 
+// Issued and checked by one DataNode process using its own monotonic clock. Opaque to peers.
+struct TQueryAdmissionToken {
+  1: required string issuer
+  2: required i64 deadlineNanos
+  3: required i64 validityMs
+}
+
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
   2: optional common.TConsensusGroupId consensusGroupId
+  // Attempt metadata is absent for a legacy coordinator. Do not change the binary FI body.
+  3: optional i32 queryAttemptId
+  4: optional TQueryAdmissionToken admissionToken
+  // The receiver anchors the remaining duration to its own clock at RPC receipt.
+  5: optional i64 remainingQueryTimeMs
 }
 
 struct TSendFragmentInstanceResp {
@@ -181,6 +199,9 @@ struct TCancelQueryReq {
   1: required string queryId
   2: required list<TFragmentInstanceId> fragmentInstanceIds
   3: required bool hasThrowable
+  // Close this attempt even if some of its planned FIs were never dispatched.
+  4: optional i32 queryAttemptId
+  5: optional TQueryAdmissionToken admissionToken
 }
 
 struct TCancelPlanFragmentReq {
@@ -246,7 +267,7 @@ struct TUpdateTriggerLocationReq {
 struct TFireTriggerReq {
   1: required string triggerName
   2: required binary tablet
-  3: required byte triggerEvent
+  3: required i8 triggerEvent
 }
 
 struct TFireTriggerResp {
@@ -267,6 +288,7 @@ struct TDropPipePluginInstanceReq {
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
+  3: optional bool needDisconnect
 }
 
 struct TDataNodeHeartbeatReq {
@@ -285,6 +307,10 @@ struct TDataNodeHeartbeatReq {
   13: optional map<i32, set<i32>> topology
   14: required i64 logicalClock
   15: optional list<common.TConsensusGroupId> currentRegionOperations
+  // Using 8 bit to represent 8 bool
+  // lowest bit: enable separation of admin powers
+  16: optional byte booleanVariables1
+  17: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeActivation {
@@ -312,6 +338,9 @@ struct TDataNodeHeartbeatResp {
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
   17: optional map<i32, i64> dataRegionRawDataSize
+  18: optional list<i32> pipeDegradedStatusList
+  19: optional list<map<string, i64>> pipeRecentFailureList
+  20: optional list<common.TPipeCompletedDataRegion> pipeCompletedDataRegionList
 }
 
 struct TPipeHeartbeatReq {
@@ -328,6 +357,11 @@ struct TRegionRouteReq {
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
 
+struct TUpdateClusterTopologyReq {
+  1: required map<i32, common.TDataNodeLocation> dataNodes
+  2: required map<i32, set<i32>> topology
+}
+
 struct TUpdateTemplateReq {
   1: required byte type
   2: required binary templateInfo
@@ -337,6 +371,14 @@ struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
   3: optional string oldName
+  4: optional TUpdateTree2TableView updateTree2TableViewInfo
+}
+
+struct TUpdateTree2TableView{
+   1: required byte tree2TableOperationType
+   2: optional string treePath
+   3: optional bool isRestrict
+   4: optional i32 tagNum
 }
 
 struct TInvalidateTableCacheReq {
@@ -356,11 +398,32 @@ struct TDeleteColumnDataReq {
   2: required string tableName,
   3: required string columnName,
   4: required bool isAttributeColumn
+  5: optional i64 procedureId
+  6: optional bool trackModFileProgress
 }
 
 struct TDeleteDataOrDevicesForDropTableReq {
   1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName
+  3: optional i64 procedureId
+  4: optional bool trackModFileProgress
+}
+
+struct TDropTableModProgress {
+  1: required i64 writtenModFileCount
+  // Unset until the region has identified all mod files involved in this deletion.
+  2: optional i64 remainingModFileCount
+}
+
+struct TGetDropTableModProgressReq {
+  1: required i64 procedureId
+  2: required list<common.TConsensusGroupId> regionIdList
+  3: optional bool clearProgress
+}
+
+struct TGetDropTableModProgressResp {
+  1: required common.TSStatus status
+  2: optional map<i32, TDropTableModProgress> regionProgress
 }
 
 struct TTableDeviceDeletionWithPatternAndFilterReq {
@@ -386,6 +449,9 @@ struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
+    4: optional i32 sliceIndex
+    5: optional i32 sliceCount
+    6: optional i32 originBodySize
 }
 
 struct TLoadCommandReq {
@@ -411,6 +477,7 @@ struct TDeviceViewReq {
   3: required i32 tagNumber
   4: required bool restrict
   5: optional set<string> requiredMeasurements
+  6: optional bool tolerateTypeMismatch
 }
 
 struct TDeviceViewResp {
@@ -436,6 +503,7 @@ struct TRollbackSchemaBlackListReq {
 
 struct TInvalidateMatchedSchemaCacheReq {
   1: required binary pathPatternTree
+  2: optional bool needLock
 }
 
 struct TFetchSchemaBlackListReq {
@@ -452,12 +520,30 @@ struct TDeleteDataForDeleteSchemaReq {
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional i64 procedureId
+  5: optional bool trackModFileProgress
 }
 
 struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+}
+
+struct TAlterEncodingCompressorReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+  3: required bool ifExists
+  4: optional byte encoding
+  5: optional byte compressor
+}
+
+struct TAlterTimeSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required string queryId
+  3: required binary measurementPath
+  4: required byte operationType
+  5: required binary updateInfo
 }
 
 struct TConstructSchemaBlackListWithTemplateReq {
@@ -519,6 +605,7 @@ struct TPushPipeMetaRespExceptionMessage {
   1: required string pipeName
   2: required string message
   3: required i64 timeStamp
+  4: optional i64 creationTime
 }
 
 struct TPushSinglePipeMetaReq {
@@ -538,6 +625,7 @@ struct TPushTopicMetaReq {
 struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
+   3: optional bool isTableModel
 }
 
 struct TPushMultiTopicMetaReq {
@@ -554,6 +642,22 @@ struct TPushTopicMetaRespExceptionMessage {
   1: required string topicName
   2: required string message
   3: required i64 timeStamp
+}
+
+// Dedicated subscription owner-lease heartbeat (CN -> DN), decoupled from the node heartbeat.
+// Carries a relative remaining duration; the DataNode derives the local expire time on its own
+// clock (leaseExpireAt = localNow + leaseRemainingMs), so no absolute timestamp is compared across
+// ConfigNode and DataNode clocks.
+struct TTopicOwnerLeaseEntry {
+  1: required string topicName
+  2: required string ownerId
+  3: required i64 ownerEpoch
+  4: required i64 leaseRemainingMs
+  5: optional bool isTableModel
+}
+
+struct TPushTopicOwnerLeaseReq {
+  1: required list<TTopicOwnerLeaseEntry> ownerLeases
 }
 
 struct TPushConsumerGroupMetaReq {
@@ -574,6 +678,43 @@ struct TPushConsumerGroupMetaRespExceptionMessage {
   1: required string consumerGroupId
   2: required string message
   3: required i64 timeStamp
+}
+
+struct TPullCommitProgressReq {
+  1: optional bool includeConsensusQueueReadiness // Request a point-in-time queue binding snapshot.
+}
+
+// One entry means all matching local DataRegion queues for this subscription are bound.
+struct TConsensusSubscriptionQueueReadiness {
+  1: required string topicName
+  2: required string consumerGroupId
+  3: required bool tableModel
+}
+
+struct TPullCommitProgressResp {
+  1: required common.TSStatus status
+  2: optional map<string, binary> commitRegionProgress
+  3: optional map<string, binary> subscriptionProgress
+  4: optional list<TConsensusSubscriptionQueueReadiness> consensusQueueReadiness
+}
+
+struct TSyncSubscriptionProgressReq {
+  1: required string consumerGroupId
+  2: required string topicName
+  3: required string regionId
+  4: required i64 physicalTime
+  5: required i32 writerNodeId
+  6: required i64 localSeq
+}
+struct TSubscriptionRuntimeStateEntry {
+  1: required common.TConsensusGroupId regionId
+  2: required i64 runtimeVersion
+  3: required i32 preferredWriterNodeId
+  4: required bool active
+  5: required list<i32> activeWriterNodeIds
+}
+struct TPushSubscriptionRuntimeReq {
+  1: required list<TSubscriptionRuntimeStateEntry> runtimeStates
 }
 
 struct TConstructViewSchemaBlackListReq {
@@ -642,6 +783,59 @@ struct TFetchTimeseriesResp {
   6: optional list<binary> tsDataset
   7: optional bool hasMoreData
 }
+
+struct TAuditLogReq {
+  1: required string username
+  2: required i64 userId
+  3: required string cliHostname
+  4: required string auditEventType
+  5: required string operationType
+  6: required string privilegeType
+  7: required bool result
+  8: required string database
+  9: required string sqlString
+  10: required string log
+  11: required i32 cnId
+}
+
+/**
+* BEGIN: Data Partition Table Integrity Check Structures
+**/
+
+struct TGetEarliestTimeslotsResp {
+  1: required common.TSStatus status
+  2: optional map<string, i64> databaseToEarliestTimeslot
+}
+
+struct TGenerateDataPartitionTableReq {
+  1: required set<string> databases
+}
+
+struct TGenerateDataPartitionTableResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+}
+
+struct TGenerateDataPartitionTableHeartbeatResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+  4: optional list<binary> databaseScopedDataPartitionTables
+  5: optional double progress
+}
+
+struct TGetDataPartitionTableGeneratorProgressResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: required double progress
+  4: optional string message
+}
+
+/**
+* END: Data Partition Table Integrity Check Structures
+**/
+
 /**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
@@ -713,6 +907,13 @@ struct TQueryStatistics {
   45: i64 loadChunkFromCacheCount
   46: i64 loadChunkFromDiskCount
   47: i64 loadChunkActualIOSize
+
+  48: i64 chunkWithMetadataErrorsCount
+
+  49: i64 timeSeriesIndexFilteredRows
+  50: i64 chunkIndexFilteredRows
+  51: i64 pageIndexFilteredRows
+  52: i64 rowScanFilteredRows
 }
 
 
@@ -740,6 +941,22 @@ struct TFetchFragmentInstanceStatisticsResp {
   17: optional i32 initDataQuerySourceRetryCount
 }
 
+struct TKillQueryInstanceReq {
+  1: optional string queryId
+  2: optional string allowedUsername
+}
+
+struct TFetchDeviceEntrySegmentReq {
+  1: required string queryId
+  2: required string planNodeId
+  3: required i32 segmentId
+}
+
+struct TFetchDeviceEntrySegmentResp {
+  1: required common.TSStatus status
+  2: optional binary payload
+}
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -751,6 +968,9 @@ service IDataNodeRPCService {
   /**
   * dispatch FragmentInstance to remote node for query request
   */
+  // Stateless: a delayed token request cannot create or reopen a query attempt.
+  TQueryAdmissionToken fetchQueryAdmissionToken(1: i64 validityMs);
+
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
 
   /**
@@ -767,6 +987,8 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req);
+
+  i32 getThriftMaxFrameSize();
 
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
@@ -960,6 +1182,11 @@ service IDataNodeRPCService {
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
   /**
+   * Enable separation of admin powers in datanode
+   **/
+  common.TSStatus enableSeparationOfAdminPower()
+
+  /**
    * Config node will create a pipe plugin on a list of data nodes.
    *
    * @param function name, function class name, and executable uris
@@ -972,6 +1199,11 @@ service IDataNodeRPCService {
    * @param function name
    **/
   common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
+
+  /**
+   * Config node will get built-in services info from data nodes.
+   **/
+  common.TExternalServiceListResp getBuiltInService()
 
   /* Maintenance Tools */
 
@@ -989,13 +1221,15 @@ service IDataNodeRPCService {
 
   common.TShowConfigurationResp showConfiguration()
 
+  common.TShowAppliedConfigurationsResp showAppliedConfigurations()
+
   common.TSStatus setConfiguration(common.TSetConfigurationReq req)
 
   common.TSStatus loadConfiguration()
 
   common.TSStatus setSystemStatus(string status)
 
-  common.TSStatus killQueryInstance(string queryId)
+  common.TSStatus killQueryInstance(TKillQueryInstanceReq req)
 
   /**
      * Config node will Set the TTL for the database on a list of data nodes.
@@ -1040,6 +1274,16 @@ service IDataNodeRPCService {
    * Delete matched timeseries and remove according schema black list in target schemRegion
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Alter matched timeseries to specific encoding and compressor in target schemaRegions
+   */
+  common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
@@ -1102,6 +1346,12 @@ service IDataNodeRPCService {
   TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req)
 
  /**
+  * Renew topic owner leases on DataNodes via the dedicated subscription owner heartbeat
+  * (independent from the node heartbeat). Carries relative remaining durations.
+  */
+  common.TSStatus pushTopicOwnerLease(TPushTopicOwnerLeaseReq req)
+
+ /**
   * Send consumerGroupMetas to DataNodes, for synchronization
   */
   TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req)
@@ -1110,6 +1360,20 @@ service IDataNodeRPCService {
   * Send one consumer group meta to DataNodes.
   */
   TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(TPushSingleConsumerGroupMetaReq req)
+
+ /**
+  * Pull commit progress from DataNode for subscription consensus persistence
+  */
+  TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req)
+
+ /**
+  * Sync subscription committed progress from Leader to Follower (fire-and-forget)
+  */
+  common.TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req)
+ /**
+  * Push subscription runtime state to DataNodes.
+  */
+  common.TSStatus pushSubscriptionRuntime(TPushSubscriptionRuntimeReq req)
 
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds
@@ -1151,6 +1415,8 @@ service IDataNodeRPCService {
   */
   common.TSStatus deleteDataForDropTable(TDeleteDataOrDevicesForDropTableReq req)
 
+  TGetDropTableModProgressResp getDropTableModProgress(TGetDropTableModProgressReq req)
+
   /**
   * Delete devices for drop table
   */
@@ -1165,7 +1431,6 @@ service IDataNodeRPCService {
    * Delete column data for drop column
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
-
 
   /**
    * Construct table device black list
@@ -1205,8 +1470,48 @@ service IDataNodeRPCService {
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
 
+  /**
+   * Push cluster topology to this DataNode.
+   * Each DataNode receives only its own reachable set.
+   */
+  common.TSStatus updateClusterTopology(1:TUpdateClusterTopologyReq req)
+
   /** to write audit log or other events as time series **/
   common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
+
+  /**
+   * Write an audit log entry to the DataNode's AuditEventLogger
+   */
+  common.TSStatus writeAuditLog(TAuditLogReq req);
+
+  /**
+  * BEGIN: Data Partition Table Integrity Check
+  **/
+
+  /**
+   * Get earliest timeslot information from DataNode
+   * Returns map of database name to earliest timeslot id
+   */
+  TGetEarliestTimeslotsResp getEarliestTimeslots()
+
+  /**
+   * Request DataNode to generate DataPartitionTable by scanning tsfile resources
+   */
+  TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Check the status of DataPartitionTable generation task
+   */
+  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Get the progress of DataPartitionTable generation task without consuming the generated table.
+   */
+  TGetDataPartitionTableGeneratorProgressResp getDataPartitionTableGeneratorProgress()
+
+  /**
+  * END: Data Partition Table Integrity Check
+  **/
 }
 
 service MPPDataExchangeService {
@@ -1219,6 +1524,10 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  TFetchDeviceEntrySegmentResp fetchDeviceEntrySegment(TFetchDeviceEntrySegmentReq req);
+
+  common.TSStatus finishDeviceEntrySegment(1: string queryId, 2: string planNodeId);
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()

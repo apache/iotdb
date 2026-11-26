@@ -22,167 +22,184 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.PipeTestUtils.RetryFlushHandler;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
-import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
-public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelSharedClusterIT {
 
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
+  @Rule public final TestName testName = new TestName();
+
+  private String databaseName() {
+    return "autodrop_" + Integer.toUnsignedString(testName.getMethodName().hashCode(), 16);
   }
 
+  @Override
+  protected void setupConfig() {
+    // Enable auto split
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        // Keep multi-region completion/conflict coverage without CPU-based tiny-file expansion.
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
+        .setDefaultDataRegionGroupNumPerDatabase(3)
+        // Auto-drop depends on completion reports; use a short bounded heartbeat in this IT.
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(1)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        // Keep multi-region completion/conflict coverage without CPU-based tiny-file expansion.
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
+        .setDefaultDataRegionGroupNumPerDatabase(3)
+        // Auto-drop depends on completion reports; use a short bounded heartbeat in this IT.
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(1)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+  }
+
+  // A full-sync pipe must deliver 100 rows and automatically remove its finite history sub-pipe.
   @Test
   public void testAutoDropInHistoricalTransfer() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-    boolean insertResult = true;
 
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
+    // Create an ordinary full sync pipe
+    final String sql =
+        String.format("create pipe a2b ('node-urls'='%s')", receiverDataNode.getIpAndPortString());
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
 
-    final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort = receiverDataNode.getPort();
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", databaseName());
+    TableModelUtils.insertData(databaseName(), "test", 0, 100, senderEnv);
 
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      extractorAttributes.put("mode.snapshot", "true");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("user", "root");
-
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-
+    try (final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           TableModelUtils.getQueryCountSql("test"),
           "_col0,",
           Collections.singleton("100,"),
-          "test",
+          databaseName(),
           handleFailure);
     }
 
-    try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-        final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
-      ResultSet result = statement.executeQuery("show pipes");
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // Fetch a fresh table-model snapshot on every poll while history pipes are being removed.
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                try {
-                  int pipeNum = 0;
-                  while (result.next()) {
-                    if (!result
-                        .getString(ColumnHeaderConstant.ID)
-                        .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-                      pipeNum++;
-                    }
-                  }
-                  Assert.assertEquals(0, pipeNum);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
+                final TShowPipeResp response =
+                    client.showPipe(
+                        new TShowPipeReq()
+                            .setIsTableModel(true)
+                            .setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
+                Assert.assertTrue(
+                    showPipeResult.stream()
+                        .noneMatch(
+                            i ->
+                                !i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+                                    && i.getId().endsWith("_history")));
               });
     }
   }
 
+  // A snapshot restricted to timestamps 0..49 must deliver exactly 50 of 100 rows and then drop.
   @Test
   public void testAutoDropInHistoricalTransferWithTimeRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-    boolean insertResult = true;
-
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", databaseName());
+      TableModelUtils.insertData(databaseName(), "test", 0, 100, senderEnv);
+
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("mode.snapshot", "true");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("start-time", "0");
-      extractorAttributes.put("end-time", "49");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("mode.snapshot", "true");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
+      sourceAttributes.put("start-time", "0");
+      sourceAttributes.put("end-time", "49");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
+      sourceAttributes.put("database-name", databaseName());
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -194,33 +211,30 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
           TableModelUtils.getQueryCountSql("test"),
           "_col0,",
           Collections.singleton("50,"),
-          "test",
+          databaseName(),
           handleFailure);
     }
 
-    try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-        final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
-      ResultSet result = statement.executeQuery("show pipes");
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                try {
-                  int pipeNum = 0;
-                  while (result.next()) {
-                    if (!result
-                        .getString(ColumnHeaderConstant.ID)
-                        .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-                      pipeNum++;
-                    }
-                  }
-                  Assert.assertEquals(0, pipeNum);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
+                final TShowPipeResp response =
+                    client.showPipe(
+                        new TShowPipeReq()
+                            .setIsTableModel(true)
+                            .setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
+                showPipeResult.removeIf(
+                    i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
+                Assert.assertTrue(showPipeResult.isEmpty());
               });
     }
   }

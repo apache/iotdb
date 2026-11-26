@@ -21,14 +21,16 @@ package org.apache.iotdb.commons.consensus.index.impl;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -37,6 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -208,7 +211,7 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
     lock.writeLock().lock();
     try {
       if (!(progressIndex instanceof TimeWindowStateProgressIndex)) {
-        return this;
+        return ProgressIndex.blendProgressIndex(this, progressIndex);
       }
 
       final TimeWindowStateProgressIndex thisTimeWindowStateProgressIndex = this;
@@ -239,9 +242,18 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   }
 
   @Override
+  public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    return progressIndexClass.isInstance(this)
+        ? Optional.of(progressIndexClass.cast(this))
+        : Optional.empty();
+  }
+
+  @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
     throw new UnsupportedOperationException(
-        "TimeWindowStateProgressIndex does not support topological sorting");
+        CommonMessages
+            .EXCEPTION_TIMEWINDOWSTATEPROGRESSINDEX_DOES_NOT_SUPPORT_TOPOLOGICAL_SORTING_897C8976);
   }
 
   public static TimeWindowStateProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
@@ -254,6 +266,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       final long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
       final int length = ReadWriteIOUtils.readInt(byteBuffer);
       if (length < 0) {
+        timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
+            timeSeries, new Pair<>(timestamp, null));
         continue;
       }
       final byte[] body = new byte[length];
@@ -276,16 +290,12 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       final long timestamp = ReadWriteIOUtils.readLong(stream);
       final int length = ReadWriteIOUtils.readInt(stream);
       if (length < 0) {
+        timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
+            timeSeries, new Pair<>(timestamp, null));
         continue;
       }
       final byte[] body = new byte[length];
-      final int readLen = stream.read(body);
-      if (readLen != length) {
-        throw new IOException(
-            String.format(
-                "The intended read length is %s but %s is actually read when deserializing TimeProgressIndex, ProgressIndex: %s",
-                length, readLen, timeWindowStateProgressIndex));
-      }
+      new DataInputStream(stream).readFully(body);
       final ByteBuffer dstBuffer = ByteBuffer.wrap(body);
       timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
           timeSeries, new Pair<>(timestamp, dstBuffer));

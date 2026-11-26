@@ -24,15 +24,21 @@ import org.apache.iotdb.db.subscription.resource.log.SubscriptionLogManager;
 public class SubscriptionDataNodeResourceManager {
 
   private final SubscriptionLogManager subscriptionLogManager;
+  private final SubscriptionMemoryManager subscriptionMemoryManager;
 
   public static SubscriptionLogManager log() {
     return SubscriptionDataNodeResourceManagerHolder.INSTANCE.subscriptionLogManager;
+  }
+
+  public static SubscriptionMemoryManager memory() {
+    return SubscriptionDataNodeResourceManagerHolder.INSTANCE.subscriptionMemoryManager;
   }
 
   ///////////////////////////// SINGLETON /////////////////////////////
 
   private SubscriptionDataNodeResourceManager() {
     subscriptionLogManager = new SubscriptionLogManager();
+    subscriptionMemoryManager = new SubscriptionMemoryManager();
   }
 
   private static class SubscriptionDataNodeResourceManagerHolder {

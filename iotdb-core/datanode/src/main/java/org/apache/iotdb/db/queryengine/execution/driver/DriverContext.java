@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +44,8 @@ public class DriverContext {
   private ExchangeOperator downstreamOperator;
 
   private final AtomicBoolean finished = new AtomicBoolean();
+  private final Object failureLock = new Object();
+  private boolean failureReported = false;
   private boolean mayHaveTmpFile = false;
 
   @TestOnly
@@ -127,10 +130,32 @@ public class DriverContext {
   }
 
   public void failed(Throwable cause) {
-    if (finished.compareAndSet(false, true)) {
-      fragmentInstanceContext.failed(cause);
-      finished.set(true);
+    // Serialize failure reporting so concurrent aborters wait until the failure cause has been
+    // recorded on FragmentInstanceContext before deregistering sinks (which read getFailureCause).
+    // If this driver has already finished, only report while the fragment is still active so
+    // terminal fragment cleanup (which closes all drivers before calling abortFragmentInstance)
+    // does not append synthetic aborts or duplicate failure copies.
+    synchronized (failureLock) {
+      if (failureReported) {
+        return;
+      }
+      failureReported = true;
+      try {
+        if (shouldReportFailureToFragment()) {
+          fragmentInstanceContext.failed(cause);
+        }
+      } finally {
+        finished.set(true);
+      }
     }
+  }
+
+  private boolean shouldReportFailureToFragment() {
+    if (!finished.get()) {
+      return true;
+    }
+    FragmentInstanceStateMachine stateMachine = fragmentInstanceContext.getStateMachine();
+    return stateMachine == null || !stateMachine.getState().isDone();
   }
 
   public void finished() {

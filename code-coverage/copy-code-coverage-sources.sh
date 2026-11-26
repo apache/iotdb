@@ -18,24 +18,27 @@
 # under the License.
 #
 
-for file in ../iotdb-core/*/target/*.exec
-do
-   cp $file ./target/
-done
+set -euo pipefail
+shopt -s nullglob
 
-for file in ../iotdb-core/*/target/classes
-do
-   echo "copy from" ${file}
-   cp -r $file ./target/
-done
+cd "$(dirname "$0")"
+mkdir -p ./target/classes
 
-for file in ../iotdb-client/*/target/*.exec
+for module in \
+  ../iotdb-api/* \
+  ../iotdb-client/* \
+  ../iotdb-core/* \
+  ../iotdb-core/metrics/* \
+  ../library-udf \
+  ../external-service-impl/*
 do
-   cp $file ./target/
-done
+  for file in "$module"/target/*.exec
+  do
+    cp "$file" ./target/
+  done
 
-for file in ../iotdb-client/*/target/classes
-do
-   echo "copy from" ${file}
-   cp -r $file ./target/
+  if [ -d "$module/src/main/java" ] && [ -d "$module/target/classes" ]; then
+    echo "copy from ${module}/target/classes"
+    cp -r "$module/target/classes/." ./target/classes/
+  fi
 done

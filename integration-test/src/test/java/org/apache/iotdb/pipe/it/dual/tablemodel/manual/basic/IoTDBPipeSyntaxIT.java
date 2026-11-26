@@ -24,11 +24,12 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -49,7 +50,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
-public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelSharedClusterIT {
 
   @Override
   @Before
@@ -57,6 +58,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
     super.setUp();
   }
 
+  // Legal table-model identifiers, including quoted numbers and reserved words, must create,
+  // report RUNNING, and drop cleanly while all statements reuse one SQL connection.
   @Test
   public void testValidPipeName() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -65,15 +68,16 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
 
       final List<String> validPipeNames =
           Arrays.asList("Pipe_1", "\"`33`\"", "root", "\"`中文`\"", "\"`with`\"");
       final List<String> expectedPipeNames =
           Arrays.asList("Pipe_1", "`33`", "root", "`中文`", "`with`");
       for (final String pipeName : validPipeNames) {
-        try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-            final Statement statement = connection.createStatement()) {
+        try {
           statement.execute(
               String.format(
                   "create pipe %s"
@@ -99,7 +103,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       for (final String pipeName : expectedPipeNames) {
         Assert.assertTrue(
@@ -108,8 +114,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       for (final String pipeName : validPipeNames) {
-        try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-            final Statement statement = connection.createStatement()) {
+        try {
           statement.execute(String.format("drop pipe %s", pipeName));
         } catch (SQLException e) {
           e.printStackTrace();
@@ -117,7 +122,10 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         }
       }
 
-      showPipeResult = client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+      showPipeResult =
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
@@ -190,12 +198,16 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
 
+  // Missing extractor, processor, or connector stages must be rejected; the two complete forms
+  // must remain valid after those failures on the same SQL connection.
   @Test
   public void testMissingStage() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -204,23 +216,22 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
         statement.execute("create pipe p1");
         fail();
       } catch (SQLException ignored) {
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute("create pipe p2 with extractor ('extractor'='iotdb-extractor')");
         fail();
       } catch (SQLException ignored) {
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             "create pipe p3"
                 + " with extractor ('extractor'='iotdb-extractor')"
@@ -229,8 +240,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       } catch (SQLException ignored) {
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p4"
@@ -245,8 +255,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         fail(e.getMessage());
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p5"
@@ -264,12 +273,16 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(2, showPipeResult.size());
     }
   }
 
+  // Empty attributes and unknown extractor/connector parameters must reject only the invalid
+  // definitions while the valid definition remains visible; reuse one SQL connection throughout.
   @Test
   public void testInvalidParameter() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -278,9 +291,10 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p1"
@@ -297,8 +311,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         fail(e.getMessage());
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p3"
@@ -314,8 +327,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       } catch (SQLException ignored) {
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p4"
@@ -332,12 +344,16 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
 
+  // Quoted and unquoted extractor/processor parameters must accept only the valid forms; all
+  // syntax probes share one table-model SQL connection to avoid reconnect overhead.
   @Test
   public void testBrackets() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -346,9 +362,10 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe extractor1"
@@ -364,8 +381,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         fail(e.getMessage());
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe source2"
@@ -381,8 +397,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         e.printStackTrace();
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe extractor3"
@@ -407,8 +422,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         e.printStackTrace();
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe extractor4"
@@ -432,8 +446,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       } catch (SQLException ignored) {
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe extractor5"
@@ -457,8 +470,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       } catch (SQLException ignored) {
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe processor1"
@@ -474,8 +486,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         fail(e.getMessage());
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe processor2"
@@ -491,8 +502,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         e.printStackTrace();
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe processor3"
@@ -508,8 +518,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
         e.printStackTrace();
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe processor4"
@@ -524,8 +533,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       } catch (Exception ignored) {
       }
 
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe processor5"
@@ -541,7 +549,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(2, showPipeResult.size());
     }
@@ -566,7 +576,6 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.mode.streaming", "true");
-      extractorAttributes.put("extractor.mode.snapshot", "true");
       extractorAttributes.put("extractor.mode.strict", "true");
       extractorAttributes.put("extractor.start-time", "1");
       extractorAttributes.put("extractor.end-time", "2");
@@ -601,12 +610,19 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(3, showPipeResult.size());
 
       showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true).setPipeName("p1")).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq()
+                      .setIsTableModel(true)
+                      .setPipeName("p1")
+                      .setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
@@ -616,7 +632,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       // p1 and p2 share the same connector parameters, so they have the same connector.
       showPipeResult =
           client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setPipeName("p1").setWhereClause(true))
+                  new TShowPipeReq()
+                      .setIsTableModel(true)
+                      .setPipeName("p1")
+                      .setWhereClause(true)
+                      .setUserName(SessionConfig.DEFAULT_USER))
               .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
@@ -625,6 +645,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
+  // Inclusion and exclusion syntax must reject the three invalid combinations and keep the
+  // valid definition; all probes reuse one table-model SQL connection.
   @Test
   public void testInclusionPattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -633,10 +655,11 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       // Empty inclusion
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p2"
@@ -653,8 +676,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // Invalid inclusion
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p3"
@@ -671,8 +693,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // Invalid exclusion
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p4"
@@ -689,8 +710,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       // Valid
-      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement statement = connection.createStatement()) {
+      try {
         statement.execute(
             String.format(
                 "create pipe p4"
@@ -708,7 +728,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       }
 
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
     }

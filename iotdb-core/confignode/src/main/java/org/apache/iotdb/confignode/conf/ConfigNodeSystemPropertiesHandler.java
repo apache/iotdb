@@ -21,14 +21,9 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 
 public class ConfigNodeSystemPropertiesHandler extends SystemPropertiesHandler {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ConfigNodeSystemPropertiesHandler.class);
 
   private static ConfigNodeSystemPropertiesHandler INSTANCE;
 
@@ -36,18 +31,14 @@ public class ConfigNodeSystemPropertiesHandler extends SystemPropertiesHandler {
     super(filePath);
   }
 
-  public static SystemPropertiesHandler getInstance() {
+  public static synchronized SystemPropertiesHandler getInstance() {
     if (INSTANCE == null) {
-      synchronized (ConfigNodeSystemPropertiesHandler.class) {
-        if (INSTANCE == null) {
-          INSTANCE =
-              new ConfigNodeSystemPropertiesHandler(
-                  ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
-                      + File.separator
-                      + ConfigNodeConstant.SYSTEM_FILE_NAME);
-          INSTANCE.init();
-        }
-      }
+      INSTANCE =
+          new ConfigNodeSystemPropertiesHandler(
+              ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+                  + File.separator
+                  + ConfigNodeConstant.SYSTEM_FILE_NAME);
+      INSTANCE.init();
     }
     return INSTANCE;
   }

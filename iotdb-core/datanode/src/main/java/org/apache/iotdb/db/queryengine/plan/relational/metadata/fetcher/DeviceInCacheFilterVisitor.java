@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +47,10 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<AlignedDevic
   @Override
   protected Boolean visitNode(final SchemaFilter filter, final AlignedDeviceEntry deviceEntry) {
     throw new UnsupportedOperationException(
-        "The schema filter type " + filter.getSchemaFilterType() + " is not supported");
+        String.format(
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THE_SCHEMA_FILTER_TYPE_S_IS_NOT_SUPPORTED_200D1E0B,
+            filter.getSchemaFilterType()));
   }
 
   @Override
@@ -60,11 +65,14 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<AlignedDevic
   @Override
   public Boolean visitAttributeFilter(
       final AttributeFilter filter, final AlignedDeviceEntry deviceEntry) {
+    final Binary attributeValue =
+        deviceEntry.getAttributeColumnValues()[attributeIndexMap.get(filter.getKey())];
     return filter
         .getChild()
         .accept(
             StringValueFilterVisitor.getInstance(),
-            deviceEntry.getAttributeColumnValues()[attributeIndexMap.get(filter.getKey())]
-                .getStringValue(TSFileConfig.STRING_CHARSET));
+            attributeValue == null
+                ? null
+                : attributeValue.getStringValue(TSFileConfig.STRING_CHARSET));
   }
 }

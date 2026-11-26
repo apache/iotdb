@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -29,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
 /** General RPC handler for TSStatus response type. */
@@ -60,10 +62,11 @@ public class ConfigNodeTSStatusRPCHandler extends ConfigNodeAsyncRequestRPCHandl
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully {} on ConfigNode: {}", requestType, formattedTargetLocation);
+      LOGGER.info(
+          ConfigNodeMessages.SUCCESSFULLY_ON_CONFIGNODE, requestType, formattedTargetLocation);
     } else {
       LOGGER.error(
-          "Failed to {} on ConfigNode: {}, response: {}",
+          ConfigNodeMessages.FAILED_TO_ON_CONFIGNODE_RESPONSE,
           requestType,
           formattedTargetLocation,
           response);
@@ -76,12 +79,11 @@ public class ConfigNodeTSStatusRPCHandler extends ConfigNodeAsyncRequestRPCHandl
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on ConfigNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_ARG_ON_CONFIGNODE_ARG_EXCEPTION_ARG_CD279F8B,
+            Objects.toString(requestType),
+            Objects.toString(formattedTargetLocation),
+            Objects.toString(e.getMessage()));
     LOGGER.error(errorMsg);
 
     responseMap.put(

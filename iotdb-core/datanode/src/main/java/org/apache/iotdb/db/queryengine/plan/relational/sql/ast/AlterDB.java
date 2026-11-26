@@ -19,20 +19,31 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class AlterDB extends DatabaseStatement {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(AlterDB.class);
+
   public AlterDB(
       final NodeLocation location,
       final boolean exists,
       final String dbName,
       final List<Property> properties) {
-    super(requireNonNull(location, "location is null"), exists, dbName, properties);
+    super(
+        requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388),
+        exists,
+        dbName,
+        properties);
   }
 
   @Override
@@ -41,8 +52,8 @@ public class AlterDB extends DatabaseStatement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitAlterDB(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitAlterDB(this, context);
   }
 
   @Override
@@ -52,5 +63,10 @@ public class AlterDB extends DatabaseStatement {
         .add("ifExists", exists)
         .add("properties", properties)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.view.viewExpression;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.view.viewExpression.binary.arithmetic.AdditionViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.binary.arithmetic.DivisionViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.binary.arithmetic.ModuloViewExpression;
@@ -232,7 +233,7 @@ public abstract class ViewExpression {
         expression = new NullViewOperand();
         break;
       default:
-        throw new IllegalArgumentException("Invalid viewExpression type: " + type);
+        throw new IllegalArgumentException(SchemaMessages.INVALID_VIEW_EXPRESSION_TYPE + type);
     }
     return expression;
   }
@@ -330,7 +331,7 @@ public abstract class ViewExpression {
           expression = new NullViewOperand();
           break;
         default:
-          throw new IllegalArgumentException("Invalid viewExpression type: " + type);
+          throw new IllegalArgumentException(SchemaMessages.INVALID_VIEW_EXPRESSION_TYPE + type);
       }
       return expression;
     } catch (IOException e) {

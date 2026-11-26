@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -39,12 +38,11 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -54,34 +52,42 @@ import static org.junit.Assert.assertTrue;
 
 public class StabilityTest {
 
-  private static Logger LOGGER = LoggerFactory.getLogger(StabilityTest.class);
-
   private final ConsensusGroupId dataRegionId = new DataRegionId(1);
 
   private final File storageDir = new File("target" + java.io.File.separator + "stability");
 
+  private final List<String> recvSnapshotDirs =
+      Arrays.asList(
+          "target" + File.separator + "1-1",
+          "target" + File.separator + "1-2",
+          "target" + File.separator + "1-3");
+
   private IoTConsensus consensusImpl;
 
-  private final int basePort = 6667;
+  private final int basePort = 0;
+
+  private IoTConsensus createConsensus() {
+    return (IoTConsensus)
+        ConsensusFactory.getConsensusImpl(
+                ConsensusFactory.IOT_CONSENSUS,
+                ConsensusConfig.newBuilder()
+                    .setThisNodeId(1)
+                    .setThisNode(new TEndPoint("0.0.0.0", basePort))
+                    .setStorageDir(storageDir.getAbsolutePath())
+                    .setRecvSnapshotDirs(recvSnapshotDirs)
+                    .setConsensusGroupType(TConsensusGroupType.DataRegion)
+                    .build(),
+                gid -> new TestStateMachine())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            ConsensusFactory.IOT_CONSENSUS)));
+  }
 
   public void constructConsensus() throws IOException {
-    consensusImpl =
-        (IoTConsensus)
-            ConsensusFactory.getConsensusImpl(
-                    ConsensusFactory.IOT_CONSENSUS,
-                    ConsensusConfig.newBuilder()
-                        .setThisNodeId(1)
-                        .setThisNode(new TEndPoint("0.0.0.0", basePort))
-                        .setStorageDir(storageDir.getAbsolutePath())
-                        .setConsensusGroupType(TConsensusGroupType.DataRegion)
-                        .build(),
-                    gid -> new TestStateMachine())
-                .orElseThrow(
-                    () ->
-                        new IllegalArgumentException(
-                            String.format(
-                                ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                                ConsensusFactory.IOT_CONSENSUS)));
+    consensusImpl = createConsensus();
     consensusImpl.start();
   }
 
@@ -93,7 +99,10 @@ public class StabilityTest {
 
   @After
   public void tearDown() throws IOException {
-    consensusImpl.stop();
+    if (consensusImpl != null) {
+      consensusImpl.stop();
+      consensusImpl = null;
+    }
     FileUtils.deleteFully(storageDir);
   }
 
@@ -186,6 +195,19 @@ public class StabilityTest {
     consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
+  @Test
+  public void createLocalPeerShouldAllowExistingConsensusDir() throws Exception {
+    File existingPeerDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
+    Assert.assertTrue(existingPeerDir.mkdirs());
+
+    consensusImpl.createLocalPeer(
+        dataRegionId,
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
+
+    Assert.assertEquals(1, consensusImpl.getReplicationNum(dataRegionId));
+    consensusImpl.deleteLocalPeer(dataRegionId);
+  }
+
   public void transferLeader() {
     try {
       consensusImpl.transferLeader(
@@ -234,6 +256,7 @@ public class StabilityTest {
       Assert.fail();
     }
     consensusImpl.stop();
+    consensusImpl = null;
 
     // test add sync channel
     Map<ConsensusGroupId, List<Peer>> correctPeers = new HashMap<>();
@@ -241,54 +264,33 @@ public class StabilityTest {
     peerList1And2.add(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort)));
     peerList1And2.add(new Peer(dataRegionId, 2, new TEndPoint("0.0.0.0", basePort)));
     correctPeers.put(dataRegionId, peerList1And2);
+    consensusImpl = createConsensus();
     consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
-    try {
-      consensusImpl.start();
-      Assert.assertEquals(2, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
-      consensusImpl.stop();
-    } catch (IOException e) {
-      if (e.getCause() instanceof StartupException) {
-        LOGGER.info("Cannot start IoTConsensus because", e);
-      } else {
-        LOGGER.error("Failed because", e);
-        Assert.fail(e.getMessage());
-      }
-    }
+    consensusImpl.start();
+    Assert.assertEquals(2, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
+    consensusImpl.stop();
+    consensusImpl = null;
 
     // test remove sync channel
     List<Peer> peerList1 = new ArrayList<>();
     peerList1.add(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort)));
     correctPeers.put(dataRegionId, peerList1);
+    consensusImpl = createConsensus();
     consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
-    try {
-      consensusImpl.start();
-      Assert.assertEquals(1, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
-      consensusImpl.stop();
-    } catch (IOException e) {
-      if (e.getCause() instanceof StartupException) {
-        LOGGER.info("Cannot start IoTConsensus because", e);
-      } else {
-        LOGGER.error("Failed because", e);
-        Assert.fail(e.getMessage());
-      }
-    }
+    consensusImpl.start();
+    Assert.assertEquals(1, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
+    consensusImpl.stop();
+    consensusImpl = null;
 
     // test remove invalid peer
     List<Peer> peerList2 = new ArrayList<>();
     peerList2.add(new Peer(dataRegionId, 2, new TEndPoint("0.0.0.0", basePort)));
     correctPeers.put(dataRegionId, peerList2);
+    consensusImpl = createConsensus();
     consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
-    try {
-      consensusImpl.start();
-      Assert.assertNull(consensusImpl.getImpl(dataRegionId));
-      consensusImpl.stop();
-    } catch (IOException e) {
-      if (e.getCause() instanceof StartupException) {
-        LOGGER.info("Cannot start IoTConsensus because", e);
-      } else {
-        LOGGER.error("Failed because", e);
-        Assert.fail(e.getMessage());
-      }
-    }
+    consensusImpl.start();
+    Assert.assertNull(consensusImpl.getImpl(dataRegionId));
+    consensusImpl.stop();
+    consensusImpl = null;
   }
 }

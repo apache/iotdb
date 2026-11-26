@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -71,6 +73,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       originReaderAndChunkMetadataList;
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
+      String database,
       IDeviceID device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
@@ -79,7 +82,14 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       CompactionTaskSummary summary,
       boolean ignoreAllNullRows)
       throws IOException {
-    super(device, targetResource, readerAndChunkMetadataList, writer, summary, ignoreAllNullRows);
+    super(
+        database,
+        device,
+        targetResource,
+        readerAndChunkMetadataList,
+        writer,
+        summary,
+        ignoreAllNullRows);
     this.originReaderAndChunkMetadataList = readerAndChunkMetadataList;
     this.batchColumnSelection =
         new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(schemaList, batchSize);
@@ -130,7 +140,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             ignoreAllNullRows);
     executor.execute();
     LOGGER.debug(
-        "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
+        StorageEngineMessages
+            .STORAGE_LOG_BATCH_COMPACTION_CURRENT_DEVICE_IS_FIRST_BATCH_COMPACTED_34910754,
         device,
         batchCompactionPlan);
   }
@@ -209,7 +220,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
 
     @Override
     protected AlignedChunkWriterImpl constructAlignedChunkWriter() {
-      return new FirstBatchCompactionAlignedChunkWriter(timeSchema, schemaList);
+      return new FirstBatchCompactionAlignedChunkWriter(
+          timeSchema, schemaList, EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
     }
 
     @Override
@@ -326,7 +338,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       this.flushController = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
       this.chunkWriter =
           new FollowingBatchCompactionAlignedChunkWriter(
-              timeSchema, schemaList, batchCompactionPlan.getCompactChunkPlan(0));
+              timeSchema,
+              schemaList,
+              batchCompactionPlan.getCompactChunkPlan(0),
+              EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
     }
 
     @Override

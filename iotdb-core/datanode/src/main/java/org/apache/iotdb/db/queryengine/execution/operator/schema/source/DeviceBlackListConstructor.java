@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 
@@ -64,9 +64,8 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
 
   public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) throws MetadataException {
     if (withoutFilter()) {
-      node.preDeactivateSelfOrTemplate();
+      preDeleteDevice(node);
       preDeletedNum++;
-      regionStatistics.decreaseTableDevice(tableName, 1);
       return;
     }
     nodes.add(node);
@@ -76,12 +75,19 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
   @Override
   protected void update() {
     preDeletedNum += indexes.size();
-    regionStatistics.decreaseTableDevice(tableName, indexes.size());
     for (final Integer index : indexes) {
-      nodes.get(index).preDeactivateSelfOrTemplate();
+      preDeleteDevice(nodes.get(index));
     }
     nodes.clear();
     super.clear();
+  }
+
+  private void preDeleteDevice(final IDeviceMNode<IMemMNode> node) {
+    // Retried requests still count matches, but statistics only change on the first transition.
+    if (!node.isPreDeactivateSelfOrTemplate()) {
+      node.preDeactivateSelfOrTemplate();
+      regionStatistics.decreaseTableDevice(tableName, 1);
+    }
   }
 
   public long getPreDeletedNum() {

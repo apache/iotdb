@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 public class DatabaseSchemaTask implements IConfigTask {
 
@@ -66,11 +66,15 @@ public class DatabaseSchemaTask implements IConfigTask {
     if (databaseSchemaStatement.getTimePartitionInterval() != null) {
       databaseSchema.setTimePartitionInterval(databaseSchemaStatement.getTimePartitionInterval());
     }
-    if (databaseSchemaStatement.getSchemaRegionGroupNum() != null) {
-      databaseSchema.setMinSchemaRegionGroupNum(databaseSchemaStatement.getSchemaRegionGroupNum());
+    if (databaseSchemaStatement.getMaxSchemaRegionGroupNum() != null) {
+      databaseSchema.setMaxSchemaRegionGroupNum(
+          databaseSchemaStatement.getMaxSchemaRegionGroupNum());
     }
-    if (databaseSchemaStatement.getDataRegionGroupNum() != null) {
-      databaseSchema.setMinDataRegionGroupNum(databaseSchemaStatement.getDataRegionGroupNum());
+    if (databaseSchemaStatement.getMaxDataRegionGroupNum() != null) {
+      databaseSchema.setMaxDataRegionGroupNum(databaseSchemaStatement.getMaxDataRegionGroupNum());
+    }
+    if (databaseSchemaStatement.isSetNeedLastCache()) {
+      databaseSchema.setNeedLastCache(databaseSchemaStatement.isNeedLastCache());
     }
     databaseSchema.setIsTableModel(false);
     return databaseSchema;

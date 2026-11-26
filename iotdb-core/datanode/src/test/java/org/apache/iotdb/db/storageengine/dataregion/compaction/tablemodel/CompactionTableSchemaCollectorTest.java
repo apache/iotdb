@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTableSchemaNotMatchException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -104,11 +103,6 @@ public class CompactionTableSchemaCollectorTest {
     columnTypeList4.add(ColumnCategory.FIELD);
     columnTypeList4.add(ColumnCategory.TAG);
     TableSchema tableSchema4 = new TableSchema("t1", measurementSchemaList4, columnTypeList4);
-    try {
-      compactionTableSchema.merge(tableSchema4);
-    } catch (CompactionTableSchemaNotMatchException e) {
-      return;
-    }
-    Assert.fail();
+    Assert.assertFalse(compactionTableSchema.merge(tableSchema4));
   }
 }

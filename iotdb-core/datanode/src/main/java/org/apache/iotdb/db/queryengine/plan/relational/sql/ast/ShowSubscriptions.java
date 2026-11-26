@@ -19,32 +19,48 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowSubscriptions extends SubscriptionStatement {
 
-  private final String topicName;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowSubscriptions.class);
 
-  public ShowSubscriptions(@Nullable final String topicName) {
+  private final String topicName;
+  private final boolean details;
+
+  public ShowSubscriptions(final String topicName) {
+    this(topicName, false);
+  }
+
+  public ShowSubscriptions(final String topicName, final boolean details) {
     this.topicName = topicName;
+    this.details = details;
   }
 
   public String getTopicName() {
     return topicName;
   }
 
+  public boolean isDetails() {
+    return details;
+  }
+
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitShowSubscriptions(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowSubscriptions(this, context);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName);
+    return Objects.hash(topicName, details);
   }
 
   @Override
@@ -56,11 +72,19 @@ public class ShowSubscriptions extends SubscriptionStatement {
       return false;
     }
     final ShowSubscriptions that = (ShowSubscriptions) obj;
-    return Objects.equals(this.topicName, that.topicName);
+    return Objects.equals(this.topicName, that.topicName) && this.details == that.details;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("topicName", topicName).toString();
+    return toStringHelper(this).add("topicName", topicName).add("details", details).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(topicName);
+    return size;
   }
 }

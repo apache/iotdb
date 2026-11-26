@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 
 import org.apache.tsfile.utils.Pair;
@@ -166,21 +167,22 @@ public class ConfigNodeSnapshotParser {
   }
 
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
-      final Path path1, final Path path2, final CNSnapshotFileType type) throws IOException {
+      final Path path1, final Path path2, final CNSnapshotFileType type, final String userName)
+      throws IOException {
     if (path1 == null) {
-      LOGGER.warn("Path1 should not be null");
+      LOGGER.warn(ConfigNodeMessages.PATH1_SHOULD_NOT_BE_NULL);
       return null;
     }
 
     if (!path1.toFile().exists()) {
-      LOGGER.warn("File {} not exists", path1.toFile().getName());
+      LOGGER.warn(ConfigNodeMessages.FILE_NOT_EXISTS, path1.toFile().getName());
       return null;
     }
 
     if (type == CNSnapshotFileType.SCHEMA) {
       return new CNPhysicalPlanGenerator(path1, path2);
     } else {
-      return new CNPhysicalPlanGenerator(path1, type);
+      return new CNPhysicalPlanGenerator(path1, type, userName);
     }
   }
 }

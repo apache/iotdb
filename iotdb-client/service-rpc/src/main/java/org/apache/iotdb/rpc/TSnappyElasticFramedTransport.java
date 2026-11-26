@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.xerial.snappy.Snappy;
 
 import java.io.IOException;
@@ -27,6 +28,8 @@ import java.io.IOException;
 public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTransport {
 
   public static class Factory extends TElasticFramedTransport.Factory {
+
+    private final int maxReusableBufferSize;
 
     public Factory() {
       this(RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE, true);
@@ -37,17 +40,29 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
     }
 
     public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize, boolean copyBinary) {
+      this(thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, Integer.MAX_VALUE);
+    }
+
+    /**
+     * @param maxReusableBufferSize buffer requests above this size in bytes use temporary arrays
+     */
+    public Factory(
+        int thriftDefaultBufferSize,
+        int thriftMaxFrameSize,
+        boolean copyBinary,
+        int maxReusableBufferSize) {
       super(thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
+      this.maxReusableBufferSize = maxReusableBufferSize;
     }
 
     @Override
-    public TTransport getTransport(TTransport trans) {
+    public TTransport getTransport(TTransport trans) throws TTransportException {
       return new TSnappyElasticFramedTransport(
-          trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
+          trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, maxReusableBufferSize);
     }
   }
 
-  public TSnappyElasticFramedTransport(TTransport underlying) {
+  public TSnappyElasticFramedTransport(TTransport underlying) throws TTransportException {
     this(underlying, RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE, true);
   }
 
@@ -55,8 +70,23 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
       TTransport underlying,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean copyBinary) {
+      boolean copyBinary)
+      throws TTransportException {
     super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
+  }
+
+  /**
+   * @param maxReusableBufferSize buffer requests above this size in bytes use temporary arrays
+   */
+  public TSnappyElasticFramedTransport(
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary,
+      int maxReusableBufferSize)
+      throws TTransportException {
+    super(
+        underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, maxReusableBufferSize);
   }
 
   @Override

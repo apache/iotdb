@@ -19,17 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,20 +52,10 @@ public class DeleteDatabaseStatement extends Statement implements IConfigStateme
       try {
         paths.add(new PartialPath(prefixPath));
       } catch (IllegalPathException e) {
-        LOGGER.error("{} is not a legal path", prefixPath, e);
+        LOGGER.error(DataNodeQueryMessages.IS_NOT_A_LEGAL_PATH, prefixPath, e);
       }
     }
     return paths;
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
-        PrivilegeType.MANAGE_DATABASE);
   }
 
   public List<String> getPrefixPath() {
@@ -77,7 +64,7 @@ public class DeleteDatabaseStatement extends Statement implements IConfigStateme
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitDeleteStorageGroup(this, context);
+    return visitor.visitDeleteDatabase(this, context);
   }
 
   public void setPrefixPath(List<String> prefixPathList) {
@@ -86,6 +73,6 @@ public class DeleteDatabaseStatement extends Statement implements IConfigStateme
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 }

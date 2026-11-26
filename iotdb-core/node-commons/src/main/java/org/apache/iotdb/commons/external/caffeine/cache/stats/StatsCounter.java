@@ -1,0 +1,117 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.external.caffeine.cache.stats;
+
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.RemovalCause;
+
+import java.util.Map;
+
+/**
+ * Accumulates statistics during the operation of a {@link Cache} for presentation by {@link
+ * Cache#stats}.
+ *
+ * @author ben.manes@gmail.com (Ben Manes)
+ */
+@SuppressWarnings("all")
+public interface StatsCounter {
+
+  /**
+   * Records cache hits. This should be called when a cache request returns a cached value.
+   *
+   * @param count the number of hits to record
+   */
+  void recordHits(int count);
+
+  /**
+   * Records cache misses. This should be called when a cache request finds no cached value or
+   * initiates a load. A request that reuses a value loaded by a concurrent request should be
+   * recorded as a hit.
+   *
+   * @param count the number of misses to record
+   */
+  void recordMisses(int count);
+
+  /**
+   * Records the successful load of a new entry. This method should be called when a cache request
+   * causes an entry to be loaded (such as by {@link Cache#get} or {@link Map#computeIfAbsent}) and
+   * the loading completes successfully. This method should be called once per load, regardless of
+   * the number of concurrent requests sharing it.
+   *
+   * @param loadTime the number of nanoseconds the cache spent computing or retrieving the new value
+   */
+  void recordLoadSuccess(long loadTime);
+
+  /**
+   * Records the failed load of a new entry. This method should be called when a cache request
+   * causes an entry to be loaded (such as by {@link Cache#get} or {@link Map#computeIfAbsent}), but
+   * an exception is thrown while loading the entry or the loading function returns null. This
+   * method should be called once per load, regardless of the number of concurrent requests sharing
+   * it.
+   *
+   * @param loadTime the number of nanoseconds the cache spent computing or retrieving the new value
+   *     prior to discovering the value doesn't exist or an exception being thrown
+   */
+  void recordLoadFailure(long loadTime);
+
+  /**
+   * Records the eviction of an entry from the cache. This should only been called when an entry is
+   * evicted due to the cache's eviction strategy, and not as a result of manual {@link
+   * Cache#invalidate invalidations}.
+   *
+   * @param weight the weight of the evicted entry
+   * @param cause the reason for which the entry was removed
+   */
+  void recordEviction(int weight, RemovalCause cause);
+
+  /**
+   * Returns a snapshot of this counter's values. Note that this may be an inconsistent view, as it
+   * may be interleaved with update operations.
+   *
+   * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+   * guaranteed not to throw an exception). If you require specific handling, we recommend
+   * implementing your own stats collector.
+   *
+   * @return a snapshot of this counter's values
+   */
+  CacheStats snapshot();
+
+  /**
+   * Returns an accumulator that does not record any cache events.
+   *
+   * @return an accumulator that does not record metrics
+   */
+  static StatsCounter disabledStatsCounter() {
+    return DisabledStatsCounter.INSTANCE;
+  }
+
+  /**
+   * Returns an accumulator that suppresses and logs any exception thrown by the delegate {@code
+   * statsCounter}.
+   *
+   * @param statsCounter the accumulator to delegate to
+   * @return an accumulator that suppresses and logs any exception thrown by the delegate
+   */
+  static StatsCounter guardedStatsCounter(StatsCounter statsCounter) {
+    return (statsCounter instanceof GuardedStatsCounter)
+        ? statsCounter
+        : new GuardedStatsCounter(statsCounter);
+  }
+}

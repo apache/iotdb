@@ -31,20 +31,19 @@ public class CompactionPathUtils {
 
   private CompactionPathUtils() {}
 
-  public static MeasurementPath getPath(final IDeviceID device, final String measurement)
+  public static MeasurementPath getPath(
+      final IDeviceID device, final String measurement, final boolean isTableModel)
       throws IllegalPathException {
-    return getPath(device).concatAsMeasurementPath(measurement);
+    return getPath(device, isTableModel).concatAsMeasurementPath(measurement);
   }
 
-  public static PartialPath getPath(final IDeviceID device) throws IllegalPathException {
-    if (device.isTableModel()) {
-      final String[] tableNameSegments =
-          DataNodeDevicePathCache.getInstance().getPartialPath(device.getTableName()).getNodes();
-      final String[] nodes = new String[device.segmentNum() + tableNameSegments.length - 1];
-      System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
+  public static PartialPath getPath(final IDeviceID device, final boolean isTableModel)
+      throws IllegalPathException {
+    if (isTableModel) {
+      final String[] nodes = new String[device.segmentNum()];
+      nodes[0] = device.getTableName();
       for (int i = 0; i < device.segmentNum() - 1; i++) {
-        nodes[i + tableNameSegments.length] =
-            device.segment(i + 1) == null ? null : device.segment(i + 1).toString();
+        nodes[i + 1] = device.segment(i + 1) == null ? null : device.segment(i + 1).toString();
       }
       return new PartialPath(nodes);
     } else {

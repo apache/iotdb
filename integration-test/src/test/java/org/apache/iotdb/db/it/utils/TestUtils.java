@@ -20,15 +20,27 @@
 package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.junit.Assert;
@@ -40,10 +52,13 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.text.DateFormat;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,15 +66,22 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.apache.iotdb.itbase.env.BaseEnv.TREE_SQL_DIALECT;
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -70,6 +92,9 @@ import static org.junit.Assert.fail;
 public class TestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
+  private static final int MAX_RESULT_SET_DIFF_ROWS = 20;
+  // Retry promptly while asynchronous data becomes visible, without continuously querying.
+  private static final long DATA_ASSERTION_POLL_INTERVAL_MILLIS = 100;
 
   public static final ZoneId DEFAULT_ZONE_ID = ZoneId.ofOffset("UTC", ZoneOffset.of("Z"));
 
@@ -79,9 +104,211 @@ public class TestUtils {
 
   public static final String TIME_PRECISION_IN_NS = "ns";
 
+  static boolean isHalfTimeoutElapsed(final long elapsedTimeInMillis, final long timeoutSeconds) {
+    return elapsedTimeInMillis > TimeUnit.SECONDS.toMillis(timeoutSeconds) / 2;
+  }
+
+  /**
+   * Creates a statement on the write node without comparing results across DataNodes.
+   *
+   * <p>Use this for node-local diagnostics or changing progress snapshots. Closing the statement
+   * does not close the supplied connection.
+   */
+  public static Statement createSingleNodeStatement(final Connection connection)
+      throws SQLException {
+    final Connection singleNodeConnection =
+        connection instanceof ClusterTestConnection
+            ? ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection()
+            : connection;
+    return singleNodeConnection.createStatement();
+  }
+
+  /** Drops a table and waits for the asynchronous procedure to finish on a single DataNode. */
+  public static void dropTable(
+      final Connection connection, final String database, final String tableName)
+      throws SQLException {
+    try (final Statement statement = createSingleNodeStatement(connection)) {
+      statement.execute("DROP TABLE " + database + "." + tableName);
+      await()
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInSameThread()
+          .pollInterval(20, TimeUnit.MILLISECONDS)
+          .until(
+              () -> {
+                try (final ResultSet resultSet =
+                    statement.executeQuery(
+                        "SELECT state, error_message FROM information_schema.drop_table_procedures "
+                            + "WHERE database = '"
+                            + database.replace("'", "''")
+                            + "' AND table_name = '"
+                            + tableName.replace("'", "''")
+                            + "' ORDER BY procedure_id DESC LIMIT 1")) {
+                  if (!resultSet.next()) {
+                    return false;
+                  }
+                  final String state = resultSet.getString(1);
+                  if ("ROLLEDBACK".equals(state)) {
+                    throw new SQLException(resultSet.getString(2));
+                  }
+                  return "SUCCESS".equals(state);
+                }
+              });
+    }
+  }
+
   public static String defaultFormatDataTime(long time) {
     return RpcUtils.formatDatetime(
         RpcUtils.DEFAULT_TIME_FORMAT, TIME_PRECISION_IN_MS, time, DEFAULT_ZONE_ID);
+  }
+
+  /** Submits deletion using the caller's credentials, then waits for its durable task. */
+  public static void deleteTimeSeries(final Statement statement, final String sql)
+      throws SQLException {
+    statement.execute(sql);
+    waitForTimeSeriesDeletion(EnvFactory.getEnv(), sql);
+  }
+
+  public static void deleteTimeSeries(final ISession session, final String sql)
+      throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement(sql);
+    try {
+      waitForTimeSeriesDeletion(EnvFactory.getEnv(), sql);
+    } catch (SQLException e) {
+      throw new StatementExecutionException(e);
+    }
+  }
+
+  public static void deleteTimeSeries(final ITableSession session, final String sql)
+      throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement(sql);
+    try {
+      waitForTimeSeriesDeletion(EnvFactory.getEnv(), sql);
+    } catch (SQLException e) {
+      throw new StatementExecutionException(e);
+    }
+  }
+
+  public static void waitForColumnDeletion(
+      final BaseEnv env, final String database, final String table, final String column)
+      throws SQLException {
+    try (final Connection connection = env.getConnection(TABLE_SQL_DIALECT);
+        final Statement statement = createSingleNodeStatement(connection)) {
+      waitForColumnDeletion(statement, database + "." + table, column);
+    }
+  }
+
+  public static void waitForTimeSeriesDeletion(final BaseEnv env, final String sql)
+      throws SQLException {
+    // Use the administrator only for diagnostics; submission keeps the original user's authority.
+    try (final Connection connection = env.getConnection();
+        final Statement statement = createSingleNodeStatement(connection)) {
+      waitForTimeSeriesDeletion(statement, sql);
+    }
+  }
+
+  public static void waitForTimeSeriesDeletion(final Statement statement, final String sql)
+      throws SQLException {
+    final DeleteTimeSeriesStatement deletion =
+        (DeleteTimeSeriesStatement) StatementGenerator.createStatement(sql, DEFAULT_ZONE_ID);
+    final PathPatternTree tree = new PathPatternTree();
+    deletion.getPathPatternList().forEach(tree::appendPathPattern);
+    tree.constructTree();
+    final String paths = tree.getAllPathPatterns().toString();
+    await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInSameThread()
+        .pollInterval(20, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              long latestId = -1;
+              String state = null;
+              String error = null;
+              try (final ResultSet result =
+                  statement.executeQuery("SHOW DELETE TIMESERIES PROGRESS")) {
+                while (result.next()) {
+                  if (paths.equals(result.getString("Paths"))
+                      && result.getLong("ProcedureId") > latestId) {
+                    latestId = result.getLong("ProcedureId");
+                    state = result.getString("State");
+                    error = result.getString("ErrorMessage");
+                  }
+                }
+              }
+              if ("ROLLEDBACK".equals(state)) {
+                throw new SQLException(error);
+              }
+              return "SUCCESS".equals(state);
+            });
+  }
+
+  /** Waits for column removal and for the durable task to release conflicting table changes. */
+  public static void waitForColumnDeletion(
+      final Statement statement, final String table, final String column) {
+    await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInSameThread()
+        .pollInterval(20, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              try (final ResultSet result =
+                  statement.executeQuery("DESCRIBE " + table + " DETAILS")) {
+                while (result.next()) {
+                  if (column.equals(result.getString(1))) {
+                    return false;
+                  }
+                }
+              }
+              // Schema removal precedes the terminal procedure store update. No read-only schema
+              // query exposes root cleanup, so probe the absent column with an idempotent no-op.
+              try {
+                statement.execute(
+                    "ALTER TABLE "
+                        + table
+                        + " DROP COLUMN IF EXISTS \""
+                        + column.replace("\"", "\"\"")
+                        + "\"");
+                return true;
+              } catch (SQLException e) {
+                if (e.getErrorCode() == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
+                  return false;
+                }
+                throw e;
+              }
+            });
+  }
+
+  public static void dropColumn(
+      final Statement statement, final String sql, final String table, final String column)
+      throws SQLException {
+    statement.execute(sql);
+    try (final Statement progress = createSingleNodeStatement(statement.getConnection())) {
+      waitForColumnDeletion(progress, table, column);
+    }
+  }
+
+  public static void dropColumn(final Statement statement, final String sql) throws SQLException {
+    final DropColumn drop =
+        (DropColumn) new SqlParser().createStatement(sql, DEFAULT_ZONE_ID, null);
+    final String table =
+        drop.getTable().getParts().stream()
+            .map(part -> "\"" + part.replace("\"", "\"\"") + "\"")
+            .collect(Collectors.joining("."));
+    dropColumn(statement, sql, table, drop.getField().getValue());
+  }
+
+  private static void executeNonQueryAndWait(
+      final BaseEnv env, final Statement statement, final String sql, final String dialect)
+      throws SQLException {
+    if (TABLE_SQL_DIALECT.equals(dialect)
+        && sql.matches("(?is)^\\s*ALTER\\s+TABLE\\s+.*\\s+DROP\\s+COLUMN\\s+.*")) {
+      dropColumn(statement, sql);
+    } else {
+      statement.execute(sql);
+      if (!TABLE_SQL_DIALECT.equals(dialect)
+          && sql.matches("(?is)^\\s*(DELETE|DROP)\\s+TIMESERIES\\s+(?!OF\\b)\\S.*")) {
+        waitForTimeSeriesDeletion(env, sql);
+      }
+    }
   }
 
   public static void prepareData(String[] sqls) {
@@ -221,9 +448,79 @@ public class TestUtils {
     resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
   }
 
+  /**
+   * Executes a tree-model query and checks unordered rows on every read node, including duplicate
+   * multiplicity.
+   *
+   * <p>Delegates to {@link #assertResultSetEqualUnordered(ResultSet, String, List)}, which uses
+   * {@link ClusterTestResultSet#getNodeResultSets(ResultSet)} to obtain each DataNode's underlying
+   * result set. Iterating those results bypasses the cluster wrapper's default cross-node,
+   * row-by-row comparison.
+   *
+   * <p>Use only when the query's final result does not require a particular row order or select a
+   * nondeterministic subset of rows.
+   */
+  public static void treeResultSetEqualTestUnordered(
+      String sql, String[] expectedHeader, String[] expectedRetArray) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertResultSetEqualUnordered(
+            resultSet, String.join(",", expectedHeader) + ",", Arrays.asList(expectedRetArray));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Executes a table-model query and checks unordered rows on every read node, including duplicate
+   * multiplicity. Selects {@code database} before the query when it is non-null.
+   *
+   * <p>Delegates to {@link #assertResultSetEqualUnordered(ResultSet, String, List)}, which uses
+   * {@link ClusterTestResultSet#getNodeResultSets(ResultSet)} to obtain each DataNode's underlying
+   * result set. Iterating those results bypasses the cluster wrapper's default cross-node,
+   * row-by-row comparison.
+   *
+   * <p>Use only when the query's final result does not require a particular row order or select a
+   * nondeterministic subset of rows.
+   */
+  public static void tableResultSetEqualTestUnordered(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        if (database != null) {
+          statement.execute("use " + database);
+        }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          assertResultSetEqualUnordered(
+              resultSet, String.join(",", expectedHeader) + ",", Arrays.asList(expectedRetArray));
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public static void tableResultSetEqualTest(
       String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
     tableResultSetEqualTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database,
+        "+00:00");
+  }
+
+  public static void tableResultSetEqualByDataTypeTest(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    tableResultSetEqualByDataTypeTest(
         sql,
         expectedHeader,
         expectedRetArray,
@@ -272,6 +569,51 @@ public class TestUtils {
         EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
       connection.setClientInfo("time_zone", timeZone);
       try (Statement statement = connection.createStatement()) {
+        if (database != null) {
+          statement.execute("use " + database);
+        }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          tableResultSetEqual(resultSet, expectedHeader, expectedRetArray);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void tableResultSetEqual(
+      ResultSet resultSet, String[] expectedHeader, String[] expectedRetArray) throws SQLException {
+    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+    }
+    assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+    int cnt = 0;
+    while (resultSet.next()) {
+      StringBuilder builder = new StringBuilder();
+      for (int i = 1; i <= expectedHeader.length; i++) {
+        builder.append(resultSet.getString(i)).append(",");
+      }
+      assertEquals(expectedRetArray[cnt], builder.toString());
+      cnt++;
+    }
+    assertEquals(expectedRetArray.length, cnt);
+  }
+
+  public static void tableResultSetEqualByDataTypeTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database,
+      String timeZone) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", timeZone);
+      try (Statement statement = connection.createStatement()) {
         statement.execute("use " + database);
         try (ResultSet resultSet = statement.executeQuery(sql)) {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -282,11 +624,24 @@ public class TestUtils {
 
           int cnt = 0;
           while (resultSet.next()) {
-            StringBuilder builder = new StringBuilder();
             for (int i = 1; i <= expectedHeader.length; i++) {
-              builder.append(resultSet.getString(i)).append(",");
+              if (resultSetMetaData.getColumnType(i) == Types.BOOLEAN) {
+                assertEquals(
+                    Boolean.valueOf(expectedRetArray[cnt].split(",")[i - 1]),
+                    resultSet.getBoolean(i));
+              } else if (resultSetMetaData.getColumnType(i) == Types.INTEGER) {
+                assertEquals(
+                    Optional.of(Integer.valueOf(expectedRetArray[cnt].split(",")[i - 1])),
+                    Optional.of(resultSet.getInt(i)));
+              } else if (resultSetMetaData.getColumnType(i) == Types.DOUBLE) {
+                assertEquals(
+                    Double.valueOf(expectedRetArray[cnt].split(",")[i - 1]),
+                    resultSet.getDouble(i),
+                    DELTA);
+              } else if (resultSetMetaData.getColumnType(i) == Types.VARCHAR) {
+                assertEquals(expectedRetArray[cnt].split(",")[i - 1], resultSet.getString(i));
+              }
             }
-            assertEquals(expectedRetArray[cnt], builder.toString());
             cnt++;
           }
           assertEquals(expectedRetArray.length, cnt);
@@ -421,8 +776,8 @@ public class TestUtils {
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use " + databaseName);
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
@@ -433,11 +788,31 @@ public class TestUtils {
     try (Connection connection =
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
+  }
+
+  /** Executes a query expected to fail, consuming every result batch before accepting the error. */
+  public static SQLException assertQueryFails(final Statement statement, final String sql) {
+    return Assert.assertThrows(
+        SQLException.class,
+        () -> {
+          try (final ResultSet resultSet = statement.executeQuery(sql)) {
+            drainResultSet(resultSet);
+          }
+        });
+  }
+
+  /**
+   * Reads to the end of the result set so the JDBC client fetches every result batch. A query can
+   * return its initial rows successfully and report an execution error only when a later batch is
+   * requested by {@link ResultSet#next()}.
+   */
+  public static void drainResultSet(final ResultSet resultSet) throws SQLException {
+    while (resultSet.next()) {}
   }
 
   public static void resultSetEqualTest(
@@ -559,8 +934,8 @@ public class TestUtils {
       BaseEnv env, String sql, String errMsg, String userName, String password) {
     try (Connection connection = env.getConnection(userName, password);
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
@@ -579,8 +954,8 @@ public class TestUtils {
       if (Objects.nonNull(db)) {
         statement.execute("use " + "\"" + db + "\"");
       }
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (final SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
@@ -601,6 +976,20 @@ public class TestUtils {
   }
 
   public static void assertTableNonQueryTestFail(
+      String sql, String errMsg, String userName, String password) {
+    assertTableNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password);
+  }
+
+  public static void assertNonQueryTestFail(Statement statement, String sql, String errMsg) {
+    try {
+      statement.execute(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void assertTableNonQueryTestFail(
       String sql, String errMsg, String userName, String password, String dbName) {
     assertTableNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password, dbName);
   }
@@ -608,6 +997,17 @@ public class TestUtils {
   public static void assertNonQueryTestFail(
       BaseEnv env, String sql, String errMsg, String userName, String password) {
     try (Connection connection = env.getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void assertTableNonQueryTestFail(
+      BaseEnv env, String sql, String errMsg, String userName, String password) {
+    try (Connection connection = env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
       fail("No exception!");
@@ -654,6 +1054,15 @@ public class TestUtils {
       final String expectedHeader,
       final Collection<String> expectedResult,
       final boolean printResult) {
+    if (expectedResult instanceof Set) {
+      List<ResultSet> nodeResults = getNodeResultSets(actualResultSet);
+      if (nodeResults.size() != 1 || nodeResults.get(0) != actualResultSet) {
+        for (ResultSet nodeResult : nodeResults) {
+          assertResultSetEqual(nodeResult, expectedHeader, expectedResult, printResult);
+        }
+        return;
+      }
+    }
     try {
       final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
       final StringBuilder header = new StringBuilder();
@@ -692,7 +1101,11 @@ public class TestUtils {
           System.out.println(builder);
         }
       }
-      assertEquals(expectedResult, actualRetSet);
+      if (expectedResult instanceof Set) {
+        assertStringSetEqual((Set<String>) expectedResult, (Set<String>) actualRetSet);
+      } else {
+        assertEquals(expectedResult, actualRetSet);
+      }
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
@@ -711,27 +1124,81 @@ public class TestUtils {
       String expectedHeader,
       Set<String> expectedRetSet,
       Consumer consumer) {
-    try {
-      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+    assertResultSetEqual(actualResultSet, expectedHeader, expectedRetSet, false);
+  }
+
+  /**
+   * Checks unordered rows on every node, preserving duplicate multiplicity.
+   *
+   * <p>The caller is responsible for ensuring that the query's final result has no ordering or
+   * arbitrary slice semantics that require deterministic row order.
+   */
+  public static void assertResultSetEqualUnordered(
+      ResultSet resultSet, String expectedHeader, List<String> expectedRows) throws SQLException {
+    List<String> sortedExpected = new ArrayList<>(expectedRows);
+    Collections.sort(sortedExpected);
+    for (ResultSet nodeResult : getNodeResultSets(resultSet)) {
+      ResultSetMetaData metadata = nodeResult.getMetaData();
       StringBuilder header = new StringBuilder();
-      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        header.append(resultSetMetaData.getColumnName(i)).append(",");
+      for (int i = 1; i <= metadata.getColumnCount(); i++) {
+        header.append(metadata.getColumnName(i)).append(",");
       }
       assertEquals(expectedHeader, header.toString());
-
-      Set<String> actualRetSet = new HashSet<>();
-
-      while (actualResultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(actualResultSet.getString(i)).append(",");
+      List<String> actualRows = new ArrayList<>();
+      while (nodeResult.next()) {
+        StringBuilder row = new StringBuilder();
+        for (int i = 1; i <= metadata.getColumnCount(); i++) {
+          row.append(nodeResult.getString(i)).append(",");
         }
-        actualRetSet.add(builder.toString());
+        actualRows.add(row.toString());
       }
-      assertEquals(expectedRetSet, actualRetSet);
-    } catch (Exception e) {
-      e.printStackTrace();
-      Assert.fail(String.valueOf(e));
+      Collections.sort(actualRows);
+      assertEquals(sortedExpected, actualRows);
+    }
+  }
+
+  private static void assertStringSetEqual(
+      final Set<String> expectedResult, final Set<String> actualResult) {
+    if (expectedResult.equals(actualResult)) {
+      return;
+    }
+
+    final List<String> missingRows = new ArrayList<>(expectedResult);
+    missingRows.removeAll(actualResult);
+    Collections.sort(missingRows);
+
+    final List<String> unexpectedRows = new ArrayList<>(actualResult);
+    unexpectedRows.removeAll(expectedResult);
+    Collections.sort(unexpectedRows);
+
+    final StringBuilder diff =
+        new StringBuilder("Result set mismatch: expected ")
+            .append(expectedResult.size())
+            .append(" rows but got ")
+            .append(actualResult.size())
+            .append(" rows.");
+    appendResultSetDiff(diff, "Missing rows", missingRows);
+    appendResultSetDiff(diff, "Unexpected rows", unexpectedRows);
+    fail(diff.toString());
+  }
+
+  private static void appendResultSetDiff(
+      final StringBuilder diff, final String title, final List<String> rows) {
+    diff.append(System.lineSeparator()).append(title).append(" (").append(rows.size()).append("):");
+    if (rows.isEmpty()) {
+      diff.append(" <none>");
+      return;
+    }
+
+    final int displayedRowCount = Math.min(rows.size(), MAX_RESULT_SET_DIFF_ROWS);
+    for (int i = 0; i < displayedRowCount; i++) {
+      diff.append(System.lineSeparator()).append("  ").append(rows.get(i));
+    }
+    if (rows.size() > displayedRowCount) {
+      diff.append(System.lineSeparator())
+          .append("  ... and ")
+          .append(rows.size() - displayedRowCount)
+          .append(" more");
     }
   }
 
@@ -803,10 +1270,44 @@ public class TestUtils {
   public static void executeNonQuery(String sql, String userName, String password) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
+      executeNonQueryAndWait(EnvFactory.getEnv(), statement, sql, TREE_SQL_DIALECT);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void executeTableNonQuery(String sql, String userName, String password) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  public static void dropDatabaseWithRetry(final Statement statement, final String database)
+      throws SQLException {
+    // Asynchronous DROP TABLE may still be running when a test starts database cleanup.
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+    while (true) {
+      try {
+        statement.execute("DROP DATABASE IF EXISTS " + database);
+        return;
+      } catch (final SQLException e) {
+        if (e.getErrorCode() != TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+            || System.nanoTime() >= deadline) {
+          throw e;
+        }
+      }
+      try {
+        Thread.sleep(100);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new SQLException(e);
+      }
     }
   }
 
@@ -857,7 +1358,7 @@ public class TestUtils {
         }
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           lastIndex = i;
-          statement.execute(sqlList.get(i));
+          executeNonQueryAndWait(env, statement, sqlList.get(i), sqlDialect);
         }
         return;
       } catch (final SQLException e) {
@@ -874,19 +1375,35 @@ public class TestUtils {
     }
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(
-      BaseEnv env, String sql, Connection defaultConnection) {
-    return tryExecuteNonQueryWithRetry(
+  public static void executeNonQuery(final BaseEnv env, final String sql) {
+    executeNonQuery(env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, null);
+  }
+
+  public static void executeNonQuery(
+      final BaseEnv env, final String sql, final Connection defaultConnection) {
+    executeNonQuery(
         env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(
+  public static void executeNonQuery(
+      final String dataBaseName, final String sqlDialect, final BaseEnv env, final String sql) {
+    executeNonQuery(
+        env,
+        sql,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        dataBaseName,
+        sqlDialect,
+        null);
+  }
+
+  public static void executeNonQuery(
       String dataBaseName,
       String sqlDialect,
       BaseEnv env,
       String sql,
       Connection defaultConnection) {
-    return tryExecuteNonQueryWithRetry(
+    executeNonQuery(
         env,
         sql,
         SessionConfig.DEFAULT_USER,
@@ -896,13 +1413,12 @@ public class TestUtils {
         defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(
+  public static void executeNonQuery(
       BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
-    return tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(sql), userName, password, defaultConnection);
+    executeNonQueries(env, Collections.singletonList(sql), userName, password, defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(
+  public static void executeNonQuery(
       BaseEnv env,
       String sql,
       String userName,
@@ -910,7 +1426,7 @@ public class TestUtils {
       String dataBaseName,
       String sqlDialect,
       Connection defaultConnection) {
-    return tryExecuteNonQueriesWithRetry(
+    executeNonQueries(
         env,
         Collections.singletonList(sql),
         userName,
@@ -920,25 +1436,35 @@ public class TestUtils {
         defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueriesWithRetry(
-      BaseEnv env, List<String> sqlList, Connection defaultConnection) {
-    return tryExecuteNonQueriesWithRetry(
+  public static void executeNonQueries(BaseEnv env, List<String> sqlList) {
+    executeNonQueries(
         env,
         sqlList,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
         null,
         TREE_SQL_DIALECT,
-        defaultConnection);
+        null);
   }
 
-  public static boolean tryExecuteNonQueriesWithRetry(
+  public static void executeNonQueries(BaseEnv env, List<String> sqlList, String sqlDialect) {
+    executeNonQueries(
+        env,
+        sqlList,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        null,
+        sqlDialect,
+        null);
+  }
+
+  public static void executeNonQueries(
       String dataBase,
       String sqlDialect,
       BaseEnv env,
       List<String> sqlList,
       Connection defaultConnection) {
-    return tryExecuteNonQueriesWithRetry(
+    executeNonQueries(
         env,
         sqlList,
         SessionConfig.DEFAULT_USER,
@@ -950,6 +1476,73 @@ public class TestUtils {
 
   // This method will not throw failure given that a failure is encountered.
   // Instead, it returns a flag to indicate the result of the execution.
+  public static void executeNonQueries(
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      Connection defaultConnection) {
+    executeNonQueries(env, sqlList, userName, password, null, TREE_SQL_DIALECT, defaultConnection);
+  }
+
+  public static void executeNonQueries(
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      String dataBase,
+      String sqlDialect,
+      Connection defaultConnection) {
+    int lastIndex = 0;
+    Connection localConnection = null;
+    Connection connectionToUse = defaultConnection;
+    Statement statement = null;
+    try {
+      // create a new connection if default is not provided or the previous is broken
+      if (connectionToUse == null) {
+        localConnection =
+            env.getConnection(
+                userName,
+                password,
+                BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                    ? BaseEnv.TABLE_SQL_DIALECT
+                    : TREE_SQL_DIALECT);
+        connectionToUse = localConnection;
+      }
+      statement = connectionToUse.createStatement();
+      if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
+        statement.execute("use " + dataBase);
+      }
+      for (int i = lastIndex; i < sqlList.size(); ++i) {
+        executeNonQueryAndWait(env, statement, sqlList.get(i), sqlDialect);
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    } finally {
+      closeNonQueryResources(statement, localConnection);
+    }
+  }
+
+  public static boolean tryExecuteNonQuery(BaseEnv env, String sql) {
+    return tryExecuteNonQuery(env, sql, null);
+  }
+
+  public static boolean tryExecuteNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
+    return tryExecuteNonQuery(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
+  }
+
+  public static boolean tryExecuteNonQuery(
+      BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
+    return tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, defaultConnection);
+  }
+
+  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, null);
+  }
+
   public static boolean tryExecuteNonQueriesWithRetry(
       BaseEnv env,
       List<String> sqlList,
@@ -993,20 +1586,13 @@ public class TestUtils {
         }
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           lastIndex = i;
-          statement.execute(sqlList.get(i));
+          executeNonQueryAndWait(env, statement, sqlList.get(i), sqlDialect);
         }
         return true;
       } catch (SQLException e) {
-        // the default connection should be closed by the upper level
-        // while the local connection should be closed here
-        if (connectionToUse == localConnection && localConnection != null) {
-          try {
-            localConnection.close();
-            localConnection = null;
-          } catch (SQLException ex) {
-            // ignore
-          }
-        }
+        closeNonQueryResources(statement, localConnection);
+        statement = null;
+        localConnection = null;
         connectionToUse = null;
 
         if (retryCountLeft > 0) {
@@ -1018,9 +1604,29 @@ public class TestUtils {
           e.printStackTrace();
           return false;
         }
+      } finally {
+        closeNonQueryResources(statement, localConnection);
       }
     }
     return false;
+  }
+
+  private static void closeNonQueryResources(Statement statement, Connection localConnection) {
+    if (statement != null) {
+      try {
+        statement.close();
+      } catch (Exception ignored) {
+        // ignore
+      }
+    }
+    // Caller-provided connections are never passed as localConnection.
+    if (localConnection != null) {
+      try {
+        localConnection.close();
+      } catch (SQLException ignored) {
+        // ignore
+      }
+    }
   }
 
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
@@ -1120,6 +1726,17 @@ public class TestUtils {
 
   public static void executeQuery(String sql, String userName, String password) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void executeTableQuery(String sql, String userName, String password) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
     } catch (SQLException e) {
@@ -1228,6 +1845,32 @@ public class TestUtils {
     }
   }
 
+  public static void assertResultSetEqual(
+      SessionDataSet actualResultSet,
+      List<String> expectedColumnNames,
+      Set<String> expectedRetSet,
+      boolean ignoreTimeStamp) {
+    final Set<String> copiedSet = new HashSet<>(expectedRetSet);
+    try {
+      List<String> actualColumnNames = actualResultSet.getColumnNames();
+      if (ignoreTimeStamp) {
+        assertEquals(expectedColumnNames, actualColumnNames);
+      } else {
+        assertEquals(TIMESTAMP_STR, actualColumnNames.get(0));
+        assertEquals(expectedColumnNames, actualColumnNames.subList(1, actualColumnNames.size()));
+      }
+
+      while (actualResultSet.hasNext()) {
+        RowRecord rowRecord = actualResultSet.next();
+        assertTrue(copiedSet.remove(rowRecord.toString().replace('\t', ',')));
+      }
+      assertEquals(0, copiedSet.size());
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public static void createUser(String userName, String password) {
     createUser(EnvFactory.getEnv(), userName, password);
   }
@@ -1281,11 +1924,79 @@ public class TestUtils {
   }
 
   public static void restartCluster(BaseEnv env) {
-    env.shutdownAllDataNodes();
-    env.shutdownAllConfigNodes();
-    env.startAllConfigNodes();
-    env.startAllDataNodes();
+    restartCluster(env, (phase, duration) -> {});
+  }
+
+  public static void restartCluster(BaseEnv env, final BiConsumer<String, Duration> phaseProbe) {
+    final long restartStartedNanos = System.nanoTime();
+    long phaseStartedNanos = restartStartedNanos;
+    // Node wrappers wait up to 30 seconds per process. Stop and start nodes in each phase together
+    // so a cluster restart is bounded by the slowest node instead of the sum of all node waits.
+    runConcurrently(env.getDataNodeWrapperList().stream().map(node -> (Runnable) node::stop));
+    phaseStartedNanos = logRestartPhase("stop DataNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getConfigNodeWrapperList().stream().map(node -> (Runnable) node::stop));
+    phaseStartedNanos = logRestartPhase("stop ConfigNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getConfigNodeWrapperList().stream().map(node -> (Runnable) node::start));
+    phaseStartedNanos = logRestartPhase("start ConfigNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getDataNodeWrapperList().stream().map(node -> (Runnable) node::start));
+    phaseStartedNanos = logRestartPhase("start DataNodes", phaseStartedNanos, phaseProbe);
     ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
+    awaitAllRegionsRunning(env);
+    logRestartPhase("await cluster readiness", phaseStartedNanos, phaseProbe);
+    logRestartPhase("total", restartStartedNanos, phaseProbe);
+  }
+
+  /**
+   * Waits until every Region listed by SHOW REGIONS is Running. Right after a restart the
+   * RegionGroups stay Disabled until their Regions report Running, and writes issued in that window
+   * are rejected with NO_AVAILABLE_REGION_GROUP.
+   */
+  public static void awaitAllRegionsRunning(final BaseEnv env) {
+    await()
+        .pollInSameThread()
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              // SHOW REGIONS only lists the Databases of the dialect of the connection.
+              assertAllRegionsRunning(env, false);
+              assertAllRegionsRunning(env, true);
+            });
+  }
+
+  private static void assertAllRegionsRunning(final BaseEnv env, final boolean tableModel)
+      throws SQLException {
+    try (final Connection connection = tableModel ? env.getTableConnection() : env.getConnection();
+        final Statement statement = connection.createStatement();
+        final ResultSet regions = statement.executeQuery("show regions")) {
+      while (regions.next()) {
+        Assert.assertEquals(
+            "Region "
+                + regions.getInt(ColumnHeaderConstant.REGION_ID)
+                + " of database "
+                + regions.getString(ColumnHeaderConstant.DATABASE)
+                + " is not ready",
+            RegionStatus.Running.getStatus(),
+            regions.getString(ColumnHeaderConstant.STATUS));
+      }
+    }
+  }
+
+  private static long logRestartPhase(
+      final String phase,
+      final long phaseStartedNanos,
+      final BiConsumer<String, Duration> phaseProbe) {
+    final long phaseEndedNanos = System.nanoTime();
+    phaseProbe.accept(phase, Duration.ofNanos(phaseEndedNanos - phaseStartedNanos));
+    return phaseEndedNanos;
+  }
+
+  private static void runConcurrently(final Stream<Runnable> actions) {
+    CompletableFuture.allOf(
+            actions.map(CompletableFuture::runAsync).toArray(CompletableFuture[]::new))
+        .join();
   }
 
   public static void assertDataEventuallyOnEnv(
@@ -1315,8 +2026,8 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1324,7 +2035,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1357,8 +2070,8 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1393,8 +2106,8 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1405,7 +2118,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1435,8 +2150,8 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1444,7 +2159,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1514,8 +2231,8 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1526,7 +2243,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1551,7 +2270,7 @@ public class TestUtils {
     }
   }
 
-  // Note that this class will accept any exceptions
+  /** Asserts that a query keeps failing with an SQLException throughout the observation period. */
   public static void assertAlwaysFail(final BaseEnv env, final String sql) {
     assertAlwaysFail(env, sql, 10);
   }
@@ -1560,13 +2279,7 @@ public class TestUtils {
       final BaseEnv env, final String sql, final long consistentSeconds) {
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
-      await()
-          .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .failFast(() -> Assert.assertThrows(Exception.class, () -> statement.executeQuery(sql)));
+      assertAlways(consistentSeconds, () -> assertQueryFails(statement, sql));
     } catch (final Exception e) {
       fail(e.getMessage());
     }
@@ -1591,8 +2304,8 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1635,8 +2348,8 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1644,7 +2357,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1699,32 +2414,28 @@ public class TestUtils {
             env.getConnection(
                 Objects.isNull(database) ? TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
-      await()
-          .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .failFast(
-              () -> {
-                try {
-                  if (Objects.nonNull(database)) {
-                    statement.execute("use " + database);
-                  }
-                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
-                  // sync requires tsFile to process. We flush in the middle of assertion because we
-                  // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0]
-                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
-                    flushed[0] = true;
-                    statement.execute("flush");
-                  }
-                  TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
-              });
+      assertAlways(
+          consistentSeconds,
+          () -> {
+            try {
+              if (Objects.nonNull(database)) {
+                statement.execute("use " + database);
+              }
+              // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+              // sync requires tsFile to process. We flush in the middle of assertion because we
+              // don't know when the data reaches the receiver in general cases
+              if (!flushed[0]
+                  && isHalfTimeoutElapsed(
+                      System.currentTimeMillis() - startTime, consistentSeconds)) {
+                flushed[0] = true;
+                statement.execute("flush");
+              }
+              TestUtils.assertResultSetEqual(
+                  executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+            } catch (Exception e) {
+              Assert.fail();
+            }
+          });
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -1742,36 +2453,33 @@ public class TestUtils {
     final boolean[] flushed = {false};
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      await()
-          .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .failFast(
-              () -> {
-                try {
-                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
-                  // sync requires tsFile to process. We flush in the middle of assertion because we
-                  // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0]
-                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
-                    flushed[0] = true;
-                    statement.execute("flush");
-                  }
-                  TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
-                } catch (Exception e) {
-                  if (handleFailure != null) {
-                    handleFailure.accept(e.getMessage());
-                  }
-                  Assert.fail();
-                } catch (Error e) {
-                  if (handleFailure != null) {
-                    handleFailure.accept(e.getMessage());
-                  }
-                  throw e;
-                }
-              });
+      assertAlways(
+          consistentSeconds,
+          () -> {
+            try {
+              // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+              // sync requires tsFile to process. We flush in the middle of assertion because we
+              // don't know when the data reaches the receiver in general cases
+              if (!flushed[0]
+                  && isHalfTimeoutElapsed(
+                      System.currentTimeMillis() - startTime, consistentSeconds)) {
+                flushed[0] = true;
+                statement.execute("flush");
+              }
+              TestUtils.assertResultSetEqual(
+                  executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+            } catch (Exception e) {
+              if (handleFailure != null) {
+                handleFailure.accept(e.getMessage());
+              }
+              Assert.fail();
+            } catch (Error e) {
+              if (handleFailure != null) {
+                handleFailure.accept(e.getMessage());
+              }
+              throw e;
+            }
+          });
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -1788,45 +2496,57 @@ public class TestUtils {
       Consumer<String> handleFailure) {
     final long startTime = System.currentTimeMillis();
     final boolean[] flushed = {false};
-    try (Connection connection = env.getConnection();
+    try (Connection connection =
+            env.getConnection(database == null ? TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
-      await()
-          .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .failFast(
-              () -> {
-                try {
-                  if (database != null) {
-                    statement.execute("use " + database);
-                  }
-                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
-                  // sync requires tsFile to process. We flush in the middle of assertion because we
-                  // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0]
-                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
-                    flushed[0] = true;
-                    statement.execute("flush");
-                  }
-                  TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
-                } catch (Exception e) {
-                  if (handleFailure != null) {
-                    handleFailure.accept(e.getMessage());
-                  }
-                  Assert.fail();
-                } catch (Error e) {
-                  if (handleFailure != null) {
-                    handleFailure.accept(e.getMessage());
-                  }
-                  throw e;
-                }
-              });
+      assertAlways(
+          consistentSeconds,
+          () -> {
+            try {
+              if (database != null) {
+                statement.execute("use " + database);
+              }
+              // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+              // sync requires tsFile to process. We flush in the middle of assertion because we
+              // don't know when the data reaches the receiver in general cases
+              if (!flushed[0]
+                  && isHalfTimeoutElapsed(
+                      System.currentTimeMillis() - startTime, consistentSeconds)) {
+                flushed[0] = true;
+                statement.execute("flush");
+              }
+              TestUtils.assertResultSetEqual(
+                  executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+            } catch (Exception e) {
+              if (handleFailure != null) {
+                handleFailure.accept(e.getMessage());
+              }
+              Assert.fail();
+            } catch (Error e) {
+              if (handleFailure != null) {
+                handleFailure.accept(e.getMessage());
+              }
+              throw e;
+            }
+          });
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  /** Observe for a bounded period, including time spent executing and checking each query. */
+  private static void assertAlways(final long consistentSeconds, final Runnable assertion)
+      throws InterruptedException {
+    final long start = System.nanoTime();
+    final long duration = TimeUnit.SECONDS.toNanos(consistentSeconds);
+    while (true) {
+      assertion.run();
+      final long remaining = duration - (System.nanoTime() - start);
+      if (remaining <= 0) {
+        return;
+      }
+      TimeUnit.NANOSECONDS.sleep(Math.min(remaining, TimeUnit.SECONDS.toNanos(1)));
     }
   }
 

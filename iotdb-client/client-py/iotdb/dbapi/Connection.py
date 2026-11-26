@@ -37,12 +37,29 @@ class Connection(object):
         zone_id=Session.DEFAULT_ZONE_ID,
         enable_rpc_compression=False,
         sqlalchemy_mode=False,
+        use_ssl=False,
+        ca_certs=None,
+        connection_timeout_in_ms=None,
+        client_cert=None,
+        client_key=None,
     ):
-        self.__session = Session(host, port, username, password, fetch_size, zone_id)
+        self.__session = Session(
+            host,
+            port,
+            username,
+            password,
+            fetch_size,
+            zone_id,
+            use_ssl=self.__to_bool(use_ssl),
+            ca_certs=ca_certs,
+            connection_timeout_in_ms=self.__to_optional_int(connection_timeout_in_ms),
+            client_cert=client_cert,
+            client_key=client_key,
+        )
         self.__sqlalchemy_mode = sqlalchemy_mode
         self.__is_close = True
         try:
-            self.__session.open(enable_rpc_compression)
+            self.__session.open(self.__to_bool(enable_rpc_compression))
             self.__is_close = False
         except Exception as e:
             raise ConnectionError(e)
@@ -89,3 +106,17 @@ class Connection(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    @staticmethod
+    def __to_bool(value):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in ("true", "1", "yes", "y")
+        return bool(value)
+
+    @staticmethod
+    def __to_optional_int(value):
+        if value is None or value == "":
+            return None
+        return int(value)

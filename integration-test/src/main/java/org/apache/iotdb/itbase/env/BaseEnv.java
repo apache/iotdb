@@ -147,6 +147,16 @@ public interface BaseEnv {
         version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
+  default Connection getConnection(
+      Constant.Version version, String sqlDialect, int networkTimeoutMs) throws SQLException {
+    return getConnection(
+        version,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        sqlDialect,
+        networkTimeoutMs);
+  }
+
   default Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException {
     return getConnection(version, username, password, TREE_SQL_DIALECT);
@@ -156,9 +166,29 @@ public interface BaseEnv {
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException;
 
+  default Connection getConnection(
+      Constant.Version version,
+      String username,
+      String password,
+      String sqlDialect,
+      int networkTimeoutMs)
+      throws SQLException {
+    return getConnection(version, username, password, sqlDialect);
+  }
+
   Connection getConnection(
       DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)
       throws SQLException;
+
+  // Both the write and the read of the returned connection are pinned to the given DataNode, so it
+  // is useful when some other DataNode has been shut down and a fan-out read would otherwise fail.
+  default Connection getConnection(DataNodeWrapper dataNodeWrapper) throws SQLException {
+    return getConnection(
+        dataNodeWrapper,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        TREE_SQL_DIALECT);
+  }
 
   default Connection getConnection(String username, String password) throws SQLException {
     return getConnection(username, password, TREE_SQL_DIALECT);
@@ -194,6 +224,10 @@ public interface BaseEnv {
 
   Connection getConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException;
+
+  default void setTestClassName(String testClassName) {
+    // Default no-op for env implementations that do not create local node log directories.
+  }
 
   void setTestMethodName(String testCaseName);
 

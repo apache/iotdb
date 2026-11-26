@@ -99,8 +99,8 @@ public class IoTDBAutoRegionGroupExtension2IT {
               new TDatabaseSchema(database).setMinDataRegionGroupNum(testMinDataRegionGroupNum));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      // Shutdown 1 DataNode
-      EnvFactory.getEnv().shutdownDataNode(1);
+      // Stop 1 DataNode forcibly to avoid the transient ReadOnly status during graceful shutdown
+      EnvFactory.getEnv().getDataNodeWrapper(1).stopForcibly();
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(1)),
@@ -150,6 +150,8 @@ public class IoTDBAutoRegionGroupExtension2IT {
       TShowRegionResp resp = client.showRegion(new TShowRegionReq());
       resp.getRegionInfoList()
           .removeIf(r -> r.getDatabase().startsWith(SystemConstant.SYSTEM_DATABASE));
+      resp.getRegionInfoList()
+          .removeIf(r -> r.getDatabase().startsWith(SystemConstant.AUDIT_DATABASE));
       Map<Integer, AtomicInteger> counter = new HashMap<>();
       resp.getRegionInfoList()
           .forEach(

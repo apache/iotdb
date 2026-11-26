@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -37,10 +36,12 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
@@ -52,6 +53,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -85,7 +87,7 @@ public class RemoveDataNodeHandler {
       case GREEDY:
         this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
         break;
-      case PGR:
+      case PGP:
         this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
         break;
       case GCR:
@@ -111,9 +113,11 @@ public class RemoveDataNodeHandler {
         (int)
             removedDataNodes.stream()
                 .filter(
-                    x ->
-                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
-                            != NodeStatus.Unknown)
+                    node ->
+                        !configManager
+                            .getLoadManager()
+                            .getNodeStatus(node.getDataNodeId())
+                            .isOffline())
                 .count();
 
     return availableDatanodeSize - removedDataNodeSize >= NodeInfo.getMinimumDataNode();
@@ -129,9 +133,10 @@ public class RemoveDataNodeHandler {
    *     Removing, Running, etc.)
    */
   public void changeDataNodeStatus(
-      List<TDataNodeLocation> removedDataNodes, Map<Integer, NodeStatus> nodeStatusMap) {
+      List<TDataNodeLocation> removedDataNodes, Map<Integer, NodeStatus> nodeStatusMap)
+      throws IOException {
     LOGGER.info(
-        "{}, Begin to change DataNode status, nodeStatusMap: {}",
+        ProcedureMessages.BEGIN_TO_CHANGE_DATANODE_STATUS_NODESTATUSMAP,
         REMOVE_DATANODE_PROCESS,
         nodeStatusMap);
 
@@ -147,36 +152,58 @@ public class RemoveDataNodeHandler {
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(changeDataNodeStatusContext);
 
+    StringBuilder statusChangeFailures = new StringBuilder();
     for (Map.Entry<Integer, TSStatus> entry :
         changeDataNodeStatusContext.getResponseMap().entrySet()) {
       int dataNodeId = entry.getKey();
       NodeStatus nodeStatus = nodeStatusMap.get(dataNodeId);
-      RegionStatus regionStatus = RegionStatus.valueOf(nodeStatus.getStatus());
 
-      if (!isSucceed(entry.getValue())) {
+      // Removing or restoring an offline status does not require a DataNode acknowledgement.
+      // Persistence is still required below, even if the RPC failed.
+      if (!isSucceed(entry.getValue()) && !nodeStatus.mayBeOffline()) {
         LOGGER.error(
-            "{}, Failed to change DataNode status, dataNodeId={}, nodeStatus={}",
+            ProcedureMessages.FAILED_TO_CHANGE_DATANODE_STATUS_DATANODEID_NODESTATUS,
             REMOVE_DATANODE_PROCESS,
             dataNodeId,
             nodeStatus);
+        statusChangeFailures.append(
+            String.format(
+                ProcedureMessages
+                    .EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F,
+                dataNodeId,
+                nodeStatus,
+                entry.getValue()));
         continue;
       }
 
       // Force updating NodeStatus
       long currentTime = System.nanoTime();
-      configManager
-          .getLoadManager()
-          .forceUpdateNodeCache(
-              NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(currentTime, nodeStatus));
+      // Match the ReadOnly reason assigned by the DataNode's SET_SYSTEM_STATUS RPC.
+      String statusReason = nodeStatus == NodeStatus.ReadOnly ? NodeStatus.MANUAL : null;
+      TSStatus status =
+          configManager
+              .getLoadManager()
+              .trySetNodeStatus(dataNodeId, nodeStatus, statusReason, true);
+      if (!isSucceed(status)) {
+        // Do not advance the persisted procedure state before its node status is durable.
+        statusChangeFailures.append(
+            String.format(
+                ProcedureMessages.EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4,
+                dataNodeId,
+                nodeStatus,
+                status));
+        continue;
+      }
 
       LOGGER.info(
-          "{}, Force update NodeCache: dataNodeId={}, nodeStatus={}, currentTime={}",
+          ProcedureMessages.FORCE_UPDATE_NODECACHE_DATANODEID_NODESTATUS_CURRENTTIME,
           REMOVE_DATANODE_PROCESS,
           dataNodeId,
           nodeStatus,
           currentTime);
 
       // Force update RegionStatus
+      RegionStatus regionStatus = RegionStatus.fromNodeStatus(nodeStatus);
       if (regionStatus != RegionStatus.Removing) {
         Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
             new TreeMap<>();
@@ -191,6 +218,9 @@ public class RemoveDataNodeHandler {
                             dataNodeId, new RegionHeartbeatSample(currentTime, regionStatus))));
         configManager.getLoadManager().forceUpdateRegionGroupCache(heartbeatSampleMap);
       }
+    }
+    if (statusChangeFailures.length() > 0) {
+      throw new IOException(statusChangeFailures.toString());
     }
   }
 
@@ -231,7 +261,7 @@ public class RemoveDataNodeHandler {
     final List<TDataNodeConfiguration> availableDataNodes =
         configManager
             .getNodeManager()
-            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown)
+            .filterDataNodeThroughStatus(NodeStatus::isRegionCandidate)
             .stream()
             .filter(node -> !removedDataNodesSet.contains(node.getLocation().getDataNodeId()))
             .collect(Collectors.toList());
@@ -301,7 +331,7 @@ public class RemoveDataNodeHandler {
 
       TDataNodeConfiguration selectedNode = result.get(regionId);
       LOGGER.info(
-          "Selected DataNode {} for Region {}",
+          ProcedureMessages.SELECTED_DATANODE_FOR_REGION,
           selectedNode.getLocation().getDataNodeId(),
           regionId);
 
@@ -391,7 +421,7 @@ public class RemoveDataNodeHandler {
             .map(RegionMaintainHandler::getIdWithRpcEndpoint)
             .collect(Collectors.joining(", "));
     LOGGER.info(
-        "{}, BroadcastDataNodeStatusChange start, dataNode: {}",
+        ProcedureMessages.BROADCASTDATANODESTATUSCHANGE_START_DATANODE,
         REMOVE_DATANODE_PROCESS,
         dataNodesString);
 
@@ -417,7 +447,8 @@ public class RemoveDataNodeHandler {
         cleanDataNodeCacheContext.getResponseMap().entrySet()) {
       if (!isSucceed(entry.getValue())) {
         LOGGER.error(
-            "{}, BroadcastDataNodeStatusChange meets error, status change dataNodes: {}, error datanode: {}",
+            ProcedureMessages
+                .BROADCASTDATANODESTATUSCHANGE_MEETS_ERROR_STATUS_CHANGE_DATANODES_ERROR_DATANODE,
             REMOVE_DATANODE_PROCESS,
             dataNodesString,
             entry.getValue());
@@ -426,7 +457,7 @@ public class RemoveDataNodeHandler {
     }
 
     LOGGER.info(
-        "{}, BroadcastDataNodeStatusChange finished, dataNode: {}",
+        ProcedureMessages.BROADCASTDATANODESTATUSCHANGE_FINISHED_DATANODE,
         REMOVE_DATANODE_PROCESS,
         dataNodesString);
   }
@@ -436,12 +467,18 @@ public class RemoveDataNodeHandler {
    *
    * @param removedDataNodes the list of DataNodeLocations to be removed
    */
-  public void removeDataNodePersistence(List<TDataNodeLocation> removedDataNodes) {
+  public void removeDataNodePersistence(List<TDataNodeLocation> removedDataNodes)
+      throws IOException {
     // Remove consensus record
     try {
-      configManager.getConsensusManager().write(new RemoveDataNodePlan(removedDataNodes));
+      TSStatus status =
+          configManager.getConsensusManager().write(new RemoveDataNodePlan(removedDataNodes));
+      if (!isSucceed(status)) {
+        throw new IOException(status.toString());
+      }
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      throw new IOException(e);
     }
 
     // Adjust maxRegionGroupNum
@@ -452,6 +489,8 @@ public class RemoveDataNodeHandler {
       PartitionMetrics.unbindDataNodePartitionMetricsWhenUpdate(
           MetricService.getInstance(),
           NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
+      // Drop the removed DataNode's metadata-lease contact/capability state
+      DataNodeContactTracker.getInstance().removeDataNode(dataNodeLocation.getDataNodeId());
     }
   }
 
@@ -463,7 +502,7 @@ public class RemoveDataNodeHandler {
   public void stopDataNodes(List<TDataNodeLocation> removedDataNodes) {
 
     LOGGER.info(
-        "{}, Begin to stop DataNodes and kill the DataNode process: {}",
+        ProcedureMessages.BEGIN_TO_STOP_DATANODES_AND_KILL_THE_DATANODE_PROCESS,
         REMOVE_DATANODE_PROCESS,
         removedDataNodes);
 
@@ -483,11 +522,11 @@ public class RemoveDataNodeHandler {
       configManager.getLoadManager().removeNodeCache(dataNodeId);
       if (!isSucceed(entry.getValue())) {
         LOGGER.error(
-            "{}, Stop Data Node meets error, error datanode: {}",
+            ProcedureMessages.STOP_DATA_NODE_MEETS_ERROR_ERROR_DATANODE,
             REMOVE_DATANODE_PROCESS,
             entry.getValue());
       } else {
-        LOGGER.info("{}, Stop Data Node {} success.", REMOVE_DATANODE_PROCESS, dataNodeId);
+        LOGGER.info(ProcedureMessages.STOP_DATA_NODE_SUCCESS, REMOVE_DATANODE_PROCESS, dataNodeId);
       }
     }
   }
@@ -539,7 +578,8 @@ public class RemoveDataNodeHandler {
     if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
         || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
-      status.setMessage("SimpleConsensus protocol is not supported to remove data node");
+      status.setMessage(
+          ProcedureMessages.SIMPLECONSENSUS_PROTOCOL_IS_NOT_SUPPORTED_TO_REMOVE_DATA_NODE);
     }
     return status;
   }
@@ -563,20 +603,25 @@ public class RemoveDataNodeHandler {
     // when the configuration is one replication, it will be failed if the data node is not in
     // running state.
     if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
-      for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-        // check whether removed data node is in running state
-        if (!NodeStatus.Running.equals(
-            configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()))) {
-          removedDataNodes.remove(dataNodeLocation);
-          LOGGER.error(
-              "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
-              dataNodeLocation);
-        }
-        if (removedDataNodes.isEmpty()) {
-          status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-          status.setMessage("Failed to remove all requested data nodes");
-          return status;
-        }
+      final List<TDataNodeLocation> notRunningDataNodes =
+          removedDataNodes.stream()
+              .filter(
+                  dataNodeLocation ->
+                      !NodeStatus.Running.equals(
+                          configManager
+                              .getLoadManager()
+                              .getNodeStatus(dataNodeLocation.getDataNodeId())))
+              .collect(Collectors.toList());
+      notRunningDataNodes.forEach(
+          dataNodeLocation ->
+              LOGGER.error(
+                  ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN,
+                  dataNodeLocation));
+      removedDataNodes.removeAll(notRunningDataNodes);
+      if (removedDataNodes.isEmpty()) {
+        status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+        status.setMessage(ProcedureMessages.FAILED_TO_REMOVE_ALL_REQUESTED_DATA_NODES);
+        return status;
       }
     }
 
@@ -584,19 +629,33 @@ public class RemoveDataNodeHandler {
         (int)
             removeDataNodePlan.getDataNodeLocations().stream()
                 .filter(
-                    x ->
-                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
-                            != NodeStatus.Unknown)
+                    node ->
+                        !configManager
+                            .getLoadManager()
+                            .getNodeStatus(node.getDataNodeId())
+                            .isOffline())
                 .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-      status.setMessage(
+      // Report the concrete numbers so operators can see the gap: how many DataNodes are being
+      // removed, how many are available, the minimum that must remain (the larger of the schema and
+      // data replication factors) and how many would be left.
+      String message =
           String.format(
-              "Can't remove datanode due to the limit of replication factor, "
-                  + "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
+              ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_WOULD_LEAVE_TOO_FEW,
+              removedDataNodeSize,
               availableDatanodeSize,
               NodeInfo.getMinimumDataNode(),
-              (availableDatanodeSize - NodeInfo.getMinimumDataNode())));
+              CONF.getSchemaReplicationFactor(),
+              CONF.getDataReplicationFactor(),
+              availableDatanodeSize - removedDataNodeSize);
+      if (NodeInfo.getMinimumDataNode() == 1) {
+        // With a single replica (schema_replication_factor and data_replication_factor are both 1)
+        // the only copy of each region lives on one DataNode, so at least one DataNode must always
+        // remain: there is nowhere to migrate its regions to.
+        message += ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT;
+      }
+      status.setMessage(message);
     }
     return status;
   }
@@ -620,7 +679,7 @@ public class RemoveDataNodeHandler {
             .anyMatch(loc -> !allDataNodes.contains(loc));
     if (hasNotExistNode) {
       status.setCode(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode());
-      status.setMessage("there exist Data Node in request but not in cluster");
+      status.setMessage(ProcedureMessages.THERE_EXIST_DATA_NODE_IN_REQUEST_BUT_NOT_IN_CLUSTER);
     }
     return status;
   }

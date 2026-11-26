@@ -21,11 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -45,6 +47,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
@@ -68,7 +71,8 @@ public class TsFileResourceUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String VALIDATE_FAILED = "validate failed,";
+  private static final String VALIDATE_FAILED =
+      StorageEngineMessages.MESSAGE_VALIDATE_FAILED_BABCDFC5;
 
   private TsFileResourceUtils() {
     // util class
@@ -88,12 +92,14 @@ public class TsFileResourceUtils {
         timeIndex = (ArrayDeviceTimeIndex) resource.getTimeIndex();
       }
       if (timeIndex == null) {
-        logger.error("{} {} time index is null", resource.getTsFilePath(), VALIDATE_FAILED);
+        logger.error(
+            StorageEngineMessages.TIME_INDEX_IS_NULL, resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
       Set<IDeviceID> devices = timeIndex.getDevices();
       if (devices.isEmpty()) {
-        logger.error("{} {} empty resource", resource.getTsFilePath(), VALIDATE_FAILED);
+        logger.error(
+            StorageEngineMessages.EMPTY_RESOURCE, resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
       for (IDeviceID device : devices) {
@@ -102,7 +108,7 @@ public class TsFileResourceUtils {
         long endTime = timeIndex.getEndTime(device).get();
         if (startTime > endTime) {
           logger.error(
-              "{} {} the start time of {} is greater than end time",
+              StorageEngineMessages.STORAGE_LOG_THE_START_TIME_OF_IS_GREATER_THAN_END_TIME_44DD784A,
               resource.getTsFilePath(),
               VALIDATE_FAILED,
               device);
@@ -110,7 +116,7 @@ public class TsFileResourceUtils {
         }
       }
     } catch (IOException e) {
-      logger.error("meet error when validate .resource file:{},e", resource.getTsFilePath());
+      logger.error(StorageEngineMessages.ERROR_VALIDATE_RESOURCE_FILE, resource.getTsFilePath());
       return false;
     }
     return true;
@@ -123,29 +129,37 @@ public class TsFileResourceUtils {
       // file size is smaller than magic string and version number
       logger.error(
           String.format(
-              "target file %s is smaller than magic string and version number size", resource));
+              StorageEngineMessages
+                  .TARGET_FILE_SMALLER_THAN_MAGIC_STRING_AND_VERSION_NUMBER_SIZE_FMT,
+              resource));
       return false;
     }
     return true;
   }
 
   public static boolean validateTsFileDataCorrectness(TsFileResource resource) {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(
+            resource.getTsFilePath(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(resource.getTsFilePath()))) {
       if (!reader.isComplete()) {
-        logger.error("{} {} illegal tsfile", resource.getTsFilePath(), VALIDATE_FAILED);
+        logger.error(
+            StorageEngineMessages.ILLEGAL_TSFILE, resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
 
       Map<Long, IChunkMetadata> chunkMetadataMap = getChunkMetadata(reader);
       if (chunkMetadataMap.isEmpty()) {
         logger.error(
-            "{} {} there is no data in the file", resource.getTsFilePath(), VALIDATE_FAILED);
+            StorageEngineMessages.STORAGE_LOG_THERE_IS_NO_DATA_IN_THE_FILE_F480954E,
+            resource.getTsFilePath(),
+            VALIDATE_FAILED);
         return false;
       }
 
       List<List<long[]>> alignedTimeBatches = new ArrayList<>();
       Map<String, Integer> valueColumn2TimeBatchIndex = new HashMap<>();
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+      reader.position(reader.getDataStartOffset());
       int pageIndex = 0;
       byte marker;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
@@ -161,7 +175,8 @@ public class TsFileResourceUtils {
             IChunkMetadata chunkMetadata = chunkMetadataMap.get(chunkOffset - Byte.BYTES);
             if (!chunkMetadata.getMeasurementUid().equals(header.getMeasurementID())) {
               logger.error(
-                  "{} chunk start offset is inconsistent with the value in the metadata.",
+                  StorageEngineMessages
+                      .STORAGE_LOG_CHUNK_START_OFFSET_IS_INCONSISTENT_WITH_THE_VALUE_IN_THE_E1E7AF07,
                   VALIDATE_FAILED);
               return false;
             }
@@ -197,7 +212,9 @@ public class TsFileResourceUtils {
             while (dataSize > 0) {
               valueDecoder.reset();
               PageHeader pageHeader = reader.readPageHeader(header.getDataType(), isHasStatistic);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              ByteBuffer pageData =
+                  reader.readPage(
+                      pageHeader, header.getCompressionType(), pageIndex, header.getChunkOrdinal());
 
               if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
                   == TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
@@ -239,14 +256,16 @@ public class TsFileResourceUtils {
                   if (!lastNoAlignedPageTimeStamps.isEmpty()
                       && currentTime <= lastNoAlignedPageTimeStamps.getLast()) {
                     logger.error(
-                        "{} {} time ranges overlap between pages.",
+                        StorageEngineMessages
+                            .STORAGE_LOG_TIME_RANGES_OVERLAP_BETWEEN_PAGES_2A131465,
                         resource.getTsFilePath(),
                         VALIDATE_FAILED);
                     return false;
                   }
                   if (currentTime <= previousTime) {
                     logger.error(
-                        "{} {} the timestamp in the page is repeated or not incremental.",
+                        StorageEngineMessages
+                            .STORAGE_LOG_THE_TIMESTAMP_IN_THE_PAGE_IS_REPEATED_OR_NOT_INCREMENTAL_04627FDA,
                         resource.getTsFilePath(),
                         VALIDATE_FAILED);
                     return false;
@@ -258,14 +277,16 @@ public class TsFileResourceUtils {
                 }
                 if (pageHeaderStartTime != pageStartTime) {
                   logger.error(
-                      "{} {} the start time in page is different from that in page header.",
+                      StorageEngineMessages
+                          .STORAGE_LOG_THE_START_TIME_IN_PAGE_IS_DIFFERENT_FROM_THAT_IN_PAGE_HEADER_C23CE8D4,
                       resource.getTsFilePath(),
                       VALIDATE_FAILED);
                   return false;
                 }
                 if (pageHeaderEndTime != previousTime) {
                   logger.error(
-                      "{} {} the end time in page is different from that in page header.",
+                      StorageEngineMessages
+                          .STORAGE_LOG_THE_END_TIME_IN_PAGE_IS_DIFFERENT_FROM_THAT_IN_PAGE_HEADER_5E363FAB,
                       resource.getTsFilePath(),
                       VALIDATE_FAILED);
                   return false;
@@ -283,7 +304,9 @@ public class TsFileResourceUtils {
             if (chunkGroupHeader.getDeviceID() == null
                 || chunkGroupHeader.getDeviceID().isEmpty()) {
               logger.error(
-                  "{} {} device id is null or empty.", resource.getTsFilePath(), VALIDATE_FAILED);
+                  StorageEngineMessages.STORAGE_LOG_DEVICE_ID_IS_NULL_OR_EMPTY_635DD75C,
+                  resource.getTsFilePath(),
+                  VALIDATE_FAILED);
               return false;
             }
             break;
@@ -299,7 +322,7 @@ public class TsFileResourceUtils {
         | NegativeArraySizeException
         | IllegalArgumentException
         | ArrayIndexOutOfBoundsException e) {
-      logger.error("Meets error when validating TsFile {}, ", resource.getTsFilePath(), e);
+      logger.error(StorageEngineMessages.ERROR_VALIDATING_TSFILE, resource.getTsFilePath(), e);
       return false;
     }
     return true;
@@ -313,14 +336,16 @@ public class TsFileResourceUtils {
       TsFileResource tsFileResource) {
     if (pageHeaderStartTime != pageTimestamps[0]) {
       logger.error(
-          "{} {} the start time in page is different from that in page header.",
+          StorageEngineMessages
+              .STORAGE_LOG_THE_START_TIME_IN_PAGE_IS_DIFFERENT_FROM_THAT_IN_PAGE_HEADER_C23CE8D4,
           tsFileResource.getTsFilePath(),
           VALIDATE_FAILED);
       return false;
     }
     if (pageHeaderEndTime != pageTimestamps[pageTimestamps.length - 1]) {
       logger.error(
-          "{} {} the end time in page is different from that in page header.",
+          StorageEngineMessages
+              .STORAGE_LOG_THE_END_TIME_IN_PAGE_IS_DIFFERENT_FROM_THAT_IN_PAGE_HEADER_5E363FAB,
           tsFileResource.getTsFilePath(),
           VALIDATE_FAILED);
       return false;
@@ -328,7 +353,8 @@ public class TsFileResourceUtils {
     for (int i = 0; i < pageTimestamps.length - 1; i++) {
       if (pageTimestamps[i + 1] <= pageTimestamps[i]) {
         logger.error(
-            "{} {} the timestamp in the page is repeated or not incremental.",
+            StorageEngineMessages
+                .STORAGE_LOG_THE_TIMESTAMP_IN_THE_PAGE_IS_REPEATED_OR_NOT_INCREMENTAL_04627FDA,
             tsFileResource.getTsFilePath(),
             VALIDATE_FAILED);
         return false;
@@ -339,7 +365,7 @@ public class TsFileResourceUtils {
       long[] lastPageTimes = timeBatch.get(timeBatch.size() - 1);
       if (lastPageTimes[lastPageTimes.length - 1] >= pageTimestamps[0]) {
         logger.error(
-            "{} {} time ranges overlap between pages.",
+            StorageEngineMessages.STORAGE_LOG_TIME_RANGES_OVERLAP_BETWEEN_PAGES_2A131465,
             tsFileResource.getTsFilePath(),
             VALIDATE_FAILED);
         return false;
@@ -393,8 +419,8 @@ public class TsFileResourceUtils {
         long lastEndTime = lastDeviceInfo.right;
         if (lastEndTime >= currentStartTime) {
           logger.error(
-              "Device {} is overlapped between {} and {}, "
-                  + "end time in {} is {}, start time in {} is {}",
+              StorageEngineMessages
+                  .STORAGE_LOG_DEVICE_IS_OVERLAPPED_BETWEEN_AND_END_TIME_IN_IS_START_TIME_BA49D2AA,
               device.toString(),
               lastDeviceInfo.left,
               resource,
@@ -448,11 +474,11 @@ public class TsFileResourceUtils {
           if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB) {
             TsPrimitiveType value;
             value =
-                TsPrimitiveType.getByType(
-                    timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
-                        ? TSDataType.INT64
-                        : timeseriesMetaData.getTsDataType(),
-                    timeseriesMetaData.getStatistics().getLastValue());
+                Type.fromTsDataType(
+                        timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
+                            ? TSDataType.INT64
+                            : timeseriesMetaData.getTsDataType())
+                    .getTsPrimitiveType(timeseriesMetaData.getStatistics().getLastValue());
             seriesLastValues.add(
                 new Pair<>(
                     timeseriesMetaData.getMeasurementId(),

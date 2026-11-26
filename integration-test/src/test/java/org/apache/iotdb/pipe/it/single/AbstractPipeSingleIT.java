@@ -30,19 +30,26 @@ abstract class AbstractPipeSingleIT {
   protected BaseEnv env;
 
   @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
+  public void setUp() throws Exception {
+    MultiEnvFactory.createEnv(1);
     env = MultiEnvFactory.getEnv(0);
     env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
     env.initClusterEnvironment();
   }
 
   @After
   public final void tearDown() {
+    cleanEnvironment();
+  }
+
+  // A shared-cluster subclass can reset its scenario without stopping the class-owned nodes.
+  protected void cleanEnvironment() {
     env.cleanClusterEnvironment();
   }
 }

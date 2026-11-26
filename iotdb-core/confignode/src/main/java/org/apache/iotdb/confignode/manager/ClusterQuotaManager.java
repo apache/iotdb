@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
@@ -47,6 +48,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -76,7 +78,8 @@ public class ClusterQuotaManager {
     if (!checkSpaceQuota(req)) {
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-          "The used quota exceeds the preset quota. Please set a larger value.");
+          ManagerMessages
+              .EXCEPTION_THE_USED_QUOTA_EXCEEDS_THE_PRESET_QUOTA_PLEASE_SET_A_LARGER_VALUE_2AAE5636);
     }
     // TODO: Datanode failed to receive rpc
     try {
@@ -98,7 +101,8 @@ public class ClusterQuotaManager {
     } catch (final ConsensusException e) {
       LOGGER.warn(
           String.format(
-              "Unexpected error happened while setting space quota on database: %s ",
+              ManagerMessages
+                  .LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586,
               req.getDatabase()),
           e);
       // consensus layer related errors
@@ -111,8 +115,8 @@ public class ClusterQuotaManager {
   /** If the new quota is smaller than the quota already used, the setting fails. */
   private boolean checkSpaceQuota(TSetSpaceQuotaReq req) {
     for (String database : req.getDatabase()) {
-      if (quotaInfo.getSpaceQuotaLimit().containsKey(database)) {
-        TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(database);
+      TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(database);
+      if (Objects.nonNull(spaceQuota)) {
         if (req.getSpaceLimit().getDeviceNum() != IoTDBConstant.UNLIMITED_VALUE
             && req.getSpaceLimit().getDeviceNum() != IoTDBConstant.DEFAULT_VALUE
             && spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()) {
@@ -205,7 +209,8 @@ public class ClusterQuotaManager {
     } catch (ConsensusException e) {
       LOGGER.warn(
           String.format(
-              "Unexpected error happened while setting throttle quota on user: %s ",
+              ManagerMessages
+                  .LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81,
               req.getUserName()),
           e);
       // consensus layer related errors
@@ -268,11 +273,10 @@ public class ClusterQuotaManager {
           .forEach(
               schemaRegionId -> {
                 if (deviceNum.containsKey(schemaRegionId)) {
-                  deviceCount.addAndGet(deviceCount.get() + deviceNum.get(schemaRegionId));
+                  deviceCount.addAndGet(deviceNum.get(schemaRegionId));
                 }
                 if (timeSeriesNum.containsKey(schemaRegionId)) {
-                  timeSeriesCount.addAndGet(
-                      timeSeriesCount.get() + timeSeriesNum.get(schemaRegionId));
+                  timeSeriesCount.addAndGet(timeSeriesNum.get(schemaRegionId));
                 }
               });
       quotaInfo.getSpaceQuotaUsage().get(entry.getKey()).setDeviceNum(deviceCount.get());

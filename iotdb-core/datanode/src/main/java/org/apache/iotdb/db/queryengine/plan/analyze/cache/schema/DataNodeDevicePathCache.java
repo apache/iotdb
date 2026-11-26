@@ -20,15 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
+import org.apache.iotdb.commons.external.caffeine.cache.Weigher;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Weigher;
 
 /** This cache is for reducing duplicated DeviceId PartialPath initialization in write process. */
 public class DataNodeDevicePathCache {
@@ -72,7 +71,7 @@ public class DataNodeDevicePathCache {
               return new PartialPath(path);
             } catch (final IllegalPathException e) {
               try {
-                return PartialPath.getDatabasePath(path);
+                return PartialPath.getQualifiedDatabasePartialPath(path);
               } catch (final IllegalPathException e1) {
                 throw new IllegalArgumentException(e1);
               }

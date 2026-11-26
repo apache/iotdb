@@ -22,6 +22,8 @@ package org.apache.iotdb.session.endpointselector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Locale;
+
 public class EndpointSelectionStrategyFactory {
 
   private static final Logger logger =
@@ -46,7 +48,7 @@ public class EndpointSelectionStrategyFactory {
       throw new IllegalArgumentException("Strategy name cannot be null or empty");
     }
 
-    String normalizedName = strategyName.trim().toLowerCase();
+    String normalizedName = strategyName.trim().toLowerCase(Locale.ROOT);
     switch (normalizedName) {
       case ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL:
         return new SequentialSelectionStrategy();

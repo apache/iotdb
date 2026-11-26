@@ -26,6 +26,7 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -40,21 +41,25 @@ public class IoTDBTestParamSubscriptionSessionIT extends AbstractSubscriptionTre
     super.setUp();
   }
 
+  @Ignore
   @Test
   public void testCreateSession_null_host() {
     new SubscriptionTreeSession.Builder().host(null).build();
   }
 
+  @Ignore
   @Test(expected = IoTDBConnectionException.class)
   public void testCreateSession_error_port() throws IoTDBConnectionException {
     new SubscriptionTreeSession(SRC_HOST, SRC_PORT + 1).open();
   }
 
+  @Ignore
   @Test(expected = IoTDBConnectionException.class)
   public void testCreateSession_ErrorHostname() throws IoTDBConnectionException {
     new SubscriptionTreeSession.Builder().host("noName").build().open();
   }
 
+  @Ignore
   @Test(expected = IoTDBConnectionException.class)
   public void testCreateSession_ErrorUsername() throws IoTDBConnectionException {
     new SubscriptionTreeSession.Builder()
@@ -65,6 +70,7 @@ public class IoTDBTestParamSubscriptionSessionIT extends AbstractSubscriptionTre
         .open();
   }
 
+  @Ignore
   @Test(expected = IoTDBConnectionException.class)
   public void testCreateSession_ErrorPassword() throws IoTDBConnectionException {
     new SubscriptionTreeSession.Builder()

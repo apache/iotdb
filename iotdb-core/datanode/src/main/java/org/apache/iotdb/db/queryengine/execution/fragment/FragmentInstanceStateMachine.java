@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.execution.StateMachine;
+import org.apache.iotdb.calc.execution.StateMachine.StateChangeListener;
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.execution.StateMachine;
-import org.apache.iotdb.db.queryengine.execution.StateMachine.StateChangeListener;
 import org.apache.iotdb.db.utils.SetThreadName;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +42,6 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.ABORTED;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.CANCELLED;
@@ -51,6 +50,9 @@ import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanc
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.FLUSHING;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.RUNNING;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.TERMINAL_INSTANCE_STATES;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
 
 @ThreadSafe
 public class FragmentInstanceStateMachine {
@@ -70,9 +72,17 @@ public class FragmentInstanceStateMachine {
   private final List<FragmentInstanceFailureListener> sourceInstanceFailureListeners =
       new ArrayList<>();
 
+  @GuardedBy("finalStateChangeListeners")
+  private final List<StateChangeListener<FragmentInstanceState>> finalStateChangeListeners =
+      new ArrayList<>();
+
   public FragmentInstanceStateMachine(FragmentInstanceId fragmentInstanceId, Executor executor) {
-    this.instanceId = requireNonNull(fragmentInstanceId, "fragmentInstanceId is null");
-    this.executor = requireNonNull(executor, "executor is null");
+    this.instanceId =
+        requireNonNull(
+            fragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_FRAGMENTINSTANCEID_IS_NULL_4D371DB4);
+    this.executor =
+        requireNonNull(executor, DataNodeQueryMessages.EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4);
     instanceState =
         new StateMachine<>(
             "FragmentInstance " + fragmentInstanceId, executor, RUNNING, TERMINAL_INSTANCE_STATES);
@@ -80,7 +90,7 @@ public class FragmentInstanceStateMachine {
       instanceState.addStateChangeListener(
           newState -> {
             try (SetThreadName threadName = new SetThreadName(fragmentInstanceId.getFullId())) {
-              LOGGER.debug("[StateChanged] To {}", newState);
+              LOGGER.debug(DataNodeQueryMessages.STATE_CHANGED_TO, newState);
             }
           });
     }
@@ -100,8 +110,10 @@ public class FragmentInstanceStateMachine {
 
   public ListenableFuture<FragmentInstanceState> getStateChange(
       FragmentInstanceState currentState) {
-    requireNonNull(currentState, "currentState is null");
-    checkArgument(!currentState.isDone(), "Current state is already done");
+    requireNonNull(currentState, DataNodeQueryMessages.EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB);
+    checkArgument(
+        !currentState.isDone(),
+        DataNodeQueryMessages.EXCEPTION_CURRENT_STATE_IS_ALREADY_DONE_19FC56DC);
 
     ListenableFuture<FragmentInstanceState> future = instanceState.getStateChange(currentState);
     FragmentInstanceState state = instanceState.get();
@@ -137,10 +149,47 @@ public class FragmentInstanceStateMachine {
   }
 
   private void transitionToDoneState(FragmentInstanceState doneState) {
-    requireNonNull(doneState, "doneState is null");
-    checkArgument(doneState.isDone(), "doneState %s is not a done state", doneState);
+    requireNonNull(doneState, DataNodeQueryMessages.EXCEPTION_DONESTATE_IS_NULL_D88F77E5);
+    checkArgument(
+        doneState.isDone(),
+        DataNodeQueryMessages.EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618,
+        doneState);
 
-    instanceState.setIf(doneState, currentState -> !currentState.isDone());
+    List<StateChangeListener<FragmentInstanceState>> listeners;
+    RuntimeException stateChangeFailure = null;
+    Error stateChangeError = null;
+    synchronized (finalStateChangeListeners) {
+      boolean stateChanged;
+      try {
+        stateChanged = instanceState.setIf(doneState, currentState -> !currentState.isDone());
+      } catch (RuntimeException e) {
+        // StateMachine updates its state before submitting asynchronous notifications. Preserve
+        // the final-state callback guarantee if notification submission is rejected afterwards.
+        if (!instanceState.get().isDone()) {
+          throw e;
+        }
+        stateChanged = true;
+        stateChangeFailure = e;
+      } catch (Error e) {
+        if (!instanceState.get().isDone()) {
+          throw e;
+        }
+        stateChanged = true;
+        stateChangeError = e;
+      }
+      if (!stateChanged) {
+        return;
+      }
+      listeners = ImmutableList.copyOf(finalStateChangeListeners);
+      finalStateChangeListeners.clear();
+    }
+    listeners.forEach(listener -> fireFinalStateChangeListener(doneState, listener));
+    if (stateChangeFailure != null) {
+      throw stateChangeFailure;
+    }
+    if (stateChangeError != null) {
+      throw stateChangeError;
+    }
   }
 
   /**
@@ -152,6 +201,39 @@ public class FragmentInstanceStateMachine {
   public void addStateChangeListener(
       StateChangeListener<FragmentInstanceState> stateChangeListener) {
     instanceState.addStateChangeListener(stateChangeListener);
+  }
+
+  /**
+   * Adds a listener that is notified synchronously when this state machine first reaches a terminal
+   * state. If the state is already terminal, the listener is notified before this method returns.
+   *
+   * <p>This is intended only for short, non-blocking bookkeeping that must be completed before the
+   * state transition method returns. Other cleanup should use {@link #addStateChangeListener}.
+   */
+  public void addFinalStateChangeListener(
+      StateChangeListener<FragmentInstanceState> stateChangeListener) {
+    requireNonNull(
+        stateChangeListener, CalcMessages.EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2);
+
+    FragmentInstanceState currentState;
+    synchronized (finalStateChangeListeners) {
+      currentState = instanceState.get();
+      if (!currentState.isDone()) {
+        finalStateChangeListeners.add(stateChangeListener);
+        return;
+      }
+    }
+    fireFinalStateChangeListener(currentState, stateChangeListener);
+  }
+
+  @SuppressWarnings("squid:S1181")
+  private void fireFinalStateChangeListener(
+      FragmentInstanceState state, StateChangeListener<FragmentInstanceState> stateChangeListener) {
+    try {
+      stateChangeListener.stateChanged(state);
+    } catch (Throwable t) {
+      LOGGER.error(CalcMessages.ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR, instanceId, t);
+    }
   }
 
   public void addSourceTaskFailureListener(FragmentInstanceFailureListener listener) {

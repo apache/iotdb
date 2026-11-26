@@ -33,9 +33,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.UrlUtils;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -173,7 +174,7 @@ public class TestConnectionTask implements IConfigTask {
   }
 
   private static String endPointToString(TEndPoint endPoint) {
-    return endPoint.getIp() + ":" + endPoint.getPort();
+    return UrlUtils.convertTEndPointIpv4AndIpv6Url(endPoint);
   }
 
   private static void sortTestConnectionResp(TTestConnectionResp origin) {

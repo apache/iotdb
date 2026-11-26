@@ -170,7 +170,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deactivateTemplateCrossStorageGroupTest() throws Exception {
+  public void deactivateTemplateCrossDatabaseTest() throws Exception {
     String insertSql = "insert into root.sg%d.d2(time, s1, s2) values(%d, %d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

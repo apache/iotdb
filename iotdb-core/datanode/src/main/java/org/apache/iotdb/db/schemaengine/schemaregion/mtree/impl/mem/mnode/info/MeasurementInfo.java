@@ -38,6 +38,9 @@ public class MeasurementInfo implements IMeasurementInfo {
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
 
+  /** whether this measurement is pre altered */
+  private boolean preAltered = false;
+
   // alias length, hashCode and occupation in aliasMap, 4 + 4 + 44 = 52B
   private static final int ALIAS_BASE_SIZE = 52;
 

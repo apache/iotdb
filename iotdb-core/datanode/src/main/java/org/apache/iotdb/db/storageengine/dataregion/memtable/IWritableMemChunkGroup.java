@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -44,19 +47,23 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   void release();
 
-  long count();
+  long count(boolean ignoreAllNullRows);
 
   boolean contains(String measurement);
 
-  Map<String, IWritableMemChunk> getMemChunkMap();
+  Map<String, IWritableMemChunk> getMemChunkMap(boolean ignoreAllNullRows);
 
-  boolean isEmpty();
+  boolean isEmpty(boolean ignoreAllNullRows);
 
-  long delete(ModEntry modEntry);
+  long delete(ModEntry modEntry, boolean ignoreAllNullRows);
 
-  long deleteTime(ModEntry modEntry);
+  long deleteTime(ModEntry modEntry, boolean ignoreAllNullRows);
 
   IWritableMemChunk getWritableMemChunk(String measurement);
 
-  long getMaxTime();
+  long getMaxTime(boolean ignoreAllNullRows);
+
+  void setEncryptParameter(EncryptParameter encryptParameter);
+
+  void checkDataType(InsertNode node) throws DataTypeInconsistentException;
 }

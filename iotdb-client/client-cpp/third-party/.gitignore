@@ -1,0 +1,7 @@
+# Ignore all cached archives; keep directory structure and README tracked.
+*
+!.gitignore
+!README.md
+!linux/
+!mac/
+!windows/

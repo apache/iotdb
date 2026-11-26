@@ -53,11 +53,11 @@ public class IoTDBResultSetIT {
         "CREATE DATABASE root.t1",
         "CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.t1.wf01.wt01.type WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.t1.wf01.wt01.`type` WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt01.grade WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.t1.wf01.wt02.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.t1.wf01.wt02.type WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.t1.wf01.wt02.`type` WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt02.grade WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.sg.dev.status WITH DATATYPE=text,ENCODING=PLAIN",
         "insert into root.sg.dev(time,status) values(1,3.14)"
@@ -81,9 +81,9 @@ public class IoTDBResultSetIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "insert into root.t1.wf01.wt01(timestamp, status, type, grade) values (1000, true, 1, 1000)");
+          "insert into root.t1.wf01.wt01(timestamp, status, `type`, grade) values (1000, true, 1, 1000)");
       statement.execute(
-          "insert into root.t1.wf01.wt01(timestamp, status, type, grade) values (2000, false, 2, 2000)");
+          "insert into root.t1.wf01.wt01(timestamp, status, `type`, grade) values (2000, false, 2, 2000)");
 
       try (ResultSet resultSet1 =
           statement.executeQuery("select count(status) from root.t1.wf01.wt01")) {
@@ -94,7 +94,8 @@ public class IoTDBResultSetIT {
       }
 
       try (ResultSet resultSet2 =
-          statement.executeQuery("select type from root.t1.wf01.wt01 where time = 1000 limit 1")) {
+          statement.executeQuery(
+              "select `type` from root.t1.wf01.wt01 where time = 1000 limit 1")) {
         resultSet2.next();
         // type of r2 is INT32(int), test int convert to long
         long type = resultSet2.getLong(2);

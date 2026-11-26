@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.protocol.thrift.handler;
 
+import org.apache.iotdb.commons.service.NoopServerContext;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.session.ClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.external.api.thrift.JudgableServerContext;
@@ -44,9 +46,9 @@ public class BaseServerContextHandler {
     for (ServerContextFactory loader : contextFactoryLoader) {
       if (factory != null) {
         // it means there is more than one implementation.
-        logger.warn("There are more than one ServerContextFactory implementation. pls check.");
+        logger.warn(DataNodeMiscMessages.MULTIPLE_SERVER_CONTEXT_FACTORY);
       }
-      logger.info("Will set ServerContextFactory from {} ", loader.getClass().getName());
+      logger.info(DataNodeMiscMessages.SET_SERVER_CONTEXT_FACTORY, loader.getClass().getName());
       factory = loader;
     }
   }
@@ -62,16 +64,17 @@ public class BaseServerContextHandler {
     getSessionManager().registerSession(new ClientSession(socket));
     if (factory != null) {
       context = factory.newServerContext(out, socket);
-      if (!context.whenConnect()) {
+      if (context != null && !context.whenConnect()) {
         return context;
       }
     }
-    return context;
+    return context == null ? NoopServerContext.INSTANCE : context;
   }
 
   public void deleteContext(ServerContext context, TProtocol in, TProtocol out) {
     getSessionManager().removeCurrSession();
-    if (context != null && factory != null) {
+
+    if (context instanceof JudgableServerContext) {
       ((JudgableServerContext) context).whenDisconnect();
     }
   }

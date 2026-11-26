@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementNode;
@@ -36,7 +38,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisit
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
@@ -254,7 +255,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       } else if (measurementPathList.size() > 1) {
         throw new SemanticException(
             String.format(
-                "The source paths [%s] of view [%s] are multiple.",
+                DataNodeQueryMessages.THE_SOURCE_PATHS_S_OF_VIEW_S_ARE_MULTIPLE,
                 fullPath.getFullPath(),
                 schemaComputation
                     .getDevicePath()
@@ -569,8 +570,14 @@ public class ClusterSchemaTree implements ISchemaTree {
     private Map<Integer, Template> templateMap = new HashMap<>();
     private boolean isFirstBatch = true;
 
+    private long measurementCount = 0;
+
     public boolean isFirstBatch() {
       return isFirstBatch;
+    }
+
+    public long getMeasurementCount() {
+      return measurementCount;
     }
 
     public void deserializeFromBatch(InputStream inputStream) throws IOException {
@@ -580,6 +587,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         if (nodeType == SCHEMA_MEASUREMENT_NODE) {
           SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);
           stack.push(measurementNode);
+          measurementCount++;
           if (measurementNode.isLogicalView()) {
             hasLogicalView = true;
           }
@@ -637,6 +645,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       // templateMap is set to the returned schema tree, so we should create a new one
       templateMap = new HashMap<>();
       isFirstBatch = true;
+      measurementCount = 0;
     }
   }
 
@@ -662,7 +671,8 @@ public class ClusterSchemaTree implements ISchemaTree {
         return database;
       }
     }
-    throw new SemanticException("No matched database. Please check the path " + deviceID);
+    throw new SemanticException(
+        DataNodeQueryMessages.NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH + deviceID);
   }
 
   @Override

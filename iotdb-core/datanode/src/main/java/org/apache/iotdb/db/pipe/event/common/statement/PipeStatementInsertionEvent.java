@@ -26,10 +26,12 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -59,7 +61,9 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
       PipeTaskMeta pipeTaskMeta,
       TreePattern treePattern,
       TablePattern tablePattern,
+      String userId,
       String userName,
+      String cliHostname,
       boolean skipIfNoPrivileges,
       Boolean isTableModelEvent,
       String databaseNameFromDataRegion,
@@ -70,7 +74,9 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE,
@@ -81,7 +87,14 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
     this.statement = statement;
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeStatementInsertionEvent.class.getSimpleName(),
+                0,
+                PipeMemoryBlockCategory.EVENT,
+                this,
+                null);
+    this.allocatedMemoryBlock.setAssigner(this);
   }
 
   @Override
@@ -130,12 +143,14 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
       PipeTaskMeta pipeTaskMeta,
       TreePattern treePattern,
       TablePattern tablePattern,
+      String userId,
       String userName,
+      String cliHostname,
       boolean skipIfNoPrivileges,
       long startTime,
       long endTime) {
     throw new UnsupportedOperationException(
-        "shallowCopySelfAndBindPipeTaskMetaForProgressReport() is not supported!");
+        DataNodePipeMessages.SHALLOWCOPYSELFANDBINDPIPETASKMETAFORPROGRESSREPORT_IS_NOT_SUPPORTED);
   }
 
   @Override
@@ -146,13 +161,13 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     throw new UnsupportedOperationException(
-        "mayEventTimeOverlappedWithTimeRange() is not supported!");
+        DataNodePipeMessages.MAYEVENTTIMEOVERLAPPEDWITHTIMERANGE_IS_NOT_SUPPORTED);
   }
 
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
     throw new UnsupportedOperationException(
-        "mayEventPathsOverlappedWithPattern() is not supported!");
+        DataNodePipeMessages.MAYEVENTPATHSOVERLAPPEDWITHPATTERN_IS_NOT_SUPPORTED);
   }
 
   public void markAsNeedToReport() {
@@ -161,6 +176,11 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
 
   public Statement getStatement() {
     return statement;
+  }
+
+  @Override
+  public PipeTabletMemoryBlock getEventMemoryBlock() {
+    return allocatedMemoryBlock;
   }
 
   /////////////////////////// Object ///////////////////////////

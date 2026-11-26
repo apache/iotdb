@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.udf.api.type;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 import org.apache.tsfile.utils.Binary;
 
 import java.time.LocalDate;
@@ -56,7 +58,11 @@ public enum Type {
   BLOB((byte) 10),
 
   /* STRING */
-  STRING((byte) 11);
+  STRING((byte) 11),
+
+  /* OBJECT */
+  OBJECT((byte) 12);
+
   private final byte dataType;
 
   Type(byte type) {
@@ -73,7 +79,7 @@ public enum Type {
         return t;
       }
     }
-    throw new IllegalArgumentException("Unsupported type: " + type);
+    throw new IllegalArgumentException(UdfApiMessages.UNSUPPORTED_TYPE + type);
   }
 
   public boolean checkObjectType(Object o) {
@@ -92,6 +98,7 @@ public enum Type {
       case DATE:
         return o instanceof LocalDate;
       case BLOB:
+      case OBJECT:
         return o instanceof Binary;
       case STRING:
       case TEXT:
@@ -102,7 +109,8 @@ public enum Type {
   }
 
   public static List<Type> allTypes() {
-    return Arrays.asList(BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, DATE, BLOB, STRING);
+    return Arrays.asList(
+        BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, DATE, BLOB, STRING, OBJECT);
   }
 
   public static List<Type> numericTypes() {

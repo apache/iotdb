@@ -21,10 +21,11 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -1112,7 +1113,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
 
   @Test
   public void testCompactionWithDeletionsDuringCompactions()
-      throws MetadataException, IOException, DataRegionException {
+      throws MetadataException, IOException, DataRegionException, WriteProcessRejectException {
     // create source seq files
     List<TsFileResource> sourceResources = new ArrayList<>();
     List<List<Long>> chunkPagePointsNum = new ArrayList<>();

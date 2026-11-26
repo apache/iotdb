@@ -19,21 +19,67 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
 public class SchemaUtils {
+
+  private static final Map<TSDataType, Class> dataTypeColumnClassMap;
+  private static final Map<TSDataType, Class> dataTypeColumnStatisticsClassMap;
+  private static final Set<TSDataType> canNotUseStatisticAfterAlterClassSet =
+      ImmutableSet.of(TSDataType.STRING, TSDataType.TEXT, TSDataType.BLOB);
+  public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
+
+  static {
+    dataTypeColumnClassMap = new HashMap<>();
+    dataTypeColumnClassMap.put(TSDataType.INT32, IntColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.DATE, IntColumn.class);
+
+    dataTypeColumnClassMap.put(TSDataType.INT64, LongColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.TIMESTAMP, LongColumn.class);
+
+    dataTypeColumnClassMap.put(TSDataType.STRING, BinaryColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.BLOB, BinaryColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.TEXT, BinaryColumn.class);
+
+    dataTypeColumnStatisticsClassMap = new HashMap<>();
+    dataTypeColumnStatisticsClassMap.put(TSDataType.INT32, IntColumn.class);
+    dataTypeColumnStatisticsClassMap.put(TSDataType.DATE, IntColumn.class);
+
+    dataTypeColumnStatisticsClassMap.put(TSDataType.INT64, LongColumn.class);
+    dataTypeColumnStatisticsClassMap.put(TSDataType.TIMESTAMP, LongColumn.class);
+  }
 
   private SchemaUtils() {}
 
@@ -88,14 +134,28 @@ public class SchemaUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         return TSDataType.DOUBLE;
-        // Partial aggregation names
+      // Partial aggregation names
       case SqlConstant.STDDEV + "_partial":
       case SqlConstant.STDDEV_POP + "_partial":
       case SqlConstant.STDDEV_SAMP + "_partial":
       case SqlConstant.VARIANCE + "_partial":
       case SqlConstant.VAR_POP + "_partial":
       case SqlConstant.VAR_SAMP + "_partial":
+      case SqlConstant.CORR + "_partial":
+      case SqlConstant.COVAR_POP + "_partial":
+      case SqlConstant.COVAR_SAMP + "_partial":
+      case SqlConstant.REGR_SLOPE + "_partial":
+      case SqlConstant.REGR_INTERCEPT + "_partial":
+      case SqlConstant.SKEWNESS + "_partial":
+      case SqlConstant.KURTOSIS + "_partial":
       case SqlConstant.MAX_BY + "_partial":
       case SqlConstant.MIN_BY + "_partial":
         return TSDataType.TEXT;
@@ -163,6 +223,20 @@ public class SchemaUtils {
         return SqlConstant.VAR_POP;
       case VAR_SAMP:
         return SqlConstant.VAR_SAMP;
+      case CORR:
+        return SqlConstant.CORR;
+      case COVAR_POP:
+        return SqlConstant.COVAR_POP;
+      case COVAR_SAMP:
+        return SqlConstant.COVAR_SAMP;
+      case REGR_SLOPE:
+        return SqlConstant.REGR_SLOPE;
+      case REGR_INTERCEPT:
+        return SqlConstant.REGR_INTERCEPT;
+      case SKEWNESS:
+        return SqlConstant.SKEWNESS;
+      case KURTOSIS:
+        return SqlConstant.KURTOSIS;
       default:
         return null;
     }
@@ -198,11 +272,19 @@ public class SchemaUtils {
       case VAR_SAMP:
       case MAX_BY:
       case MIN_BY:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
+      case SKEWNESS:
+      case KURTOSIS:
       case UDAF:
         return true;
       default:
         throw new IllegalArgumentException(
-            String.format("Invalid Aggregation function: %s", aggregationFunction));
+            String.format(
+                DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION_FMT, aggregationFunction));
     }
   }
 
@@ -210,7 +292,11 @@ public class SchemaUtils {
       throws MetadataException {
     if (!encoding.isSupported(dataType)) {
       throw new MetadataException(
-          String.format("encoding %s does not support %s", encoding, dataType), true);
+          String.format(
+              DataNodeMiscMessages.MISC_EXCEPTION_ENCODING_S_DOES_NOT_SUPPORT_S_58301155,
+              encoding,
+              dataType),
+          true);
     }
   }
 
@@ -232,6 +318,20 @@ public class SchemaUtils {
         return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_POP));
       case VAR_SAMP:
         return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_SAMP));
+      case CORR:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.CORR));
+      case COVAR_POP:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.COVAR_POP));
+      case COVAR_SAMP:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.COVAR_SAMP));
+      case REGR_SLOPE:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.REGR_SLOPE));
+      case REGR_INTERCEPT:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.REGR_INTERCEPT));
+      case SKEWNESS:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.SKEWNESS));
+      case KURTOSIS:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.KURTOSIS));
       case MAX_BY:
         return Collections.singletonList(addPartialSuffix(SqlConstant.MAX_BY));
       case MIN_BY:
@@ -253,7 +353,119 @@ public class SchemaUtils {
         return Collections.emptyList();
       default:
         throw new IllegalArgumentException(
-            String.format("Invalid Aggregation function: %s", aggregationType));
+            String.format(DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION_FMT, aggregationType));
     }
+  }
+
+  public static boolean isUsingSameColumn(TSDataType originalDataType, TSDataType dataType) {
+    if (originalDataType == dataType) {
+      return true;
+    }
+    if (!dataTypeColumnClassMap.containsKey(originalDataType)
+        || !dataTypeColumnClassMap.containsKey(dataType)) {
+      return false;
+    }
+    return Objects.equals(
+        dataTypeColumnClassMap.get(originalDataType), dataTypeColumnClassMap.get(dataType));
+  }
+
+  public static void changeTimeseriesMetadataModified(
+      @Nullable TimeseriesMetadata timeseriesMetadata, TSDataType targetDataType) {
+    if (timeseriesMetadata == null) {
+      return;
+    }
+    if (!SchemaUtils.canUseStatisticsAfterAlter(
+        timeseriesMetadata.getTsDataType(), targetDataType)) {
+      timeseriesMetadata.setDataTypeModifiedAndCannotUseStatistics(true);
+    }
+  }
+
+  public static void changeAlignedTimeseriesMetadataModified(
+      @Nullable AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
+      List<TSDataType> targetDataTypeList) {
+    if (alignedTimeSeriesMetadata == null) {
+      return;
+    }
+    for (int i = 0; i < alignedTimeSeriesMetadata.getValueTimeseriesMetadataList().size(); i++) {
+      TimeseriesMetadata valueTimeseriesMetadata =
+          alignedTimeSeriesMetadata.getValueTimeseriesMetadataList().get(i);
+      if (valueTimeseriesMetadata != null
+          && !SchemaUtils.canUseStatisticsAfterAlter(
+              valueTimeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))) {
+        alignedTimeSeriesMetadata.setDataTypeModifiedAndCannotUseStatistics(true);
+        return;
+      }
+    }
+  }
+
+  public static boolean canUseStatisticsAfterAlter(
+      TSDataType originalDataType, TSDataType targetDataType) {
+    if (isUsingSameStatistics(originalDataType, targetDataType)) {
+      return true;
+    }
+    return canUseStatisticsAfterAlter(targetDataType);
+  }
+
+  private static boolean isUsingSameStatistics(TSDataType originalDataType, TSDataType dataType) {
+    if (originalDataType == dataType) {
+      return true;
+    }
+    if (!dataTypeColumnStatisticsClassMap.containsKey(originalDataType)
+        || !dataTypeColumnStatisticsClassMap.containsKey(dataType)) {
+      return false;
+    }
+    return Objects.equals(
+        dataTypeColumnStatisticsClassMap.get(originalDataType),
+        dataTypeColumnStatisticsClassMap.get(dataType));
+  }
+
+  private static boolean canUseStatisticsAfterAlter(TSDataType dataType) {
+    return !canNotUseStatisticAfterAlterClassSet.contains(dataType);
+  }
+
+  public static void rewriteAlignedChunkMetadataStatistics(
+      AbstractAlignedChunkMetadata alignedChunkMetadata, int index, TSDataType targetDataType) {
+    IChunkMetadata valueChunkMetadata = alignedChunkMetadata.getValueChunkMetadataList().get(index);
+    if (valueChunkMetadata != null
+        && targetDataType.isCompatible(valueChunkMetadata.getDataType())) {
+      Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
+      statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
+
+      ChunkMetadata newChunkMetadata = new ChunkMetadata((ChunkMetadata) valueChunkMetadata);
+      newChunkMetadata.setTsDataType(targetDataType);
+      newChunkMetadata.setStatistics(statistics);
+      alignedChunkMetadata.getValueChunkMetadataList().set(index, newChunkMetadata);
+    } else {
+      alignedChunkMetadata.getValueChunkMetadataList().set(index, null);
+    }
+  }
+
+  public static ChunkMetadata rewriteChunkMetadata(
+      ChunkMetadata origin, TSDataType targetDataType) {
+    if (origin != null && targetDataType.isCompatible(origin.getDataType())) {
+      Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
+      statistics = getNewStatistics(origin, targetDataType, statistics);
+
+      ChunkMetadata target = new ChunkMetadata(origin);
+      target.setTsDataType(targetDataType);
+      target.setStatistics(statistics);
+      return target;
+    } else {
+      return null;
+    }
+  }
+
+  public static TSEncoding getDataTypeCompatibleEncoding(TSDataType dataType, TSEncoding encoding) {
+    if (!encoding.isSupported(dataType)) {
+      return EncodingInferenceUtils.getDefaultEncoding(dataType);
+    }
+    return encoding;
+  }
+
+  public static Statistics<?> getNewStatistics(
+      IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
+    return TypeServices.StorageEngine.CHUNK_METADATA_STATISTICS_CONVERTER_SERVICE
+        .call(Type.fromTsDataType(chunkMetadata.getDataType()))
+        .convert(chunkMetadata, targetDataType, statistics);
   }
 }

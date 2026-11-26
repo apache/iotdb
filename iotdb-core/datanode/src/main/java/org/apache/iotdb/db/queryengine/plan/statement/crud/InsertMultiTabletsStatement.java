@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
@@ -60,6 +62,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     this.insertTabletStatementList = insertTabletStatementList;
   }
 
+  @Override
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
@@ -96,6 +99,16 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
+  public Stream<PartialPath> getPathsStream() {
+    return insertTabletStatementList.stream().flatMap(InsertTabletStatement::getPathsStream);
+  }
+
+  @Override
+  public Stream<PartialPath> getDevicePathsStream() {
+    return insertTabletStatementList.stream().map(InsertTabletStatement::getDevicePath);
+  }
+
+  @Override
   public ISchemaValidation getSchemaValidation() {
     throw new UnsupportedOperationException();
   }
@@ -108,12 +121,45 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
-  public void updateAfterSchemaValidation(MPPQueryContext context) {
-    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
-      if (!this.hasFailedMeasurements() && insertTabletStatement.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertTabletStatement.failedMeasurementIndex2Info;
-      }
-    }
+  public boolean hasFailedMeasurements() {
+    return insertTabletStatementList != null
+        && insertTabletStatementList.stream().anyMatch(InsertBaseStatement::hasFailedMeasurements);
+  }
+
+  @Override
+  public int getFailedMeasurementNumber() {
+    return insertTabletStatementList == null
+        ? 0
+        : insertTabletStatementList.stream()
+            .mapToInt(InsertBaseStatement::getFailedMeasurementNumber)
+            .sum();
+  }
+
+  @Override
+  public List<String> getFailedMeasurements() {
+    return insertTabletStatementList == null
+        ? Collections.emptyList()
+        : insertTabletStatementList.stream()
+            .flatMap(statement -> statement.getFailedMeasurements().stream())
+            .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<Exception> getFailedExceptions() {
+    return insertTabletStatementList == null
+        ? Collections.emptyList()
+        : insertTabletStatementList.stream()
+            .flatMap(statement -> statement.getFailedExceptions().stream())
+            .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<String> getFailedMessages() {
+    return insertTabletStatementList == null
+        ? Collections.emptyList()
+        : insertTabletStatementList.stream()
+            .flatMap(statement -> statement.getFailedMessages().stream())
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -161,6 +207,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     insertTabletStatementList.forEach(InsertTabletStatement::toLowerCase);
   }
 
+  @TableModel
+  @Override
+  public void toLowerCaseForDevicePath() {
+    insertTabletStatementList.forEach(InsertTabletStatement::toLowerCaseForDevicePath);
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
@@ -182,7 +234,8 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
           && database.isPresent()
           && !Objects.equals(childDatabaseName.get(), database.get())) {
         throw new SemanticException(
-            "Cannot insert into multiple databases within one statement, please split them manually");
+            DataNodeQueryMessages
+                .CANNOT_INSERT_INTO_MULTIPLE_DATABASES_WITHIN_ONE_STATEMENT_PLEASE_SPLIT_THEM_MANUALLY);
       }
 
       database = childDatabaseName;
@@ -198,5 +251,16 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertTabletStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
+  }
+
+  @Override
+  public String toString() {
+    final int size = CommonDescriptor.getInstance().getConfig().getPathLogMaxSize();
+    return "InsertMultiTabletsStatement{"
+        + "insertTabletStatementList="
+        + (Objects.nonNull(insertTabletStatementList) && insertTabletStatementList.size() > size
+            ? "(Partial) " + insertTabletStatementList.subList(0, size)
+            : insertTabletStatementList)
+        + '}';
   }
 }

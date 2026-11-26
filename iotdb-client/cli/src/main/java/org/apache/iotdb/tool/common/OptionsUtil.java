@@ -24,12 +24,6 @@ import org.apache.commons.cli.Options;
 
 public class OptionsUtil extends Constants {
 
-  private static boolean isImport = true;
-
-  public static void setIsImport(boolean isImport) {
-    OptionsUtil.isImport = isImport;
-  }
-
   public static Options createHelpOptions() {
     final Options options = new Options();
     Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg().desc(HELP_DESC).build();
@@ -103,10 +97,74 @@ public class OptionsUtil extends Constants {
             .build();
     options.addOption(opPassword);
 
+    Option opUseSSL =
+        Option.builder(USE_SSL_ARGS)
+            .longOpt(USE_SSL_NAME)
+            .optionalArg(true)
+            .argName(USE_SSL_NAME)
+            .hasArg()
+            .desc(USE_SSL_DESC)
+            .build();
+    options.addOption(opUseSSL);
+
+    Option opTrustStore =
+        Option.builder(TRUST_STORE_ARGS)
+            .longOpt(TRUST_STORE_NAME)
+            .optionalArg(true)
+            .argName(TRUST_STORE_NAME)
+            .hasArg()
+            .desc(TRUST_STORE_DESC)
+            .build();
+    options.addOption(opTrustStore);
+
+    Option opTrustStorePwd =
+        Option.builder(TRUST_STORE_PWD_ARGS)
+            .longOpt(TRUST_STORE_PWD_NAME)
+            .optionalArg(true)
+            .argName(TRUST_STORE_PWD_NAME)
+            .hasArg()
+            .desc(TRUST_STORE_PWD_DESC)
+            .build();
+    options.addOption(opTrustStorePwd);
+
+    Option opKeyStore =
+        Option.builder(KEY_STORE_ARGS)
+            .longOpt(KEY_STORE_NAME)
+            .optionalArg(true)
+            .argName(KEY_STORE_NAME)
+            .hasArg()
+            .desc(KEY_STORE_DESC)
+            .build();
+    options.addOption(opKeyStore);
+
+    Option opKeyStorePwd =
+        Option.builder(KEY_STORE_PWD_ARGS)
+            .longOpt(KEY_STORE_PWD_NAME)
+            .optionalArg(true)
+            .argName(KEY_STORE_PWD_NAME)
+            .hasArg()
+            .desc(KEY_STORE_PWD_DESC)
+            .build();
+    options.addOption(opKeyStorePwd);
+
+    Option opSslProtocol =
+        Option.builder(SSL_PROTOCOL_ARGS)
+            .longOpt(SSL_PROTOCOL_NAME)
+            .optionalArg(true)
+            .argName(SSL_PROTOCOL_NAME)
+            .hasArg()
+            .desc(SSL_PROTOCOL_DESC)
+            .build();
+    options.addOption(opSslProtocol);
+
     return options;
   }
 
   public static Options createImportCommonOptions() {
+    return createDataCommonOptions(true);
+  }
+
+  private static Options createDataCommonOptions(boolean importing) {
     Options options = new Options();
 
     Option opFileType =
@@ -115,7 +173,7 @@ public class OptionsUtil extends Constants {
             .argName(FILE_TYPE_ARGS_NAME)
             .required()
             .hasArg()
-            .desc(isImport ? FILE_TYPE_DESC_IMPORT : FILE_TYPE_DESC_EXPORT)
+            .desc(importing ? FILE_TYPE_DESC_IMPORT : FILE_TYPE_DESC_EXPORT)
             .build();
     options.addOption(opFileType);
 
@@ -127,23 +185,11 @@ public class OptionsUtil extends Constants {
   }
 
   public static Options createTableImportCommonOptions() {
-    Options options = createImportCommonOptions();
-
-    Option opDatabase =
-        Option.builder(DB_ARGS)
-            .longOpt(DB_NAME)
-            .argName(DB_ARGS)
-            .hasArg()
-            .required()
-            .desc(DB_DESC)
-            .build();
-    options.addOption(opDatabase);
-
-    return options;
+    return createImportCommonOptions();
   }
 
   public static Options createExportCommonOptions() {
-    Options options = createImportCommonOptions();
+    Options options = createDataCommonOptions(false);
 
     Option opFile =
         Option.builder(TARGET_DIR_ARGS)
@@ -191,11 +237,45 @@ public class OptionsUtil extends Constants {
             .build();
     options.addOption(opRpcMaxFrameSize);
 
+    options.addOption(
+        Option.builder(EXPORT_DATA_LOG_ARGS)
+            .longOpt(EXPORT_DATA_LOG_NAME)
+            .hasArg()
+            .argName(EXPORT_DATA_LOG_NAME)
+            .desc(EXPORT_DATA_LOG_DESC)
+            .build());
+    options.addOption(
+        Option.builder(START_TIME_ARGS)
+            .longOpt(START_TIME_ARGS)
+            .hasArg()
+            .desc(EXPORT_START_TIME_DESC)
+            .build());
+    options.addOption(
+        Option.builder(END_TIME_ARGS)
+            .longOpt(END_TIME_ARGS)
+            .hasArg()
+            .desc(EXPORT_END_TIME_DESC)
+            .build());
+    options.addOption(
+        Option.builder(TIME_ZONE_ARGS)
+            .longOpt(TIME_ZONE_NAME)
+            .hasArg()
+            .desc(TIME_ZONE_DESC)
+            .build());
+
     return options;
   }
 
   public static Options createTreeExportCommonOptions() {
-    return createExportCommonOptions();
+    Options options = createExportCommonOptions();
+    options.addOption(
+        Option.builder(MEASUREMENT_FILE_ARGS)
+            .longOpt(MEASUREMENT_FILE_NAME)
+            .hasArg()
+            .argName(MEASUREMENT_FILE_NAME)
+            .desc(MEASUREMENT_FILE_DESC)
+            .build());
+    return options;
   }
 
   public static Options createTableExportCommonOptions() {
@@ -207,7 +287,7 @@ public class OptionsUtil extends Constants {
             .argName(DB_ARGS)
             .hasArg()
             .required()
-            .desc(DB_DESC)
+            .desc(EXPORT_DB_DESC)
             .build();
     options.addOption(opDatabase);
 
@@ -216,27 +296,9 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(TABLE_DESC_EXPORT)
+            .desc(EXPORT_TABLE_DESC)
             .build();
     options.addOption(opTable);
-
-    Option opStartTime =
-        Option.builder(START_TIME_ARGS)
-            .longOpt(START_TIME_ARGS)
-            .argName(START_TIME_ARGS)
-            .hasArg()
-            .desc(START_TIME_DESC)
-            .build();
-    options.addOption(opStartTime);
-
-    Option opEndTime =
-        Option.builder(END_TIME_ARGS)
-            .longOpt(END_TIME_ARGS)
-            .argName(END_TIME_ARGS)
-            .hasArg()
-            .desc(END_TIME_DESC)
-            .build();
-    options.addOption(opEndTime);
 
     return options;
   }
@@ -249,7 +311,7 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(TABLE_DESC_EXPORT)
+            .desc(EXPORT_TABLE_DESC)
             .build();
     options.addOption(opTable);
 
@@ -267,7 +329,7 @@ public class OptionsUtil extends Constants {
             .longOpt(LINES_PER_FILE_NAME)
             .argName(LINES_PER_FILE_NAME)
             .hasArg()
-            .desc(LINES_PER_FILE_DESC)
+            .desc(EXPORT_LINES_PER_FILE_DESC)
             .build();
     options.addOption(opLinesPerFile);
 
@@ -300,7 +362,7 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(TABLE_DESC_EXPORT)
+            .desc(EXPORT_TABLE_DESC)
             .build();
     options.addOption(opTable);
 
@@ -342,7 +404,7 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(TABLE_DESC_EXPORT)
+            .desc(EXPORT_TABLE_DESC)
             .build();
     options.addOption(opTable);
 
@@ -360,7 +422,7 @@ public class OptionsUtil extends Constants {
             .longOpt(LINES_PER_FILE_NAME)
             .argName(LINES_PER_FILE_NAME)
             .hasArg()
-            .desc(LINES_PER_FILE_DESC)
+            .desc(EXPORT_LINES_PER_FILE_DESC)
             .build();
     options.addOption(opLinesPerFile);
 
@@ -402,7 +464,7 @@ public class OptionsUtil extends Constants {
             .longOpt(LINES_PER_FILE_NAME)
             .argName(LINES_PER_FILE_NAME)
             .hasArg()
-            .desc(LINES_PER_FILE_DESC)
+            .desc(EXPORT_LINES_PER_FILE_DESC)
             .build();
     options.addOption(opLinesPerFile);
 
@@ -444,7 +506,7 @@ public class OptionsUtil extends Constants {
             .longOpt(LINES_PER_FILE_NAME)
             .argName(LINES_PER_FILE_NAME)
             .hasArg()
-            .desc(LINES_PER_FILE_DESC)
+            .desc(EXPORT_LINES_PER_FILE_DESC)
             .build();
     options.addOption(opLinesPerFile);
 
@@ -707,6 +769,16 @@ public class OptionsUtil extends Constants {
   public static Options createTableImportCsvOptions() {
     Options options = createTableImportCommonOptions();
 
+    Option opDatabase =
+        Option.builder(DB_ARGS)
+            .longOpt(DB_NAME)
+            .argName(DB_ARGS)
+            .required()
+            .hasArg()
+            .desc(DB_DESC)
+            .build();
+    options.addOption(opDatabase);
+
     Option opTable =
         Option.builder(TABLE_ARGS)
             .longOpt(TABLE_ARGS)
@@ -806,6 +878,10 @@ public class OptionsUtil extends Constants {
   public static Options createTableImportSqlOptions() {
     Options options = createTableImportCommonOptions();
 
+    Option opDatabase =
+        Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
+    options.addOption(opDatabase);
+
     Option opFile =
         Option.builder(FILE_ARGS)
             .required()
@@ -864,6 +940,16 @@ public class OptionsUtil extends Constants {
 
   public static Options createTableImportTsFileOptions() {
     Options options = createTableImportCommonOptions();
+
+    Option opDatabase =
+        Option.builder(DB_ARGS)
+            .longOpt(DB_NAME)
+            .argName(DB_ARGS)
+            .required()
+            .hasArg()
+            .desc(DB_DESC)
+            .build();
+    options.addOption(opDatabase);
 
     Option opFile =
         Option.builder(FILE_ARGS)

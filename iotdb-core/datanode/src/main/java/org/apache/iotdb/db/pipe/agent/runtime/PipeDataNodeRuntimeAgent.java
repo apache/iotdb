@@ -22,30 +22,43 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileDirPathResolver;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -68,12 +81,17 @@ public class PipeDataNodeRuntimeAgent implements IService {
   private final PipePeriodicalPhantomReferenceCleaner pipePeriodicalPhantomReferenceCleaner =
       new PipePeriodicalPhantomReferenceCleaner();
 
+  private PipeMemoryBlock pipeLogReducerMemoryBlock;
+
   //////////////////////////// System Service Interface ////////////////////////////
 
   public synchronized void preparePipeResources(
       final ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+    // Resolve the pipe hardlink directories before any pipe task starts.
+    PipeTsFileDirPathResolver.getInstance();
+
     // Clean sender (connector) hardlink file dir and snapshot dir
-    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean();
+    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean(this::registerPeriodicalJob);
 
     // Clean receiver file dir
     PipeDataNodeAgent.receiver().cleanPipeReceiverDirs();
@@ -81,16 +99,48 @@ public class PipeDataNodeRuntimeAgent implements IService {
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleProgressIndexAssigner.start();
 
-    IoTDBTreePattern.setDevicePathGetter(CompactionPathUtils::getPath);
-    IoTDBTreePattern.setMeasurementPathGetter(CompactionPathUtils::getPath);
+    IoTDBTreePattern.setDevicePathGetter(PipeDataNodeRuntimeAgent::getPath);
+    IoTDBTreePattern.setMeasurementPathGetter(PipeDataNodeRuntimeAgent::getPath);
+    initLoggerPeriodicalLogReducer();
+  }
+
+  private void initLoggerPeriodicalLogReducer() {
+    if (pipeLogReducerMemoryBlock == null) {
+      pipeLogReducerMemoryBlock =
+          PipeDataNodeResourceManager.memory()
+              .tryAllocate(
+                  PipeDataNodeRuntimeAgent.class.getSimpleName() + "#logger",
+                  PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes(),
+                  PipeMemoryBlockCategory.CACHE,
+                  PipeDataNodeRuntimeAgent.class.getSimpleName());
+    }
+
+    LoggerPeriodicalLogReducer.setMemoryResizeFunction(
+        targetSizeInBytes -> {
+          PipeDataNodeResourceManager.memory()
+              .resize(pipeLogReducerMemoryBlock, Math.max(0, targetSizeInBytes), false);
+          return pipeLogReducerMemoryBlock.getMemoryUsageInBytes();
+        });
+    PipeLogger.setLogger(LoggerPeriodicalLogReducer::log);
+  }
+
+  private static MeasurementPath getPath(final IDeviceID device, final String measurement)
+      throws IllegalPathException {
+    return getPath(device).concatAsMeasurementPath(measurement);
+  }
+
+  private static PartialPath getPath(final IDeviceID device) throws IllegalPathException {
+    final String deviceId = device.toString();
+    return deviceId.contains(TsFileConstant.BACK_QUOTE_STRING)
+        ? DataNodeDevicePathCache.getInstance().getPartialPath(deviceId)
+        : new PartialPath(deviceId.split(TsFileConstant.PATH_SEPARATER_NO_REGEX));
   }
 
   @Override
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
-    PipeAgentLauncher.launchPipeTaskAgent();
-
     pipePeriodicalJobExecutor.start();
+    pipePeriodicalJobExecutor.runDirectly(PipeAgentLauncher::launchPipeTaskAgent);
 
     if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
       pipePeriodicalPhantomReferenceCleaner.start();
@@ -129,12 +179,29 @@ public class PipeDataNodeRuntimeAgent implements IService {
     return regionListenerManager.listener(schemaRegionId);
   }
 
+  public SchemaRegionListeningQueue schemaListenerIfPresent(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.listenerIfPresent(schemaRegionId);
+  }
+
+  public SchemaRegionListeningQueue schemaListenerForSnapshotLoad(
+      SchemaRegionId schemaRegionId, File snapshotDir) {
+    return regionListenerManager.listenerForSnapshotLoad(schemaRegionId, snapshotDir);
+  }
+
   public int increaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
     return regionListenerManager.increaseAndGetReferenceCount(schemaRegionId);
   }
 
   public int decreaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
     return regionListenerManager.decreaseAndGetReferenceCount(schemaRegionId);
+  }
+
+  public void cleanupSchemaListenerIfUnused(SchemaRegionId schemaRegionId) {
+    regionListenerManager.cleanupListenerIfUnused(schemaRegionId);
+  }
+
+  public void clearSchemaRegionState(SchemaRegionId schemaRegionId) {
+    regionListenerManager.clearSchemaRegionState(schemaRegionId);
   }
 
   public void notifySchemaLeaderReady(SchemaRegionId schemaRegionId) {
@@ -155,9 +222,9 @@ public class PipeDataNodeRuntimeAgent implements IService {
     simpleProgressIndexAssigner.assignIfNeeded(insertNode);
   }
 
-  ////////////////////// PipeConsensus ProgressIndex Assigner //////////////////////
+  ////////////////////// IoTConsensusV2 ProgressIndex Assigner //////////////////////
 
-  public ProgressIndex assignProgressIndexForPipeConsensus() {
+  public ProgressIndex assignProgressIndexForIoTConsensusV2() {
     return new RecoverProgressIndex(
         DATA_NODE_ID, simpleProgressIndexAssigner.getSimpleProgressIndex());
   }
@@ -192,25 +259,41 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {
     if (event.getPipeTaskMeta() != null) {
-      report(event.getPipeTaskMeta(), pipeRuntimeException);
+      report(
+          event.getPipeName(),
+          event.getCreationTime(),
+          event.getPipeTaskMeta(),
+          pipeRuntimeException);
     } else {
-      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
+      PipeLogger.log(
+          LOGGER::warn,
+          pipeRuntimeException,
+          DataNodePipeMessages.ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A);
     }
   }
 
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
-    LOGGER.warn(
-        "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}",
-        pipeTaskMeta,
-        pipeRuntimeException.getMessage(),
-        pipeRuntimeException);
+    report(null, Long.MIN_VALUE, pipeTaskMeta, pipeRuntimeException);
+  }
 
-    pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+  private void report(
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeRuntimeException pipeRuntimeException) {
+    PipeLogger.log(
+        LOGGER::warn,
+        pipeRuntimeException,
+        DataNodePipeMessages.REPORT_PIPERUNTIMEEXCEPTION_TO_LOCAL_PIPETASKMETA_EXCEPTION_MESSAGE,
+        pipeTaskMeta,
+        pipeRuntimeException.getMessage());
 
     // Quick stop all pipes locally if critical exception occurs,
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeDataNodeAgent.task().stopAllPipesWithCriticalException();
+      PipeDataNodeAgent.task()
+          .stopAllPipesWithCriticalExceptionAndTrackException(
+              pipeName, creationTime, pipeTaskMeta, pipeRuntimeException);
     }
   }
 

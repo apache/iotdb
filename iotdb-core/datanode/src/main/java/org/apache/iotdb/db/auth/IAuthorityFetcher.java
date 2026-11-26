@@ -29,13 +29,15 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface IAuthorityFetcher {
 
-  TSStatus checkUser(String username, String password);
+  TSStatus checkUser(
+      final String username, final String password, final boolean useEncryptedPassword);
 
   boolean checkRole(String username, String roleName);
 
@@ -45,7 +47,10 @@ public interface IAuthorityFetcher {
   TSStatus checkUserPathPrivilegesGrantOpt(
       String username, List<? extends PartialPath> allPath, PrivilegeType permission);
 
-  TSStatus checkUserSysPrivileges(String username, PrivilegeType permission);
+  TSStatus checkUserSysPrivilege(String username, PrivilegeType permissions);
+
+  Collection<PrivilegeType> checkUserSysPrivileges(
+      String username, Collection<PrivilegeType> permissions);
 
   TSStatus checkUserDBPrivileges(String username, String database, PrivilegeType permission);
 
@@ -79,7 +84,5 @@ public interface IAuthorityFetcher {
 
   IAuthorCache getAuthorCache();
 
-  void refreshToken();
-
-  User getUser(String username);
+  User getUser(String username, final boolean force);
 }

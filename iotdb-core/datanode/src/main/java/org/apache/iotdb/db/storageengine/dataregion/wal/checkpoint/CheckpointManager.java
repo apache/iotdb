@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
@@ -81,7 +83,7 @@ public class CheckpointManager implements AutoCloseable {
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
-      logger.info("create folder {} for wal buffer-{}.", logDirectory, identifier);
+      logger.info(StorageEngineMessages.CREATE_FOLDER_FOR_WAL_BUFFER, logDirectory, identifier);
     }
     currentLogWriter =
         new CheckpointWriter(
@@ -90,7 +92,7 @@ public class CheckpointManager implements AutoCloseable {
     logHeader();
   }
 
-  public List<MemTableInfo> activeOrPinnedMemTables() {
+  public List<MemTableInfo> activeMemTables() {
     infoLock.lock();
     try {
       return new ArrayList<>(memTableId2Info.values());
@@ -108,7 +110,8 @@ public class CheckpointManager implements AutoCloseable {
       try {
         currentLogWriter.write(tmpBuffer);
       } catch (IOException e) {
-        logger.error("Fail to log max memTable id: {}", maxMemTableId, e);
+        logger.error(StorageEngineMessages.FAIL_TO_LOG_MAX_MEMTABLE_ID, maxMemTableId, e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       }
       // log global memTables' info
       makeGlobalInfoCP();
@@ -123,7 +126,7 @@ public class CheckpointManager implements AutoCloseable {
    */
   private void makeGlobalInfoCP() {
     long start = System.nanoTime();
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = activeMemTables();
     memTableInfos.removeIf(MemTableInfo::isFlushed);
     Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, memTableInfos);
     logByCachedByteBuffer(checkpoint);
@@ -198,7 +201,8 @@ public class CheckpointManager implements AutoCloseable {
     try {
       currentLogWriter.write(cachedByteBuffer);
     } catch (IOException e) {
-      logger.error("Fail to make checkpoint: {}", checkpoint, e);
+      logger.error(StorageEngineMessages.FAIL_TO_MAKE_CHECKPOINT, checkpoint, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     } finally {
       cachedByteBuffer.clear();
     }
@@ -213,10 +217,12 @@ public class CheckpointManager implements AutoCloseable {
         currentLogWriter.force();
       } catch (IOException e) {
         logger.error(
-            "Fail to fsync wal node-{}'s checkpoint writer, change system mode to error.",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_FSYNC_WAL_NODE_S_CHECKPOINT_WRITER_CHANGE_SYSTEM_6E1EE226,
             identifier,
             e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
       }
 
       try {
@@ -232,10 +238,12 @@ public class CheckpointManager implements AutoCloseable {
         }
       } catch (IOException e) {
         logger.error(
-            "Fail to roll wal node-{}'s checkpoint writer, change system mode to error.",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_ROLL_WAL_NODE_S_CHECKPOINT_WRITER_CHANGE_SYSTEM_791DDAB7,
             identifier,
             e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
       }
     } finally {
       infoLock.unlock();
@@ -259,7 +267,7 @@ public class CheckpointManager implements AutoCloseable {
 
   public MemTableInfo getOldestMemTableInfo() {
     // find oldest memTable
-    return activeOrPinnedMemTables().stream()
+    return activeMemTables().stream()
         .min(Comparator.comparingLong(MemTableInfo::getMemTableId))
         .orElse(null);
   }
@@ -270,7 +278,7 @@ public class CheckpointManager implements AutoCloseable {
    * @return Return {@link Long#MIN_VALUE} if no file is valid
    */
   public long getFirstValidWALVersionId() {
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = activeMemTables();
     long firstValidVersionId = memTableInfos.isEmpty() ? Long.MIN_VALUE : Long.MAX_VALUE;
     for (MemTableInfo memTableInfo : memTableInfos) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
@@ -293,7 +301,7 @@ public class CheckpointManager implements AutoCloseable {
 
   /** Get total cost of active memTables. */
   public long getTotalCostOfActiveMemTables() {
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = activeMemTables();
     long totalCost = 0;
     for (MemTableInfo memTableInfo : memTableInfos) {
       // flushed memTables are not active
@@ -310,7 +318,7 @@ public class CheckpointManager implements AutoCloseable {
     final MemTableInfo info = memTableId2Info.get(memtableId);
     if (info == null) {
       if (memtableId != Long.MIN_VALUE && memtableId != TsFileProcessor.MEMTABLE_NOT_EXIST) {
-        logger.warn("memtableId {} not found in MemTableId2Info", memtableId);
+        logger.warn(StorageEngineMessages.MEMTABLE_ID_NOT_FOUND_IN_MAP, memtableId);
       }
       return -1;
     }
@@ -325,7 +333,8 @@ public class CheckpointManager implements AutoCloseable {
         try {
           currentLogWriter.close();
         } catch (IOException e) {
-          logger.error("Fail to close wal node-{}'s checkpoint writer.", identifier, e);
+          logger.error(StorageEngineMessages.FAIL_TO_CLOSE_WAL_CHECKPOINT_WRITER, identifier, e);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         }
       }
     } finally {

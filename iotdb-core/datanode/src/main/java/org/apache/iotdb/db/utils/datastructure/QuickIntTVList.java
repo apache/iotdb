@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.tsfile.enums.TSDataType;
+
 public class QuickIntTVList extends IntTVList {
   private final QuickSort policy;
 
@@ -25,12 +27,18 @@ public class QuickIntTVList extends IntTVList {
     policy = new QuickSort(this);
   }
 
+  QuickIntTVList(TSDataType dataType) {
+    policy = new QuickSort(this);
+    this.dataType = dataType;
+  }
+
   @Override
-  public synchronized void sort() {
+  public synchronized int sort() {
     if (!sorted) {
       policy.qsort(0, rowCount - 1);
     }
     sorted = true;
     seqRowCount = rowCount;
+    return rowCount;
   }
 }

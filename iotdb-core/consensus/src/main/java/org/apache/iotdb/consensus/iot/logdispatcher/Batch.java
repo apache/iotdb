@@ -39,6 +39,7 @@ public class Batch {
   private long memorySize;
   // indicates whether this batch has been successfully synchronized to another node
   private boolean synced;
+  private boolean containsUserData;
 
   public Batch(IoTConsensusConfig config) {
     this.config = config;
@@ -55,11 +56,16 @@ public class Batch {
   }
 
   public void addTLogEntry(TLogEntry entry) {
+    addTLogEntry(entry, false);
+  }
+
+  public void addTLogEntry(TLogEntry entry, boolean containsUserData) {
     logEntries.add(entry);
     if (entry.fromWAL) {
       logEntriesNumFromWAL++;
     }
     memorySize += entry.getMemorySize();
+    this.containsUserData |= containsUserData;
   }
 
   public boolean canAccumulate() {
@@ -105,6 +111,10 @@ public class Batch {
 
   public long getLogEntriesNumFromWAL() {
     return logEntriesNumFromWAL;
+  }
+
+  public boolean containsUserData() {
+    return containsUserData;
   }
 
   @Override

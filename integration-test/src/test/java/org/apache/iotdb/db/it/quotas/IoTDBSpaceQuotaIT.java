@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.it.quotas;
 
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -40,6 +41,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -60,6 +62,7 @@ public class IoTDBSpaceQuotaIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Reject a fourth timeseries after quota usage reaches the configured limit of three.
   @Test
   public void timeseriesNumExceedTest() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
@@ -71,15 +74,16 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
+      validateQuotaUsageEventually(adminStmt, "root.sg0", "timeSeriesNum", "3");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
-    } catch (SQLException | InterruptedException throwables) {
+    } catch (SQLException throwables) {
       Assert.assertEquals(
           "1700: The number of timeseries has reached the upper limit", throwables.getMessage());
     }
   }
 
+  // Reject a fourth device after quota usage reaches the configured limit of three.
   @Test
   public void devicesNumExceedTest() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
@@ -91,15 +95,16 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
+      validateQuotaUsageEventually(adminStmt, "root.sg0", "deviceNum", "3");
       adminStmt.execute(
           "create timeseries root.sg0.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-    } catch (SQLException | InterruptedException throwables) {
+    } catch (SQLException throwables) {
       Assert.assertEquals(
           "1700: The number of devices has reached the upper limit", throwables.getMessage());
     }
   }
 
+  // Raise timeseries and device limits only after each original limit is fully used.
   @Test
   public void setSpaceQuotaTest0() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
@@ -111,11 +116,11 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
+      validateQuotaUsageEventually(adminStmt, "root.sg0", "timeSeriesNum", "3");
       adminStmt.execute("set space quota timeseries=4 on root.sg0");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
-    } catch (SQLException | InterruptedException throwables) {
+    } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
 
@@ -128,11 +133,11 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg1.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg1.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
+      validateQuotaUsageEventually(adminStmt, "root.sg1", "deviceNum", "3");
       adminStmt.execute("set space quota devices=4 on root.sg1");
       adminStmt.execute(
           "create timeseries root.sg1.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-    } catch (SQLException | InterruptedException throwables) {
+    } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
 
@@ -145,6 +150,7 @@ public class IoTDBSpaceQuotaIT {
     }
   }
 
+  // Reject reducing timeseries and device limits below their synchronized usage of three.
   @Test
   public void setSpaceQuotaTest1() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
@@ -156,9 +162,9 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
+      validateQuotaUsageEventually(adminStmt, "root.sg0", "timeSeriesNum", "3");
       adminStmt.execute("set space quota timeseries=2 on root.sg0");
-    } catch (SQLException | InterruptedException throwables) {
+    } catch (SQLException throwables) {
       Assert.assertEquals(
           "301: The used quota exceeds the preset quota. Please set a larger value.",
           throwables.getMessage());
@@ -173,9 +179,9 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg1.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg1.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
+      validateQuotaUsageEventually(adminStmt, "root.sg1", "deviceNum", "3");
       adminStmt.execute("set space quota devices=2 on root.sg1");
-    } catch (SQLException | InterruptedException throwables) {
+    } catch (SQLException throwables) {
       Assert.assertEquals(
           "301: The used quota exceeds the preset quota. Please set a larger value.",
           throwables.getMessage());
@@ -297,8 +303,6 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt02.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt02.status1 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(2000);
-      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.sg0;");
       String ans1 =
           "root.sg0,diskSize,0.09765625G,0.0G"
               + ",\n"
@@ -306,8 +310,8 @@ public class IoTDBSpaceQuotaIT {
               + ",\n"
               + "root.sg0,timeSeriesNum,5,3"
               + ",\n";
-      validateResultSet(resultSet1, ans1);
-    } catch (InterruptedException | SQLException e) {
+      validateResultSetEventually(adminStmt, "show space quota root.sg0;", ans1);
+    } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
   }
@@ -509,6 +513,53 @@ public class IoTDBSpaceQuotaIT {
     }
   }
 
+  private void validateResultSetEventually(Statement statement, String sql, String ans) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        // Cluster queries compare results from all DataNodes. Space quota usage is refreshed
+        // asynchronously by heartbeats, so the comparison can observe different snapshots while
+        // the usage converges. Awaitility does not retry runtime exceptions by default.
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
+        .untilAsserted(
+            () -> {
+              try {
+                validateResultSet(statement.executeQuery(sql), ans);
+              } catch (SQLException e) {
+                Assert.fail(e.getMessage());
+              }
+            });
+  }
+
+  private void validateQuotaUsageEventually(
+      Statement statement, String database, String quotaType, String usage) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
+        .untilAsserted(
+            () -> {
+              try (ResultSet resultSet =
+                  statement.executeQuery("show space quota " + database + ";")) {
+                while (resultSet.next()) {
+                  if (database.equals(resultSet.getString(1))
+                      && quotaType.equals(resultSet.getString(2))
+                      && "3".equals(resultSet.getString(3))
+                      && usage.equals(resultSet.getString(4))) {
+                    return;
+                  }
+                }
+                Assert.fail("Expected quota usage " + database + "," + quotaType + ",3," + usage);
+              } catch (SQLException e) {
+                throw new AssertionError(e);
+              }
+            });
+  }
+
   private void validateResultSet(ResultSet set, String ans) throws SQLException {
     try {
       StringBuilder builder = new StringBuilder();
@@ -521,12 +572,12 @@ public class IoTDBSpaceQuotaIT {
         builder.append("\n");
       }
       String result = builder.toString();
-      assertEquals(ans.length(), result.length());
+      assertEquals(result, ans.length(), result.length());
       List<String> ansLines = Arrays.asList(ans.split("\n"));
       List<String> resultLines = Arrays.asList(result.split("\n"));
-      assertEquals(ansLines.size(), resultLines.size());
+      assertEquals(result, ansLines.size(), resultLines.size());
       for (String resultLine : resultLines) {
-        assertTrue(ansLines.contains(resultLine));
+        assertTrue(result, ansLines.contains(resultLine));
       }
     } finally {
       set.close();

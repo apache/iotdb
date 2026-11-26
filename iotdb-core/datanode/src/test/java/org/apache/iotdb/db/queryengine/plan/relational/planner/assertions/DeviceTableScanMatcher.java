@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class DeviceTableScanMatcher extends TableScanMatcher {
 
@@ -36,6 +37,15 @@ public class DeviceTableScanMatcher extends TableScanMatcher {
       List<String> outputSymbols,
       Set<String> assignmentsKeys) {
     super(expectedTableName, hasTableLayout, outputSymbols, assignmentsKeys);
+  }
+
+  public DeviceTableScanMatcher(
+      String expectedTableName,
+      Optional<Boolean> hasTableLayout,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys,
+      Expression pushDownPredicate) {
+    super(expectedTableName, hasTableLayout, outputSymbols, assignmentsKeys, pushDownPredicate);
   }
 
   @Override
@@ -51,6 +61,7 @@ public class DeviceTableScanMatcher extends TableScanMatcher {
         .add("hasTableLayout", hasTableLayout.orElse(null))
         .add("outputSymbols", outputSymbols)
         .add("assignmentsKeys", assignmentsKeys)
+        .add("pushDownPredicate", pushDownPredicate)
         .toString();
   }
 }

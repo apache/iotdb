@@ -25,6 +25,8 @@ import java.util.List;
 public interface DataNodeConfig {
   DataNodeConfig setMetricReporterType(List<String> metricReporterTypes);
 
+  DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate);
+
   DataNodeConfig setMetricPrometheusReporterUsername(String username);
 
   DataNodeConfig setMetricPrometheusReporterPassword(String password);
@@ -33,14 +35,26 @@ public interface DataNodeConfig {
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
 
+  DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize);
+
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
+
+  DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad);
+
+  DataNodeConfig setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes);
+
+  DataNodeConfig setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds);
 
   DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval);
 
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
 
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
+
+  DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize);
 
   DataNodeConfig setLoadLastCacheStrategy(String strategyName);
 
@@ -51,4 +65,14 @@ public interface DataNodeConfig {
   DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs);
 
   DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
+
+  DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow);
+
+  DataNodeConfig setDnDataDirs(String dnDataDirs);
+
+  DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
+
+  DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes);
+
+  DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes);
 }

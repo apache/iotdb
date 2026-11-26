@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.base.Joiner;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
@@ -46,10 +47,13 @@ public class OperatorNotFoundException extends IoTDBException {
         formatErrorMessage(operatorType, argumentTypes, Optional.empty()),
         cause,
         OPERATOR_NOT_FOUND.getStatusCode());
-    this.operatorType = requireNonNull(operatorType, "operatorType is null");
+    this.operatorType =
+        requireNonNull(operatorType, DataNodeQueryMessages.EXCEPTION_OPERATORTYPE_IS_NULL_CEA6E3D3);
     this.returnType = null;
     this.argumentTypes =
-        ImmutableList.copyOf(requireNonNull(argumentTypes, "argumentTypes is null"));
+        ImmutableList.copyOf(
+            requireNonNull(
+                argumentTypes, DataNodeQueryMessages.EXCEPTION_ARGUMENTTYPES_IS_NULL_1E377BFD));
   }
 
   public OperatorNotFoundException(
@@ -61,10 +65,14 @@ public class OperatorNotFoundException extends IoTDBException {
         formatErrorMessage(operatorType, argumentTypes, Optional.of(returnType)),
         cause,
         OPERATOR_NOT_FOUND.getStatusCode());
-    this.operatorType = requireNonNull(operatorType, "operatorType is null");
+    this.operatorType =
+        requireNonNull(operatorType, DataNodeQueryMessages.EXCEPTION_OPERATORTYPE_IS_NULL_CEA6E3D3);
     this.argumentTypes =
-        ImmutableList.copyOf(requireNonNull(argumentTypes, "argumentTypes is null"));
-    this.returnType = requireNonNull(returnType, "returnType is null");
+        ImmutableList.copyOf(
+            requireNonNull(
+                argumentTypes, DataNodeQueryMessages.EXCEPTION_ARGUMENTTYPES_IS_NULL_1E377BFD));
+    this.returnType =
+        requireNonNull(returnType, DataNodeQueryMessages.EXCEPTION_RETURNTYPE_IS_NULL_07C7C6A5);
   }
 
   private static String formatErrorMessage(
@@ -81,24 +89,32 @@ public class OperatorNotFoundException extends IoTDBException {
       case LESS_THAN:
       case LESS_THAN_OR_EQUAL:
         return format(
-            "Cannot apply operator: %s %s %s",
-            argumentTypes.get(0), operatorType.getOperator(), argumentTypes.get(1));
+            DataNodeQueryMessages.MESSAGE_CANNOT_APPLY_OPERATOR_ARG_ARG_ARG_CCA56AA9,
+            argumentTypes.get(0),
+            operatorType.getOperator(),
+            argumentTypes.get(1));
       case NEGATION:
-        return format("Cannot negate %s", argumentTypes.get(0));
+        return format(
+            DataNodeQueryMessages.MESSAGE_CANNOT_NEGATE_ARG_FCF0C22A, argumentTypes.get(0));
       case IS_DISTINCT_FROM:
         return format(
-            "Cannot check if %s is distinct from %s", argumentTypes.get(0), argumentTypes.get(1));
+            DataNodeQueryMessages.MESSAGE_CANNOT_CHECK_IF_ARG_IS_DISTINCT_FROM_ARG_E9974593,
+            argumentTypes.get(0),
+            argumentTypes.get(1));
       case CAST:
         return format(
-            "Cannot cast %s to %s",
+            DataNodeQueryMessages.CANNOT_CAST_TO,
             argumentTypes.get(0),
-            returnType.orElseThrow(() -> new NoSuchElementException("No value present")));
+            returnType.orElseThrow(
+                () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)));
       case SUBSCRIPT:
         return format(
-            "Cannot use %s for subscript of %s", argumentTypes.get(1), argumentTypes.get(0));
+            DataNodeQueryMessages.EXCEPTION_CANNOT_USE_ARG_FOR_SUBSCRIPT_OF_ARG_15A147BC,
+            argumentTypes.get(1),
+            argumentTypes.get(0));
       default:
         return format(
-            "Operator '%s'%s cannot be applied to %s",
+            DataNodeQueryMessages.MESSAGE_OPERATOR_ARG_ARG_CANNOT_BE_APPLIED_TO_ARG_FE836F93,
             operatorType.getOperator(),
             returnType.map(value -> ":" + value).orElse(""),
             Joiner.on(", ").join(argumentTypes));

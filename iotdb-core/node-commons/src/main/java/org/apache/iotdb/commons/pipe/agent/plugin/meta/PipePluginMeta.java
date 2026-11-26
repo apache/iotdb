@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.meta;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -26,6 +28,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Locale;
 import java.util.Objects;
 
 public class PipePluginMeta {
@@ -38,29 +41,44 @@ public class PipePluginMeta {
   private final boolean isBuiltin;
   private final String jarName;
   private final String jarMD5;
+  private final String pluginLoadingExceptionMessage;
 
   public PipePluginMeta(
       String pluginName, String className, boolean isBuiltin, String jarName, String jarMD5) {
-    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this(pluginName, className, isBuiltin, jarName, jarMD5, null);
+  }
+
+  public PipePluginMeta(
+      String pluginName,
+      String className,
+      boolean isBuiltin,
+      String jarName,
+      String jarMD5,
+      String pluginLoadingExceptionMessage) {
+    this.pluginName =
+        FileUtils.validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = isBuiltin;
     if (isBuiltin) {
-      this.jarName = jarName;
+      this.jarName = jarName == null ? null : FileUtils.validatePathSegment(jarName);
       this.jarMD5 = jarMD5;
     } else {
-      this.jarName = Objects.requireNonNull(jarName);
+      this.jarName = FileUtils.validatePathSegment(Objects.requireNonNull(jarName));
       this.jarMD5 = Objects.requireNonNull(jarMD5);
     }
+    this.pluginLoadingExceptionMessage = pluginLoadingExceptionMessage;
   }
 
   public PipePluginMeta(String pluginName, String className) {
-    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.pluginName =
+        FileUtils.validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = true;
     this.jarName = null;
     this.jarMD5 = null;
+    this.pluginLoadingExceptionMessage = null;
   }
 
   public boolean isBuiltin() {
@@ -83,10 +101,21 @@ public class PipePluginMeta {
     return jarMD5;
   }
 
+  public String getPluginLoadingExceptionMessage() {
+    return pluginLoadingExceptionMessage;
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
     serialize(outputStream);
+    return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+  }
+
+  public ByteBuffer serializeForShowPipePlugin() throws IOException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    serializeForShowPipePlugin(outputStream);
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
@@ -98,18 +127,34 @@ public class PipePluginMeta {
     ReadWriteIOUtils.write(jarMD5, outputStream);
   }
 
+  public void serializeForShowPipePlugin(DataOutputStream outputStream) throws IOException {
+    serialize(outputStream);
+    ReadWriteIOUtils.write(pluginLoadingExceptionMessage, outputStream);
+  }
+
   public static PipePluginMeta deserialize(ByteBuffer byteBuffer) {
     final String pluginName = ReadWriteIOUtils.readString(byteBuffer);
     final String className = ReadWriteIOUtils.readString(byteBuffer);
     final boolean isBuiltin = ReadWriteIOUtils.readBool(byteBuffer);
     final String jarName = ReadWriteIOUtils.readString(byteBuffer);
     final String jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipePluginMeta(pluginName, className, isBuiltin, jarName, jarMD5);
+    return new PipePluginMeta(pluginName, className, isBuiltin, jarName, jarMD5, null);
   }
 
   public static PipePluginMeta deserialize(InputStream inputStream) throws IOException {
     return deserialize(
         ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
+  }
+
+  public static PipePluginMeta deserializeForShowPipePlugin(ByteBuffer byteBuffer) {
+    final String pluginName = ReadWriteIOUtils.readString(byteBuffer);
+    final String className = ReadWriteIOUtils.readString(byteBuffer);
+    final boolean isBuiltin = ReadWriteIOUtils.readBool(byteBuffer);
+    final String jarName = ReadWriteIOUtils.readString(byteBuffer);
+    final String jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
+    final String pluginLoadingExceptionMessage = ReadWriteIOUtils.readString(byteBuffer);
+    return new PipePluginMeta(
+        pluginName, className, isBuiltin, jarName, jarMD5, pluginLoadingExceptionMessage);
   }
 
   @Override
@@ -149,6 +194,9 @@ public class PipePluginMeta {
         + '\''
         + ", jarMD5='"
         + jarMD5
+        + '\''
+        + ", pluginLoadingExceptionMessage='"
+        + pluginLoadingExceptionMessage
         + '\''
         + '}';
   }

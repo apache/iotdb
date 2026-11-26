@@ -26,6 +26,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.After;
 import org.junit.Before;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+
 public abstract class AbstractPipeTableModelDualManualIT {
 
   protected BaseEnv senderEnv;
@@ -37,30 +40,41 @@ public abstract class AbstractPipeTableModelDualManualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
     setupConfig();
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    executeOnBothEnvs(BaseEnv::initClusterEnvironment);
+  }
+
+  protected void executeOnBothEnvs(final Consumer<BaseEnv> action) {
+    // The environments own separate node directories and ports. Await both tasks even if one
+    // fails, so teardown cannot race with a cluster that is still starting or restarting.
+    CompletableFuture.allOf(
+            CompletableFuture.runAsync(() -> action.accept(senderEnv)),
+            CompletableFuture.runAsync(() -> action.accept(receiverEnv)))
+        .join();
   }
 
   protected void setupConfig() {
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -71,6 +85,10 @@ public abstract class AbstractPipeTableModelDualManualIT {
 
   @After
   public final void tearDown() {
+    cleanEnvironment();
+  }
+
+  protected void cleanEnvironment() {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
   }

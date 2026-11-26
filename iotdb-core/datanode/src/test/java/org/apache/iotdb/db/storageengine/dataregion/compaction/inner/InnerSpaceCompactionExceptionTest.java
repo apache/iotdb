@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
@@ -55,6 +58,19 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompactionTest {
 
   ICompactionPerformer performer = new FastCompactionPerformer(false);
+
+  @Test
+  public void testDiskSpaceInsufficient() throws IOException {
+    JVMCommonUtils.setDiskSpaceWarningThreshold(1);
+    try {
+      InnerSpaceCompactionTask task =
+          new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
+      Assert.assertFalse(task.start());
+    } finally {
+      JVMCommonUtils.setDiskSpaceWarningThreshold(
+          CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+    }
+  }
 
   /**
    * Test when all source files exist, and target file is not complete. System should delete target

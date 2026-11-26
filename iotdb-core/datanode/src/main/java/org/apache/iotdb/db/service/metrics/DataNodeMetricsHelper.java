@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -28,6 +29,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.ProcessMetrics;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
@@ -35,7 +37,6 @@ import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetric
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -69,6 +70,7 @@ public class DataNodeMetricsHelper {
     metricService.addMetricSet(CompactionMetrics.getInstance());
     metricService.addMetricSet(new ProcessMetrics());
     metricService.addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
+    metricService.addMetricSet(DataNodeExceptionMetrics.getInstance());
     metricService.addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
     metricService.addMetricSet(ClientManagerMetrics.getInstance());
     metricService.addMetricSet(RPCServiceThriftHandlerMetrics.getInstance());
@@ -85,6 +87,7 @@ public class DataNodeMetricsHelper {
     metricService.addMetricSet(DataExchangeCountMetricSet.getInstance());
     metricService.addMetricSet(DriverSchedulerMetricSet.getInstance());
     metricService.addMetricSet(QueryRelatedResourceMetricSet.getInstance());
+    metricService.addMetricSet(CacheMetrics.getInstance());
 
     // bind performance overview related metrics
     metricService.addMetricSet(PerformanceOverviewMetrics.getInstance());
@@ -108,6 +111,9 @@ public class DataNodeMetricsHelper {
 
     // bind memory related metrics
     metricService.addMetricSet(GlobalMemoryMetrics.getInstance());
+
+    // bind metadata lease (ConfigNode heartbeat freshness) metrics
+    metricService.addMetricSet(new MetadataLeaseMetrics());
   }
 
   private static void initSystemMetrics(MetricService metricService) {

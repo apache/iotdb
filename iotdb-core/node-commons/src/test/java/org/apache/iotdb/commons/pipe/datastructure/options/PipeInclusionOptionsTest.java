@@ -1,0 +1,89 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.pipe.datastructure.options;
+
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+public class PipeInclusionOptionsTest {
+
+  @Test
+  public void testDeleteAliasIncludesOrdinaryTimeseriesDrop() throws Exception {
+    final Set<PartialPath> options = PipeInclusionOptions.parseOptions("delete");
+
+    Assert.assertTrue(options.contains(new PartialPath("schema.timeseries.ordinary.drop")));
+    Assert.assertFalse(options.contains(new PartialPath("schema.timeseries.ordinary.delete")));
+    Assert.assertTrue(PipeInclusionOptions.optionsAreAllLegal("delete", true, false));
+  }
+
+  @Test
+  public void testSchemaDeleteAliasIncludesOrdinaryTimeseriesDrop() throws Exception {
+    final Set<PartialPath> options = PipeInclusionOptions.parseOptions("schema.delete");
+
+    Assert.assertTrue(options.contains(new PartialPath("schema.timeseries.ordinary.drop")));
+    Assert.assertFalse(options.contains(new PartialPath("schema.timeseries.ordinary.delete")));
+    Assert.assertTrue(PipeInclusionOptions.optionsAreAllLegal("schema.delete", true, false));
+  }
+
+  @Test
+  public void testDataInsertionOptionSelection() throws Exception {
+    Assert.assertTrue(
+        PipeInclusionOptions.areOptionsEnabled(
+            new PipeParameters(Collections.emptyMap()), "data.insert"));
+    Assert.assertTrue(
+        PipeInclusionOptions.areOptionsEnabled(
+            new PipeParameters(Map.of("extractor.inclusion", "data.insert,data.delete")),
+            "data.insert"));
+    Assert.assertFalse(
+        PipeInclusionOptions.areOptionsEnabled(
+            new PipeParameters(Map.of("extractor.inclusion", "schema")), "data.insert"));
+    Assert.assertFalse(
+        PipeInclusionOptions.areOptionsEnabled(
+            new PipeParameters(Map.of("extractor.inclusion", "data.delete")), "data.insert"));
+
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put("extractor.inclusion", "all");
+    attributes.put("extractor.inclusion.exclusion", "data.insert");
+    Assert.assertFalse(
+        PipeInclusionOptions.areOptionsEnabled(new PipeParameters(attributes), "data.insert"));
+  }
+
+  @Test
+  public void testDataInsertionUsesListeningPrefixSemantics() throws Exception {
+    Assert.assertTrue(PipeInclusionOptions.optionsAreAllLegal("data.insert.extra", true, true));
+    Assert.assertTrue(
+        PipeInclusionOptions.isDataInsertionIncluded(
+            new PipeParameters(Map.of("source.inclusion", "data.insert.extra"))));
+    Assert.assertFalse(
+        PipeInclusionOptions.isDataInsertionIncluded(
+            new PipeParameters(
+                Map.of(
+                    "source.inclusion", "all",
+                    "source.inclusion.exclusion", "data.insert.extra"))));
+  }
+}

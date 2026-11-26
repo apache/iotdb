@@ -97,9 +97,17 @@ public class PathPatternTree {
     appendBranchWithoutPrune(root, pathNodes, 0);
   }
 
+  public void appendPathPattern(final PartialPath pathPattern) {
+    appendPathPattern(pathPattern, false);
+  }
+
   /** Add a pathPattern (may contain wildcards) to pathPatternList. */
-  public void appendPathPattern(PartialPath pathPattern) {
+  public void appendPathPattern(final PartialPath pathPattern, final boolean isReload) {
     if (useWildcard) {
+      // This does not guarantee multi-thread safety
+      if (isReload && (pathPatternList == null || pathPatternList.isEmpty())) {
+        pathPatternList = getAllPathPatterns();
+      }
       boolean isExist = false;
       for (PartialPath path : pathPatternList) {
         if (path.include(pathPattern)) {
@@ -112,6 +120,9 @@ public class PathPatternTree {
         // remove duplicate path in pathPatternList
         pathPatternList.removeIf(pathPattern::include);
         pathPatternList.add(pathPattern);
+      }
+      if (isReload) {
+        root.clear();
       }
     } else {
       appendBranchWithoutPrune(root, pathPattern.getNodes(), 0);

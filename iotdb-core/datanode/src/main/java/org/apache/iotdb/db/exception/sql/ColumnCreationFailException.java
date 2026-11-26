@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.exception.sql;
 
-public class ColumnCreationFailException extends SemanticException {
+public class ColumnCreationFailException
+    extends org.apache.iotdb.commons.exception.SemanticException {
 
   public ColumnCreationFailException(String message) {
     super(message);

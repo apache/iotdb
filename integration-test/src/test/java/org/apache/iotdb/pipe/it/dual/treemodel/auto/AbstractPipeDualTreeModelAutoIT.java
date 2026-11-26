@@ -32,7 +32,9 @@ import org.junit.Before;
 
 import java.io.File;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public abstract class AbstractPipeDualTreeModelAutoIT {
 
@@ -45,31 +47,42 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
     setupConfig();
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    executeOnBothEnvs(BaseEnv::initClusterEnvironment);
+  }
+
+  protected void executeOnBothEnvs(final Consumer<BaseEnv> action) {
+    // The clusters own separate node directories and ports. Wait for both tasks, including when one
+    // fails, so teardown cannot race with a cluster that is still starting or restarting.
+    CompletableFuture.allOf(
+            CompletableFuture.runAsync(() -> action.accept(senderEnv)),
+            CompletableFuture.runAsync(() -> action.accept(receiverEnv)))
+        .join();
   }
 
   protected void setupConfig() {
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
-    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:0");
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
-    receiverEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:9:1");
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+    receiverEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:9:0");
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -78,20 +91,23 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
 
   @After
   public final void tearDown() {
+    cleanEnvironment();
+  }
+
+  protected void cleanEnvironment() {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
   }
 
   protected static void awaitUntilFlush(BaseEnv env) {
+    // Flush and check for persisted files immediately; an already-ready snapshot needs no delay.
     Awaitility.await()
         .atMost(1, TimeUnit.MINUTES)
-        .pollDelay(2, TimeUnit.SECONDS)
-        .pollInterval(2, TimeUnit.SECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
         .until(
             () -> {
-              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush", null)) {
-                return false;
-              }
+              TestUtils.executeNonQuery(env, "flush", null);
               return env.getDataNodeWrapperList().stream()
                   .anyMatch(
                       wrapper -> {

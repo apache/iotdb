@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
@@ -118,10 +119,11 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       // a strange case here is that sometimes the cancelResult is false but the trackTask is
       // definitely cancelled
       if (!cancelResult) {
-        logger.debug("cancel state tracking task failed. {}", trackTask.isCancelled());
+        logger.debug(
+            DataNodeQueryMessages.CANCEL_STATE_TRACKING_TASK_FAILED, trackTask.isCancelled());
       }
     } else {
-      logger.debug("trackTask not started");
+      logger.debug(DataNodeQueryMessages.TRACK_TASK_NOT_STARTED);
     }
   }
 
@@ -137,7 +139,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
             if (needPrintState(
                 metrics.lastState, instanceInfo.getState(), metrics.durationToLastPrintInMS)) {
               if (logger.isDebugEnabled()) {
-                logger.debug("[PrintFIState] state is {}", instanceInfo.getState());
+                logger.debug(DataNodeQueryMessages.PRINT_FI_STATE, instanceInfo.getState());
               }
               metrics.reset(instanceInfo.getState());
             } else {
@@ -157,13 +159,13 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
             FragmentInstanceInfo instanceInfo = new FragmentInstanceInfo(NO_SUCH_INSTANCE);
             instanceInfo.setMessage(
                 String.format(
-                    "Failed to fetch state, has retried %s times",
+                    DataNodeQueryMessages.MESSAGE_FAILED_FETCH_STATE_HAS_RETRIED_ARG_TIMES_E7572C66,
                     InstanceStateMetrics.MAX_STATE_FETCH_RETRY_COUNT));
             updateQueryState(instance.getId(), instanceInfo);
           } else {
             // if not reaching max retry count, add retry count, and wait for next fetching schedule
             metrics.addRetryCount();
-            logger.warn("error happened while fetching query state", e);
+            logger.warn(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_FETCHING_QUERY_STATE, e);
           }
         }
       }
@@ -176,8 +178,10 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       stateMachine.transitionToFailed(
           new IoTDBException(
               String.format(
-                  "FragmentInstance[%s] is failed. %s, may be caused by DN restarting.",
-                  instanceId, instanceInfo.getMessage()),
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FRAGMENTINSTANCE_S_IS_FAILED_S_MAY_BE_CAUSED_BY_DN_RESTARTING_45D7D52A,
+                  instanceId,
+                  instanceInfo.getMessage()),
               TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode(),
               true));
     } else if (instanceInfo.getState().isFailed()) {
@@ -191,7 +195,9 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
         stateMachine.transitionToFailed(
             new RuntimeException(
                 String.format(
-                    "FragmentInstance[%s] is failed. %s", instanceId, instanceInfo.getMessage())));
+                    DataNodeQueryMessages.QUERY_EXCEPTION_FRAGMENTINSTANCE_S_IS_FAILED_S_566B0005,
+                    instanceId,
+                    instanceInfo.getMessage())));
       } else {
         stateMachine.transitionToFailed(instanceInfo.getFailureInfoList().get(0).toException());
       }

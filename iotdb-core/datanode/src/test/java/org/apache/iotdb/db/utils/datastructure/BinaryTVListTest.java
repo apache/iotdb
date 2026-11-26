@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.commons.lang3.ArrayUtils;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;

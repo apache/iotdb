@@ -19,18 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
+import org.apache.ratis.thirdparty.com.google.common.collect.HashMultiset;
+import org.apache.ratis.thirdparty.com.google.common.collect.Multiset;
 
 import java.util.Map;
 import java.util.function.Function;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public final class ExpressionSymbolInliner {
   public static Expression inlineSymbols(
@@ -64,7 +66,10 @@ public final class ExpressionSymbolInliner {
       }
 
       Expression expression = mapping.apply(Symbol.from(node));
-      checkArgument(expression != null, "Cannot resolve symbol %s", node.getName());
+      checkArgument(
+          expression != null,
+          DataNodeQueryMessages.EXCEPTION_CANNOT_RESOLVE_SYMBOL_ARG_79F76FA6,
+          node.getName());
       return expression;
     }
   }

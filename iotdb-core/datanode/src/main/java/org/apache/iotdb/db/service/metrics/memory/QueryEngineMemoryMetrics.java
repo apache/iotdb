@@ -43,6 +43,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
   private static final String QUERY_ENGINE_DATA_EXCHANGE = "QueryEngine-DataExchange";
   private static final String QUERY_ENGINE_TIME_INDEX = "QueryEngine-TimeIndex";
   private static final String QUERY_ENGINE_COORDINATOR = "QueryEngine-Coordinator";
+  private static final String QUERY_ENGINE_SUBSCRIPTION = "QueryEngine-Subscription";
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -200,7 +201,39 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    // TODO @spricoder: CoordinatorMemoryManager are not used
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        memoryConfig.getCoordinatorMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_COORDINATOR,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        memoryConfig.getSubscriptionMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_SUBSCRIPTION,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        memoryConfig.getSubscriptionMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_SUBSCRIPTION,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
   }
 
   @Override
@@ -221,7 +254,8 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             QUERY_ENGINE_OPERATORS,
             QUERY_ENGINE_DATA_EXCHANGE,
             QUERY_ENGINE_TIME_INDEX,
-            QUERY_ENGINE_COORDINATOR)
+            QUERY_ENGINE_COORDINATOR,
+            QUERY_ENGINE_SUBSCRIPTION)
         .forEach(
             name -> {
               metricService.remove(

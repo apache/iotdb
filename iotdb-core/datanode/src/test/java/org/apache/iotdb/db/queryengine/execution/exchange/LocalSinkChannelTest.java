@@ -28,12 +28,12 @@ import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 public class LocalSinkChannelTest {
   @Test
@@ -94,13 +94,14 @@ public class LocalSinkChannelTest {
     Assert.assertFalse(localSinkChannel.isFinished());
     Assert.assertEquals(11 * mockTsBlockSize, localSinkChannel.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(11))
-        .reserve(
+        .reserveWithPriority(
             queryId,
             FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
                 remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            false);
 
     // Receive TsBlocks.
     int numOfReceivedTsblocks = 0;
@@ -187,13 +188,14 @@ public class LocalSinkChannelTest {
     Assert.assertFalse(localSinkChannel.isFinished());
     Assert.assertEquals(11 * mockTsBlockSize, localSinkChannel.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(11))
-        .reserve(
+        .reserveWithPriority(
             queryId,
             FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
                 remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            false);
 
     // Abort.
     localSinkChannel.abort();

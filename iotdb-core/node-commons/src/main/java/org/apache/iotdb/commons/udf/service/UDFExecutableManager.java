@@ -21,10 +21,12 @@ package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +74,7 @@ public class UDFExecutableManager extends ExecutableManager {
         existedMd5 = readTextFromFileUnderTemporaryRoot(md5FilePath);
         hasComputed = true;
       } catch (IOException e) {
-        LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
+        LOGGER.warn(CommonMessages.UDF_MD5_READ_ERROR, md5FilePath);
       }
     }
     if (!hasComputed) {
@@ -88,10 +90,7 @@ public class UDFExecutableManager extends ExecutableManager {
         saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
       } catch (IOException e) {
         String errorMessage =
-            String.format(
-                "Failed to registered function %s, "
-                    + "because error occurred when trying to compute md5 of jar file for function %s ",
-                functionName, functionName);
+            String.format(PipeMessages.FAILED_TO_COMPUTE_MD5, functionName, functionName);
         LOGGER.warn(errorMessage, e);
         throw new UDFManagementException(errorMessage);
       }

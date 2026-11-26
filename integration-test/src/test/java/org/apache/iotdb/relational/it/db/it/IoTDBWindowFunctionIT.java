@@ -88,7 +88,7 @@ public class IoTDBWindowFunctionIT {
         "CLEAR ATTRIBUTE CACHE",
       };
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqlsWithoutNulls) {
@@ -106,14 +106,14 @@ public class IoTDBWindowFunctionIT {
   }
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(1024 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -130,7 +130,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,6,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER () AS cnt FROM demo ORDER BY device",
+        "SELECT *, count(value) OVER () AS cnt FROM demo ORDER BY device,time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -149,7 +149,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -173,7 +173,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:22:00.000Z,null,2.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo2 ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo2 ORDER BY device,time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -192,7 +192,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:07:00.000Z,d1,5.0,6,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (ORDER BY value) AS cnt FROM demo",
+        "SELECT *, count(value) OVER (ORDER BY value) AS cnt FROM demo ORDER BY value, device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -216,7 +216,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:20:00.000Z,null,null,8,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (ORDER BY value) AS cnt FROM demo2 ORDER BY value, device",
+        "SELECT *, count(value) OVER (ORDER BY value) AS cnt FROM demo2 ORDER BY value, device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -235,7 +235,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, rank() OVER (PARTITION BY device ORDER BY value) AS rnk FROM demo ORDER BY device",
+        "SELECT *, rank() OVER (PARTITION BY device ORDER BY value) AS rnk FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -259,7 +259,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:20:00.000Z,null,null,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value) AS cnt FROM demo2 ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value) AS cnt FROM demo2 ORDER BY device,value,time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -278,7 +278,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device ROWS 1 PRECEDING) AS cnt FROM demo ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY time ROWS 1 PRECEDING) AS cnt FROM demo ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -297,7 +297,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value GROUPS BETWEEN 1 PRECEDING AND CURRENT ROW) AS cnt FROM demo ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value GROUPS BETWEEN 1 PRECEDING AND CURRENT ROW) AS cnt FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -316,7 +316,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value RANGE BETWEEN 2 PRECEDING AND CURRENT ROW) AS cnt FROM demo ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY value RANGE BETWEEN 2 PRECEDING AND CURRENT ROW) AS cnt FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -335,7 +335,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,6.0,",
         };
     tableResultSetEqualTest(
-        "SELECT *, sum(value) OVER (PARTITION BY device ORDER BY value) AS sum FROM demo ORDER BY device",
+        "SELECT *, sum(value) OVER (PARTITION BY device ORDER BY value) AS sum FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -354,7 +354,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2.0,",
         };
     tableResultSetEqualTest(
-        "SELECT *, first_value(value) OVER (PARTITION BY device ORDER BY value ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS fv FROM demo ORDER BY device",
+        "SELECT *, first_value(value) OVER (PARTITION BY device ORDER BY value, time ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS fv FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -373,7 +373,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,4.0,",
         };
     tableResultSetEqualTest(
-        "SELECT *, last_value(value) OVER (PARTITION BY device ORDER BY value ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS lv FROM demo ORDER BY device",
+        "SELECT *, last_value(value) OVER (PARTITION BY device ORDER BY value, time ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS lv FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -392,7 +392,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,4.0,",
         };
     tableResultSetEqualTest(
-        "SELECT *, nth_value(value, 2) OVER (PARTITION BY device ORDER BY value ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS nv FROM demo ORDER BY device",
+        "SELECT *, nth_value(value, 2) OVER (PARTITION BY device ORDER BY value, time ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS nv FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -411,7 +411,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,null,",
         };
     tableResultSetEqualTest(
-        "SELECT *, lead(value) OVER (PARTITION BY device ORDER BY time) AS ld FROM demo ORDER BY device",
+        "SELECT *, lead(value) OVER (PARTITION BY device ORDER BY time) AS ld FROM demo ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -435,7 +435,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2.0,",
         };
     tableResultSetEqualTest(
-        "SELECT *, lag(value) OVER (PARTITION BY device ORDER BY time) AS lg FROM demo ORDER BY device",
+        "SELECT *, lag(value) OVER (PARTITION BY device ORDER BY time) AS lg FROM demo ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -459,7 +459,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, rank() OVER (PARTITION BY device ORDER BY value) AS rk FROM demo ORDER BY device",
+        "SELECT *, rank() OVER (PARTITION BY device ORDER BY value) AS rk FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -478,7 +478,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, dense_rank() OVER (PARTITION BY device ORDER BY value) AS rk FROM demo ORDER BY device",
+        "SELECT *, dense_rank() OVER (PARTITION BY device ORDER BY value) AS rk FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -497,7 +497,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, row_number() OVER (PARTITION BY device ORDER BY value) AS rn FROM demo ORDER BY device",
+        "SELECT *, row_number() OVER (PARTITION BY device ORDER BY value, time) AS rn FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -516,7 +516,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,1.0,",
         };
     tableResultSetEqualTest(
-        "SELECT *, percent_rank() OVER (PARTITION BY device ORDER BY value) AS pr FROM demo ORDER BY device",
+        "SELECT *, percent_rank() OVER (PARTITION BY device ORDER BY value) AS pr FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -535,7 +535,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,1.0,",
         };
     tableResultSetEqualTest(
-        "SELECT *, cume_dist() OVER (PARTITION BY device ORDER BY value) AS cd FROM demo ORDER BY device",
+        "SELECT *, cume_dist() OVER (PARTITION BY device ORDER BY value) AS cd FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -554,7 +554,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, ntile(2) OVER (PARTITION BY device ORDER BY value) AS nt FROM demo ORDER BY device",
+        "SELECT *, ntile(2) OVER (PARTITION BY device ORDER BY value, time) AS nt FROM demo ORDER BY device, value, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -635,7 +635,7 @@ public class IoTDBWindowFunctionIT {
             + "        DATA => (SELECT time, flow FROM demo3 WHERE device = 'd0'),\n"
             + "        COL => 'flow',\n"
             + "        DELTA => 0.0)\n"
-            + "    GROUP BY flow",
+            + "    GROUP BY flow ORDER BY flow",
         expectedHeader,
         retArray,
         DATABASE_NAME);

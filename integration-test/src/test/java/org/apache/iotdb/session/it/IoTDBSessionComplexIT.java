@@ -38,7 +38,10 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -66,15 +69,38 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBSessionComplexIT {
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
-    createUser("test", "test123123456");
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    createUser("test", "IoTDB!Test2024");
   }
 
   @After
   public void tearDown() throws Exception {
+    // Keep the shared cluster isolated by removing data and users created by this test method.
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      // Restore the dynamic setting changed by insertNotAutoCreateSchemaTest for the next method.
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_auto_create_schema'='true'");
+      for (String database : Arrays.asList("root.sg1", "root.sg2", "root.sg3")) {
+        boolean exists;
+        try (SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES " + database)) {
+          exists = dataSet.hasNext();
+        }
+        if (exists) {
+          session.deleteDatabase(database);
+        }
+      }
+    }
+    executeNonQuery("DROP USER test");
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -162,6 +188,7 @@ public class IoTDBSessionComplexIT {
     sessionDataSet.closeOperationHandle();
   }
 
+  // Object inserts require all data/schema/system grants before the ordinary user can write.
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertByObjectTest() {
@@ -182,7 +209,7 @@ public class IoTDBSessionComplexIT {
 
       // auth test
       try (ISession authSession =
-          EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
+          EnvFactory.getEnv().getSessionConnection("test", "IoTDB!Test2024")) {
         grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
         grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
         try {
@@ -211,13 +238,12 @@ public class IoTDBSessionComplexIT {
           authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
         } catch (Exception e) {
           if (!e.getMessage()
-              .contains(
-                  "803: No permissions for this operation, please add privilege MANAGE_DATABASE")) {
+              .contains("803: No permissions for this operation, please add privilege SYSTEM")) {
             fail(e.getMessage());
           }
         }
 
-        grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
+        grantUserSystemPrivileges("test", PrivilegeType.SYSTEM);
         try {
           authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
         } catch (Exception e) {
@@ -230,7 +256,7 @@ public class IoTDBSessionComplexIT {
       revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
       revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s3");
       revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
-      revokeUserSeriesPrivilege("test", PrivilegeType.MANAGE_DATABASE, "root.**");
+      revokeUserSeriesPrivilege("test", PrivilegeType.SYSTEM, "root.**");
 
       for (long time = 0; time < 100; time++) {
         session.insertRecord(deviceId, time, measurements, types, 1L, 2L, 3L);
@@ -551,9 +577,61 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertNotAutoCreateSchemaTest() {
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_auto_create_schema'='false'");
+      session.createDatabase("root.sg1");
+      session.createDatabase("root.sg2");
+      session.createDatabase("root.sg3");
+
+      try {
+        insertTablet(session, "root.sg1.d1");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                && e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      }
+
+      try {
+        insertRecords(session, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                    && e.getMessage().contains("Path [root.sg1.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      }
+
+      try {
+        insertMultiTablets(session, Arrays.asList("root.sg2.d1", "root.sg2.d2"));
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                    && e.getMessage().contains("Path [root.sg2.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.sg2.d1.s1] does not exist"));
+      }
+
+      try {
+        insertRecordsOfOneDevice(session, "root.sg3.d1");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage() != null
+                && e.getMessage().contains("Path [root.sg3.d1.s1] does not exist"));
+      }
+
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  // Record and Tablet APIs enforce missing privileges, then accept writes after all grants.
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testAuth() {
     // auth test
-    try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
+    try (ISession authSession =
+        EnvFactory.getEnv().getSessionConnection("test", "IoTDB!Test2024")) {
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d2.**");
@@ -623,7 +701,7 @@ public class IoTDBSessionComplexIT {
         insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
+            .contains("No permissions for this operation, please add privilege SYSTEM")) {
           fail(e.getMessage());
         }
       }
@@ -631,7 +709,7 @@ public class IoTDBSessionComplexIT {
         insertTablet(authSession, "root.sg1.d1");
       } catch (Exception e) {
         if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
+            .contains("No permissions for this operation, please add privilege SYSTEM")) {
           fail(e.getMessage());
         }
       }
@@ -639,12 +717,12 @@ public class IoTDBSessionComplexIT {
         insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
+            .contains("No permissions for this operation, please add privilege SYSTEM")) {
           fail(e.getMessage());
         }
       }
 
-      grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
+      grantUserSystemPrivileges("test", PrivilegeType.SYSTEM);
       try {
         insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
         insertTablet(authSession, "root.sg1.d1");

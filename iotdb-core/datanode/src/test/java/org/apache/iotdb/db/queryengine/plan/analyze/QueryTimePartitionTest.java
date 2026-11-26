@@ -20,8 +20,11 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -37,9 +40,54 @@ import java.util.List;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class QueryTimePartitionTest {
+
+  @Test
+  public void testTimeoutDuringTimePartitionEnumerationReleasesMemory() {
+    long freeMemory = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    MPPQueryContext context =
+        new MPPQueryContext(new QueryId("time_partition_enumeration_timeout")) {
+          private int timeoutChecks;
+
+          @Override
+          public long getTimeOut() {
+            // Expire after the initial check, once the partition list has reserved memory.
+            return timeoutChecks++ == 0 ? Long.MAX_VALUE : 1;
+          }
+        };
+    context.setStartTime(1);
+    Filter filter =
+        TimeFilterApi.between(0, TimePartitionUtils.getTimePartitionInterval() * 50_000);
+    try {
+      assertThrows(
+          QueryTimeoutRuntimeException.class, () -> getTimePartitionSlotList(filter, context));
+      assertTrue(LocalExecutionPlanner.getInstance().getFreeMemoryForOperators() < freeMemory);
+    } finally {
+      context.releaseAllMemoryReservedForFrontEnd();
+    }
+    assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
+  }
+
+  @Test
+  public void testExpiredQueryDoesNotEnumerateTimePartitions() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("expired_time_partitions"));
+    context.setStartTime(System.currentTimeMillis() - 10_000);
+    context.setTimeOut(1);
+    long freeMemory = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    Filter filter =
+        TimeFilterApi.between(0, TimePartitionUtils.getTimePartitionInterval() * 50_000);
+    try {
+      assertThrows(
+          QueryTimeoutRuntimeException.class, () -> getTimePartitionSlotList(filter, context));
+      assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
+    } finally {
+      context.releaseAllMemoryReservedForFrontEnd();
+    }
+    assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
+  }
 
   @Test
   public void testAndTimeFilter() {
@@ -568,6 +616,32 @@ public class QueryTimePartitionTest {
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3),
             new TTimePartitionSlot(
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5));
+    assertEquals(expected.size(), res.left.size());
+    for (int i = 0; i < expected.size(); i++) {
+      assertEquals(expected.get(i), res.left.get(i));
+    }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
+  }
+
+  @Test
+  public void testEstimateTimePartitionSlotMemoryWithOverflow() {
+    assertEquals(Long.MAX_VALUE, AnalyzeVisitor.estimateTimePartitionSlotMemory(Long.MAX_VALUE));
+  }
+
+  @Test
+  public void testTimePartitionSlotListWithUpperOverflowPartition() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+    long partitionStartTime = TimePartitionUtils.getTimePartitionSlot(Long.MAX_VALUE).startTime;
+
+    Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+        getTimePartitionSlotList(
+            TimeFilterApi.between(partitionStartTime - 1, Long.MAX_VALUE - 1), context);
+    List<TTimePartitionSlot> expected =
+        Arrays.asList(
+            TimePartitionUtils.getTimePartitionSlot(partitionStartTime - 1),
+            new TTimePartitionSlot(partitionStartTime));
+
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));

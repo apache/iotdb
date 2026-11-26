@@ -29,16 +29,15 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -406,11 +405,11 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.存储组1";
+      String database = "root.存储组1";
       String[] devices = new String[] {"设备1.指标1", "设备1.s2", "d2.s1", "d2.指标2"};
-      session.setStorageGroup(storageGroup);
+      session.setStorageGroup(database);
       for (String path : devices) {
-        String fullPath = storageGroup + TsFileConstant.PATH_SEPARATOR + path;
+        String fullPath = database + TsFileConstant.PATH_SEPARATOR + path;
         session.createTimeseries(
             fullPath, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
       }
@@ -418,7 +417,7 @@ public class IoTDBSessionSimpleIT {
       for (String path : devices) {
         for (int i = 0; i < 10; i++) {
           String[] ss = path.split("\\.");
-          StringBuilder deviceId = new StringBuilder(storageGroup);
+          StringBuilder deviceId = new StringBuilder(database);
           for (int j = 0; j < ss.length - 1; j++) {
             deviceId.append(TsFileConstant.PATH_SEPARATOR).append(ss[j]);
           }
@@ -441,7 +440,7 @@ public class IoTDBSessionSimpleIT {
         count++;
       }
       assertEquals(10, count);
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -757,8 +756,8 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.sg";
-      session.setStorageGroup(storageGroup);
+      String database = "root.sg";
+      session.setStorageGroup(database);
 
       session.createTimeseries(
           "root.sg.`my.device.with.colon:`.s",
@@ -769,7 +768,7 @@ public class IoTDBSessionSimpleIT {
       final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
       assertTrue(dataSet.hasNext());
 
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -785,8 +784,8 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.sg";
-      session.setStorageGroup(storageGroup);
+      String database = "root.sg";
+      session.setStorageGroup(database);
 
       try {
         session.createTimeseries(
@@ -804,7 +803,7 @@ public class IoTDBSessionSimpleIT {
       final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.sg.**");
       assertFalse(dataSet.hasNext());
 
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -813,22 +812,24 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({ClusterIT.class})
-  public void deleteNonExistTimeSeriesTest() {
+  public void deleteNonExistTimeSeriesTest() throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertRecord(
           "root.sg1.d1", 0, Arrays.asList("t1", "t2", "t3"), Arrays.asList("123", "333", "444"));
-      try {
-        session.deleteTimeseries(
-            Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
-      } catch (BatchExecutionException e) {
-        assertTrue(e.getMessage().contains("Path [root.sg1.d1.t6] does not exist;"));
-      }
+      // A mixed request succeeds when at least one timeseries matches.
+      session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
+      TestUtils.waitForTimeSeriesDeletion(
+          EnvFactory.getEnv(), "DELETE TIMESERIES root.sg1.d1.t6, root.sg1.d1.t2, root.sg1.d1.t3");
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
       assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
       assertFalse(session.checkTimeseriesExists("root.sg1.d1.t3"));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+
+      StatementExecutionException exception =
+          assertThrows(
+              StatementExecutionException.class, () -> session.deleteTimeseries("root.sg1.d1.t6"));
+      assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), exception.getStatusCode());
+      assertTrue(exception.getMessage().contains("root.sg1.d1.t6"));
+      assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     }
   }
 
@@ -2112,25 +2113,35 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testWriteRestartAndDeleteDB()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertRecord("root.sg1.d1", 1, Arrays.asList("s3"), Arrays.asList("1"));
+      session.executeNonQueryStatement("FLUSH");
+    }
 
-      TestUtils.stopForciblyAndRestartDataNodes();
+    TestUtils.stopForciblyAndRestartDataNodes();
 
-      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
-      dataSet.next();
-      dataSet.close();
+    // This case verifies recovered database caches, so do not retain transports across the restart.
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1")) {
+        assertTrue(dataSet.hasNext());
+        dataSet.next();
+        assertFalse(dataSet.hasNext());
+      }
 
       session.executeNonQueryStatement("DELETE DATABASE root.sg1");
 
       session.insertRecord(
           "root.sg1.d1", 1, Arrays.asList("s1", "s2", "s3"), Arrays.asList("1", "1", "1"));
 
-      dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1");
-      RowRecord record = dataSet.next();
-      assertEquals(3, record.getFields().size());
+      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1")) {
+        assertTrue(dataSet.hasNext());
+        RowRecord record = dataSet.next();
+        assertEquals(3, record.getFields().size());
+        assertFalse(dataSet.hasNext());
+      }
     }
   }
 
@@ -2164,6 +2175,7 @@ public class IoTDBSessionSimpleIT {
     tablet.addValue("s8", 0, new Binary(new byte[] {1}));
     tablet.addValue("s9", 0, "string_value");
     tablet.addValue("s10", 0, DateUtils.parseIntToLocalDate(20250403));
+    tablet.addValue("s11", 0, 1L);
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertTablet(tablet);
@@ -2193,8 +2205,8 @@ public class IoTDBSessionSimpleIT {
           assertEquals("string_value", iterator.getString("root.sg.d1.s9"));
           assertFalse(iterator.isNull("root.sg.d1.s10"));
           assertEquals(DateUtils.parseIntToLocalDate(20250403), iterator.getDate("root.sg.d1.s10"));
-          assertTrue(iterator.isNull("root.sg.d1.s11"));
-          assertNull(iterator.getTimestamp("root.sg.d1.s11"));
+          assertFalse(iterator.isNull("root.sg.d1.s11"));
+          assertEquals(new Timestamp(1), iterator.getTimestamp("root.sg.d1.s11"));
 
           assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
           assertFalse(iterator.isNull("Time"));
@@ -2205,6 +2217,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testInsertWrongTypeRecord() throws IoTDBConnectionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       assertThrows(
@@ -2220,6 +2233,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testAlterDefaultCompression()
       throws IoTDBConnectionException, StatementExecutionException {
     // auto-create

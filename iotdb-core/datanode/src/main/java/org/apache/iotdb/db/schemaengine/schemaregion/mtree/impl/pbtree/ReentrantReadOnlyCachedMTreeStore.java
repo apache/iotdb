@@ -23,10 +23,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.io.File;
 import java.util.Map;
@@ -43,7 +44,7 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
 
   @Override
   public ICachedMNode generatePrefix(PartialPath storageGroupPath) {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override
@@ -75,12 +76,12 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
 
   @Override
   public ICachedMNode addChild(ICachedMNode parent, String childName, ICachedMNode child) {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override
   public void deleteChild(ICachedMNode parent, String childName) {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override
@@ -90,17 +91,17 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
 
   @Override
   public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override
   public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override
   public void setAlias(IMeasurementMNode<ICachedMNode> measurementMNode, String alias) {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override
@@ -120,17 +121,17 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
 
   @Override
   public IMTreeStore<ICachedMNode> getWithReentrantReadLock() {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override
   public void clear() {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.READ_ONLY_REENTRANT_MTREE_STORE);
   }
 
   @Override

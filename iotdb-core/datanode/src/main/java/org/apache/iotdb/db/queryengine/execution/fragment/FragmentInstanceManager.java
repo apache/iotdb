@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -26,9 +27,11 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.QueryAttemptId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
@@ -36,8 +39,9 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.PipelineDriverFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -45,6 +49,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
@@ -61,12 +66,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue.TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.LOCAL_EXECUTION_PLANNER;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
-import static org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue.TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.LOCAL_EXECUTION_PLANNER;
 import static org.apache.iotdb.rpc.TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR;
 
 @SuppressWarnings("squid:S6548")
@@ -76,7 +82,7 @@ public class FragmentInstanceManager {
 
   private final Map<FragmentInstanceId, FragmentInstanceContext> instanceContext;
   private final Map<FragmentInstanceId, FragmentInstanceExecution> instanceExecution;
-  private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
+  private final QueryAttemptRegistry queryAttempts = new QueryAttemptRegistry();
   private final LocalExecutionPlanner planner = LocalExecutionPlanner.getInstance();
   private final IDriverScheduler scheduler = DriverScheduler.getInstance();
 
@@ -101,15 +107,22 @@ public class FragmentInstanceManager {
   private FragmentInstanceManager() {
     this.instanceContext = new ConcurrentHashMap<>();
     this.instanceExecution = new ConcurrentHashMap<>();
-    this.dataNodeQueryContextMap = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(
             1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT.getName());
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            4, ThreadName.FRAGMENT_INSTANCE_NOTIFICATION.getName());
+            IoTDBDescriptor.getInstance().getConfig().getFragmentInstanceNotificationThreadCount(),
+            ThreadName.FRAGMENT_INSTANCE_NOTIFICATION.getName());
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
+
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        instanceManagementExecutor,
+        queryAttempts::removeExpired,
+        2000,
+        2000,
+        TimeUnit.MILLISECONDS);
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         instanceManagementExecutor, this::removeOldInstances, 2000, 2000, TimeUnit.MILLISECONDS);
@@ -138,6 +151,7 @@ public class FragmentInstanceManager {
     FragmentInstanceId instanceId = instance.getId();
     AtomicLong driversCount = new AtomicLong();
     try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
+      AtomicReference<FragmentInstanceInfo> failedInstanceInfo = new AtomicReference<>();
       FragmentInstanceExecution execution =
           instanceExecution.computeIfAbsent(
               instanceId,
@@ -145,29 +159,55 @@ public class FragmentInstanceManager {
                 FragmentInstanceStateMachine stateMachine =
                     new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
-                int dataNodeFINum = instance.getDataNodeFINum();
-                DataNodeQueryContext dataNodeQueryContext =
-                    getOrCreateDataNodeQueryContext(instanceId.getQueryId(), dataNodeFINum);
-
+                boolean[] contextCreated = new boolean[] {false};
+                QueryAttemptRegistry.Registration[] registrations =
+                    new QueryAttemptRegistry.Registration[1];
                 FragmentInstanceContext context =
                     instanceContext.computeIfAbsent(
                         instanceId,
-                        fragmentInstanceId ->
-                            createFragmentInstanceContext(
-                                fragmentInstanceId,
-                                stateMachine,
-                                instance.getSessionInfo(),
-                                dataRegion,
-                                instance.getGlobalTimePredicate(),
-                                dataNodeQueryContextMap));
+                        fragmentInstanceId -> {
+                          contextCreated[0] = true;
+                          registrations[0] = queryAttempts.register(instance, stateMachine, true);
+                          try {
+                            FragmentInstanceContext createdContext =
+                                createFragmentInstanceContext(
+                                    fragmentInstanceId,
+                                    stateMachine,
+                                    instance.getSessionInfo(),
+                                    dataRegion,
+                                    instance.getGlobalTimePredicate(),
+                                    registrations[0].getContext(),
+                                    DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
+                                    instance.isDebug(),
+                                    instance.isVerbose());
+                            createdContext.setExchangeDeadlineMs(instance.getQueryDeadlineMs());
+                            createdContext.adoptUDFQueryScope(instance.claimUDFQueryScope());
+                            return createdContext;
+                          } catch (Throwable t) {
+                            registrations[0].close();
+                            throw t;
+                          }
+                        });
+                rejectIfRepeatedDispatch(contextCreated[0], instanceId);
+                context.setQueryAttemptRegistration(registrations[0]);
+                context.setHighestPriority(instance.isHighestPriority());
 
                 try {
+                  if (stateMachine.getState().isDone()) {
+                    failedInstanceInfo.set(context.getInstanceInfo());
+                    try {
+                      context.finalizeUDFQuery();
+                    } finally {
+                      context.releaseDataNodeQueryContext();
+                    }
+                    return null;
+                  }
                   List<PipelineDriverFactory> driverFactories =
                       planner.plan(
                           instance.getFragment().getPlanNodeTree(),
                           instance.getFragment().getTypeProvider(),
                           context,
-                          dataNodeQueryContext);
+                          registrations[0].getContext());
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
@@ -205,15 +245,29 @@ public class FragmentInstanceManager {
                   } else if (t instanceof UDFTypeMismatchException) {
                     stateMachine.failed(new SemanticException(t.getMessage()));
                   } else if (t instanceof UDFException) {
-                    logger.warn("Exception happened when executing UDTF: ", t);
+                    logger.warn(DataNodeQueryMessages.EXCEPTION_HAPPENED_WHEN_EXECUTING_UDTF, t);
                     stateMachine.failed(
                         new IoTDBRuntimeException(
                             t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
                   } else {
-                    logger.warn("error when create FragmentInstanceExecution.", t);
+                    logger.warn(
+                        DataNodeQueryMessages.ERROR_WHEN_CREATE_FRAGMENTINSTANCEEXECUTION, t);
                     stateMachine.failed(t);
                   }
-                  clearFIRelatedResources(instanceId);
+                  // cancelTask may remove the context from instanceContext while this execution is
+                  // still being created. Capture the failure result from the local context before
+                  // returning from computeIfAbsent instead of looking it up from the map later.
+                  failedInstanceInfo.set(context.getInstanceInfo());
+                  try {
+                    context.finalizeUDFQuery();
+                    clearFIRelatedResources(instanceId);
+                  } finally {
+                    // Once execution cleanup is installed, it owns the reference until driver
+                    // teardown finishes, including failures while submitting the drivers.
+                    if (!context.isExecutionInitialized()) {
+                      context.releaseDataNodeQueryContext();
+                    }
+                  }
                   return null;
                 }
               });
@@ -229,7 +283,7 @@ public class FragmentInstanceManager {
                 });
         return execution.getInstanceInfo();
       } else {
-        return createFailedInstanceInfo(instanceId);
+        return failedInstanceInfo.get();
       }
     } finally {
       QueryRelatedResourceMetricSet.getInstance()
@@ -237,6 +291,31 @@ public class FragmentInstanceManager {
               instanceContext.size(), instanceExecution.size(), driversCount.get());
       QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
           LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
+    }
+  }
+
+  /**
+   * If {@code instanceContext.computeIfAbsent} returned an existing {@link FragmentInstanceContext}
+   * for this {@code instanceId} (i.e. {@code contextCreated} is false), the same FragmentInstance
+   * has been dispatched before (e.g. an RPC retry in {@code
+   * FragmentInstanceDispatcherImpl#dispatchRemote}). The previous execution may have already
+   * released its resources (dataRegion == null), so reusing this cached context would run a fresh
+   * driver against a released context and trigger an NPE. Reject the duplicated dispatch with
+   * REPEATED_RPC_CALL instead of reusing it.
+   *
+   * <p>This must be called before the planning try block on purpose, so it propagates up
+   * (RegionReadExecutor carries the status code) without touching the first execution's cached
+   * resources.
+   */
+  private static void rejectIfRepeatedDispatch(
+      boolean contextCreated, FragmentInstanceId instanceId) {
+    if (!contextCreated) {
+      throw new IoTDBRuntimeException(
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_REPEATED_RPC_CALL_DETECTED_FOR_FRAGMENTINSTANCE_S_REJECT_BF609A26,
+              instanceId.getFullId()),
+          TSStatusCode.REPEATED_RPC_CALL.getStatusCode());
     }
   }
 
@@ -248,15 +327,11 @@ public class FragmentInstanceManager {
         instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), false);
   }
 
-  private DataNodeQueryContext getOrCreateDataNodeQueryContext(QueryId queryId, int dataNodeFINum) {
-    return dataNodeQueryContextMap.computeIfAbsent(
-        queryId, queryId1 -> new DataNodeQueryContext(dataNodeFINum));
-  }
-
   @SuppressWarnings("squid:S1181")
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
       FragmentInstance instance, ISchemaRegion schemaRegion) {
     FragmentInstanceId instanceId = instance.getId();
+    AtomicReference<FragmentInstanceInfo> failedInstanceInfo = new AtomicReference<>();
     FragmentInstanceExecution execution =
         instanceExecution.computeIfAbsent(
             instanceId,
@@ -264,21 +339,52 @@ public class FragmentInstanceManager {
               FragmentInstanceStateMachine stateMachine =
                   new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
+              boolean[] contextCreated = new boolean[] {false};
+              QueryAttemptRegistry.Registration[] registrations =
+                  new QueryAttemptRegistry.Registration[1];
               FragmentInstanceContext context =
                   instanceContext.computeIfAbsent(
                       instanceId,
-                      fragmentInstanceId ->
-                          createFragmentInstanceContext(
-                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                      fragmentInstanceId -> {
+                        contextCreated[0] = true;
+                        registrations[0] = queryAttempts.register(instance, stateMachine, false);
+                        try {
+                          FragmentInstanceContext createdContext =
+                              createFragmentInstanceContext(
+                                  fragmentInstanceId,
+                                  stateMachine,
+                                  instance.getSessionInfo(),
+                                  DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
+                                  instance.isDebug(),
+                                  instance.isVerbose());
+                          createdContext.setExchangeDeadlineMs(instance.getQueryDeadlineMs());
+                          createdContext.adoptUDFQueryScope(instance.claimUDFQueryScope());
+                          return createdContext;
+                        } catch (Throwable t) {
+                          registrations[0].close();
+                          throw t;
+                        }
+                      });
+              rejectIfRepeatedDispatch(contextCreated[0], instanceId);
+              context.setQueryAttemptRegistration(registrations[0]);
+              context.setHighestPriority(instance.isHighestPriority());
 
               try {
+                if (stateMachine.getState().isDone()) {
+                  failedInstanceInfo.set(context.getInstanceInfo());
+                  try {
+                    context.finalizeUDFQuery();
+                  } finally {
+                    context.releaseDataNodeQueryContext();
+                  }
+                  return null;
+                }
                 List<PipelineDriverFactory> driverFactories =
                     planner.plan(
                         instance.getFragment().getPlanNodeTree(),
                         instance.getFragment().getTypeProvider(),
                         context,
                         schemaRegion);
-
                 List<IDriver> drivers = new ArrayList<>();
                 driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
                 context.initializeNumOfDrivers(drivers.size());
@@ -307,10 +413,20 @@ public class FragmentInstanceManager {
                 } else if (t instanceof IoTDBRuntimeException) {
                   stateMachine.failed(t);
                 } else {
-                  logger.warn("Execute error caused by ", t);
+                  logger.warn(DataNodeQueryMessages.EXECUTE_ERROR_CAUSED_BY, t);
                   stateMachine.failed(t);
                 }
-                clearFIRelatedResources(instanceId);
+                // See execDataQueryFragmentInstance for why this result must not be fetched from
+                // instanceContext after computeIfAbsent returns.
+                failedInstanceInfo.set(context.getInstanceInfo());
+                try {
+                  context.finalizeUDFQuery();
+                  clearFIRelatedResources(instanceId);
+                } finally {
+                  if (!context.isExecutionInitialized()) {
+                    context.releaseDataNodeQueryContext();
+                  }
+                }
                 return null;
               }
             });
@@ -325,7 +441,7 @@ public class FragmentInstanceManager {
               });
       return execution.getInstanceInfo();
     } else {
-      return createFailedInstanceInfo(instanceId);
+      return failedInstanceInfo.get();
     }
   }
 
@@ -342,8 +458,8 @@ public class FragmentInstanceManager {
 
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId, boolean hasThrowable) {
-    logger.debug("[CancelFI]");
-    requireNonNull(instanceId, "taskId is null");
+    logger.debug(DataNodeQueryMessages.CANCEL_FI);
+    requireNonNull(instanceId, DataNodeQueryMessages.EXCEPTION_TASKID_IS_NULL_E1221EB2);
 
     FragmentInstanceContext context = instanceContext.remove(instanceId);
     if (context != null) {
@@ -358,6 +474,19 @@ public class FragmentInstanceManager {
     return null;
   }
 
+  public void closeQueryAttempt(
+      QueryId queryId, int attemptId, TQueryAdmissionToken token, boolean hasThrowable) {
+    queryAttempts.close(new QueryAttemptId(queryId, attemptId), token, hasThrowable);
+  }
+
+  public TQueryAdmissionToken fetchQueryAdmissionToken(long validityMs) {
+    return queryAttempts.issueAdmissionToken(validityMs);
+  }
+
+  QueryAttemptRegistry getQueryAttempts() {
+    return queryAttempts;
+  }
+
   /**
    * Gets the info for the specified fragment instance.
    *
@@ -365,7 +494,7 @@ public class FragmentInstanceManager {
    * queried.
    */
   public FragmentInstanceInfo getInstanceInfo(FragmentInstanceId instanceId) {
-    requireNonNull(instanceId, "instanceId is null");
+    requireNonNull(instanceId, DataNodeQueryMessages.EXCEPTION_INSTANCEID_IS_NULL_343234DC);
     FragmentInstanceContext context = instanceContext.get(instanceId);
     if (context == null) {
       return null;
@@ -375,7 +504,7 @@ public class FragmentInstanceManager {
 
   public TFetchFragmentInstanceStatisticsResp getFragmentInstanceStatistics(
       FragmentInstanceId instanceId) {
-    requireNonNull(instanceId, "instanceId is null");
+    requireNonNull(instanceId, DataNodeQueryMessages.EXCEPTION_INSTANCEID_IS_NULL_343234DC);
     // If the instance is still running, we directly get the statistics from instanceExecution
     FragmentInstanceExecution fragmentInstanceExecution = instanceExecution.get(instanceId);
     if (fragmentInstanceExecution != null) {
@@ -396,11 +525,6 @@ public class FragmentInstanceManager {
     }
     TFetchFragmentInstanceStatisticsResp statisticsResp = context.getFragmentInstanceStatistics();
     return statisticsResp == null ? new TFetchFragmentInstanceStatisticsResp() : statisticsResp;
-  }
-
-  private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
-    FragmentInstanceContext context = instanceContext.get(instanceId);
-    return context.getInstanceInfo();
   }
 
   private void removeOldInstances() {
@@ -424,11 +548,13 @@ public class FragmentInstanceManager {
                 .getStateMachine()
                 .failed(
                     new QueryTimeoutException(
-                        "Query has executed more than "
-                            + execution.getTimeoutInMs()
-                            + "ms, and now is in flushing state"));
+                        String.format(
+                            DataNodeQueryMessages
+                                .QUERY_EXCEPTION_QUERY_HAS_EXECUTED_MORE_THAN_SMS_AND_NOW_IS_IN_FLUSHING_4BF7535B,
+                            execution.getTimeoutInMs())));
           }
         });
+    Coordinator.getInstance().cleanUpStaleQueries();
   }
 
   public ExecutorService getIntoOperationExecutor() {

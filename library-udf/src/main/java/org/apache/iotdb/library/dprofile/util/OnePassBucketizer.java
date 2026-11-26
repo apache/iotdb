@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.dprofile.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -38,11 +40,11 @@ class OnePassBucketizer {
 
     if (bucketSize == 0)
       throw new IllegalArgumentException(
-          "Can't produce "
-              + desiredBuckets
-              + " buckets from an input series of "
-              + (middleSize + 2)
-              + " elements");
+          String.format(
+              LibraryUdfMessages
+                  .EXCEPTION_CAN_T_PRODUCE_ARG_BUCKETS_FROM_AN_INPUT_SERIES_OF_ARG_ELEMENTS_D17D0135,
+              desiredBuckets,
+              middleSize + 2));
 
     List<Bucket<Pair<Long, Double>>> buckets = new ArrayList<>();
 

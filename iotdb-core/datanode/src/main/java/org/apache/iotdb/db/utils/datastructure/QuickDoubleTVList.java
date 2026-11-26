@@ -26,11 +26,12 @@ public class QuickDoubleTVList extends DoubleTVList {
   }
 
   @Override
-  public synchronized void sort() {
+  public synchronized int sort() {
     if (!sorted) {
       policy.qsort(0, rowCount - 1);
     }
     sorted = true;
     seqRowCount = rowCount;
+    return rowCount;
   }
 }

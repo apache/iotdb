@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
-import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
-import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
@@ -59,6 +60,11 @@ public class FragmentInstanceExecution {
 
   // It will be set to null while this FI is FINISHED
   private List<IDriver> drivers;
+
+  // Indicates whether this fragment instance should be ignored for statistics collection.
+  // This is true when the fragment instance contains ExplainAnalyzeOperator, which is
+  // a virtual fragment used for EXPLAIN ANALYZE and should not be included in query statistics.
+  boolean shouldIgnoreForStatistics;
 
   // It will be set to null while this FI is FINISHED
   private ISink sink;
@@ -92,6 +98,7 @@ public class FragmentInstanceExecution {
         new FragmentInstanceExecution(
             instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
     execution.initialize(scheduler, isExplainAnalyze);
+    context.setExecutionInitialized();
     scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
@@ -111,6 +118,7 @@ public class FragmentInstanceExecution {
     this.stateMachine = stateMachine;
     this.timeoutInMs = timeoutInMs;
     this.exchangeManager = exchangeManager;
+    this.shouldIgnoreForStatistics = shouldIgnoreForStatistics();
   }
 
   public FragmentInstanceState getInstanceState() {
@@ -141,18 +149,38 @@ public class FragmentInstanceExecution {
     return stateMachine;
   }
 
+  // Check if this fragment instance should be ignored for statistics
+  // (i.e., it contains ExplainAnalyzeOperator)
+  private boolean shouldIgnoreForStatistics() {
+    if (drivers == null || drivers.isEmpty()) {
+      return false;
+    }
+    // Check if any driver contains ExplainAnalyzeOperator
+    return drivers.stream()
+        .anyMatch(
+            driver ->
+                driver.getDriverContext().getOperatorContexts().stream()
+                    .anyMatch(
+                        operatorContext ->
+                            ExplainAnalyzeOperator.class
+                                .getSimpleName()
+                                .equals(operatorContext.getOperatorType())));
+  }
+
   // Fill Fragment-Level info for statistics
   private boolean fillFragmentInstanceStatistics(
       FragmentInstanceContext context, TFetchFragmentInstanceStatisticsResp statistics) {
     statistics.setFragmentInstanceId(context.getId().toThrift());
     statistics.setQueryStatistics(context.getQueryStatistics().toThrift());
     statistics.setState(getInstanceState().toString());
-    IDataRegionForQuery dataRegionForQuery = context.getDataRegion();
-    if (dataRegionForQuery instanceof VirtualDataRegion) {
+    // Previously we ignore statistics when current data region is instance of
+    // VirtualDataRegion. Now data region of a CteScanNode is also virtual.
+    if (shouldIgnoreForStatistics) {
       // We don't need to output the region having ExplainAnalyzeOperator only.
       return false;
     }
-    statistics.setDataRegion(context.getDataRegion().getDataRegionId());
+
+    statistics.setDataRegion(context.getDataRegion().getDataRegionIdString());
     statistics.setIp(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
     statistics.setStartTimeInMS(context.getStartTime());
     statistics.setEndTimeInMS(
@@ -197,7 +225,6 @@ public class FragmentInstanceExecution {
         } else {
           String planNodeId = operatorContext.getPlanNodeId().toString();
           operatorStatistics.setCount(1);
-          operatorStatistics.getSpecifiedInfo().clear();
           leadOverloadOperators.put(operatorType, planNodeId);
           operatorStatisticsMap.put(planNodeId, operatorStatistics);
         }
@@ -225,8 +252,19 @@ public class FragmentInstanceExecution {
     operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
     operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
     operatorStatistics.setOutputRows(operatorContext.getOutputRows());
-    operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
+    operatorStatistics.setSpecifiedInfo(convertSpecifiedInfo(operatorContext.getSpecifiedInfo()));
     operatorStatistics.setMemoryUsage(operatorContext.getEstimatedMemorySize());
+  }
+
+  private Map<String, String> convertSpecifiedInfo(Map<String, Object> specifiedInfo) {
+    Map<String, String> result = new HashMap<>(specifiedInfo.size());
+    specifiedInfo.forEach(
+        (key, value) -> {
+          if (value != null) {
+            result.put(key, value.toString());
+          }
+        });
+    return result;
   }
 
   // Directly build statistics from FragmentInstanceExecution, which is still running.
@@ -279,7 +317,7 @@ public class FragmentInstanceExecution {
             }
 
             if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug("Enter the stateChangeListener");
+              LOGGER.debug(DataNodeQueryMessages.ENTER_STATE_CHANGE_LISTENER);
             }
 
             statisticsLock.writeLock().lock();
@@ -296,9 +334,9 @@ public class FragmentInstanceExecution {
             try {
               clearShuffleSinkHandle(newState);
             } catch (Throwable t) {
-              LOGGER.error(
-                  "Errors occurred while attempting to release sink, potentially leading to resource leakage.",
-                  t);
+              if (!CommonDescriptor.getInstance().getConfig().isStopping()) {
+                LOGGER.error(DataNodeQueryMessages.ERRORS_RELEASING_SINK, t);
+              }
             }
 
             // close the driver after sink is aborted or closed because in driver.close() it
@@ -316,9 +354,7 @@ public class FragmentInstanceExecution {
               // delete tmp file if exists
               deleteTmpFile();
             } catch (Throwable t) {
-              LOGGER.error(
-                  "Errors occurred while attempting to delete tmp files, potentially leading to resource leakage.",
-                  t);
+              LOGGER.error(DataNodeQueryMessages.ERRORS_DELETING_TMP_FILES, t);
             }
 
             try {
@@ -326,18 +362,16 @@ public class FragmentInstanceExecution {
               exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
                   instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
             } catch (Throwable t) {
-              LOGGER.error(
-                  "Errors occurred while attempting to deRegister FI from Memory Pool, potentially leading to resource leakage, status is {}.",
-                  newState,
-                  t);
+              if (!CommonDescriptor.getInstance().getConfig().isStopping()) {
+                LOGGER.error(
+                    DataNodeQueryMessages.ERRORS_DEREGISTER_FI_FROM_MEMORY_POOL, newState, t);
+              }
             }
 
             try {
               context.releaseMemoryReservationManager();
             } catch (Throwable t) {
-              LOGGER.error(
-                  "Errors occurred while attempting to release memory, potentially leading to resource leakage.",
-                  t);
+              LOGGER.error(DataNodeQueryMessages.ERRORS_RELEASING_MEMORY, t);
             }
 
             if (newState.isFailed()) {
@@ -345,9 +379,11 @@ public class FragmentInstanceExecution {
             }
           } catch (Throwable t) {
             try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
-              LOGGER.error(
-                  "Errors occurred while attempting to finish the FI process, potentially leading to resource leakage.",
-                  t);
+              LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, t);
+            }
+          } finally {
+            if (newState.isDone()) {
+              context.releaseDataNodeQueryContext();
             }
           }
         });

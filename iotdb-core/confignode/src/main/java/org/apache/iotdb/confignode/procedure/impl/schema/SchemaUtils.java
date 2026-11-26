@@ -23,26 +23,37 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTree2TableView;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -55,12 +66,152 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+
 public class SchemaUtils {
+  public static void checkTimeSeriesDeletionTarget(
+      ConfigManager configManager, PathPatternTree patternTree, boolean mayDeleteAudit)
+      throws MetadataException {
+    final TimeSeriesDeletionPrecheckTarget precheckTarget =
+        getTimeSeriesDeletionPrecheckTarget(configManager, patternTree);
+    if (!precheckTarget.databasePatternPaths.isEmpty()) {
+      checkSchemaRegionUsingTemplate(configManager, precheckTarget.databasePatternPaths);
+    }
+    final PathPatternTree precheckPatternTree = precheckTarget.patternTree;
+    if (precheckPatternTree.isEmpty()) {
+      return;
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      precheckPatternTree.serialize(dataOutputStream);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+    final byte[] patternTreeBytes = byteArrayOutputStream.toByteArray();
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        configManager.getRelatedSchemaRegionGroup(precheckPatternTree, mayDeleteAudit);
+    final List<TCheckTimeSeriesExistenceResp> responseList = new ArrayList<>();
+    final MetadataException[] exception = {null};
+    final DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
+        regionTask =
+            new DataNodeRegionTaskExecutor<
+                TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>(
+                configManager,
+                relatedSchemaRegionGroup,
+                false,
+                CnToDnAsyncRequestType.CHECK_TIMESERIES_EXISTENCE,
+                (dataNodeLocation, consensusGroupIdList) ->
+                    new TCheckTimeSeriesExistenceReq(
+                        ByteBuffer.wrap(patternTreeBytes), consensusGroupIdList)) {
+
+              @Override
+              protected List<TConsensusGroupId> processResponseOfOneDataNode(
+                  TDataNodeLocation dataNodeLocation,
+                  List<TConsensusGroupId> consensusGroupIdList,
+                  TCheckTimeSeriesExistenceResp response) {
+                responseList.add(response);
+                final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                final TSStatus status = response.getStatus();
+                if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  failureMap.remove(dataNodeLocation);
+                  return failedRegionList;
+                }
+
+                if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+                  final List<TSStatus> subStatusList = status.getSubStatus();
+                  for (int i = 0; i < subStatusList.size(); i++) {
+                    final int code = subStatusList.get(i).getCode();
+                    if (code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                        && code != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                      failedRegionList.add(consensusGroupIdList.get(i));
+                    }
+                  }
+                } else {
+                  failedRegionList.addAll(consensusGroupIdList);
+                }
+
+                if (failedRegionList.isEmpty()) {
+                  failureMap.remove(dataNodeLocation);
+                } else {
+                  failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(status));
+                }
+                return failedRegionList;
+              }
+
+              @Override
+              protected void onAllReplicasetFailure(
+                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
+                exception[0] =
+                    new MetadataException(
+                        String.format(
+                            ProcedureMessages
+                                .EXCEPTION_FAILED_CHECK_TIME_SERIES_EXISTENCE_ALL_REPLICASET_SCHEMAREGION_ARG_FAILURES_5F668154,
+                            consensusGroupId.id,
+                            printFailureMap()),
+                        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+                interruptTask();
+              }
+            };
+    regionTask.execute();
+    if (exception[0] != null) {
+      throw exception[0];
+    }
+    if (responseList.stream().noneMatch(TCheckTimeSeriesExistenceResp::isExists)) {
+      throw new PathNotExistException(
+          precheckPatternTree.getAllPathPatterns().stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toList()),
+          false);
+    }
+  }
+
+  static TimeSeriesDeletionPrecheckTarget getTimeSeriesDeletionPrecheckTarget(
+      ConfigManager configManager, PathPatternTree patternTree) {
+    final PathPatternTree precheckPatternTree = new PathPatternTree();
+    final List<PartialPath> databasePatternPaths = new ArrayList<>();
+    for (final PartialPath path : patternTree.getAllPathPatterns()) {
+      if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
+          && path.getNodeLength() > 1) {
+        final PartialPath prefix =
+            new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1));
+        if (!prefix.hasWildcard()) {
+          final Map<String, TDatabaseSchema> matched =
+              new HashMap<>(
+                  configManager
+                      .getClusterSchemaManager()
+                      .getMatchedDatabaseSchemasByPrefix(prefix));
+          matched.remove(TREE_MODEL_AUDIT_DATABASE);
+          if (!matched.isEmpty()) {
+            databasePatternPaths.add(path);
+            continue;
+          }
+        }
+      }
+      precheckPatternTree.appendPathPattern(path);
+    }
+    precheckPatternTree.constructTree();
+    return new TimeSeriesDeletionPrecheckTarget(precheckPatternTree, databasePatternPaths);
+  }
+
+  static final class TimeSeriesDeletionPrecheckTarget {
+    final PathPatternTree patternTree;
+    final List<PartialPath> databasePatternPaths;
+
+    private TimeSeriesDeletionPrecheckTarget(
+        PathPatternTree patternTree, List<PartialPath> databasePatternPaths) {
+      this.patternTree = patternTree;
+      this.databasePatternPaths = databasePatternPaths;
+    }
+  }
+
   /**
    * Check whether the specific template is activated on the given pattern tree.
    *
@@ -127,8 +278,12 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "Failed to execute in all replicaset of schemaRegion %s when checking the template %s on %s. Failure nodes: %s",
-                            consensusGroupId.id, template, patternTree, dataNodeLocationSet));
+                            ProcedureMessages
+                                .FAILED_TO_EXECUTE_IN_ALL_REPLICASET_OF_SCHEMAREGION_WHEN_CHECKING_2,
+                            consensusGroupId.id,
+                            template,
+                            patternTree,
+                            dataNodeLocationSet));
                 interruptTask();
               }
             };
@@ -182,6 +337,7 @@ public class SchemaUtils {
                 respList.add(response);
                 List<TConsensusGroupId> failedRegionList = new ArrayList<>();
                 if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  failureMap.remove(dataNodeLocation);
                   return failedRegionList;
                 }
 
@@ -195,6 +351,12 @@ public class SchemaUtils {
                 } else {
                   failedRegionList.addAll(consensusGroupIdList);
                 }
+                if (!failedRegionList.isEmpty()) {
+                  failureMap.put(
+                      dataNodeLocation, RpcUtils.extractFailureStatues(response.getStatus()));
+                } else {
+                  failureMap.remove(dataNodeLocation);
+                }
                 return failedRegionList;
               }
 
@@ -204,8 +366,11 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "Failed to execute in all replicaset of schemaRegion %s when checking templates on path %s. Failure nodes: %s",
-                            consensusGroupId.id, deleteDatabasePatternPaths, dataNodeLocationSet));
+                            ProcedureMessages
+                                .FAILED_TO_EXECUTE_IN_ALL_REPLICASET_OF_SCHEMAREGION_WHEN_CHECKING,
+                            consensusGroupId.id,
+                            deleteDatabasePatternPaths,
+                            printFailureMap()));
                 interruptTask();
               }
             };
@@ -224,32 +389,71 @@ public class SchemaUtils {
     }
   }
 
-  public static Map<Integer, TSStatus> preReleaseTable(
-      final String database,
-      final TsTable table,
-      final ConfigManager configManager,
-      final String oldName) {
+  /** Build the PRE_UPDATE_TABLE request used to pre-release a table change to DataNodes. */
+  public static TUpdateTableReq buildPreUpdateTableReq(
+      final String database, final TsTable table, final String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
     req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
     req.setOldName(oldName);
+    return req;
+  }
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
+  /**
+   * Broadcast a table update to exactly {@code targets} and return the full per-nodeId response map
+   * (both successes and failures). Used by {@link
+   * org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator}, which needs to know which
+   * DataNodes acknowledged in order to decide whether it is safe to proceed past the rest.
+   */
+  public static Map<Integer, TSStatus> broadcastTableUpdate(
+      final TUpdateTableReq req, final Map<Integer, TDataNodeLocation> targets) {
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.UPDATE_TABLE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
+  }
+
+  /**
+   * Broadcasts a table change at commit-release through {@link ClusterCachePropagator}: proceed
+   * once every unreachable DataNode is provably self-fenced, instead of failing on the first one. A
+   * fenced DataNode fails closed and resyncs on lease recovery, which rebuilds the tree-to-table
+   * view index it missed; a DataNode which is not provably fenced may still serve clients, so the
+   * commit is reported as unproven instead.
+   *
+   * @return whether it is safe to proceed
+   */
+  public static boolean commitReleaseTableWithHA(
+      final TUpdateTableReq req, final ConfigManager configManager) {
+    return new ClusterCachePropagator(filterFencedDataNode(configManager))
+        .propagate(targets -> broadcastTableUpdate(req, targets));
+  }
+
+  private static Map<Integer, TSStatus> failedOnly(final Map<Integer, TSStatus> responses) {
+    return responses.entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  public static Map<Integer, TSStatus> commitReleaseTable(
-      final String database,
-      final String tableName,
-      final ConfigManager configManager,
-      final @Nullable String oldName) {
+  public static Map<Integer, TDataNodeLocation> filterFencedDataNode(
+      final ConfigManager configManager) {
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().entrySet().stream()
+        .filter(
+            entry -> {
+              final NodeStatus status =
+                  configManager.getLoadManager().getNodeStatus(entry.getKey());
+              return !status.isOffline()
+                  || !DataNodeContactTracker.getInstance().isDataNodeFenced(entry.getKey());
+            })
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  /** Build the COMMIT_UPDATE_TABLE request used to commit-release a table change to DataNodes. */
+  public static TUpdateTableReq buildCommitUpdateTableReq(
+      final String database, final String tableName, final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.COMMIT_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -261,23 +465,30 @@ public class SchemaUtils {
     }
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
-
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    return req;
   }
 
-  public static Map<Integer, TSStatus> rollbackPreRelease(
+  /**
+   * Builds the COMMIT_UPDATE_TABLE request of a change which also affects the tree-to-table view
+   * index of the DataNodes.
+   *
+   * <p>The caller declares the view attributes the DataNode needs to apply the change, so that a
+   * DataNode never reads them from the table it caches: that cache may hold a placeholder, in which
+   * case the DataNode could not compute the entry at all.
+   */
+  public static TUpdateTableReq buildCommitUpdateTableReq(
       final String database,
       final String tableName,
-      final ConfigManager configManager,
-      final @Nullable String oldName) {
+      final @Nullable String oldName,
+      final TUpdateTree2TableView viewInfo) {
+    final TUpdateTableReq req = buildCommitUpdateTableReq(database, tableName, oldName);
+    req.setUpdateTree2TableViewInfo(viewInfo);
+    return req;
+  }
+
+  /** Build the ROLLBACK_UPDATE_TABLE request used to roll back a pre-released table change. */
+  public static TUpdateTableReq rollbackUpdateTableReq(
+      final String database, final String tableName, final String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.ROLLBACK_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -289,16 +500,51 @@ public class SchemaUtils {
     }
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
+    return req;
+  }
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  public static TUpdateTableReq rollbackUpdateTableReq(
+      final String database,
+      final String tableName,
+      final String oldName,
+      final TUpdateTree2TableView viewInfo) {
+    final TUpdateTableReq req = rollbackUpdateTableReq(database, tableName, oldName);
+    req.setUpdateTree2TableViewInfo(viewInfo);
+    return req;
+  }
+
+  /**
+   * Broadcast an INVALIDATE_MATCHED_SCHEMA_CACHE to all DataNodes through {@link
+   * ClusterCachePropagator}: proceed once every unreachable DataNode is provably self-fenced (it
+   * fails closed on its schema cache and resyncs on recovery, so it cannot serve the
+   * deleted/altered series), instead of hard-failing on the first unreachable DataNode. Returns
+   * whether it is safe to proceed; the caller maps {@code false} to its own failure.
+   *
+   * <p>The propagator may re-broadcast while waiting for unacked DataNodes, so a fresh request with
+   * a duplicated buffer is built on each attempt — a consumed buffer can never be re-sent as an
+   * empty (and silently-successful) invalidation.
+   */
+  public static boolean invalidateMatchedSchemaCache(
+      final ConfigManager configManager,
+      final ByteBuffer patternTreeBytes,
+      final boolean needLock) {
+    return new ClusterCachePropagator(filterFencedDataNode(configManager))
+        .propagate(
+            targets -> {
+              final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus>
+                  clientHandler =
+                      new DataNodeAsyncRequestContext<>(
+                          CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+                          new TInvalidateMatchedSchemaCacheReq(patternTreeBytes.duplicate())
+                              .setNeedLock(needLock),
+                          targets);
+              CnToDnInternalServiceAsyncRequestManager.getInstance()
+                  .sendAsyncRequest(
+                      clientHandler,
+                      ClusterCachePropagator.BROADCAST_RPC_RETRY,
+                      ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+              return clientHandler.getResponseMap();
+            });
   }
 
   public static TSStatus executeInConsensusLayer(
@@ -307,7 +553,7 @@ public class SchemaUtils {
     try {
       status = env.getConfigManager().getConsensusManager().write(plan);
     } catch (final ConsensusException e) {
-      logger.warn("Failed in the write API executing the consensus layer due to: ", e);
+      logger.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }

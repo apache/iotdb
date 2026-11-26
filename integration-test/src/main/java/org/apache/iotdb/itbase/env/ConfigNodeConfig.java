@@ -31,4 +31,8 @@ public interface ConfigNodeConfig {
   ConfigNodeConfig setMetricPrometheusReporterPassword(String password);
 
   ConfigNodeConfig setLeaderDistributionPolicy(String policy);
+
+  ConfigNodeConfig setRatisLogAppenderBufferSizeMax(int size);
+
+  ConfigNodeConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs);
 }

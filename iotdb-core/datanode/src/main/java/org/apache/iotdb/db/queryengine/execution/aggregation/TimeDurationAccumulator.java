@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -87,7 +89,7 @@ public class TimeDurationAccumulator implements Accumulator {
     if (!initResult) {
       tsBlockBuilder.appendNull();
     } else {
-      tsBlockBuilder.writeLong(maxTime - minTime);
+      tsBlockBuilder.writeLong(saturatingTimeDifference(maxTime, minTime));
     }
   }
 
@@ -126,5 +128,10 @@ public class TimeDurationAccumulator implements Accumulator {
   protected void updateMinTime(long curTime) {
     initResult = true;
     minTime = Math.min(minTime, curTime);
+  }
+
+  private static long saturatingTimeDifference(long maxTime, long minTime) {
+    long timeDifference = maxTime - minTime;
+    return timeDifference < 0 ? Long.MAX_VALUE : timeDifference;
   }
 }

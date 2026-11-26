@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.sink;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,6 +37,9 @@ public class IdentitySinkOperator implements Operator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(IdentitySinkOperator.class)
           + RamUsageEstimator.shallowSizeOfInstance(DownStreamChannelIndex.class);
+
+  public static final String DOWNSTREAM_PLAN_NODE_ID = "DownStreamPlanNodeId";
+  public static final String DELIMITER_BETWEEN_ID = ", ";
 
   private final OperatorContext operatorContext;
   private final List<Operator> children;

@@ -45,6 +45,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.LikeViewExpress
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.LogicNotViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.NegationViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -90,8 +91,10 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   @Override
   public ViewExpression visitExpression(Expression expression, Void context) {
     throw new UnsupportedOperationException(
-        "Unsupported expression type in TransformToViewExpressionVisitor: "
-            + expression.getExpressionType());
+        String.format(
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_IN_TRANSFORMTOVIEWEXPRESSIONVISITOR_0871FB56,
+            expression.getExpressionType()));
   }
 
   // region leaf operand

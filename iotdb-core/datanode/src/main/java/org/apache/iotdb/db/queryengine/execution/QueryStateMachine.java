@@ -19,20 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.calc.execution.StateMachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.rpc.RpcUtils;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.ABORTED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.CANCELED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.DISPATCHING;
@@ -42,7 +44,7 @@ import static org.apache.iotdb.db.queryengine.execution.QueryState.PENDING_RETRY
 import static org.apache.iotdb.db.queryengine.execution.QueryState.PLANNED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.QUEUED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.RUNNING;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 /**
  * State machine for a {@link QueryExecution}. It stores the states for the {@link QueryExecution}.
@@ -52,7 +54,7 @@ public class QueryStateMachine {
   private final StateMachine<QueryState> queryState;
 
   private final AtomicReference<Throwable> failureException = new AtomicReference<>();
-  private final AtomicReference<TSStatus> failureStatus = new AtomicReference<>();
+  private final AtomicReference<FailureStatus> failureStatus = new AtomicReference<>();
 
   public QueryStateMachine(QueryId queryId, ExecutorService executor) {
     this.queryState =
@@ -88,7 +90,7 @@ public class QueryStateMachine {
   }
 
   public void transitionToPendingRetry(TSStatus failureStatus) {
-    this.failureStatus.compareAndSet(null, failureStatus);
+    recordFailureStatus(failureStatus, false);
     queryState.setIf(PENDING_RETRY, currentState -> currentState == DISPATCHING);
   }
 
@@ -107,10 +109,10 @@ public class QueryStateMachine {
     transitionToDoneState(CANCELED);
   }
 
-  public void transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
-    this.failureStatus.compareAndSet(null, failureStatus);
+  public boolean transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
+    recordFailureStatus(failureStatus, false);
     this.failureException.compareAndSet(null, throwable);
-    transitionToDoneState(CANCELED);
+    return transitionToDoneState(CANCELED);
   }
 
   public void transitionToAborted() {
@@ -127,13 +129,40 @@ public class QueryStateMachine {
   }
 
   public void transitionToFailed(TSStatus failureStatus) {
-    this.failureStatus.compareAndSet(null, failureStatus);
+    transitionToFailed(failureStatus, false);
+  }
+
+  public void transitionToFailed(TSStatus failureStatus, boolean failureCausedByInterruption) {
+    recordFailureStatus(failureStatus, failureCausedByInterruption);
     transitionToDoneState(FAILED);
   }
 
+  private void recordFailureStatus(TSStatus status, boolean failureCausedByInterruption) {
+    if (status != null) {
+      // Publish the status and its origin together. A later interruption must not reclassify
+      // the first recorded failure.
+      failureStatus.compareAndSet(null, new FailureStatus(status, failureCausedByInterruption));
+    }
+  }
+
+  /** Only the exact recorded status carries the interruption provenance stored with it. */
+  public boolean isFailureCausedByInterruption(TSStatus status) {
+    FailureStatus failure = failureStatus.get();
+    if (failure == null || failure.status != status || !failure.failureCausedByInterruption) {
+      return false;
+    }
+    // Statuses and exceptions can be recorded independently. Keep an unrelated exception
+    // visible even if a subsequent dispatch interruption supplied the status.
+    Throwable throwable = failureException.get();
+    return throwable == null || getRootCause(throwable) instanceof InterruptedException;
+  }
+
   private boolean transitionToDoneState(QueryState doneState) {
-    requireNonNull(doneState, "doneState is null");
-    checkArgument(doneState.isDone(), "doneState %s is not a done state", doneState);
+    requireNonNull(doneState, DataNodeQueryMessages.EXCEPTION_DONESTATE_IS_NULL_D88F77E5);
+    checkArgument(
+        doneState.isDone(),
+        DataNodeQueryMessages.EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618,
+        doneState);
 
     return queryState.setIf(doneState, currentState -> !currentState.isDone());
   }
@@ -143,22 +172,23 @@ public class QueryStateMachine {
     if (throwable != null) {
       return throwable.getMessage();
     }
-    return "no detailed failure reason in QueryStateMachine";
+    return DataNodeQueryMessages.EXCEPTION_NO_DETAILED_FAILURE_REASON_IN_QUERYSTATEMACHINE_6CE1C60A;
   }
 
   public Throwable getFailureException() {
     Throwable throwable = failureException.get();
     if (throwable == null) {
-      return new IoTDBException(getFailureStatus());
+      TSStatus status = getFailureStatus();
+      return status == null ? null : new IoTDBException(status);
     } else {
       return throwable;
     }
   }
 
   public TSStatus getFailureStatus() {
-    TSStatus status = failureStatus.get();
+    FailureStatus status = failureStatus.get();
     if (status != null) {
-      return status;
+      return status.status;
     } else {
       Throwable throwable = failureException.get();
       if (throwable != null) {
@@ -169,7 +199,18 @@ public class QueryStateMachine {
           return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), t.getMessage());
         }
       }
-      return failureStatus.get();
+      status = failureStatus.get();
+      return status == null ? null : status.status;
+    }
+  }
+
+  private static class FailureStatus {
+    private final TSStatus status;
+    private final boolean failureCausedByInterruption;
+
+    private FailureStatus(TSStatus status, boolean failureCausedByInterruption) {
+      this.status = status;
+      this.failureCausedByInterruption = failureCausedByInterruption;
     }
   }
 }

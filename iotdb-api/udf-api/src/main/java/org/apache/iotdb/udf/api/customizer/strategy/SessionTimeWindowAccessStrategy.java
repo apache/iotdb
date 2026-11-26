@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.udf.api.customizer.strategy;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 import java.time.ZoneId;
 
 public class SessionTimeWindowAccessStrategy implements AccessStrategy {
@@ -61,14 +63,16 @@ public class SessionTimeWindowAccessStrategy implements AccessStrategy {
     if (sessionTimeGap < 0) {
       throw new RuntimeException(
           String.format(
-              "Parameter sessionTimeGap(%d) should be equal to or greater than zero.",
+              UdfApiMessages
+                  .EXCEPTION_PARAMETER_SESSIONTIMEGAP_ARG_SHOULD_BE_EQUAL_TO_OR_GREATER_THAN_ZERO_20C0672D,
               sessionTimeGap));
     }
     if (displayWindowEnd < displayWindowBegin) {
       throw new RuntimeException(
           String.format(
-              "displayWindowEnd(%d) < displayWindowBegin(%d)",
-              displayWindowEnd, displayWindowBegin));
+              UdfApiMessages.EXCEPTION_DISPLAYWINDOWEND_ARG_DISPLAYWINDOWBEGIN_ARG_216864F1,
+              displayWindowEnd,
+              displayWindowBegin));
     }
   }
 
