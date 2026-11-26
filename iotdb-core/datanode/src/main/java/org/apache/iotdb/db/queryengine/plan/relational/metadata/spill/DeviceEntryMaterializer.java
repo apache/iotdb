@@ -48,6 +48,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   @Override
   public void append(DeviceEntry entry) throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     appendToBuffer(entry);
   }
 
@@ -55,6 +56,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   @Override
   public long appendWithMemoryControl(DeviceEntry entry) throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     if (spiller == null) {
       long ramBytesUsed = entry.ramBytesUsed();
       if (getBufferedRamBytes() + ramBytesUsed <= thresholdInBytes()) {
@@ -76,6 +78,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   @Override
   public void forceSpill() throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     withSpillDirectoryLock(
         () -> {
           ensureSpiller(true);
@@ -91,6 +94,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   @Override
   public DeviceEntryDataSet finish() throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     if (spiller == null) {
       DeviceEntryDataSet dataSet =
           new InMemoryDeviceEntryDataSet(copyBufferedEntries(), seriesPartitionSlots());

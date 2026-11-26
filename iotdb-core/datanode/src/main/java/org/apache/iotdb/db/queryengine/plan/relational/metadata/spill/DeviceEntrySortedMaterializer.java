@@ -110,12 +110,14 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
   @Override
   public void append(DeviceEntry entry) throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     appendToBuffer(entry);
   }
 
   @Override
   public long appendWithMemoryControl(DeviceEntry entry) throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     long entryRamBytes = entry.ramBytesUsed();
     if (!isBufferEmpty() && getBufferedRamBytes() + entryRamBytes > thresholdInBytes()) {
       return withSpillDirectoryLock(
@@ -140,6 +142,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
   @Override
   public void forceSpill() throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     withSpillDirectoryLock(
         () -> {
           flushRun();
@@ -150,6 +153,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
   @Override
   public DeviceEntryDataSet finish() throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     checkTimeout();
     if (entryCount() == 0) {
       DeviceEntryDataSet dataSet =

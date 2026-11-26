@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -107,7 +109,8 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
 
   private void checkOpen() throws IOException {
     if (outputCloseFailed) {
-      throw new IOException();
+      throw new IOException(
+          DataNodeQueryMessages.EXCEPTION_DEVICEENTRY_SPILLER_OUTPUT_CLOSE_FAILED_327C3F35);
     }
     if (closed) {
       throw new IOException("Device-entry spiller is already closed: " + directory);

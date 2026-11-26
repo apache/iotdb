@@ -37,6 +37,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -59,8 +60,14 @@ public final class DeviceEntrySpillManager {
   }
 
   public Path register(String queryId, PlanNodeId planNodeId) throws IOException {
-    return withQueryDirectoryReadLock(
+    QueryDirectoryLock lock =
+        queryDirectoryLocks.computeIfAbsent(queryId, ignored -> new QueryDirectoryLock());
+    if (!lock.tryAcquireReference()) {
+      throw new NoSuchFileException(resolveQueryDirectory(queryId).toString());
+    }
+    return withQueryDirectoryLock(
         queryId,
+        lock,
         () -> {
           Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId.getId());
           Files.createDirectories(ownerDirectory);
@@ -68,13 +75,23 @@ public final class DeviceEntrySpillManager {
               .computeIfAbsent(queryId, ignored -> ConcurrentHashMap.newKeySet())
               .add(ownerDirectory);
           return ownerDirectory;
-        });
+        },
+        false,
+        false);
   }
 
   public void deregisterOwner(String queryId, Path ownerDirectory) throws IOException {
+    QueryDirectoryLock lock = tryAcquireQueryDirectoryLock(queryId);
+    if (lock == null) {
+      return;
+    }
     withQueryDirectoryLock(
         queryId,
+        lock,
         () -> {
+          if (lock.isClosing()) {
+            return null;
+          }
           IOException failure = closeReaders(queryId, ownerDirectory);
           failure = mergeFailures(failure, closeSpillers(queryId, ownerDirectory));
           if (failure != null) {
@@ -92,22 +109,41 @@ public final class DeviceEntrySpillManager {
             queryDirectories.remove(queryId, owners);
           }
           return null;
-        });
+        },
+        true,
+        true);
   }
 
   public void deregisterQuery(String queryId) throws IOException {
-    withQueryDirectoryLock(
-        queryId,
-        () -> {
-          IOException failure = closeReaders(queryId, null);
-          failure = mergeFailures(failure, closeSpillers(queryId, null));
-          if (failure != null) {
-            throw failure;
-          }
-          deleteDirectoryIfExists(resolveQueryDirectory(queryId));
-          queryDirectories.remove(queryId);
-          return null;
-        });
+    QueryDirectoryLock lock =
+        queryDirectoryLocks.computeIfAbsent(queryId, ignored -> new QueryDirectoryLock());
+    if (!lock.tryAcquireReference()) {
+      return;
+    }
+    boolean closed =
+        withQueryDirectoryLock(
+            queryId,
+            lock,
+            () -> {
+              if (lock.isClosing()) {
+                return false;
+              }
+              IOException failure = closeReaders(queryId, null);
+              failure = mergeFailures(failure, closeSpillers(queryId, null));
+              if (failure != null) {
+                throw failure;
+              }
+              deleteDirectoryIfExists(resolveQueryDirectory(queryId));
+              queryDirectories.remove(queryId);
+              lock.markClosing();
+              return true;
+            },
+            true,
+            true);
+    if (closed) {
+      lock.awaitNoReferences();
+      queryDirectoryLocks.remove(queryId, lock);
+    }
   }
 
   public byte[] readSegment(String queryId, String planNodeId, int segmentId) throws IOException {
@@ -129,9 +165,17 @@ public final class DeviceEntrySpillManager {
   }
 
   public void deleteSegment(String queryId, String dataSetId, int segmentId) throws IOException {
+    QueryDirectoryLock lock = tryAcquireQueryDirectoryLock(queryId);
+    if (lock == null) {
+      return;
+    }
     withQueryDirectoryLock(
         queryId,
+        lock,
         () -> {
+          if (lock.isClosing()) {
+            return null;
+          }
           Path file = null;
           try {
             file = getRegisteredSegmentPath(queryId, dataSetId, segmentId);
@@ -145,7 +189,9 @@ public final class DeviceEntrySpillManager {
                     file));
           }
           return null;
-        });
+        },
+        true,
+        true);
   }
 
   public void deleteSegment(String queryId, PlanNodeId planNodeId, int segmentId)
@@ -202,6 +248,7 @@ public final class DeviceEntrySpillManager {
     queryDirectories.clear();
     querySpillers.clear();
     queryReaders.clear();
+    queryDirectoryLocks.clear();
   }
 
   DeviceEntryDiskSpiller createSpiller(
@@ -290,13 +337,22 @@ public final class DeviceEntrySpillManager {
   }
 
   void closeSpiller(DeviceEntryDiskSpiller spiller) throws IOException {
-    withQueryDirectoryReadLock(
+    QueryDirectoryLock lock = tryAcquireQueryDirectoryLock(spiller.queryId());
+    if (lock == null) {
+      spiller.closeInternal();
+      removeSpiller(spiller);
+      return;
+    }
+    withQueryDirectoryLock(
         spiller.queryId(),
+        lock,
         () -> {
           spiller.closeInternal();
           removeSpiller(spiller);
           return null;
-        });
+        },
+        false,
+        true);
   }
 
   boolean hasNextReader(DeviceEntryFileSpillerReader reader) throws IOException {
@@ -319,13 +375,22 @@ public final class DeviceEntrySpillManager {
   }
 
   void closeReader(DeviceEntryFileSpillerReader reader) throws IOException {
-    withQueryDirectoryReadLock(
+    QueryDirectoryLock lock = tryAcquireQueryDirectoryLock(reader.queryId());
+    if (lock == null) {
+      reader.closeInternal();
+      removeReader(reader);
+      return;
+    }
+    withQueryDirectoryLock(
         reader.queryId(),
+        lock,
         () -> {
           reader.closeInternal();
           removeReader(reader);
           return null;
-        });
+        },
+        false,
+        true);
   }
 
   <T> T withQueryDirectoryLock(String queryId, IOCallable<T> operation) throws IOException {
@@ -336,32 +401,53 @@ public final class DeviceEntrySpillManager {
     return withQueryDirectoryLock(queryId, operation, false);
   }
 
-  private <T> T withQueryDirectoryLock(String queryId, IOCallable<T> operation, boolean exclusive)
+  <T> T withQueryDirectoryReadLock(String queryId, IOCallable<T> operation, boolean createIfAbsent)
       throws IOException {
     QueryDirectoryLock lock =
-        queryDirectoryLocks.compute(
-            queryId,
-            (ignored, current) -> {
-              QueryDirectoryLock result = current == null ? new QueryDirectoryLock() : current;
-              result.references++;
-              return result;
-            });
+        createIfAbsent
+            ? queryDirectoryLocks.computeIfAbsent(queryId, ignored -> new QueryDirectoryLock())
+            : tryAcquireQueryDirectoryLock(queryId);
+    if (createIfAbsent && !lock.tryAcquireReference()) {
+      throw new NoSuchFileException(resolveQueryDirectory(queryId).toString());
+    }
+    if (lock == null) {
+      throw new NoSuchFileException(resolveQueryDirectory(queryId).toString());
+    }
+    return withQueryDirectoryLock(queryId, lock, operation, false, false);
+  }
+
+  private <T> T withQueryDirectoryLock(String queryId, IOCallable<T> operation, boolean exclusive)
+      throws IOException {
+    QueryDirectoryLock lock = tryAcquireQueryDirectoryLock(queryId);
+    if (lock == null) {
+      throw new NoSuchFileException(resolveQueryDirectory(queryId).toString());
+    }
+    return withQueryDirectoryLock(queryId, lock, operation, exclusive, false);
+  }
+
+  private <T> T withQueryDirectoryLock(
+      String queryId,
+      QueryDirectoryLock lock,
+      IOCallable<T> operation,
+      boolean exclusive,
+      boolean allowClosing)
+      throws IOException {
     Lock acquiredLock = exclusive ? lock.lock.writeLock() : lock.lock.readLock();
     acquiredLock.lock();
     try {
+      if (!allowClosing && lock.isClosing()) {
+        throw new NoSuchFileException(resolveQueryDirectory(queryId).toString());
+      }
       return operation.call();
     } finally {
       acquiredLock.unlock();
-      queryDirectoryLocks.computeIfPresent(
-          queryId,
-          (ignored, current) -> {
-            if (current != lock) {
-              return current;
-            }
-            current.references--;
-            return current.references == 0 ? null : current;
-          });
+      lock.releaseReference();
     }
+  }
+
+  private QueryDirectoryLock tryAcquireQueryDirectoryLock(String queryId) {
+    QueryDirectoryLock lock = queryDirectoryLocks.get(queryId);
+    return lock != null && lock.tryAcquireReference() ? lock : null;
   }
 
   void checkOwnerRegistered(String queryId, Path ownerDirectory) throws IOException {
@@ -550,7 +636,53 @@ public final class DeviceEntrySpillManager {
 
   private static final class QueryDirectoryLock {
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
-    private int references;
+    private final AtomicInteger references = new AtomicInteger();
+    private final Object referenceMonitor = new Object();
+    private volatile boolean closing;
+
+    private boolean tryAcquireReference() {
+      if (closing) {
+        return false;
+      }
+      references.incrementAndGet();
+      if (!closing) {
+        return true;
+      }
+      releaseReference();
+      return false;
+    }
+
+    private void releaseReference() {
+      if (references.decrementAndGet() == 0) {
+        synchronized (referenceMonitor) {
+          referenceMonitor.notifyAll();
+        }
+      }
+    }
+
+    private void markClosing() {
+      closing = true;
+    }
+
+    private boolean isClosing() {
+      return closing;
+    }
+
+    private void awaitNoReferences() {
+      boolean interrupted = false;
+      synchronized (referenceMonitor) {
+        while (references.get() != 0) {
+          try {
+            referenceMonitor.wait();
+          } catch (InterruptedException e) {
+            interrupted = true;
+          }
+        }
+      }
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   private static class DeviceEntrySpillManagerHolder {

@@ -173,6 +173,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   protected final <T> T withSpillDirectoryLock(DeviceEntrySpillManager.IOCallable<T> operation)
       throws IOException {
     DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    checkSpillCleanupRequested();
     return manager.withQueryDirectoryReadLock(
         queryId,
         () -> {
@@ -181,7 +182,8 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
             manager.checkOwnerRegistered(queryId, ownerDirectory);
           }
           return operation.call();
-        });
+        },
+        ownerDirectory == null);
   }
 
   protected final Path spillDirectory(Path ownerDirectory) {
@@ -241,7 +243,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
     return ownerDirectory;
   }
 
-  private void checkSpillCleanupRequested() throws IOException {
+  protected final void checkSpillCleanupRequested() throws IOException {
     if (queryContext != null && queryContext.isDeviceEntrySpillCleanupRequested()) {
       throw new IOException(
           DataNodeQueryMessages

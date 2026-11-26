@@ -33,6 +33,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -86,6 +87,24 @@ public class DeviceEntryMaterializerTest {
         assertEquals(expected, dataSet.getInlineEntries());
         assertFalse(queryContext.isDeviceEntrySpilled());
       }
+    }
+  }
+
+  @Test
+  public void testMaterializerRejectsOperationsAfterQueryCleanupStarts() throws Exception {
+    String queryId = "20260909_023029_00002";
+    MPPQueryContext queryContext = new MPPQueryContext(new QueryId(queryId));
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer(
+            queryId, new PlanNodeId("scan-0"), Long.MAX_VALUE, true, queryContext)) {
+      materializer.append(createEntries(1).get(0));
+      queryContext.markDeviceEntrySpillCleanupRequested();
+
+      assertThrows(IOException.class, materializer::forceSpill);
+      assertThrows(
+          IOException.class, () -> materializer.appendWithMemoryControl(createEntries(1).get(0)));
+      assertThrows(IOException.class, materializer::finish);
+      assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
     }
   }
 

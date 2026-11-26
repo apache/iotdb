@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -367,7 +368,9 @@ public class SegmentDeviceEntrySourceTest {
     assertTrue(writeCalls.get() > 0);
     assertTrue(Files.exists(spillDirectory));
     int writeCallsAfterCloseFailure = writeCalls.get();
-    assertThrows(IOException.class, () -> spiller.append(new byte[] {2}));
+    IOException outputCloseFailure =
+        assertThrows(IOException.class, () -> spiller.append(new byte[] {2}));
+    assertNotNull(outputCloseFailure.getMessage());
     assertEquals(writeCallsAfterCloseFailure, writeCalls.get());
     assertThrows(IOException.class, spiller::finish);
     assertTrue(Files.exists(spillDirectory));
