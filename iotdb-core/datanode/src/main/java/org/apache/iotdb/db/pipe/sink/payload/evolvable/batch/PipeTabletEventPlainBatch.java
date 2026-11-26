@@ -210,6 +210,35 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         insertNodeBuffers, tabletBuffers, insertNodeDataBases, tabletDataBases);
   }
 
+  public long getSerializedRequestBodySizeUpperBound() {
+    long size = 3L * Integer.BYTES;
+    for (int i = 0; i < insertNodeBuffers.size(); i++) {
+      size =
+          Math.addExact(
+              size,
+              insertNodeBuffers.get(i).remaining()
+                  + (long) ReadWriteIOUtils.sizeToWrite(insertNodeDataBases.get(i)));
+    }
+    for (int i = 0; i < tabletBuffers.size(); i++) {
+      size =
+          Math.addExact(
+              size,
+              tabletBuffers.get(i).remaining()
+                  + (long) ReadWriteIOUtils.sizeToWrite(tabletDataBases.get(i)));
+    }
+    for (final Map.Entry<String, Map<String, Pair<Integer, List<Tablet>>>> databaseEntry :
+        tableModelTabletMap.entrySet()) {
+      final int databaseNameSize = ReadWriteIOUtils.sizeToWrite(databaseEntry.getKey());
+      for (final Pair<Integer, List<Tablet>> tableEntry : databaseEntry.getValue().values()) {
+        for (final Tablet tablet : tableEntry.getRight()) {
+          size =
+              Math.addExact(size, tablet.serializedSize() + (long) Byte.BYTES + databaseNameSize);
+        }
+      }
+    }
+    return size;
+  }
+
   public Map<Pair<String, Long>, Long> deepCopyPipeName2BytesAccumulated() {
     return new HashMap<>(pipe2BytesAccumulated);
   }

@@ -87,8 +87,27 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
     }
     parameters.put(
         ASYNC_LOAD_ON_TYPE_MISMATCH_KEY, Boolean.toString(shouldAsyncLoadOnTypeMismatch));
+    body = null;
     return (PipeTransferTsFileSealWithModReq)
         convertToTPipeTransferReq(fileNames, fileLengths, parameters);
+  }
+
+  public static int calculateSerializedSize(
+      final List<String> fileNames,
+      final List<Long> fileLengths,
+      final String tsFileName,
+      final String dataBaseName,
+      final boolean shouldWaitForSchemaBeforeLoad,
+      final String conversionTaskId,
+      final boolean shouldAsyncLoadOnTypeMismatch) {
+    final HashMap<String, String> parameters =
+        generateParameters(tsFileName, dataBaseName, shouldWaitForSchemaBeforeLoad);
+    if (conversionTaskId != null) {
+      parameters.put(CONVERSION_TASK_ID_KEY, conversionTaskId);
+    }
+    parameters.put(
+        ASYNC_LOAD_ON_TYPE_MISMATCH_KEY, Boolean.toString(shouldAsyncLoadOnTypeMismatch));
+    return PipeTransferFileSealReqV2.calculateSerializedSize(fileNames, fileLengths, parameters);
   }
 
   public static String generateConversionTaskId(

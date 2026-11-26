@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.commons.pipe.sink.compressor;
 
+import com.github.luben.zstd.Zstd;
+import org.apache.tsfile.compress.ICompressor;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.tukaani.xz.LZMA2Options;
+
 import java.io.IOException;
 
 public abstract class PipeCompressor {
+
+  private static final int GZIP_OUTPUT_BUFFER_SIZE = 512;
 
   public enum PipeCompressionType {
     SNAPPY((byte) 0),
@@ -48,6 +55,36 @@ public abstract class PipeCompressor {
   }
 
   public abstract byte[] compress(byte[] data) throws IOException;
+
+  public long getMaxCompressedLength(final long inputLength) {
+    final int length = Math.toIntExact(inputLength);
+    switch (compressionType) {
+      case SNAPPY:
+        return ICompressor.getCompressor(CompressionType.SNAPPY).getMaxBytesForCompression(length);
+      case GZIP:
+        return Math.addExact(
+            Math.addExact(inputLength, inputLength / 8), Math.addExact(inputLength / 64, 64));
+      case LZ4:
+        return ICompressor.getCompressor(CompressionType.LZ4).getMaxBytesForCompression(length);
+      case ZSTD:
+        return Zstd.compressBound(inputLength);
+      case LZMA2:
+        return Math.addExact(
+            Math.addExact(inputLength, Math.multiplyExact(3, (inputLength + 65535) / 65536)), 100);
+      default:
+        throw new IllegalStateException();
+    }
+  }
+
+  public long getCompressionMemoryUsageInBytes() {
+    if (compressionType == PipeCompressionType.GZIP) {
+      return GZIP_OUTPUT_BUFFER_SIZE;
+    }
+    if (compressionType == PipeCompressionType.LZMA2) {
+      return Math.multiplyExact((long) new LZMA2Options().getEncoderMemoryUsage(), 1024);
+    }
+    return 0;
+  }
 
   /**
    * Decompress the byte array to a byte array. NOTE: the length of the decompressed byte array is

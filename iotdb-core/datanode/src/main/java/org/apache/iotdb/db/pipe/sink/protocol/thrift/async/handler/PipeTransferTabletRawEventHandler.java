@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -34,6 +35,14 @@ public class PipeTransferTabletRawEventHandler extends PipeTransferTabletInserti
       final TPipeTransferReq req,
       final IoTDBDataRegionAsyncSink sink) {
     super(event, req, sink);
+  }
+
+  public PipeTransferTabletRawEventHandler(
+      final PipeRawTabletInsertionEvent event,
+      final TPipeTransferReq req,
+      final IoTDBDataRegionAsyncSink sink,
+      final PipeMemoryBlock requestMemoryBlock) {
+    super(event, req, sink, requestMemoryBlock);
   }
 
   @Override

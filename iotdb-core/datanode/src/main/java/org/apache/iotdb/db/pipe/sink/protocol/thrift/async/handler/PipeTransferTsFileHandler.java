@@ -21,16 +21,19 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
@@ -237,63 +240,102 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       } else {
         isSealSignalSent.set(true);
 
-        final TPipeTransferReq uncompressedReq =
+        final List<String> sealFileNames =
             effectiveTransferMod
-                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        modFile.getName(),
-                        modFile.length(),
-                        tsFile.getName(),
-                        tsFile.length(),
-                        dataBaseName,
-                        sink.shouldWaitForSchemaBeforeLoad())
-                    .setConversionTaskInfo(
-                        conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch())
-                : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        tsFile.getName(),
-                        tsFile.length(),
-                        dataBaseName,
-                        sink.shouldWaitForSchemaBeforeLoad())
-                    .setConversionTaskInfo(
-                        conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch());
-        final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
+                ? Arrays.asList(modFile.getName(), tsFile.getName())
+                : java.util.Collections.singletonList(tsFile.getName());
+        final List<Long> sealFileLengths =
+            effectiveTransferMod
+                ? Arrays.asList(modFile.length(), tsFile.length())
+                : java.util.Collections.singletonList(tsFile.length());
+        final boolean waitForSchemaBeforeLoad = sink.shouldWaitForSchemaBeforeLoad();
+        final boolean asyncLoadOnTypeMismatch = sink.shouldAsyncLoadTsFileOnTypeMismatch();
+        final int serializedBodySize =
+            PipeTransferTsFileSealWithModReq.calculateSerializedSize(
+                sealFileNames,
+                sealFileLengths,
+                tsFile.getName(),
+                dataBaseName,
+                waitForSchemaBeforeLoad,
+                conversionTaskId,
+                asyncLoadOnTypeMismatch);
+        PipeMemoryBlock requestMemoryBlock = tryAllocateRequestMemory(serializedBodySize, 0);
+        try {
+          final TPipeTransferReq uncompressedReq =
+              effectiveTransferMod
+                  ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                          modFile.getName(),
+                          modFile.length(),
+                          tsFile.getName(),
+                          tsFile.length(),
+                          dataBaseName,
+                          waitForSchemaBeforeLoad)
+                      .setConversionTaskInfo(conversionTaskId, asyncLoadOnTypeMismatch)
+                  : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                          tsFile.getName(), tsFile.length(), dataBaseName, waitForSchemaBeforeLoad)
+                      .setConversionTaskInfo(conversionTaskId, asyncLoadOnTypeMismatch);
+          final PipeMemoryBlock memoryBlock = requestMemoryBlock;
+          requestMemoryBlock = null;
+          final TPipeTransferReq req =
+              compressAndAccountRequest(uncompressedReq, false, memoryBlock);
 
-        pipeName2WeightMap.forEach(
-            (pipePair, weight) ->
-                sink.rateLimitIfNeeded(
-                    pipePair.getLeft(),
-                    pipePair.getRight(),
-                    client.getEndPoint(),
-                    (long) (req.getBody().length * weight)));
+          pipeName2WeightMap.forEach(
+              (pipePair, weight) ->
+                  sink.rateLimitIfNeeded(
+                      pipePair.getLeft(),
+                      pipePair.getRight(),
+                      client.getEndPoint(),
+                      (long) (req.getBody().length * weight)));
 
-        if (!tryTransfer(client, req)) {
-          return;
+          if (!tryTransfer(client, req)) {
+            return;
+          }
+        } finally {
+          if (requestMemoryBlock != null) {
+            requestMemoryBlock.close();
+          }
         }
       }
       return;
     }
 
-    final byte[] payload =
-        readLength == readFileBufferSize
-            ? readBuffer
-            : Arrays.copyOfRange(readBuffer, 0, readLength);
-    final TPipeTransferReq uncompressedReq =
-        effectiveTransferMod
-            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
-                currentFile.getName(), position, payload)
-            : PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                currentFile.getName(), position, payload);
-    final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
+    final int serializedBodySize =
+        PipeTransferFilePieceReq.calculateSerializedSize(currentFile.getName(), readLength);
+    PipeMemoryBlock requestMemoryBlock =
+        tryAllocateRequestMemory(
+            serializedBodySize, readLength == readFileBufferSize ? 0 : readLength);
+    try {
+      byte[] payload =
+          readLength == readFileBufferSize
+              ? readBuffer
+              : Arrays.copyOfRange(readBuffer, 0, readLength);
+      final TPipeTransferReq uncompressedReq =
+          effectiveTransferMod
+              ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                  currentFile.getName(), position, payload)
+              : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                  currentFile.getName(), position, payload);
+      ((PipeTransferFilePieceReq) uncompressedReq).releaseFilePiece();
+      payload = null;
+      final PipeMemoryBlock memoryBlock = requestMemoryBlock;
+      requestMemoryBlock = null;
+      final TPipeTransferReq req = compressAndAccountRequest(uncompressedReq, false, memoryBlock);
 
-    pipeName2WeightMap.forEach(
-        (pipePair, weight) ->
-            sink.rateLimitIfNeeded(
-                pipePair.getLeft(),
-                pipePair.getRight(),
-                client.getEndPoint(),
-                (long) (req.getBody().length * weight)));
+      pipeName2WeightMap.forEach(
+          (pipePair, weight) ->
+              sink.rateLimitIfNeeded(
+                  pipePair.getLeft(),
+                  pipePair.getRight(),
+                  client.getEndPoint(),
+                  (long) (req.getBody().length * weight)));
 
-    if (!tryTransfer(client, req)) {
-      return;
+      if (!tryTransfer(client, req)) {
+        return;
+      }
+    } finally {
+      if (requestMemoryBlock != null) {
+        requestMemoryBlock.close();
+      }
     }
 
     position += readLength;
@@ -306,6 +348,18 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       mayLimitRateAndRecordIO(readLength);
     }
     return readLength;
+  }
+
+  private PipeMemoryBlock tryAllocateRequestMemory(
+      final long serializedBodySize, final long additionalMemoryUsage) {
+    final PipeMemoryBlock memoryBlock =
+        PipeAsyncThriftRequestMemoryBlock.tryAllocateForSerializedBodyWithAdditionalMemory(
+            serializedBodySize, additionalMemoryUsage, this);
+    if (memoryBlock == null) {
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING);
+    }
+    return memoryBlock;
   }
 
   protected void mayLimitRateAndRecordIO(final long requiredBytes) {
@@ -512,6 +566,19 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void clearEventsReferenceCount() {
     events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
+  }
+
+  @Override
+  protected void onSynchronousErrorInternal() {
+    try {
+      clearEventsReferenceCount();
+    } finally {
+      try {
+        closeReaderAndDeleteBatchFile(false);
+      } finally {
+        releaseReadBufferAndReturnClient();
+      }
+    }
   }
 
   private boolean advanceToNextFile() {

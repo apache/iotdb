@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -46,15 +47,24 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
       final PipeInsertionEvent event,
       final TPipeTransferReq req,
       final IoTDBDataRegionAsyncSink connector) {
+    this(event, req, connector, PipeAsyncThriftRequestMemoryBlock.allocateForRequest(req, event));
+  }
+
+  protected PipeTransferTabletInsertionEventHandler(
+      final PipeInsertionEvent event,
+      final TPipeTransferReq req,
+      final IoTDBDataRegionAsyncSink connector,
+      final PipeMemoryBlock requestMemoryBlock) {
     super(connector);
 
     this.event = event;
     this.req = req;
+    setRequestMemoryBlock(requestMemoryBlock);
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
     sink.rateLimitIfNeeded(
-        event.getPipeName(), event.getCreationTime(), client.getEndPoint(), req.getBody().length);
+        event.getPipeName(), event.getCreationTime(), client.getEndPoint(), req.body.remaining());
 
     tryTransfer(client, req);
   }
@@ -109,6 +119,10 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
   @Override
   public void clearEventsReferenceCount() {
     event.clearReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName());
+  }
+
+  protected void onSynchronousErrorInternal() {
+    event.decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), false);
   }
 
   protected abstract void updateLeaderCache(final TSStatus status);

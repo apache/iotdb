@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.util.cacher.LeaderCacheUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -38,6 +39,14 @@ public class PipeTransferTabletInsertNodeEventHandler
       final TPipeTransferReq req,
       final IoTDBDataRegionAsyncSink connector) {
     super(event, req, connector);
+  }
+
+  public PipeTransferTabletInsertNodeEventHandler(
+      final PipeInsertNodeTabletInsertionEvent event,
+      final TPipeTransferReq req,
+      final IoTDBDataRegionAsyncSink connector,
+      final PipeMemoryBlock requestMemoryBlock) {
+    super(event, req, connector, requestMemoryBlock);
   }
 
   @Override

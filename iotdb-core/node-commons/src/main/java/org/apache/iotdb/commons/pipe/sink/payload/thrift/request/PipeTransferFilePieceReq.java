@@ -49,6 +49,16 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
     return filePiece;
   }
 
+  public final void releaseFilePiece() {
+    filePiece = null;
+  }
+
+  public static int calculateSerializedSize(final String fileName, final int filePieceLength) {
+    return Math.addExact(
+        ReadWriteIOUtils.sizeToWrite(fileName),
+        Math.addExact(Long.BYTES, Math.addExact(Integer.BYTES, filePieceLength)));
+  }
+
   protected abstract PipeRequestType getPlanType();
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -62,7 +72,8 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
 
     this.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(snapshotName, snapshotPiece.length));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(snapshotName, outputStream);
       ReadWriteIOUtils.write(startWritingOffset, outputStream);
