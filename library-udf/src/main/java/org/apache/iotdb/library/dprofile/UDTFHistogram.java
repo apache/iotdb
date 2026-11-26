@@ -82,28 +82,35 @@ public class UDTFHistogram implements UDTF {
   /**
    * Locate the bucket the given value belongs to. When (end - start) does not overflow, the
    * original uniform binning is kept. When it overflows to +/-Infinity (e.g. the default min/max
-   * range), both (value - start) and the bucket width lose their meaning in double arithmetic, so a
-   * numerically stable relative position derived from the interval center is used instead; this
-   * keeps the mapping monotonic and every bucket reachable.
+   * range), the bucket is found by comparing the value against the interior bucket boundaries. The
+   * boundary of bucket {@code k} is {@code start + k * (end - start) / count}, evaluated as the
+   * convex combination {@code start * (1 - k/count) + end * (k/count)}: it stays finite (the
+   * overflow only happens for start < 0 < end, where this combination lies between start and end)
+   * and never rounds a value onto the wrong side of a boundary, which keeps e.g. -1 below the 0
+   * boundary of the default [-MAX, MAX] range.
    */
   private int bucketId(double value) {
     if (!Double.isInfinite(gap)) {
       return Math.min(Math.max((int) Math.floor((value - start) / gap), 0), count - 1);
     }
-    double center = start / 2 + end / 2;
-    double halfSpan = end / 2 - start / 2;
-    if (!(halfSpan > 0)) {
+    if (!(end > start)) {
       // degenerate range (start == end); mirror the old clamping behavior
       return value <= start ? 0 : count - 1;
     }
-    double position = 0.5 + 0.5 * ((value - center) / halfSpan);
-    if (!(position >= 0)) {
-      return 0; // NaN or below the lower bound
+    // largest bucket index whose lower boundary is <= value
+    int low = 0;
+    int high = count - 1;
+    while (low < high) {
+      int mid = (low + high + 1) >>> 1;
+      double ratio = (double) mid / count;
+      double boundary = start * (1.0 - ratio) + end * ratio;
+      if (value >= boundary) {
+        low = mid;
+      } else {
+        high = mid - 1;
+      }
     }
-    if (position >= 1) {
-      return count - 1;
-    }
-    return Math.min((int) Math.floor(position * count), count - 1);
+    return low;
   }
 
   @Override

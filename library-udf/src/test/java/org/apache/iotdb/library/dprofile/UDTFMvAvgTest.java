@@ -74,4 +74,36 @@ public class UDTFMvAvgTest {
     assertEquals(1, collector.getDoubles().size());
     assertEquals(2.0, collector.getDoubles().get(3L), 1e-9);
   }
+
+  @Test
+  public void evictedValueDoesNotLeakRoundingErrorIntoLaterWindows() throws Exception {
+    UDTFMvAvg udf = createUdf(2);
+    UdfTestFakes.RecordingPointCollector collector = new UdfTestFakes.RecordingPointCollector();
+    double twoPow53 = Math.pow(2, 53);
+    feed(udf, collector, new long[] {1, 2, 3, 4, 5}, new double[] {twoPow53, 1, 0, 0, 0});
+    udf.terminate(collector);
+
+    // 2^53 + 1 loses the unit; a running sum would then stay 1 too low after evicting 1 and
+    // make both [0, 0] windows -0.5.
+    assertEquals(0.5, collector.getDoubles().get(3L), 0.0);
+    assertEquals(0.0, collector.getDoubles().get(4L), 0.0);
+    assertEquals(0.0, collector.getDoubles().get(5L), 0.0);
+  }
+
+  @Test
+  public void overflowingWindowRecoversForLaterWindows() throws Exception {
+    UDTFMvAvg udf = createUdf(2);
+    UdfTestFakes.RecordingPointCollector collector = new UdfTestFakes.RecordingPointCollector();
+    feed(
+        udf,
+        collector,
+        new long[] {1, 2, 3, 4},
+        new double[] {Double.MAX_VALUE, Double.MAX_VALUE, 1, 1});
+    udf.terminate(collector);
+
+    // the sum of two Double.MAX_VALUE values overflows, but the mean is still representable
+    assertEquals(Double.MAX_VALUE, collector.getDoubles().get(2L), 0.0);
+    // and the later [1, 1] window must not inherit an Infinity from the overflow
+    assertEquals(1.0, collector.getDoubles().get(4L), 0.0);
+  }
 }

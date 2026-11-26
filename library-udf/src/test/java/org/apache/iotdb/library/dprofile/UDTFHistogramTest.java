@@ -95,4 +95,17 @@ public class UDTFHistogramTest {
       assertEquals(0, collector.getInts().get((long) i).intValue());
     }
   }
+
+  @Test
+  public void defaultRangeBoundaryKeepsNegativeValuesOnTheirSide() throws Exception {
+    // With the default [-MAX, MAX] range and count=2, zero is the boundary between the two
+    // buckets: -1 must stay in the lower bucket instead of rounding onto the boundary.
+    UDTFHistogram udf = createUdf(Map.of("count", "2"));
+    UdfTestFakes.RecordingPointCollector collector = new UdfTestFakes.RecordingPointCollector();
+    feed(udf, collector, new long[] {1, 2, 3}, new double[] {-1, 0, 1});
+    udf.terminate(collector);
+
+    assertEquals(1, collector.getInts().get(0L).intValue());
+    assertEquals(2, collector.getInts().get(1L).intValue());
+  }
 }
