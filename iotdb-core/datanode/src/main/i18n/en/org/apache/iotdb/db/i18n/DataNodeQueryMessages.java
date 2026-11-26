@@ -4139,6 +4139,8 @@ public final class DataNodeQueryMessages {
           "Cannot spill device entries after query cleanup has started";
   public static final String EXCEPTION_DEVICEENTRY_SPILLER_OUTPUT_CLOSE_FAILED_327C3F35 =
       "DeviceEntry spiller output close failed";
+  public static final String EXCEPTION_DEVICEENTRY_SPILLER_IS_ALREADY_CLOSED_ARG_FB427109 =
+      "Device-entry spiller is already closed: %s";
   public static final String
       EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF =
           "No materializer is available to enforce the DeviceEntry memory limit";

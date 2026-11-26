@@ -4890,6 +4890,8 @@ public final class DataNodeQueryMessages {
           "Query 清理已开始，无法继续溢写 DeviceEntry";
   public static final String EXCEPTION_DEVICEENTRY_SPILLER_OUTPUT_CLOSE_FAILED_327C3F35 =
       "DeviceEntry spiller 输出关闭失败";
+  public static final String EXCEPTION_DEVICEENTRY_SPILLER_IS_ALREADY_CLOSED_ARG_FB427109 =
+      "DeviceEntry spiller 已关闭：%s";
   public static final String
       EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF =
           "没有可用于执行 DeviceEntry 内存限制的 materializer";

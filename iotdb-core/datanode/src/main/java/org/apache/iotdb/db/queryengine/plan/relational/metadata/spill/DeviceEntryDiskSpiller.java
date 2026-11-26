@@ -113,7 +113,10 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
           DataNodeQueryMessages.EXCEPTION_DEVICEENTRY_SPILLER_OUTPUT_CLOSE_FAILED_327C3F35);
     }
     if (closed) {
-      throw new IOException("Device-entry spiller is already closed: " + directory);
+      throw new IOException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_DEVICEENTRY_SPILLER_IS_ALREADY_CLOSED_ARG_FB427109,
+              directory));
     }
   }
 
