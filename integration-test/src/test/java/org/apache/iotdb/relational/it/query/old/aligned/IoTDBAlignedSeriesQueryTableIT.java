@@ -3702,21 +3702,25 @@ public class IoTDBAlignedSeriesQueryTableIT {
   /** Regression test for #19392: partial updates across flushes merge in strict priority order. */
   @Test
   public void partialUpdateMergeAcrossMultipleFlushesTest() throws SQLException {
+    String db = "merge_lookahead_db";
+    String flush = "FLUSH " + db;
     try (Connection conn = EnvFactory.getEnv().getTableConnection();
         Statement s = conn.createStatement()) {
-      s.execute(USE_DB);
-      s.execute("DROP TABLE IF EXISTS merge_lookahead_bug");
-      s.execute("CREATE TABLE merge_lookahead_bug (d STRING TAG, x INT64 FIELD, y INT64 FIELD)");
+      s.execute("DROP DATABASE IF EXISTS " + db);
+      s.execute("CREATE DATABASE " + db);
       try {
+        s.execute("USE " + db);
+        s.execute("CREATE TABLE merge_lookahead_bug (d STRING TAG, x INT64 FIELD, y INT64 FIELD)");
+
         // Ascending-scan scenario (#19392) on d1: verify before and after 3rd flush
         s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d1',100),(20,'d1',200)");
-        s.execute("FLUSH");
+        s.execute(flush);
         s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (20,'d1',220)");
-        s.execute("FLUSH");
+        s.execute(flush);
         s.execute("INSERT INTO merge_lookahead_bug(time,d,x) VALUES (10,'d1',110),(20,'d1',120)");
         for (int i = 0; i < 2; i++) {
           if (i == 1) {
-            s.execute("FLUSH");
+            s.execute(flush);
           }
           assertMergeRows(s, "d='d1' AND time=20", "20,120,220");
           assertMergeRows(s, "d='d1' ORDER BY time", "10,110,100", "20,120,220");
@@ -3726,19 +3730,19 @@ public class IoTDBAlignedSeriesQueryTableIT {
 
         // Symmetric descending-scan scenario on d2: verify before and after 3rd flush
         s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d2',100),(20,'d2',200)");
-        s.execute("FLUSH");
+        s.execute(flush);
         s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d2',120)");
-        s.execute("FLUSH");
+        s.execute(flush);
         s.execute("INSERT INTO merge_lookahead_bug(time,d,x) VALUES (10,'d2',110),(20,'d2',210)");
         for (int i = 0; i < 2; i++) {
           if (i == 1) {
-            s.execute("FLUSH");
+            s.execute(flush);
           }
           assertMergeRows(s, "d='d2' ORDER BY time DESC", "20,210,200", "10,110,120");
           assertMergeRows(s, "d='d2' AND x=110 AND y=120 ORDER BY time DESC", "10,110,120");
         }
       } finally {
-        s.execute("DROP TABLE IF EXISTS merge_lookahead_bug");
+        s.execute("DROP DATABASE IF EXISTS " + db);
       }
     }
   }
