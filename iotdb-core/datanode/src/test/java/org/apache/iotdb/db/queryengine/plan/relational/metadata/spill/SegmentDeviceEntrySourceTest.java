@@ -31,9 +31,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -254,6 +258,148 @@ public class SegmentDeviceEntrySourceTest {
     }
 
     assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
+  }
+
+  @Test
+  public void testQueryCleanupClosesActiveSpillerBeforeDeletingDirectory() throws Exception {
+    String queryId = "q-cleanup-active-spiller";
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer(queryId, new PlanNodeId("scan-active"), 1, false)) {
+      materializer.append(createEntries(1).get(0));
+      materializer.forceSpill();
+
+      Path querySpillDirectory = queryDirectory.resolve("device-entry").resolve(queryId);
+      assertTrue(Files.exists(querySpillDirectory));
+
+      manager.deregisterQuery(queryId);
+
+      assertFalse(Files.exists(querySpillDirectory));
+      assertThrows(
+          IOException.class, () -> materializer.appendWithMemoryControl(createEntries(1).get(0)));
+    }
+  }
+
+  @Test
+  public void testQueryCleanupCanRetryAfterSpillerCloseFailure() throws Exception {
+    String queryId = "q-cleanup-spiller-close-retry";
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    Path ownerDirectory = manager.register(queryId, new PlanNodeId("scan-close-retry"));
+    Path spillDirectory = ownerDirectory.resolve("fi");
+    DeviceEntryDiskSpiller spiller =
+        manager.createSpiller(queryId, ownerDirectory, spillDirectory, 1024, null, false);
+    spiller.append(new byte[] {1});
+
+    Field outputField = DeviceEntryDiskSpiller.class.getDeclaredField("output");
+    outputField.setAccessible(true);
+    ((DataOutputStream) outputField.get(spiller)).close();
+    Field fileOutputField = DeviceEntryDiskSpiller.class.getDeclaredField("fileOutput");
+    fileOutputField.setAccessible(true);
+    AtomicInteger closeCalls = new AtomicInteger();
+    OutputStream fileOutput =
+        new OutputStream() {
+          @Override
+          public void write(int value) {}
+
+          @Override
+          public void close() throws IOException {
+            if (closeCalls.incrementAndGet() == 1) {
+              throw new IOException("Simulated first close failure");
+            }
+          }
+        };
+    fileOutputField.set(spiller, fileOutput);
+    outputField.set(spiller, new DataOutputStream(new BufferedOutputStream(fileOutput)));
+
+    assertThrows(IOException.class, () -> manager.deregisterQuery(queryId));
+    assertEquals(1, closeCalls.get());
+    assertTrue(Files.exists(spillDirectory));
+
+    manager.deregisterQuery(queryId);
+
+    assertEquals(2, closeCalls.get());
+    assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
+  }
+
+  @Test
+  public void testSpillerDoesNotSealAfterBufferedOutputCloseFailure() throws Exception {
+    String queryId = Integer.toHexString(System.identityHashCode(this));
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    Path ownerDirectory = manager.register(queryId, new PlanNodeId(queryId));
+    Path spillDirectory = ownerDirectory.resolve(ownerDirectory.getFileName());
+    DeviceEntryDiskSpiller spiller =
+        manager.createSpiller(queryId, ownerDirectory, spillDirectory, 1024, null, false);
+    spiller.append(new byte[] {1});
+
+    Field outputField = null;
+    Field fileOutputField = null;
+    for (Field field : DeviceEntryDiskSpiller.class.getDeclaredFields()) {
+      if (field.getType() == DataOutputStream.class) {
+        outputField = field;
+      } else if (field.getType() == OutputStream.class) {
+        fileOutputField = field;
+      }
+    }
+    outputField.setAccessible(true);
+    ((DataOutputStream) outputField.get(spiller)).close();
+    fileOutputField.setAccessible(true);
+    AtomicInteger writeCalls = new AtomicInteger();
+    AtomicInteger closeCalls = new AtomicInteger();
+    OutputStream fileOutput =
+        new OutputStream() {
+          @Override
+          public void write(int value) throws IOException {
+            writeCalls.incrementAndGet();
+            throw new IOException();
+          }
+
+          @Override
+          public void close() {
+            closeCalls.incrementAndGet();
+          }
+        };
+    fileOutputField.set(spiller, fileOutput);
+    DataOutputStream output = new DataOutputStream(new BufferedOutputStream(fileOutput));
+    output.writeInt(1);
+    outputField.set(spiller, output);
+
+    assertThrows(IOException.class, spiller::finish);
+    assertTrue(writeCalls.get() > 0);
+    assertTrue(Files.exists(spillDirectory));
+    int writeCallsAfterCloseFailure = writeCalls.get();
+    assertThrows(IOException.class, () -> spiller.append(new byte[] {2}));
+    assertEquals(writeCallsAfterCloseFailure, writeCalls.get());
+    assertThrows(IOException.class, spiller::finish);
+    assertTrue(Files.exists(spillDirectory));
+
+    manager.deregisterQuery(queryId);
+
+    assertEquals(2, closeCalls.get());
+    assertFalse(Files.exists(ownerDirectory.getParent()));
+  }
+
+  @Test
+  public void testQueryCleanupClosesActiveReaderBeforeDeletingDirectory() throws Exception {
+    String queryId = "q-cleanup-active-reader";
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    SpilledDeviceEntryDataSet dataSet;
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer(queryId, new PlanNodeId("scan-reader"), 1, false)) {
+      materializer.append(createEntries(1).get(0));
+      materializer.forceSpill();
+      dataSet = (SpilledDeviceEntryDataSet) materializer.finish();
+    }
+
+    DeviceEntryReader reader = dataSet.openReader();
+    assertTrue(reader.hasNext());
+    Path querySpillDirectory = queryDirectory.resolve("device-entry").resolve(queryId);
+
+    manager.deregisterQuery(queryId);
+
+    assertFalse(Files.exists(querySpillDirectory));
+    assertThrows(IOException.class, reader::hasNext);
+    reader.close();
+    dataSet.close();
   }
 
   @Test

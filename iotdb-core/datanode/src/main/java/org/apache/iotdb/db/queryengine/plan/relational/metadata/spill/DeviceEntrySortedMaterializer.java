@@ -118,11 +118,14 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     checkNotFinished();
     long entryRamBytes = entry.ramBytesUsed();
     if (!isBufferEmpty() && getBufferedRamBytes() + entryRamBytes > thresholdInBytes()) {
-      long releasedRamBytes = getBufferedRamBytes();
-      flushRun();
-      appendToBuffer(entry);
-      addBufferedRamBytes(entryRamBytes);
-      return releasedRamBytes;
+      return withSpillDirectoryLock(
+          () -> {
+            long releasedRamBytes = getBufferedRamBytes();
+            flushRun();
+            appendToBuffer(entry);
+            addBufferedRamBytes(entryRamBytes);
+            return releasedRamBytes;
+          });
     }
     appendToBuffer(entry);
     addBufferedRamBytes(entryRamBytes);
@@ -137,7 +140,11 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
   @Override
   public void forceSpill() throws IOException {
     checkNotFinished();
-    flushRun();
+    withSpillDirectoryLock(
+        () -> {
+          flushRun();
+          return null;
+        });
   }
 
   @Override
@@ -170,37 +177,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     }
 
     try {
-      flushRun();
-      List<List<Path>> finalRuns = compactRuns(new ArrayList<>(sortedRuns));
-      Path finalDirectory = spillDirectory(ownerDirectory());
-      List<Path> finalSegments;
-      int finalEntryCount;
-      if (!distinct && finalRuns.size() == 1) {
-        finalSegments = moveRun(finalRuns.get(0), finalDirectory);
-        finalEntryCount = entryCount();
-      } else {
-        try (DeviceEntryDiskSpiller outputSpiller = createSpiller(finalDirectory)) {
-          if (finalRuns.size() == 1) {
-            finalEntryCount = copyRun(finalRuns.get(0), outputSpiller);
-          } else {
-            finalEntryCount = mergeRuns(finalRuns, outputSpiller);
-          }
-          finalSegments = outputSpiller.finish();
-        }
-      }
-      setEntryCount(finalEntryCount);
-      dataSet =
-          new SpilledDeviceEntryDataSet(
-              queryId(),
-              ownerDirectory(),
-              finalSegments,
-              entryCount(),
-              ioContextOnSpill(),
-              seriesPartitionSlots());
-      recordDeviceEntryCount();
-      markFinished();
-      deleteRunDirectoryBestEffort();
-      return dataSet;
+      return withSpillDirectoryLock(this::finishSpilled);
     } catch (IOException | RuntimeException e) {
       try {
         if (isSpilled()) {
@@ -211,6 +188,40 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       }
       throw e;
     }
+  }
+
+  private DeviceEntryDataSet finishSpilled() throws IOException {
+    flushRun();
+    List<List<Path>> finalRuns = compactRuns(new ArrayList<>(sortedRuns));
+    Path finalDirectory = spillDirectory(ownerDirectory());
+    List<Path> finalSegments;
+    int finalEntryCount;
+    if (!distinct && finalRuns.size() == 1) {
+      finalSegments = moveRun(finalRuns.get(0), finalDirectory);
+      finalEntryCount = entryCount();
+    } else {
+      try (DeviceEntryDiskSpiller outputSpiller = createSpiller(finalDirectory)) {
+        if (finalRuns.size() == 1) {
+          finalEntryCount = copyRun(finalRuns.get(0), outputSpiller);
+        } else {
+          finalEntryCount = mergeRuns(finalRuns, outputSpiller);
+        }
+        finalSegments = outputSpiller.finish();
+      }
+    }
+    setEntryCount(finalEntryCount);
+    DeviceEntryDataSet dataSet =
+        new SpilledDeviceEntryDataSet(
+            queryId(),
+            ownerDirectory(),
+            finalSegments,
+            entryCount(),
+            ioContextOnSpill(),
+            seriesPartitionSlots());
+    recordDeviceEntryCount();
+    markFinished();
+    deleteRunDirectoryBestEffort();
+    return dataSet;
   }
 
   private List<Path> moveRun(List<Path> run, Path finalDirectory) throws IOException {

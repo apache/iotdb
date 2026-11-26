@@ -143,7 +143,8 @@ public class MPPQueryContext implements IAuditEntity {
 
   private DeviceEntryIOContext deviceEntryIOContext;
   private final AtomicBoolean deviceEntryDiskIOMetricsRecorded = new AtomicBoolean();
-  private boolean deviceEntrySpilled;
+  private volatile boolean deviceEntrySpilled;
+  private volatile boolean deviceEntrySpillCleanupRequested;
 
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
@@ -442,6 +443,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public boolean isDeviceEntrySpilled() {
     return deviceEntrySpilled;
+  }
+
+  public void markDeviceEntrySpillCleanupRequested() {
+    deviceEntrySpillCleanupRequested = true;
+  }
+
+  public boolean isDeviceEntrySpillCleanupRequested() {
+    return deviceEntrySpillCleanupRequested;
   }
 
   public void addFailedEndPoint(TEndPoint endPoint) {

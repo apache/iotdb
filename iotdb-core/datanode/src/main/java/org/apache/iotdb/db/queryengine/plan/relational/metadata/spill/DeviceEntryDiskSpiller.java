@@ -19,15 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -37,8 +32,9 @@ import java.util.List;
 
 public final class DeviceEntryDiskSpiller implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeviceEntryDiskSpiller.class);
-
+  private final DeviceEntrySpillManager spillManager;
+  private final String queryId;
+  private final Path ownerDirectory;
   private final Path directory;
   private final long targetSegmentBytes;
   private final DeviceEntryIOContext ioContext;
@@ -46,16 +42,25 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
   private final List<Path> sealedSegments = new ArrayList<>();
 
   private DataOutputStream output;
+  private OutputStream fileOutput;
   private Path temporaryFile;
   private long currentBytes;
   private int nextSegmentId;
+  private boolean closed;
+  private boolean outputCloseFailed;
 
   public DeviceEntryDiskSpiller(
+      DeviceEntrySpillManager spillManager,
+      String queryId,
+      Path ownerDirectory,
       Path directory,
       long targetSegmentBytes,
       DeviceEntryIOContext ioContext,
       boolean duringFetchSchema)
       throws IOException {
+    this.spillManager = spillManager;
+    this.queryId = queryId;
+    this.ownerDirectory = ownerDirectory;
     this.directory = directory;
     this.targetSegmentBytes = targetSegmentBytes;
     this.ioContext = ioContext;
@@ -64,6 +69,11 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
   }
 
   public void append(byte[] serializedEntry) throws IOException {
+    spillManager.appendSpiller(this, serializedEntry);
+  }
+
+  synchronized void appendInternal(byte[] serializedEntry) throws IOException {
+    checkOpen();
     checkTimeout();
     long startNanos = System.nanoTime();
     int recordBytes = Integer.BYTES + serializedEntry.length;
@@ -78,8 +88,30 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
   }
 
   public List<Path> finish() throws IOException {
+    return spillManager.finishSpiller(this);
+  }
+
+  synchronized List<Path> finishInternal() throws IOException {
+    checkOpen();
     sealCurrentSegment();
     return List.copyOf(sealedSegments);
+  }
+
+  String queryId() {
+    return queryId;
+  }
+
+  Path ownerDirectory() {
+    return ownerDirectory;
+  }
+
+  private void checkOpen() throws IOException {
+    if (outputCloseFailed) {
+      throw new IOException();
+    }
+    if (closed) {
+      throw new IOException("Device-entry spiller is already closed: " + directory);
+    }
   }
 
   private void ensureOutput() throws IOException {
@@ -87,7 +119,8 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
       return;
     }
     temporaryFile = directory.resolve(String.format("segment-%06d.tmp", nextSegmentId));
-    output = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(temporaryFile)));
+    fileOutput = Files.newOutputStream(temporaryFile);
+    output = new DataOutputStream(new BufferedOutputStream(fileOutput));
     currentBytes = 0;
   }
 
@@ -95,8 +128,7 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
     if (output == null) {
       return;
     }
-    output.close();
-    output = null;
+    closeOutput();
     Path sealedFile = directory.resolve(String.format("segment-%06d.bin", nextSegmentId++));
     try {
       Files.move(
@@ -110,6 +142,24 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
     sealedSegments.add(sealedFile);
     temporaryFile = null;
     currentBytes = 0;
+  }
+
+  private void closeOutput() throws IOException {
+    if (output == null) {
+      return;
+    }
+    try {
+      output.close();
+    } catch (IOException e) {
+      outputCloseFailed = true;
+      throw e;
+    }
+    if (outputCloseFailed) {
+      fileOutput.close();
+    }
+    output = null;
+    fileOutput = null;
+    outputCloseFailed = false;
   }
 
   private void checkTimeout() {
@@ -130,20 +180,21 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    if (output != null) {
-      output.close();
-      output = null;
+    spillManager.closeSpiller(this);
+  }
+
+  synchronized void closeInternal() throws IOException {
+    if (closed) {
+      return;
     }
+    closeOutput();
     if (temporaryFile != null) {
       try {
         Files.deleteIfExists(temporaryFile);
-      } catch (NoSuchFileException | AccessDeniedException e) {
-        LOGGER.warn(
-            String.format(
-                DataNodeQueryMessages
-                    .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                temporaryFile));
+      } catch (NoSuchFileException ignored) {
       }
+      temporaryFile = null;
     }
+    closed = true;
   }
 }

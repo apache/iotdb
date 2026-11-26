@@ -165,7 +165,23 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   }
 
   protected final DeviceEntryDiskSpiller createSpiller(Path directory) throws IOException {
-    return new DeviceEntryDiskSpiller(directory, thresholdInBytes, ioContextOnSpill(), rawSegment);
+    return DeviceEntrySpillManager.getInstance()
+        .createSpiller(
+            queryId, ownerDirectory, directory, thresholdInBytes, ioContextOnSpill(), rawSegment);
+  }
+
+  protected final <T> T withSpillDirectoryLock(DeviceEntrySpillManager.IOCallable<T> operation)
+      throws IOException {
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    return manager.withQueryDirectoryReadLock(
+        queryId,
+        () -> {
+          checkSpillCleanupRequested();
+          if (ownerDirectory != null && ownerRegistered) {
+            manager.checkOwnerRegistered(queryId, ownerDirectory);
+          }
+          return operation.call();
+        });
   }
 
   protected final Path spillDirectory(Path ownerDirectory) {
@@ -173,9 +189,15 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   }
 
   protected final DeviceEntryFileSpillerReader createReader(
-      List<Path> segments, boolean deleteSegmentAfterRead) {
-    return new DeviceEntryFileSpillerReader(
-        segments, deleteSegmentAfterRead, ioContextOnSpill(), rawSegment);
+      List<Path> segments, boolean deleteSegmentAfterRead) throws IOException {
+    return DeviceEntrySpillManager.getInstance()
+        .createReader(
+            queryId,
+            ownerDirectory,
+            segments,
+            deleteSegmentAfterRead,
+            ioContextOnSpill(),
+            rawSegment);
   }
 
   protected final void recordDeviceEntryCount() {
@@ -209,6 +231,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   protected final Path ensureOwnerDirectory() throws IOException {
     if (ownerDirectory == null) {
+      checkSpillCleanupRequested();
       ownerDirectory = DeviceEntrySpillManager.getInstance().register(queryId, planNodeId);
       ownerRegistered = true;
       if (queryContext != null) {
@@ -216,6 +239,14 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
       }
     }
     return ownerDirectory;
+  }
+
+  private void checkSpillCleanupRequested() throws IOException {
+    if (queryContext != null && queryContext.isDeviceEntrySpillCleanupRequested()) {
+      throw new IOException(
+          DataNodeQueryMessages
+              .EXCEPTION_CANNOT_SPILL_DEVICE_ENTRIES_AFTER_QUERY_CLEANUP_HAS_STARTED_87A1224E);
+    }
   }
 
   protected final void checkNotFinished() {

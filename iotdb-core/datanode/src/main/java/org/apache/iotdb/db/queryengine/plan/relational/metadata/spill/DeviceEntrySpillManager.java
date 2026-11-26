@@ -37,13 +37,20 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public final class DeviceEntrySpillManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeviceEntrySpillManager.class);
 
   private final ConcurrentHashMap<String, Set<Path>> queryDirectories = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Set<DeviceEntryDiskSpiller>> querySpillers =
+      new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Set<DeviceEntryFileSpillerReader>> queryReaders =
+      new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, QueryDirectoryLock> queryDirectoryLocks =
+      new ConcurrentHashMap<>();
 
   private DeviceEntrySpillManager() {}
 
@@ -52,62 +59,93 @@ public final class DeviceEntrySpillManager {
   }
 
   public Path register(String queryId, PlanNodeId planNodeId) throws IOException {
-    Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId.getId());
-    Files.createDirectories(ownerDirectory);
-    queryDirectories
-        .computeIfAbsent(queryId, ignored -> ConcurrentHashMap.newKeySet())
-        .add(ownerDirectory);
-    return ownerDirectory;
+    return withQueryDirectoryReadLock(
+        queryId,
+        () -> {
+          Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId.getId());
+          Files.createDirectories(ownerDirectory);
+          queryDirectories
+              .computeIfAbsent(queryId, ignored -> ConcurrentHashMap.newKeySet())
+              .add(ownerDirectory);
+          return ownerDirectory;
+        });
   }
 
   public void deregisterOwner(String queryId, Path ownerDirectory) throws IOException {
-    deleteDirectoryIfExists(ownerDirectory);
-    AtomicBoolean removedLastOwner = new AtomicBoolean(false);
-    queryDirectories.computeIfPresent(
+    withQueryDirectoryLock(
         queryId,
-        (ignored, owners) -> {
-          owners.remove(ownerDirectory);
-          if (owners.isEmpty()) {
-            removedLastOwner.set(true);
-            return null;
+        () -> {
+          IOException failure = closeReaders(queryId, ownerDirectory);
+          failure = mergeFailures(failure, closeSpillers(queryId, ownerDirectory));
+          if (failure != null) {
+            throw failure;
           }
-          return owners;
+          deleteDirectoryIfExists(ownerDirectory);
+          Set<Path> owners = queryDirectories.get(queryId);
+          if (owners != null && owners.remove(ownerDirectory) && owners.isEmpty()) {
+            try {
+              deleteDirectoryIfExists(resolveQueryDirectory(queryId));
+            } catch (IOException e) {
+              owners.add(ownerDirectory);
+              throw e;
+            }
+            queryDirectories.remove(queryId, owners);
+          }
+          return null;
         });
-    if (removedLastOwner.get()) {
-      deleteDirectoryIfExists(resolveQueryDirectory(queryId));
-    }
   }
 
   public void deregisterQuery(String queryId) throws IOException {
-    queryDirectories.remove(queryId);
-    deleteDirectoryIfExists(resolveQueryDirectory(queryId));
+    withQueryDirectoryLock(
+        queryId,
+        () -> {
+          IOException failure = closeReaders(queryId, null);
+          failure = mergeFailures(failure, closeSpillers(queryId, null));
+          if (failure != null) {
+            throw failure;
+          }
+          deleteDirectoryIfExists(resolveQueryDirectory(queryId));
+          queryDirectories.remove(queryId);
+          return null;
+        });
   }
 
   public byte[] readSegment(String queryId, String planNodeId, int segmentId) throws IOException {
-    return Files.readAllBytes(resolveSegment(queryId, planNodeId, segmentId));
+    return withQueryDirectoryReadLock(
+        queryId,
+        () -> Files.readAllBytes(getRegisteredSegmentPath(queryId, planNodeId, segmentId)));
   }
 
   public Path resolveSegment(String queryId, String planNodeId, int segmentId) throws IOException {
-    Path segment = getRegisteredSegmentPath(queryId, planNodeId, segmentId);
-    if (!Files.isRegularFile(segment)) {
-      throw new NoSuchFileException(segment.toString());
-    }
-    return segment;
+    return withQueryDirectoryReadLock(
+        queryId,
+        () -> {
+          Path segment = getRegisteredSegmentPath(queryId, planNodeId, segmentId);
+          if (!Files.isRegularFile(segment)) {
+            throw new NoSuchFileException(segment.toString());
+          }
+          return segment;
+        });
   }
 
   public void deleteSegment(String queryId, String dataSetId, int segmentId) throws IOException {
-    Path file = null;
-    try {
-      file = getRegisteredSegmentPath(queryId, dataSetId, segmentId);
-      Files.deleteIfExists(file);
-    } catch (NoSuchFileException | AccessDeniedException e) {
-      // Query cleanup may have already removed the whole query directory.
-      LOGGER.warn(
-          String.format(
-              DataNodeQueryMessages
-                  .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-              file));
-    }
+    withQueryDirectoryLock(
+        queryId,
+        () -> {
+          Path file = null;
+          try {
+            file = getRegisteredSegmentPath(queryId, dataSetId, segmentId);
+            Files.deleteIfExists(file);
+          } catch (NoSuchFileException | AccessDeniedException e) {
+            // Query cleanup may have already removed the whole query directory.
+            LOGGER.warn(
+                String.format(
+                    DataNodeQueryMessages
+                        .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                    file));
+          }
+          return null;
+        });
   }
 
   public void deleteSegment(String queryId, PlanNodeId planNodeId, int segmentId)
@@ -162,6 +200,271 @@ public final class DeviceEntrySpillManager {
     deleteDirectoryIfExists(rootDirectory());
     Files.createDirectories(rootDirectory());
     queryDirectories.clear();
+    querySpillers.clear();
+    queryReaders.clear();
+  }
+
+  DeviceEntryDiskSpiller createSpiller(
+      String queryId,
+      Path ownerDirectory,
+      Path directory,
+      long targetSegmentBytes,
+      DeviceEntryIOContext ioContext,
+      boolean duringFetchSchema)
+      throws IOException {
+    return withQueryDirectoryReadLock(
+        queryId,
+        () -> {
+          checkOwnerRegistered(queryId, ownerDirectory);
+          DeviceEntryDiskSpiller spiller =
+              new DeviceEntryDiskSpiller(
+                  this,
+                  queryId,
+                  ownerDirectory,
+                  directory,
+                  targetSegmentBytes,
+                  ioContext,
+                  duringFetchSchema);
+          querySpillers.compute(
+              queryId,
+              (ignored, spillers) -> {
+                Set<DeviceEntryDiskSpiller> registeredSpillers =
+                    spillers == null ? ConcurrentHashMap.newKeySet() : spillers;
+                registeredSpillers.add(spiller);
+                return registeredSpillers;
+              });
+          return spiller;
+        });
+  }
+
+  DeviceEntryFileSpillerReader createReader(
+      String queryId,
+      Path ownerDirectory,
+      java.util.List<Path> segments,
+      boolean deleteSegmentAfterRead,
+      DeviceEntryIOContext ioContext,
+      boolean duringFetchSchema)
+      throws IOException {
+    return withQueryDirectoryReadLock(
+        queryId,
+        () -> {
+          checkOwnerRegistered(queryId, ownerDirectory);
+          DeviceEntryFileSpillerReader reader =
+              new DeviceEntryFileSpillerReader(
+                  this,
+                  queryId,
+                  ownerDirectory,
+                  segments,
+                  deleteSegmentAfterRead,
+                  ioContext,
+                  duringFetchSchema);
+          queryReaders.compute(
+              queryId,
+              (ignored, readers) -> {
+                Set<DeviceEntryFileSpillerReader> registeredReaders =
+                    readers == null ? ConcurrentHashMap.newKeySet() : readers;
+                registeredReaders.add(reader);
+                return registeredReaders;
+              });
+          return reader;
+        });
+  }
+
+  void appendSpiller(DeviceEntryDiskSpiller spiller, byte[] serializedEntry) throws IOException {
+    withQueryDirectoryReadLock(
+        spiller.queryId(),
+        () -> {
+          checkSpillerRegistered(spiller);
+          spiller.appendInternal(serializedEntry);
+          return null;
+        });
+  }
+
+  java.util.List<Path> finishSpiller(DeviceEntryDiskSpiller spiller) throws IOException {
+    return withQueryDirectoryReadLock(
+        spiller.queryId(),
+        () -> {
+          checkSpillerRegistered(spiller);
+          return spiller.finishInternal();
+        });
+  }
+
+  void closeSpiller(DeviceEntryDiskSpiller spiller) throws IOException {
+    withQueryDirectoryReadLock(
+        spiller.queryId(),
+        () -> {
+          spiller.closeInternal();
+          removeSpiller(spiller);
+          return null;
+        });
+  }
+
+  boolean hasNextReader(DeviceEntryFileSpillerReader reader) throws IOException {
+    return withQueryDirectoryReadLock(
+        reader.queryId(),
+        () -> {
+          checkReaderRegistered(reader);
+          return reader.hasNextInternal();
+        });
+  }
+
+  org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry nextReader(
+      DeviceEntryFileSpillerReader reader) throws IOException {
+    return withQueryDirectoryReadLock(
+        reader.queryId(),
+        () -> {
+          checkReaderRegistered(reader);
+          return reader.nextInternal();
+        });
+  }
+
+  void closeReader(DeviceEntryFileSpillerReader reader) throws IOException {
+    withQueryDirectoryReadLock(
+        reader.queryId(),
+        () -> {
+          reader.closeInternal();
+          removeReader(reader);
+          return null;
+        });
+  }
+
+  <T> T withQueryDirectoryLock(String queryId, IOCallable<T> operation) throws IOException {
+    return withQueryDirectoryLock(queryId, operation, true);
+  }
+
+  <T> T withQueryDirectoryReadLock(String queryId, IOCallable<T> operation) throws IOException {
+    return withQueryDirectoryLock(queryId, operation, false);
+  }
+
+  private <T> T withQueryDirectoryLock(String queryId, IOCallable<T> operation, boolean exclusive)
+      throws IOException {
+    QueryDirectoryLock lock =
+        queryDirectoryLocks.compute(
+            queryId,
+            (ignored, current) -> {
+              QueryDirectoryLock result = current == null ? new QueryDirectoryLock() : current;
+              result.references++;
+              return result;
+            });
+    Lock acquiredLock = exclusive ? lock.lock.writeLock() : lock.lock.readLock();
+    acquiredLock.lock();
+    try {
+      return operation.call();
+    } finally {
+      acquiredLock.unlock();
+      queryDirectoryLocks.computeIfPresent(
+          queryId,
+          (ignored, current) -> {
+            if (current != lock) {
+              return current;
+            }
+            current.references--;
+            return current.references == 0 ? null : current;
+          });
+    }
+  }
+
+  void checkOwnerRegistered(String queryId, Path ownerDirectory) throws IOException {
+    Set<Path> owners = queryDirectories.get(queryId);
+    if (owners == null || !owners.contains(ownerDirectory)) {
+      throw new NoSuchFileException(ownerDirectory.toString());
+    }
+  }
+
+  private void checkSpillerRegistered(DeviceEntryDiskSpiller spiller) throws IOException {
+    Set<DeviceEntryDiskSpiller> spillers = querySpillers.get(spiller.queryId());
+    if (spillers == null || !spillers.contains(spiller)) {
+      throw new NoSuchFileException(spiller.ownerDirectory().toString());
+    }
+    checkOwnerRegistered(spiller.queryId(), spiller.ownerDirectory());
+  }
+
+  private void checkReaderRegistered(DeviceEntryFileSpillerReader reader) throws IOException {
+    Set<DeviceEntryFileSpillerReader> readers = queryReaders.get(reader.queryId());
+    if (readers == null || !readers.contains(reader)) {
+      throw new NoSuchFileException(reader.ownerDirectory().toString());
+    }
+    checkOwnerRegistered(reader.queryId(), reader.ownerDirectory());
+  }
+
+  private IOException closeReaders(String queryId, Path ownerDirectory) {
+    Set<DeviceEntryFileSpillerReader> readers = queryReaders.get(queryId);
+    if (readers == null) {
+      return null;
+    }
+    IOException failure = null;
+    for (DeviceEntryFileSpillerReader reader : Set.copyOf(readers)) {
+      if (ownerDirectory == null || ownerDirectory.equals(reader.ownerDirectory())) {
+        try {
+          reader.closeInternal();
+          readers.remove(reader);
+        } catch (IOException e) {
+          if (failure == null) {
+            failure = e;
+          } else {
+            failure.addSuppressed(e);
+          }
+        }
+      }
+    }
+    if (readers.isEmpty()) {
+      queryReaders.remove(queryId, readers);
+    }
+    return failure;
+  }
+
+  private IOException closeSpillers(String queryId, Path ownerDirectory) {
+    Set<DeviceEntryDiskSpiller> spillers = querySpillers.get(queryId);
+    if (spillers == null) {
+      return null;
+    }
+    IOException failure = null;
+    for (DeviceEntryDiskSpiller spiller : Set.copyOf(spillers)) {
+      if (ownerDirectory == null || ownerDirectory.equals(spiller.ownerDirectory())) {
+        try {
+          spiller.closeInternal();
+          spillers.remove(spiller);
+        } catch (IOException e) {
+          if (failure == null) {
+            failure = e;
+          } else {
+            failure.addSuppressed(e);
+          }
+        }
+      }
+    }
+    if (spillers.isEmpty()) {
+      querySpillers.remove(queryId, spillers);
+    }
+    return failure;
+  }
+
+  private IOException mergeFailures(IOException first, IOException next) {
+    if (first == null) {
+      return next;
+    }
+    if (next != null) {
+      first.addSuppressed(next);
+    }
+    return first;
+  }
+
+  private void removeSpiller(DeviceEntryDiskSpiller spiller) {
+    querySpillers.computeIfPresent(
+        spiller.queryId(),
+        (ignored, spillers) -> {
+          spillers.remove(spiller);
+          return spillers.isEmpty() ? null : spillers;
+        });
+  }
+
+  private void removeReader(DeviceEntryFileSpillerReader reader) {
+    queryReaders.computeIfPresent(
+        reader.queryId(),
+        (ignored, readers) -> {
+          readers.remove(reader);
+          return readers.isEmpty() ? null : readers;
+        });
   }
 
   private void deleteDirectoryIfExists(Path directory) throws IOException {
@@ -178,8 +481,8 @@ public final class DeviceEntrySpillManager {
               throws IOException {
             try {
               Files.deleteIfExists(file);
-            } catch (NoSuchFileException | AccessDeniedException e) {
-              // Another concurrent cleanup may have deleted or be deleting this file.
+            } catch (NoSuchFileException e) {
+              // Another cleanup may have deleted this file.
               LOGGER.warn(
                   String.format(
                       DataNodeQueryMessages
@@ -192,17 +495,12 @@ public final class DeviceEntrySpillManager {
           @Override
           public FileVisitResult visitFileFailed(Path file, IOException exception)
               throws IOException {
-            if (exception instanceof NoSuchFileException
-                || exception instanceof AccessDeniedException
-                || !Files.exists(file)) {
-              if (exception instanceof NoSuchFileException
-                  || exception instanceof AccessDeniedException) {
-                LOGGER.warn(
-                    String.format(
-                        DataNodeQueryMessages
-                            .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                        file));
-              }
+            if (exception instanceof NoSuchFileException) {
+              LOGGER.warn(
+                  String.format(
+                      DataNodeQueryMessages
+                          .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                      file));
               return FileVisitResult.CONTINUE;
             }
             throw exception;
@@ -211,16 +509,13 @@ public final class DeviceEntrySpillManager {
           @Override
           public FileVisitResult postVisitDirectory(Path dir, IOException exception)
               throws IOException {
-            if (exception != null
-                && !(exception instanceof NoSuchFileException)
-                && !(exception instanceof AccessDeniedException)
-                && Files.exists(dir)) {
+            if (exception != null && !(exception instanceof NoSuchFileException)) {
               throw exception;
             }
             try {
               Files.deleteIfExists(dir);
-            } catch (NoSuchFileException | AccessDeniedException e) {
-              // Another concurrent cleanup may have deleted or be deleting this directory.
+            } catch (NoSuchFileException e) {
+              // Another cleanup may have deleted this directory.
               LOGGER.warn(
                   String.format(
                       DataNodeQueryMessages
@@ -246,6 +541,16 @@ public final class DeviceEntrySpillManager {
     Path root = rootDirectory().normalize();
     Path queryDirectory = root.resolve(queryId).normalize();
     return queryDirectory;
+  }
+
+  @FunctionalInterface
+  interface IOCallable<T> {
+    T call() throws IOException;
+  }
+
+  private static final class QueryDirectoryLock {
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+    private int references;
   }
 
   private static class DeviceEntrySpillManagerHolder {

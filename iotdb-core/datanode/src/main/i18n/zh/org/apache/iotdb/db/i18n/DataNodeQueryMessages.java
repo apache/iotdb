@@ -4886,6 +4886,9 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_DEVICEENTRY_MATERIALIZER_HAS_ALREADY_FINISHED_5538544E =
       "DeviceEntry materializer 已结束";
   public static final String
+      EXCEPTION_CANNOT_SPILL_DEVICE_ENTRIES_AFTER_QUERY_CLEANUP_HAS_STARTED_87A1224E =
+          "Query 清理已开始，无法继续溢写 DeviceEntry";
+  public static final String
       EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF =
           "没有可用于执行 DeviceEntry 内存限制的 materializer";
   public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
