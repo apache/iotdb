@@ -47,15 +47,25 @@ public class TCompressedElasticFramedTransportTest {
   private static final int MAX_FRAME_SIZE = 4096;
 
   private final AtomicLong usedMemory = new AtomicLong();
+  private final AtomicLong memoryLimit = new AtomicLong(Long.MAX_VALUE);
 
   @Before
   public void setUp() {
+    memoryLimit.set(Long.MAX_VALUE);
     AutoResizingBufferMemoryManager.setMemoryControl(
         new AutoResizingBufferMemoryControl() {
           @Override
           public boolean allocate(long sizeInBytes) {
-            usedMemory.addAndGet(sizeInBytes);
-            return true;
+            while (true) {
+              long current = usedMemory.get();
+              long next = current + sizeInBytes;
+              if (next > memoryLimit.get()) {
+                return false;
+              }
+              if (usedMemory.compareAndSet(current, next)) {
+                return true;
+              }
+            }
           }
 
           @Override
@@ -250,6 +260,35 @@ public class TCompressedElasticFramedTransportTest {
       roundTrip(transport, randomBytes(1024));
       for (AutoResizingBuffer buffer : reusableBuffers(transport)) {
         assertTrue(buffer.array().length > BUFFER_THRESHOLD);
+      }
+    }
+    assertEquals(0, usedMemory.get());
+  }
+
+  @Test
+  public void testMemoryPressureReclaimsAllCompressedServerBuffers() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+            AutoResizingBufferMemoryManager.createServerBufferPool();
+        TSnappyElasticFramedTransport transport =
+            (TSnappyElasticFramedTransport)
+                pool.wrapTransportFactory(
+                        new TSnappyElasticFramedTransport.Factory(
+                            INITIAL_CAPACITY, MAX_FRAME_SIZE, false))
+                    .getTransport(new TMemoryBuffer(0))) {
+      roundTrip(transport, randomBytes(1024));
+      for (AutoResizingBuffer buffer : reusableBuffers(transport)) {
+        assertTrue(buffer.array().length > INITIAL_CAPACITY);
+      }
+      transport.endServerRequest();
+
+      memoryLimit.set(5L * INITIAL_CAPACITY);
+      assertTrue(pool.reclaimIdleBuffers(INITIAL_CAPACITY) >= INITIAL_CAPACITY);
+      try (AutoResizingBuffer allocation = new AutoResizingBuffer(INITIAL_CAPACITY)) {
+        for (AutoResizingBuffer buffer : reusableBuffers(transport)) {
+          assertEquals(INITIAL_CAPACITY, buffer.array().length);
+        }
+        assertEquals(5L * INITIAL_CAPACITY, usedMemory.get());
       }
     }
     assertEquals(0, usedMemory.get());

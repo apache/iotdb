@@ -78,6 +78,26 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   }
 
   @Override
+  long getAccountedBufferBytes() {
+    return super.getAccountedBufferBytes()
+        + writeCompressBuffer.getAccountedBufferBytes()
+        + readCompressBuffer.getAccountedBufferBytes();
+  }
+
+  @Override
+  long getReclaimableBufferBytes() {
+    return super.getReclaimableBufferBytes()
+        + writeCompressBuffer.getReclaimableBufferBytes()
+        + readCompressBuffer.getReclaimableBufferBytes();
+  }
+
+  @Override
+  protected long trimAdditionalBuffers() {
+    return (writeCompressBuffer == null ? 0 : writeCompressBuffer.trimToInitialCapacity())
+        + (readCompressBuffer == null ? 0 : readCompressBuffer.trimToInitialCapacity());
+  }
+
+  @Override
   protected int getMaxWriteBufferSize() {
     // Preserve the wire-size limit: a compressible payload may exceed thriftMaxFrameSize before
     // compression. Incremental writes still must fit in a Java array.
@@ -87,8 +107,10 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   @Override
   protected void readFrame() throws TTransportException {
     // Discard the previous frame's budget before reading the next frame header and payload.
+    endServerRequest();
     resetMessageSizeAndConsumedBytes();
     underlying.readAll(i32buf, 0, 4);
+    beginServerRequest();
     int size = TFramedTransport.decodeFrameSize(i32buf);
     validateFrame(size);
     readBuffer.fill(underlying, size);
