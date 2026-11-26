@@ -69,7 +69,6 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -162,19 +161,21 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
   }
 
   @Test
-  public void testActiveUnclosedTsFilePinFailureFailsExtraction() throws Exception {
+  public void testActiveUnclosedTsFilePinFailureKeepsResourceForRetry() throws Exception {
     final AtomicBoolean failPathResolution = new AtomicBoolean(true);
     final File tempDir = Files.createTempDirectory("pipeHistoricalActivePinFailure").toFile();
     final File partitionDir = new File(tempDir, "sequence/db/2147483645/0");
     Assert.assertTrue(partitionDir.mkdirs());
     final String pipeName = "historical_active_pin_failure";
+    final long creationTime = System.nanoTime();
     final String resourcePipeName =
-        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, System.nanoTime());
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     final PipeTsFileResourceManager resourceManager = PipeDataNodeResourceManager.tsfile();
     final TsFileManager tsFileManager =
         new TsFileManager("root.db", "2147483645", tempDir.getAbsolutePath());
     final PipeHistoricalDataRegionTsFileAndDeletionSource source =
         new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    PipeTsFileInsertionEvent event = null;
     try {
       final TsFileResource previouslyPinnedResource =
           createClosedTsFileResource(partitionDir, "1-1-0-0.tsfile", new SimpleProgressIndex(0, 1));
@@ -192,6 +193,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
 
       setPrivateField(source, "pipeName", pipeName);
       setPrivateField(source, "pipeNameWithCreationTime", resourcePipeName);
+      setPrivateField(source, "creationTime", creationTime);
       setPrivateField(source, "dataRegionId", 2147483645);
       setPrivateField(source, "historicalDataExtractionStartTime", Long.MIN_VALUE);
       setPrivateField(source, "historicalDataExtractionEndTime", Long.MAX_VALUE);
@@ -208,24 +210,61 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
               long.class,
               List.class);
       extractTsFiles.setAccessible(true);
-      final InvocationTargetException extractionException =
-          Assert.assertThrows(
-              InvocationTargetException.class,
-              () ->
-                  extractTsFiles.invoke(
-                      source,
-                      tsFileManager,
-                      Collections.singletonList(previouslyPinnedResource),
-                      Collections.singletonList(resource),
-                      System.currentTimeMillis(),
-                      new ArrayList<PersistentResource>()));
+      final List<PersistentResource> extractedResources = new ArrayList<>();
+      extractTsFiles.invoke(
+          source,
+          tsFileManager,
+          Collections.singletonList(previouslyPinnedResource),
+          Collections.singletonList(resource),
+          System.currentTimeMillis(),
+          extractedResources);
 
-      Assert.assertTrue(extractionException.getCause() instanceof PipeException);
-      Assert.assertTrue(
-          ((Set<TsFileResource>) getPrivateField(source, "resourcesWithPinnedTsFile")).isEmpty());
+      failPathResolution.set(false);
+      final Set<TsFileResource> pinnedResources =
+          (Set<TsFileResource>) getPrivateField(source, "resourcesWithPinnedTsFile");
+      final Map<TsFileResource, Set<String>> selectedResources =
+          (Map<TsFileResource, Set<String>>)
+              getPrivateField(source, "filteredTsFileResources2TableNames");
+      final File unclosedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              resource.getTsFile(), resourcePipeName);
+
+      Assert.assertEquals(Arrays.asList(previouslyPinnedResource, resource), extractedResources);
+      Assert.assertTrue(pinnedResources.contains(previouslyPinnedResource));
+      Assert.assertFalse(pinnedResources.contains(resource));
+      Assert.assertTrue(selectedResources.containsKey(resource));
+      Assert.assertNull(selectedResources.get(resource));
       Assert.assertEquals(
-          0, resourceManager.getFileReferenceCount(previouslyPinnedTsFile, resourcePipeName));
+          1, resourceManager.getFileReferenceCount(previouslyPinnedTsFile, resourcePipeName));
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(unclosedTsFile, resourcePipeName));
+
+      setPrivateField(source, "hasBeenStarted", true);
+      setPrivateField(source, "shouldExtractInsertion", true);
+      setPrivateField(
+          source, "pendingQueue", new ArrayDeque<>(Collections.singletonList(resource)));
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      failPathResolution.set(true);
+      Assert.assertThrows(PipeException.class, source::supply);
+      Assert.assertEquals(1, source.getPendingQueueSize());
+      Assert.assertTrue(selectedResources.containsKey(resource));
+      Assert.assertFalse(pinnedResources.contains(resource));
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(unclosedTsFile, resourcePipeName));
+      Mockito.verify(processor, Mockito.never()).addCloseFileListener(Mockito.any());
+
+      failPathResolution.set(false);
+      event = (PipeTsFileInsertionEvent) source.supply();
+      Assert.assertNotNull(event);
+      Assert.assertEquals(0, source.getPendingQueueSize());
+      Assert.assertFalse(selectedResources.containsKey(resource));
+      Assert.assertFalse(pinnedResources.contains(resource));
+      Assert.assertEquals(
+          1, resourceManager.getFileReferenceCount(unclosedTsFile, resourcePipeName));
     } finally {
+      if (event != null) {
+        event.clearReferenceCount(getClass().getName());
+      }
       source.close();
       tsFileManager.getTsFileList(true).forEach(resource -> tsFileManager.remove(resource, true));
       resourceManager.cleanPipeTsFileDir(resourcePipeName);
@@ -431,6 +470,194 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
     } finally {
       if (blockingResource != null) {
         blockingResource.allowReadLock();
+      }
+      executor.shutdownNow();
+      executor.awaitTermination(10, TimeUnit.SECONDS);
+      source.close();
+      tsFileManager.getTsFileList(true).forEach(resource -> tsFileManager.remove(resource, true));
+      resourceManager.cleanPipeTsFileDir(resourcePipeName);
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testHistoricalExtractionContinuesWhenPartitionChangesAgainAfterRefresh()
+      throws Exception {
+    assertHistoricalExtractionWhenPartitionChangesAgainAfterRefresh(false);
+  }
+
+  @Test
+  public void testHistoricalExtractionRejectsChangedSnapshotAfterPinFailure() throws Exception {
+    assertHistoricalExtractionWhenPartitionChangesAgainAfterRefresh(true);
+  }
+
+  private void assertHistoricalExtractionWhenPartitionChangesAgainAfterRefresh(
+      final boolean failRefreshedResourcePin) throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalRepeatedRefresh").toFile();
+    final File partitionDir = new File(tempDir, "sequence/db/2147483645/0");
+    Assert.assertTrue(partitionDir.mkdirs());
+    final String pipeName = "historical_repeated_refresh";
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, System.nanoTime());
+    final PipeTsFileResourceManager resourceManager = PipeDataNodeResourceManager.tsfile();
+    final TsFileManager tsFileManager =
+        new TsFileManager("root.db", "2147483645", tempDir.getAbsolutePath());
+    final PipeHistoricalDataRegionTsFileAndDeletionSource source =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final AtomicBoolean failPathResolution = new AtomicBoolean(failRefreshedResourcePin);
+    BlockingReadLockTsFileResource initialBlockingResource = null;
+    BlockingReadLockTsFileResource refreshedBlockingResource = null;
+    try {
+      final TsFileResource initialResource =
+          createClosedTsFileResource(partitionDir, "1-1-0-0.tsfile", new SimpleProgressIndex(0, 1));
+      final File initialBlockingFile = new File(partitionDir, "2-1-0-0.tsfile");
+      Assert.assertTrue(initialBlockingFile.createNewFile());
+      final CountDownLatch initialReadLockEntered = new CountDownLatch(1);
+      final CountDownLatch allowInitialReadLock = new CountDownLatch(1);
+      initialBlockingResource =
+          new BlockingReadLockTsFileResource(
+              initialBlockingFile, initialReadLockEntered, allowInitialReadLock);
+      initialBlockingResource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      initialBlockingResource.updateProgressIndex(new SimpleProgressIndex(0, 2));
+
+      final TsFileResource refreshedResource =
+          createClosedTsFileResource(partitionDir, "3-1-0-0.tsfile", new SimpleProgressIndex(0, 3));
+      if (failRefreshedResourcePin) {
+        refreshedResource.setFile(
+            new CanonicalPathFailingFile(refreshedResource.getTsFilePath(), failPathResolution));
+      }
+      final File refreshedBlockingFile = new File(partitionDir, "4-1-0-0.tsfile");
+      Assert.assertTrue(refreshedBlockingFile.createNewFile());
+      final CountDownLatch refreshedReadLockEntered = new CountDownLatch(1);
+      final CountDownLatch allowRefreshedReadLock = new CountDownLatch(1);
+      refreshedBlockingResource =
+          new BlockingReadLockTsFileResource(
+              refreshedBlockingFile, refreshedReadLockEntered, allowRefreshedReadLock);
+      refreshedBlockingResource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      refreshedBlockingResource.updateProgressIndex(new SimpleProgressIndex(0, 4));
+      final TsFileResource latestResource =
+          createClosedTsFileResource(partitionDir, "5-1-0-0.tsfile", new SimpleProgressIndex(0, 5));
+      createExclusiveModFile(initialResource);
+      createExclusiveModFile(refreshedResource);
+      createExclusiveModFile(latestResource);
+
+      tsFileManager.add(initialResource, true);
+      tsFileManager.add(initialBlockingResource, true);
+      final List<TsFileResource> initialSnapshot = tsFileManager.getTsFileList(true);
+      setPrivateField(source, "pipeName", pipeName);
+      setPrivateField(source, "pipeNameWithCreationTime", resourcePipeName);
+      setPrivateField(source, "dataRegionId", 2147483645);
+      setPrivateField(source, "startIndex", MinimumProgressIndex.INSTANCE);
+      setPrivateField(source, "isHistoricalSourceEnabled", true);
+      setPrivateField(source, "isDbNameCoveredByPattern", true);
+      setPrivateField(source, "shouldTransferModFile", true);
+
+      final List<PersistentResource> originalResources = new ArrayList<>();
+      final Method method =
+          PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredMethod(
+              "extractTsFiles",
+              TsFileManager.class,
+              List.class,
+              List.class,
+              long.class,
+              List.class);
+      method.setAccessible(true);
+      final BlockingReadLockTsFileResource initialBlockedResource = initialBlockingResource;
+      final BlockingReadLockTsFileResource refreshedBlockedResource = refreshedBlockingResource;
+      final Future<?> extraction =
+          executor.submit(
+              () -> {
+                try {
+                  method.invoke(
+                      source,
+                      tsFileManager,
+                      initialSnapshot,
+                      Collections.<TsFileResource>emptyList(),
+                      System.currentTimeMillis(),
+                      originalResources);
+                } catch (final ReflectiveOperationException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+
+      Assert.assertTrue(initialReadLockEntered.await(10, TimeUnit.SECONDS));
+      tsFileManager.remove(initialResource, true);
+      tsFileManager.remove(initialBlockedResource, true);
+      tsFileManager.add(refreshedResource, true);
+      tsFileManager.add(refreshedBlockedResource, true);
+      allowInitialReadLock.countDown();
+
+      Assert.assertTrue(refreshedReadLockEntered.await(10, TimeUnit.SECONDS));
+      tsFileManager.remove(refreshedResource, true);
+      tsFileManager.remove(refreshedBlockedResource, true);
+      tsFileManager.add(latestResource, true);
+      allowRefreshedReadLock.countDown();
+      if (failRefreshedResourcePin) {
+        try {
+          extraction.get(10, TimeUnit.SECONDS);
+          Assert.fail("Expected extraction to reject an incomplete refreshed snapshot");
+        } catch (final java.util.concurrent.ExecutionException e) {
+          Throwable cause = e.getCause();
+          while (cause != null && !(cause instanceof PipeException)) {
+            cause = cause.getCause();
+          }
+          Assert.assertTrue(cause instanceof PipeException);
+        }
+        failPathResolution.set(false);
+      } else {
+        extraction.get(10, TimeUnit.SECONDS);
+      }
+
+      final Map<TsFileResource, Set<String>> selectedResources =
+          (Map<TsFileResource, Set<String>>)
+              getPrivateField(source, "filteredTsFileResources2TableNames");
+      final File initialTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              initialResource.getTsFile(), resourcePipeName);
+      final File initialBlockedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              initialBlockingResource.getTsFile(), resourcePipeName);
+      final File refreshedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              refreshedResource.getTsFile(), resourcePipeName);
+      final File refreshedBlockedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              refreshedBlockingResource.getTsFile(), resourcePipeName);
+      final File latestTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              latestResource.getTsFile(), resourcePipeName);
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(initialTsFile, resourcePipeName));
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(initialBlockedTsFile, resourcePipeName));
+      Assert.assertEquals(0, resourceManager.getFileReferenceCount(latestTsFile, resourcePipeName));
+      if (failRefreshedResourcePin) {
+        Assert.assertTrue(originalResources.isEmpty());
+        Assert.assertTrue(selectedResources.isEmpty());
+        Assert.assertEquals(
+            0, resourceManager.getFileReferenceCount(refreshedTsFile, resourcePipeName));
+        Assert.assertEquals(
+            0, resourceManager.getFileReferenceCount(refreshedBlockedTsFile, resourcePipeName));
+      } else {
+        Assert.assertEquals(2, originalResources.size());
+        Assert.assertTrue(originalResources.contains(refreshedResource));
+        Assert.assertTrue(originalResources.contains(refreshedBlockingResource));
+        Assert.assertTrue(selectedResources.containsKey(refreshedResource));
+        Assert.assertTrue(selectedResources.containsKey(refreshedBlockingResource));
+        Assert.assertFalse(selectedResources.containsKey(latestResource));
+        Assert.assertEquals(
+            1, resourceManager.getFileReferenceCount(refreshedTsFile, resourcePipeName));
+        Assert.assertEquals(
+            1, resourceManager.getFileReferenceCount(refreshedBlockedTsFile, resourcePipeName));
+      }
+    } finally {
+      failPathResolution.set(false);
+      if (initialBlockingResource != null) {
+        initialBlockingResource.allowReadLock();
+      }
+      if (refreshedBlockingResource != null) {
+        refreshedBlockingResource.allowReadLock();
       }
       executor.shutdownNow();
       executor.awaitTermination(10, TimeUnit.SECONDS);

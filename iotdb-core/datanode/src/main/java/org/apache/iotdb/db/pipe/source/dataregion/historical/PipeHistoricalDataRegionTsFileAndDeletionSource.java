@@ -848,18 +848,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             currentResult.snapshotInvalid = true;
           }
           if (currentResult.snapshotInvalid) {
-            final Exception retryUnpinException = unpinTsFilesInPartition(currentResult);
-            currentResult = null;
-            if (retryUnpinException != null) {
-              throw new PipeException(retryUnpinException.getMessage(), retryUnpinException);
-            }
-            throw new PipeException(
+            final String snapshotChangedMessage =
                 String.format(
                     DataNodePipeMessages
                         .EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3,
                     pipeName,
                     creationTime,
-                    timePartition));
+                    timePartition);
+            if (currentResult.statistics.pinFailedCount > 0
+                || currentResult.statistics.skippedDeletedCount > 0) {
+              final Exception retryUnpinException = unpinTsFilesInPartition(currentResult);
+              currentResult = null;
+              if (retryUnpinException != null) {
+                throw new PipeException(retryUnpinException.getMessage(), retryUnpinException);
+              }
+              throw new PipeException(snapshotChangedMessage);
+            }
+            LOGGER.warn(snapshotChangedMessage);
           }
         }
         resultsByPartition.put(timePartition, currentResult);
@@ -988,7 +993,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         LOGGER.warn(
             DataNodePipeMessages.PIPE_FAILED_TO_PIN_TSFILERESOURCE, resource.getTsFilePath(), e);
         if (wasUnclosed) {
-          throw new PipeException(e.getMessage(), e);
+          result.filteredResources2TableNames.put(resource, tableNames);
         }
       }
     } finally {
@@ -1539,6 +1544,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return shouldUseHistoricalTsFileQueryPriorityOrder()
           ? null
           : supplyProgressReportEvent(resource.getMaxProgressIndex());
+    }
+
+    if (!resourcesWithPinnedTsFile.contains(resource)) {
+      try {
+        final boolean modFilePinned =
+            PipeDataNodeResourceManager.tsfile()
+                .pinTsFileResource(
+                    resource,
+                    shouldTransferModFile && !resourcesWithPinnedModFile.contains(resource),
+                    pipeNameWithCreationTime);
+        resourcesWithPinnedTsFile.add(resource);
+        if (modFilePinned) {
+          resourcesWithPinnedModFile.add(resource);
+        }
+      } catch (final IOException e) {
+        throw new PipeException(e.getMessage(), e);
+      }
     }
 
     boolean shouldUnpinResource = false;
