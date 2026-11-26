@@ -1014,6 +1014,12 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "timeseries_deletion_execution_interval_ms",
                 String.valueOf(conf.getTimeseriesDeletionExecutionIntervalMs())));
+    int timeseriesDeletionQueueCapacity =
+        Integer.parseInt(
+            properties.getProperty(
+                "timeseries_deletion_queue_capacity",
+                String.valueOf(conf.getTimeseriesDeletionQueueCapacity())));
+    conf.setTimeseriesDeletionQueueCapacity(timeseriesDeletionQueueCapacity);
     conf.setProcedureCompletedCleanInterval(procedureCompletedCleanInterval);
     conf.setProcedureCompletedEvictTTL(procedureCompletedEvictTTL);
     conf.setTimeseriesDeletionExecutionIntervalMs(timeseriesDeletionExecutionIntervalMs);

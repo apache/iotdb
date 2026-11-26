@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -654,6 +655,31 @@ public class AsyncTimeSeriesDeletionTest {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           manager.deleteTimeSeries("first", pattern("root.async.d.s1"), false, false).getCode());
       verify(executor, times(1)).submitProcedureAndPersist(any());
+    } finally {
+      config.setTimeseriesDeletionQueueCapacity(capacity);
+    }
+  }
+
+  @Test
+  public void testHotReloadedQueueCapacityPreservesAlreadyQueuedTasks() throws Exception {
+    final ConfigNodeConfig config = ConfigNodeDescriptor.getInstance().getConf();
+    final int capacity = config.getTimeseriesDeletionQueueCapacity();
+    config.setTimeseriesDeletionQueueCapacity(2);
+    try {
+      manager.deleteTimeSeries("first", pattern("root.async.d.s1"), false, false);
+      manager.deleteTimeSeries("second", pattern("root.async.d.s2"), false, false);
+
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("timeseries_deletion_queue_capacity", "1");
+      ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
+
+      assertEquals(1, config.getTimeseriesDeletionQueueCapacity());
+      assertEquals(2, executor.getDeleteTimeSeriesScheduler().getWaitingTaskCount());
+      assertEquals(
+          TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(),
+          manager.deleteTimeSeries("third", pattern("root.async.d.s3"), false, false).getCode());
+      assertEquals(2, executor.getDeleteTimeSeriesScheduler().getWaitingTaskCount());
+      verify(executor, times(2)).submitProcedureAndPersist(any());
     } finally {
       config.setTimeseriesDeletionQueueCapacity(capacity);
     }

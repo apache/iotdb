@@ -2387,7 +2387,7 @@ procedure_completed_evict_ttl=60
 enable_sync_schema_deletion=false
 
 # Maximum number of tree-model timeseries deletion tasks waiting to execute on the ConfigNode.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int, greater than 0
 timeseries_deletion_queue_capacity=1024
 
