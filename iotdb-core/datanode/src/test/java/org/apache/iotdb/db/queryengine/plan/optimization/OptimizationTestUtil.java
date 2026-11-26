@@ -44,7 +44,7 @@ import org.junit.Assert;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -54,7 +54,7 @@ public class OptimizationTestUtil {
     // util class
   }
 
-  public static final Map<String, PartialPath> schemaMap = new HashMap<>();
+  public static final Map<String, PartialPath> schemaMap = new LinkedHashMap<>();
 
   static {
     try {
@@ -159,6 +159,6 @@ public class OptimizationTestUtil {
         TAggregationType.COUNT.name().toLowerCase(),
         step,
         Collections.singletonList(new TimeSeriesOperand(schemaMap.get(path))),
-        new HashMap<>());
+        new LinkedHashMap<>());
   }
 }
