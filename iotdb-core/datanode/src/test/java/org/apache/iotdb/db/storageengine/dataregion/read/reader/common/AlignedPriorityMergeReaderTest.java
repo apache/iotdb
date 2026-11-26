@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.utils.TsPrimitiveType.TsBinary;
@@ -30,6 +32,7 @@ import org.apache.tsfile.utils.TsPrimitiveType.TsVector;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -144,33 +147,64 @@ public class AlignedPriorityMergeReaderTest {
 
     assertCompleteRowSkip(new AlignedPriorityMergeReader(), 10L, 20L, 30L);
     assertCompleteRowSkip(new AlignedDescPriorityMergeReader(), 30L, 20L, 10L);
+
+    // Non-tracking IPointReader conservatively defers look-ahead skipping without scanning vectors.
+    AlignedPriorityMergeReader fallbackReader = new AlignedPriorityMergeReader();
+    addBatch(fallbackReader, 1, 20L, batch(10L, vec(null, 100L), 20L, vec(null, 200L)));
+    addBatch(fallbackReader, 2, 20L, batch(10L, vec(110L, 101L), 20L, vec(120L, 201L)));
+    assertLongRow(fallbackReader.nextTimeValuePair(), 10L, 110L, 101L);
+    assertEquals(2, fallbackReader.heap.size());
+    assertLongRow(fallbackReader.nextTimeValuePair(), 20L, 120L, 201L);
+    assertFalse(fallbackReader.hasNextTimeValuePair());
   }
 
   private void assertCompleteRowSkip(PriorityMergeReader reader, long t1, long t2, long t3)
       throws IOException {
-    TsBinary oldVal = new TsBinary(new Binary(new byte[] {1}));
+    Binary oldBin = new Binary(new byte[] {1});
+    TsBinary oldVal = new TsBinary(oldBin);
     TsBinary emptyVal = new TsBinary(Binary.EMPTY_VALUE);
 
-    BatchData older = new BatchData(TSDataType.VECTOR);
-    for (long t : new long[] {t1, t2, t3}) {
-      older.putVector(t, new TsPrimitiveType[] {null, oldVal});
-    }
-    BatchData newer = new BatchData(TSDataType.VECTOR);
-    newer.putVector(t1, new TsPrimitiveType[] {new TsLong(10L), emptyVal});
-    newer.putVector(t2, new TsPrimitiveType[] {new TsLong(20L), new TsBinary()});
-    newer.putVector(t3, new TsPrimitiveType[] {new TsLong(30L), emptyVal});
+    long[] times = {t1, t2, t3};
+    TsBlock older =
+        buildBlock(times, new Long[] {null, null, null}, new Binary[] {oldBin, oldBin, oldBin});
+    TsBlock newer =
+        buildBlock(
+            times,
+            new Long[] {10L, 20L, 30L},
+            new Binary[] {Binary.EMPTY_VALUE, null, Binary.EMPTY_VALUE});
 
-    addBatch(reader, 1, t3, older);
-    addBatch(reader, 2, t3, newer);
+    reader.addReader(
+        new TsBlockAlignedRowPointReader(older), new MergeReaderPriority(1, 1, 0, false), t3);
+    reader.addReader(
+        new TsBlockAlignedRowPointReader(newer), new MergeReaderPriority(2, 1, 0, false), t3);
 
-    // topNext (t2) has a null-valued TsBinary, so older stays in the heap; at t2, topNext (t3) is
-    // complete, so older is skipped and closed immediately.
+    // topNext (t2) has a null binary field, so older stays in the heap; at t2, topNext (t3) is
+    // tracked as complete in O(1), so older is skipped and closed immediately.
     assertEquals(emptyVal, reader.nextTimeValuePair().getValue().getVector()[1]);
     assertEquals(2, reader.heap.size());
     assertEquals(oldVal, reader.nextTimeValuePair().getValue().getVector()[1]);
     assertEquals(1, reader.heap.size());
     assertEquals(emptyVal, reader.nextTimeValuePair().getValue().getVector()[1]);
     assertFalse(reader.hasNextTimeValuePair());
+  }
+
+  private static TsBlock buildBlock(long[] times, Long[] xs, Binary[] ys) {
+    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.INT64, TSDataType.TEXT));
+    for (int i = 0; i < times.length; i++) {
+      builder.getTimeColumnBuilder().writeLong(times[i]);
+      if (xs[i] == null) {
+        builder.getColumnBuilder(0).appendNull();
+      } else {
+        builder.getColumnBuilder(0).writeLong(xs[i]);
+      }
+      if (ys[i] == null) {
+        builder.getColumnBuilder(1).appendNull();
+      } else {
+        builder.getColumnBuilder(1).writeBinary(ys[i]);
+      }
+      builder.declarePosition();
+    }
+    return builder.build();
   }
 
   private static void addBatch(PriorityMergeReader reader, int prio, long endTime, BatchData data)

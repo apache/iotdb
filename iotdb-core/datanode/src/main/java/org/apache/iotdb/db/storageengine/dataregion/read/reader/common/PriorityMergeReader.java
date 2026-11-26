@@ -89,12 +89,15 @@ public class PriorityMergeReader implements IPointReader {
   public TimeValuePair nextTimeValuePair() throws IOException {
     Element top = heap.poll();
     TimeValuePair ret = top.getTimeValuePair();
+    boolean retComplete = isRowComplete(top);
     TimeValuePair topNext = null;
+    boolean canSkipNext = false;
     if (top.hasNext()) {
       top.next();
       topNext = top.currPair();
+      canSkipNext = isRowComplete(top);
     }
-    updateHeap(ret, topNext);
+    updateHeap(ret, topNext, retComplete, canSkipNext);
     if (topNext != null) {
       top.setTimeValuePair(topNext);
       heap.add(top);
@@ -121,11 +124,11 @@ public class PriorityMergeReader implements IPointReader {
    * @throws IOException while reading next value and close the Element while there is no value,
    *     there may throw IOException
    */
-  protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
+  protected void updateHeap(
+      TimeValuePair ret, TimeValuePair topNext, boolean retComplete, boolean canSkipNext)
+      throws IOException {
     long topTime = ret.getTimestamp();
-    long topNextTime = topNext == null ? 0L : topNext.getTimestamp();
-    int canSkipNext = topNext == null ? 0 : -1;
-    boolean retComplete = false;
+    long topNextTime = canSkipNext ? topNext.getTimestamp() : 0L;
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
       if (!retComplete) {
@@ -136,19 +139,14 @@ public class PriorityMergeReader implements IPointReader {
         continue;
       }
       e.next();
-      if (canSkipNext != 0 && e.currTime() == topNextTime) {
-        if (canSkipNext < 0) {
-          canSkipNext = canSkipOverwrittenNext(topNext) ? 1 : 0;
+      if (canSkipNext && e.currTime() == topNextTime) {
+        // if the next value of the peek will be overwritten by the next of the top, skip it
+        if (!e.hasNext()) {
+          // the chunk is end
+          releaseAndCloseElement(e);
+          continue;
         }
-        if (canSkipNext == 1) {
-          // if the next value of the peek will be overwritten by the next of the top, skip it
-          if (!e.hasNext()) {
-            // the chunk is end
-            releaseAndCloseElement(e);
-            continue;
-          }
-          e.next();
-        }
+        e.next();
       }
       heap.add(e);
     }
@@ -163,8 +161,8 @@ public class PriorityMergeReader implements IPointReader {
     e.close();
   }
 
-  /** Whether {@code topNext} completely overwrites lower-priority points at its timestamp. */
-  protected boolean canSkipOverwrittenNext(TimeValuePair topNext) {
+  /** Whether {@code element}'s current row has no null sub-sensor slots left to fill. */
+  protected boolean isRowComplete(Element element) {
     return true;
   }
 

@@ -40,21 +40,8 @@ public class AlignedPriorityMergeReader extends PriorityMergeReader {
   }
 
   @Override
-  protected boolean canSkipOverwrittenNext(TimeValuePair topNext) {
-    return hasNoNullFields(topNext);
-  }
-
-  static boolean hasNoNullFields(TimeValuePair pair) {
-    TsPrimitiveType value = pair.getValue();
-    if (value == null) {
-      return false;
-    }
-    for (TsPrimitiveType field : value.getVector()) {
-      if (field == null || field.getValue() == null) {
-        return false;
-      }
-    }
-    return true;
+  protected boolean isRowComplete(Element element) {
+    return element.isCurrentRowComplete();
   }
 
   static boolean fillNullValueInAligned(TimeValuePair to, TimeValuePair from) {
