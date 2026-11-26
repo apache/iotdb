@@ -250,6 +250,7 @@ class SubscriptionPullConsumer(object):
             raise ValueError("max_file_bytes must be positive")
         self._providers = {}
         self._topics = set()
+        self.latest_watermark_timestamp = -(1 << 63)
         self._lock = threading.RLock()
         self._heartbeat_stop = threading.Event()
         self._heartbeat_thread = None
@@ -405,6 +406,11 @@ class SubscriptionPullConsumer(object):
                         topic_name = item["context"].topic_name
                         if topic_name in self._topics:
                             self.unsubscribe(topic_name)
+                    elif response_type == 7:
+                        self.latest_watermark_timestamp = max(
+                            self.latest_watermark_timestamp,
+                            item["watermark_timestamp"],
+                        )
                     elif response_type == 0 and item["critical"]:
                         raise SubscriptionError(
                             item["error"] or "Subscription poll failed."
@@ -444,6 +450,10 @@ class SubscriptionPullConsumer(object):
 
     def all_topic_messages_have_been_consumed(self):
         return not self._topics
+
+    def get_latest_watermark_timestamp(self):
+        """Return the greatest watermark timestamp received, or the int64 minimum."""
+        return self.latest_watermark_timestamp
 
     def _handshake_body(self):
         config = {
@@ -572,6 +582,15 @@ class SubscriptionPullConsumer(object):
                 current_endpoints, current_topics = self._heartbeat(session)
                 endpoints.update(current_endpoints)
                 topics_to_unsubscribe.update(current_topics)
+
+            stale_node_ids = self._providers.keys() - endpoints.keys()
+            for node_id in stale_node_ids:
+                _, _, session = self._providers.pop(node_id)
+                try:
+                    session.close()
+                except Exception:
+                    pass
+
             for topic_name in topics_to_unsubscribe:
                 if topic_name in self._topics:
                     self.unsubscribe(topic_name)
@@ -676,6 +695,13 @@ class SubscriptionPullConsumer(object):
         mode = "r+b" if path.exists() else "w+b"
         with path.open(mode) as output:
             file_size = path.stat().st_size
+            if (
+                file_size > self.max_file_bytes
+                or transfer["offset"] > self.max_file_bytes
+            ):
+                raise SubscriptionError(
+                    "Subscription TsFile exceeds the configured size limit."
+                )
             if file_size != transfer["offset"]:
                 if file_size < transfer["offset"]:
                     transfer["offset"] = file_size
@@ -714,6 +740,10 @@ class SubscriptionPullConsumer(object):
                     if next_offset != item["next_offset"]:
                         raise SubscriptionError(
                             "Subscription file piece offset is inconsistent."
+                        )
+                    if next_offset > self.max_file_bytes:
+                        raise SubscriptionError(
+                            "Subscription TsFile exceeds the configured size limit."
                         )
                     written = output.write(item["piece"])
                     if written != len(item["piece"]):
@@ -912,6 +942,9 @@ def _decode_poll_response(body):
         item["file_name"] = _read_string(reader)
         item["file_length"] = _read_long(reader)
         item["database_name"] = _read_string(reader)
+    elif response_type == 7:
+        item["watermark_timestamp"] = _read_long(reader)
+        item["data_node_id"] = _read_int(reader)
     elif response_type not in (5,):
         raise SubscriptionError(
             "Unsupported Subscription response type {}.".format(response_type)

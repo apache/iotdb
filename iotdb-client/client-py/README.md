@@ -73,7 +73,8 @@ session.close()
 `SubscriptionSession` manages topics and creates pull consumers. A pull consumer downloads a
 Subscription TsFile to `file_save_dir/group_id/consumer_id/topic_name/` and returns a
 `SubscriptionMessage`. Call `commit(message)` after processing the file so IoTDB can advance the
-consumer's progress.
+consumer's progress. WATERMARK events are consumed internally, and the greatest received timestamp
+is available through `consumer.get_latest_watermark_timestamp()`.
 
 ```python
 import uuid
@@ -108,6 +109,7 @@ with SubscriptionSession(
                 for message in consumer.poll(timeout_ms=1000):
                     print(message.file_path)
                     consumer.commit(message)
+            print(consumer.get_latest_watermark_timestamp())
     finally:
         session.drop_topic(topic_name, if_exists=True)
 ```

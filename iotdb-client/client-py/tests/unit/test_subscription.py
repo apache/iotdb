@@ -114,6 +114,18 @@ def _file_seal(file_name, file_length, database_name, context):
     )
 
 
+def _watermark(timestamp, data_node_id, context):
+    return b"".join(
+        [
+            struct.pack(">h", 7),
+            struct.pack(">q", timestamp),
+            struct.pack(">i", data_node_id),
+            _write_commit_context(context),
+            b"\x01",
+        ]
+    )
+
+
 class SubscriptionProtocolTest(unittest.TestCase):
     def test_pipe_subscribe_keeps_request_with_accelerated_protocol(self):
         transport = TTransport.TMemoryBuffer()
@@ -200,6 +212,36 @@ class SubscriptionProtocolTest(unittest.TestCase):
         self.assertEqual(context, parsed["context"])
         self.assertTrue(parsed["time_selected"])
 
+    def test_decodes_watermark_response(self):
+        context = _CommitContext(7, 2, "snapshot", "export", 9, 0, "", 0)
+        parsed = _decode_poll_response(_watermark(123456, 7, context))
+
+        self.assertEqual(7, parsed["type"])
+        self.assertEqual(123456, parsed["watermark_timestamp"])
+        self.assertEqual(7, parsed["data_node_id"])
+        self.assertEqual(context, parsed["context"])
+        self.assertTrue(parsed["time_selected"])
+
+    def test_poll_consumes_watermarks_and_tracks_greatest_timestamp(self):
+        context = _CommitContext(7, 0, "snapshot", "export", 9, 0, "", 0)
+        responses = [
+            _watermark(123456, 7, context),
+            _watermark(120000, 7, context),
+        ]
+        consumer = SubscriptionPullConsumer(_consumer_config())
+        consumer._open = True
+        consumer._topics.add("snapshot")
+        consumer._providers[7] = ("127.0.0.1", 6667, object())
+        consumer._send = lambda _session, _request_type, _body=None: _Response(
+            responses.pop(0)
+        )
+
+        self.assertEqual([], consumer.poll(timeout_ms=1000))
+        self.assertEqual(123456, consumer.get_latest_watermark_timestamp())
+        self.assertEqual([], consumer.poll(timeout_ms=1000))
+        self.assertEqual(123456, consumer.latest_watermark_timestamp)
+        consumer.close()
+
     def test_decodes_endpoint_map_from_heartbeat(self):
         body = b"".join(
             [
@@ -223,12 +265,13 @@ class SubscriptionProtocolTest(unittest.TestCase):
         class _ProviderSession(object):
             def __init__(self, node_id):
                 self.node_id = node_id
+                self.closed = False
 
             def _get_server_thrift_max_frame_size(self, fallback):
                 return fallback
 
             def close(self):
-                pass
+                self.closed = True
 
         sessions = {}
         handshake_configurations = {}
@@ -299,6 +342,15 @@ class SubscriptionProtocolTest(unittest.TestCase):
                     ),
                     "a newly discovered DataNode must subscribe to current topics",
                 )
+
+                advertised_endpoints = [
+                    (7, "127.0.0.1", 6667),
+                    (9, "127.0.0.1", 6669),
+                ]
+                consumer._sync_providers()
+
+                self.assertEqual({7, 9}, set(consumer._providers))
+                self.assertTrue(sessions[8].closed)
             finally:
                 consumer.close()
 
@@ -694,6 +746,60 @@ class SubscriptionProtocolTest(unittest.TestCase):
             }
             with self.assertRaisesRegex(SubscriptionError, "does not match its seal"):
                 consumer._continue_file_transfer(transfer, time.monotonic() + 1)
+        consumer.close()
+
+    def test_file_transfer_rejects_oversized_piece_before_writing(self):
+        context = _CommitContext(7, 0, "snapshot", "export", 9, 0, "", 0)
+        consumer = SubscriptionPullConsumer(_consumer_config(), max_file_bytes=5)
+        consumer._open = True
+        consumer._providers[7] = ("127.0.0.1", 6667, object())
+        consumer._send = lambda _session, _request_type, _body=None: _Response(
+            _file_piece("snapshot.tsfile", 4, b"ef", context)
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / "snapshot.tsfile"
+            file_path.write_bytes(b"abcd")
+            transfer = {
+                "node_id": 7,
+                "context": context,
+                "file_name": "snapshot.tsfile",
+                "path": file_path,
+                "offset": 4,
+            }
+            with self.assertRaisesRegex(SubscriptionError, "size limit"):
+                consumer._continue_file_transfer(transfer, time.monotonic() + 1)
+            self.assertEqual(b"abcd", file_path.read_bytes())
+        consumer.close()
+
+    def test_file_transfer_rejects_oversized_existing_partial_file(self):
+        context = _CommitContext(7, 0, "snapshot", "export", 9, 0, "", 0)
+        consumer = SubscriptionPullConsumer(_consumer_config(), max_file_bytes=5)
+        consumer._open = True
+        consumer._providers[7] = ("127.0.0.1", 6667, object())
+        poll_attempts = []
+
+        def send(_session, request_type, body=None):
+            if request_type == 2:
+                poll_attempts.append(request_type)
+            return _Response()
+
+        consumer._send = send
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / "snapshot.tsfile"
+            file_path.write_bytes(b"abcdef")
+            transfer = {
+                "node_id": 7,
+                "context": context,
+                "file_name": "snapshot.tsfile",
+                "path": file_path,
+                "offset": 6,
+            }
+            with self.assertRaisesRegex(SubscriptionError, "size limit"):
+                consumer._continue_file_transfer(transfer, time.monotonic() + 1)
+            self.assertEqual(b"abcdef", file_path.read_bytes())
+            self.assertEqual([], poll_attempts)
         consumer.close()
 
     def test_commit_rejects_acknowledgement_for_a_different_context(self):
