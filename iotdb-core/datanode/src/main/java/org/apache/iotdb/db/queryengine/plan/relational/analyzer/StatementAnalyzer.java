@@ -246,6 +246,7 @@ import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
 import org.apache.ratis.thirdparty.com.google.common.collect.ListMultimap;
 import org.apache.ratis.thirdparty.com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.RowType;
@@ -295,6 +296,7 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
@@ -1250,19 +1252,41 @@ public class StatementAnalyzer {
       return false;
     }
 
-    // Do not consider type coercion at the moment
     private boolean typesMatchForInsert(List<Type> tableTypes, List<Type> queryTypes) {
       if (tableTypes.size() != queryTypes.size()) {
         return false;
       }
 
       for (int i = 0; i < tableTypes.size(); i++) {
-        if (!tableTypes.get(i).equals(queryTypes.get(i))) {
+        Type tableType = tableTypes.get(i);
+        Type queryType = queryTypes.get(i);
+        if (tableType.equals(queryType)) {
+          continue;
+        }
+        if (!isCompatibleSinkType(tableType, queryType)) {
           return false;
         }
       }
 
       return true;
+    }
+
+    private static boolean isCompatibleSinkType(Type sinkType, Type queryType) {
+      TSDataType sink = toScalarTsDataType(sinkType);
+      TSDataType source = toScalarTsDataType(queryType);
+      return sink != null && source != null && sink.isCompatible(source);
+    }
+
+    private static TSDataType toScalarTsDataType(Type type) {
+      switch (type.getTypeEnum()) {
+        case ROW:
+        case VECTOR:
+        case OBJECT:
+        case UNKNOWN:
+          return null;
+        default:
+          return getTSDataType(type);
+      }
     }
 
     @Override

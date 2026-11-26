@@ -464,25 +464,76 @@ public class IoTDBInsertQueryIT {
     }
   }
 
-  /** Reject a copy when the target field type is incompatible with the source column type. */
+  /** Promote compatible source values instead of rejecting the INSERT SELECT. */
   @Test
-  public void testColumnTypeMismatch1() throws SQLException {
-    String errMsg =
-        "701: Insert query has mismatched column types: Table: [TIMESTAMP, STRING, STRING, INT64, INT64, FLOAT, TEXT, BOOLEAN], Query: [TIMESTAMP, STRING, STRING, INT32, INT64, FLOAT, TEXT, BOOLEAN]";
-    Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-    Statement statement = connection.createStatement();
-    try {
+  public void testCompatibleTypePromotion() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
       statement.execute("USE test");
-      // create table
       statement.execute(
-          "CREATE TABLE IF NOT EXISTS vehicle1(deviceId STRING TAG, manufacturer STRING TAG, s0 INT64 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)");
-      // insert into vehicle1 select * from vehicle0
+          "CREATE TABLE vehicle1(deviceId STRING TAG, manufacturer STRING TAG, s0 INT64 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)");
+      statement.execute(String.format(insertIntoQuery, 1));
+
+      List<String> expectedHeader = new ArrayList<>();
+      List<String> expectedRetArray = new ArrayList<>();
+      try (ResultSet source =
+          statement.executeQuery("SELECT s0 FROM vehicle0 ORDER BY time, deviceId, manufacturer")) {
+        buildExpectedResult(source, expectedHeader, expectedRetArray);
+      }
+      try (ResultSet target =
+          statement.executeQuery("SELECT s0 FROM vehicle1 ORDER BY time, deviceId, manufacturer")) {
+        resultSetEqualTest(target, expectedHeader, expectedRetArray);
+      }
+    }
+  }
+
+  /** Convert numeric and DATE values to text and preserve null rows. */
+  @Test
+  public void testCompatibleTextConversionAndNull() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE type_source(deviceId STRING TAG, intValue INT32 FIELD, otherInt INT32 FIELD, dateValue DATE FIELD)");
+      statement.execute(
+          "CREATE TABLE type_target(deviceId STRING TAG, intText TEXT FIELD, dateString STRING FIELD, doubleValue DOUBLE FIELD)");
+      statement.execute(
+          "INSERT INTO type_source(time, deviceId, intValue, otherInt, dateValue) VALUES(1, 'd1', 123, 456, '2024-01-01'), (2, 'd1', NULL, NULL, NULL)");
+
+      statement.execute(
+          "INSERT INTO type_target SELECT time, deviceId, intValue, dateValue, otherInt FROM type_source");
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT intText, dateString, doubleValue FROM type_target ORDER BY time")) {
+        Assert.assertTrue(resultSet.next());
+        assertEquals("123", resultSet.getString("intText"));
+        assertEquals("2024-01-01", resultSet.getString("dateString"));
+        assertEquals(456.0, resultSet.getDouble("doubleValue"), 0.0);
+        Assert.assertTrue(resultSet.next());
+        assertNull(resultSet.getString("intText"));
+        assertNull(resultSet.getString("dateString"));
+        resultSet.getDouble("doubleValue");
+        Assert.assertTrue(resultSet.wasNull());
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  /** Reject source and target types that are not in the compatibility table. */
+  @Test
+  public void testIncompatibleTypePromotionRejected() throws SQLException {
+    String errMsg =
+        "701: Insert query has mismatched column types: Table: [TIMESTAMP, STRING, STRING, INT64, INT64, INT64, TEXT, BOOLEAN], Query: [TIMESTAMP, STRING, STRING, INT32, INT64, FLOAT, TEXT, BOOLEAN]";
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE vehicle1(deviceId STRING TAG, manufacturer STRING TAG, s0 INT64 FIELD, s1 INT64 FIELD, s2 INT64 FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)");
       statement.execute(String.format(insertIntoQuery, 1));
       fail("No exception!");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
-    } finally {
-      statement.execute(String.format(dropTableTemplate, 1));
     }
   }
 
