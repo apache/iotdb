@@ -938,8 +938,17 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
     final String resourcePipeName =
         PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, 1L);
     final PipeTsFileResourceManager manager = PipeDataNodeResourceManager.tsfile();
+    final List<PipeTsFileInsertionEvent> createdEvents = new ArrayList<>();
     final PipeHistoricalDataRegionTsFileAndDeletionSource source =
-        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+        new PipeHistoricalDataRegionTsFileAndDeletionSource() {
+          @Override
+          PipeTsFileInsertionEvent createTsFileInsertionEvent(final TsFileResource resource) {
+            final PipeTsFileInsertionEvent event =
+                Mockito.spy(super.createTsFileInsertionEvent(resource));
+            createdEvents.add(event);
+            return event;
+          }
+        };
     final AtomicBoolean failPathResolution = new AtomicBoolean();
     PipeTsFileInsertionEvent event = null;
     try {
@@ -985,11 +994,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       Assert.assertTrue(progressReportResources.contains(resource));
       Assert.assertNull(getPrivateField(source, "pendingHistoricalProgressIndexToReport"));
       Assert.assertEquals(1, manager.getFileReferenceCount(pinnedFile, resourcePipeName));
+      Assert.assertEquals(1, createdEvents.size());
+      Mockito.verify(createdEvents.get(0)).close();
 
       failPathResolution.set(false);
       if (retry) {
         event = (PipeTsFileInsertionEvent) source.supply();
         Assert.assertNotNull(event);
+        Assert.assertEquals(2, createdEvents.size());
         final Field resourceField = PipeTsFileInsertionEvent.class.getDeclaredField("resource");
         resourceField.setAccessible(true);
         Assert.assertSame(resource, resourceField.get(event));

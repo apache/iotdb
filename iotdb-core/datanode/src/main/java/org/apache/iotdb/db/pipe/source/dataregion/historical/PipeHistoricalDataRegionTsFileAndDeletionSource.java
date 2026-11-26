@@ -1574,29 +1574,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     boolean shouldUnpinResource = false;
     boolean shouldClearReplicateIndex = false;
+    boolean isEventReferenceAcquired = false;
+    PipeTsFileInsertionEvent event = null;
     try {
-      final PipeTsFileInsertionEvent event =
-          new PipeTsFileInsertionEvent(
-              isModelDetected ? isTableModel : null,
-              resource.getDatabaseName(),
-              resource,
-              null,
-              shouldTransferModFile,
-              false,
-              true,
-              filteredTsFileResources2TableNames.get(resource),
-              pipeName,
-              creationTime,
-              pipeTaskMeta,
-              treePattern,
-              tablePattern,
-              userId,
-              userName,
-              cliHostname,
-              skipIfNoPrivileges,
-              historicalDataExtractionStartTime,
-              historicalDataExtractionEndTime);
-      event.setTsFileParser(tsFileParser);
+      event = createTsFileInsertionEvent(resource);
 
       if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
         event.skipReportOnCommitAndGeneratedEvents();
@@ -1635,11 +1616,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                 DataNodePipeMessages.INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT,
                 event.coreReportMessage()));
       }
+      isEventReferenceAcquired = true;
       filteredTsFileResources2TableNames.remove(resource);
       shouldUnpinResource = true;
       shouldClearReplicateIndex = true;
       return event;
     } finally {
+      if (event != null && !isEventReferenceAcquired) {
+        event.close();
+      }
       if (shouldClearReplicateIndex) {
         clearReplicateIndexForResource(resource);
       }
@@ -1655,6 +1640,32 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         }
       }
     }
+  }
+
+  PipeTsFileInsertionEvent createTsFileInsertionEvent(final TsFileResource resource) {
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            isModelDetected ? isTableModel : null,
+            resource.getDatabaseName(),
+            resource,
+            null,
+            shouldTransferModFile,
+            false,
+            true,
+            filteredTsFileResources2TableNames.get(resource),
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges,
+            historicalDataExtractionStartTime,
+            historicalDataExtractionEndTime);
+    event.setTsFileParser(tsFileParser);
+    return event;
   }
 
   private boolean shouldSkipHistoricalTsFileEvent(final TsFileResource resource) {
