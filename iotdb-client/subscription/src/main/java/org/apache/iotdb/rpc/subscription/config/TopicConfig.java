@@ -46,6 +46,7 @@ public class TopicConfig extends PipeParameters {
   private long filterVersion = NEXT_FILTER_VERSION.incrementAndGet();
 
   private static final Set<String> MODE_VALUE_SET;
+  private static final Set<String> REALTIME_MODE_VALUE_SET;
   private static final Set<String> ORDER_MODE_VALUE_SET;
 
   static {
@@ -54,6 +55,11 @@ public class TopicConfig extends PipeParameters {
     modes.add(TopicConstant.MODE_INITIAL_VALUE);
     modes.add(TopicConstant.MODE_INCREMENTAL_VALUE);
     MODE_VALUE_SET = Collections.unmodifiableSet(modes);
+
+    final Set<String> realtimeModes = new HashSet<>(2);
+    realtimeModes.add(TopicConstant.REALTIME_MODE_STREAM_VALUE);
+    realtimeModes.add(TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    REALTIME_MODE_VALUE_SET = Collections.unmodifiableSet(realtimeModes);
 
     final Set<String> orderModes = new HashSet<>(3);
     orderModes.add(TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
@@ -108,9 +114,11 @@ public class TopicConfig extends PipeParameters {
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
 
   private static final Map<String, String> REALTIME_BATCH_MODE_CONFIG =
-      Collections.singletonMap("realtime.mode", "batch");
+      Collections.singletonMap(
+          TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
   private static final Map<String, String> REALTIME_STREAM_MODE_CONFIG =
-      Collections.singletonMap("realtime.mode", "stream");
+      Collections.singletonMap(
+          TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_STREAM_VALUE);
 
   private static final Map<String, String> SINK_TABLET_FORMAT_CONFIG =
       Collections.singletonMap("format", "tablet");
@@ -216,6 +224,29 @@ public class TopicConfig extends PipeParameters {
       default:
         return normalizedMode;
     }
+  }
+
+  public String getRealtimeMode() {
+    return normalizeRealtimeMode(
+        getStringIgnoreCase(
+            TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_DEFAULT_VALUE));
+  }
+
+  public String getEffectiveRealtimeMode() {
+    final String realtimeMode = getRealtimeMode();
+    return isValidRealtimeMode(realtimeMode)
+        ? realtimeMode
+        : TopicConstant.REALTIME_MODE_DEFAULT_VALUE;
+  }
+
+  public static boolean isValidRealtimeMode(final String realtimeMode) {
+    return REALTIME_MODE_VALUE_SET.contains(normalizeRealtimeMode(realtimeMode));
+  }
+
+  public static String normalizeRealtimeMode(final String realtimeMode) {
+    return realtimeMode == null
+        ? TopicConstant.REALTIME_MODE_DEFAULT_VALUE
+        : realtimeMode.trim().toLowerCase(Locale.ROOT);
   }
 
   public String getOrderMode() {
@@ -324,7 +355,9 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSourceRealtimeMode() {
-    return REALTIME_STREAM_MODE_CONFIG; // default to stream (hybrid)
+    return TopicConstant.REALTIME_MODE_BATCH_VALUE.equals(getRealtimeMode())
+        ? REALTIME_BATCH_MODE_CONFIG
+        : REALTIME_STREAM_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
@@ -357,7 +390,8 @@ public class TopicConfig extends PipeParameters {
     final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
     attributes.forEach(
         (key, value) -> {
-          if (key.toLowerCase().startsWith("source")) {
+          if (key.toLowerCase(Locale.ROOT).startsWith("source")
+              && !TopicConstant.SOURCE_REALTIME_MODE_KEY.equalsIgnoreCase(key.trim())) {
             attributesWithProcessorPrefix.put(key, value);
           }
         });

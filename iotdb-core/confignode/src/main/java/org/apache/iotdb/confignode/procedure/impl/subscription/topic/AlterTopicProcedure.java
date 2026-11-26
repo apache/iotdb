@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -45,6 +46,8 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -171,7 +174,11 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionAndPipeProce
       updatedTopicMeta = existedTopicMeta.deepCopyWithUpdatedAttributes(updatedTopicAttributes);
     }
 
-    subscriptionInfo.get().validateBeforeAlteringTopic(updatedTopicMeta);
+    migrateLegacyRealtimeMode();
+
+    subscriptionInfo
+        .get()
+        .validateBeforeAlteringTopic(updatedTopicMeta, hasExistingSubscriptionPipe());
 
     if (Objects.nonNull(existedTopicMeta)
         && existedTopicMeta.getConfig().isProgressRetainedAfterUnsubscribe()
@@ -180,6 +187,43 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionAndPipeProce
     }
 
     return true;
+  }
+
+  private void migrateLegacyRealtimeMode() {
+    if (Objects.isNull(existedTopicMeta)
+        || TopicConfig.isValidRealtimeMode(existedTopicMeta.getConfig().getRealtimeMode())
+        || (Objects.nonNull(updatedTopicAttributes)
+            && updatedTopicAttributes.keySet().stream()
+                .anyMatch(
+                    key ->
+                        Objects.nonNull(key)
+                            && TopicConstant.REALTIME_MODE_KEY.equalsIgnoreCase(key.trim())))) {
+      return;
+    }
+
+    updatedTopicMeta
+        .getConfig()
+        .getAttribute()
+        .put(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_DEFAULT_VALUE);
+  }
+
+  private boolean hasExistingSubscriptionPipe() {
+    if (Objects.isNull(pipeTaskInfo) || Objects.isNull(pipeTaskInfo.get())) {
+      return false;
+    }
+
+    final boolean isTableModel = updatedTopicMeta.visibleUnderTableModel();
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+      if (PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
+          && staticMeta.visibleUnder(isTableModel)
+          && Objects.equals(
+              updatedTopicMeta.getTopicName(),
+              staticMeta.getSinkParameters().getString(PipeSinkConstant.SINK_TOPIC_KEY))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void prepareRetainedProgressCleanup(final ConfigNodeProcedureEnv env) {

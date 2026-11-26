@@ -20,6 +20,12 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ManagerMessages {
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_REALTIME_MODE_ARG_CONFLICTS_WITH_ARG_ARG_D08CF59B =
+          "创建或修改主题失败，realtime.mode=%s 与 %s=%s 冲突";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_REALTIME_MODE_ARG_EXPECTED_ONE_OF_STREAM_BATCH_79399284 =
+          "创建或修改主题失败，不支持 realtime.mode=%s，预期值为 [stream, batch] 之一";
 
   public static final String ACTIVATEDATAALLOTTABLE_ACTIVATE_SERIESPARTITIONSLOT =
       "[ActivateDataAllotTable] 激活 SeriesPartitionSlot {} ";
