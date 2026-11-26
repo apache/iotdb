@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManage
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.service.ExternalRPCService;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -82,6 +83,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public void notifyNotLeader() {
     int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    ExternalRPCService.getInstance().reclaimOneIdleServerConnection();
+
     logger.info(
         "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
             + "start cleaning up related services.",

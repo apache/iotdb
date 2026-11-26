@@ -40,7 +40,7 @@ public abstract class ThriftService implements IService {
       String.format(
           "%s:%s=%s",
           IoTDBConstant.IOTDB_SERVICE_JMX_NAME, IoTDBConstant.JMX_TYPE, getID().getJmxName());
-  protected AbstractThriftServiceThread thriftServiceThread;
+  protected volatile AbstractThriftServiceThread thriftServiceThread;
   protected TProcessor processor;
 
   private CountDownLatch stopLatch;
@@ -62,6 +62,16 @@ public abstract class ThriftService implements IService {
     } else {
       return STATUS_DOWN;
     }
+  }
+
+  public long reclaimIdleServerBuffers(long targetBytes) {
+    AbstractThriftServiceThread serviceThread = thriftServiceThread;
+    return serviceThread == null ? 0 : serviceThread.reclaimIdleServerBuffers(targetBytes);
+  }
+
+  public long reclaimOneIdleServerConnection() {
+    AbstractThriftServiceThread serviceThread = thriftServiceThread;
+    return serviceThread == null ? 0 : serviceThread.reclaimOneIdleServerConnection();
   }
 
   @Override

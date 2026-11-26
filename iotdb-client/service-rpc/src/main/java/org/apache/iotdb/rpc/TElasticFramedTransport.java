@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager.ServerBufferPool;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager.ServerConnectionState;
+
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -109,6 +112,8 @@ public class TElasticFramedTransport extends TTransport {
   protected AutoScalingBufferWriteTransport writeBuffer;
   protected final byte[] i32buf = new byte[4];
   private final boolean copyBinary;
+  private ServerBufferPool serverBufferPool;
+  private volatile ServerConnectionState serverConnectionState;
 
   @Override
   public boolean isOpen() {
@@ -116,12 +121,18 @@ public class TElasticFramedTransport extends TTransport {
   }
 
   @Override
-  public void open() throws TTransportException {
+  public synchronized void open() throws TTransportException {
     underlying.open();
+    if (serverBufferPool != null) {
+      serverBufferPool.register(this);
+    }
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
+    if (serverBufferPool != null) {
+      serverBufferPool.unregister(this);
+    }
     try {
       underlying.close();
     } finally {
@@ -135,6 +146,54 @@ public class TElasticFramedTransport extends TTransport {
     }
     if (writeBuffer != null) {
       writeBuffer.close();
+    }
+  }
+
+  synchronized void registerForServerBufferReclamation(ServerBufferPool pool) {
+    if (serverBufferPool == null) {
+      serverBufferPool = pool;
+      pool.register(this);
+    }
+  }
+
+  public void beginServerRequest() {
+    setServerRequestInProgress(true);
+  }
+
+  public void endServerRequest() {
+    setServerRequestInProgress(false);
+  }
+
+  ServerConnectionState getServerConnectionState() {
+    return serverConnectionState;
+  }
+
+  void setServerConnectionState(ServerConnectionState serverConnectionState) {
+    this.serverConnectionState = serverConnectionState;
+  }
+
+  long getAccountedBufferBytes() {
+    return (long) readBuffer.getAccountedBufferBytes() + writeBuffer.getAccountedBufferBytes();
+  }
+
+  long getReclaimableBufferBytes() {
+    return (long) readBuffer.getReclaimableBufferBytes() + writeBuffer.getReclaimableBufferBytes();
+  }
+
+  long trimBuffersForReclamation() {
+    return readBuffer.trimToInitialCapacity()
+        + writeBuffer.trimToInitialCapacity()
+        + trimAdditionalBuffers();
+  }
+
+  protected long trimAdditionalBuffers() {
+    return 0;
+  }
+
+  private void setServerRequestInProgress(boolean requestInProgress) {
+    ServerConnectionState state = serverConnectionState;
+    if (state != null) {
+      state.setRequestInProgress(requestInProgress);
     }
   }
 
@@ -195,7 +254,9 @@ public class TElasticFramedTransport extends TTransport {
   }
 
   protected void readFrame() throws TTransportException {
+    endServerRequest();
     underlying.readAll(i32buf, 0, 4);
+    beginServerRequest();
     int size = TFramedTransport.decodeFrameSize(i32buf);
     checkFrameSize(size);
     readBuffer.fill(underlying, size);

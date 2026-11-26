@@ -100,6 +100,27 @@ class AutoResizingBuffer implements AutoCloseable {
     return this.array;
   }
 
+  int getAccountedCapacity() {
+    return accountedCapacity;
+  }
+
+  int getReclaimableBytes() {
+    return Math.max(0, accountedCapacity - initialCapacity);
+  }
+
+  long trimToInitialCapacity() {
+    if (closed || array.length <= initialCapacity) {
+      return 0;
+    }
+    long releasedBytes = accountedCapacity - initialCapacity;
+    array = Arrays.copyOf(array, initialCapacity);
+    memoryAccount.release(releasedBytes);
+    accountedCapacity = initialCapacity;
+    bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
+    lastShrinkTime = System.currentTimeMillis();
+    return releasedBytes;
+  }
+
   @Override
   public void close() {
     if (!closed) {
@@ -131,8 +152,7 @@ class AutoResizingBuffer implements AutoCloseable {
 
   private void reserveCurrentCapacityIfReleased() throws IOException {
     if (closed) {
-      AutoResizingBufferMemoryManager.MemoryAccount newMemoryAccount =
-          AutoResizingBufferMemoryManager.createMemoryAccount();
+      AutoResizingBufferMemoryManager.MemoryAccount newMemoryAccount = memoryAccount.reopen();
       newMemoryAccount.allocate(array.length);
       memoryAccount = newMemoryAccount;
       accountedCapacity = array.length;
