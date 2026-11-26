@@ -35,6 +35,7 @@ import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.pipe.it.dual.TypeConversionSemanticCase;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -665,6 +666,142 @@ public class IoTDBLoadTsFileIT {
         Assert.assertFalse(resultSet.next());
       }
     }
+  }
+
+  @Test
+  public void testLoadWithAllConflictingAlignedDataTypes() throws Exception {
+    final String database = "root.load.aligned_type_conflict";
+    final String allConflictDevice = database + ".d_all_conflict";
+    final String oneConflictDevice = database + ".d_one_conflict";
+    final String nonAlignedDevice = database + ".na";
+    final File source = new File(tmpDir, "aligned-type-conflict.tsfile");
+    final List<TSDataType> conflictingTargetTypes =
+        Arrays.asList(
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.BLOB,
+            TSDataType.DATE,
+            TSDataType.TIMESTAMP,
+            TSDataType.INT32,
+            TSDataType.INT64);
+    final List<TSDataType> oneConflictTargetTypes =
+        new ArrayList<>(Collections.nCopies(conflictingTargetTypes.size(), TSDataType.BOOLEAN));
+    oneConflictTargetTypes.set(0, TSDataType.INT32);
+    final List<String> measurements = new ArrayList<>();
+    final List<IMeasurementSchema> sourceSchemas = new ArrayList<>();
+    final List<IMeasurementSchema> allConflictSchemas = new ArrayList<>();
+    final List<IMeasurementSchema> oneConflictSchemas = new ArrayList<>();
+    for (int measurementIndex = 0;
+        measurementIndex < conflictingTargetTypes.size();
+        measurementIndex++) {
+      final String measurement = "s" + measurementIndex;
+      measurements.add(measurement);
+      sourceSchemas.add(new MeasurementSchema(measurement, TSDataType.BOOLEAN, TSEncoding.PLAIN));
+      allConflictSchemas.add(
+          new MeasurementSchema(measurement, conflictingTargetTypes.get(measurementIndex)));
+      oneConflictSchemas.add(
+          new MeasurementSchema(measurement, oneConflictTargetTypes.get(measurementIndex)));
+    }
+    try {
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database " + database);
+        statement.execute(convert2AlignedSQL(allConflictDevice, allConflictSchemas));
+        statement.execute(convert2AlignedSQL(oneConflictDevice, oneConflictSchemas));
+        for (int measurementIndex = 0;
+            measurementIndex < conflictingTargetTypes.size();
+            measurementIndex++) {
+          statement.execute(
+              convert2SQL(
+                  nonAlignedDevice, (MeasurementSchema) allConflictSchemas.get(measurementIndex)));
+        }
+      }
+      try (final TsFileWriter writer = new TsFileWriter(source)) {
+        writer.registerAlignedTimeseries(new Path(allConflictDevice), sourceSchemas);
+        writer.registerAlignedTimeseries(new Path(oneConflictDevice), sourceSchemas);
+        writer.registerTimeseries(new Path(nonAlignedDevice), sourceSchemas);
+        writeBooleanRows(writer, allConflictDevice, sourceSchemas, true);
+        writeBooleanRows(writer, oneConflictDevice, sourceSchemas, true);
+        writeBooleanRows(writer, nonAlignedDevice, sourceSchemas, false);
+      }
+
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "load \"%s\" with ('auto-create-schema'='false', 'convert-on-type-mismatch'='true')",
+                source.getAbsolutePath()));
+        for (final String device :
+            Arrays.asList(allConflictDevice, oneConflictDevice, nonAlignedDevice)) {
+          final List<TSDataType> targetTypes =
+              device.equals(oneConflictDevice) ? oneConflictTargetTypes : conflictingTargetTypes;
+          try (final ResultSet resultSet =
+              statement.executeQuery(
+                  "select "
+                      + String.join(",", measurements)
+                      + " from "
+                      + device
+                      + " order by time")) {
+            for (int row = 0; row < 4; row++) {
+              Assert.assertTrue("Missing row " + row + " for " + device, resultSet.next());
+              Assert.assertEquals(row + 1, resultSet.getLong(1));
+              for (int column = 0; column < measurements.size(); column++) {
+                Assert.assertEquals(
+                    "Unexpected value for "
+                        + device
+                        + "."
+                        + measurements.get(column)
+                        + " at row "
+                        + row,
+                    expectedBooleanConversionValue(targetTypes.get(column), row),
+                    resultSet.getString(column + 2));
+              }
+            }
+            Assert.assertFalse(resultSet.next());
+          }
+        }
+      }
+    } finally {
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
+        deleteDatabaseIfExists(statement, database);
+      }
+    }
+  }
+
+  private void writeBooleanRows(
+      final TsFileWriter writer,
+      final String device,
+      final List<IMeasurementSchema> schemas,
+      final boolean isAligned)
+      throws Exception {
+    final Tablet tablet = new Tablet(device, schemas, 4);
+    for (int row = 0; row < 4; row++) {
+      tablet.addTimestamp(row, row + 1);
+      for (int column = 0; column < schemas.size(); column++) {
+        tablet.addValue(row, column, row % 3 != 1);
+      }
+    }
+    if (isAligned) {
+      writer.writeAligned(tablet);
+    } else {
+      writer.writeTree(tablet);
+    }
+  }
+
+  private String expectedBooleanConversionValue(final TSDataType targetType, final int row) {
+    if (targetType == TSDataType.BOOLEAN) {
+      return row % 3 != 1 ? "true" : "false";
+    }
+    for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+      if (conversionCase.sourceType == TSDataType.BOOLEAN
+          && conversionCase.targetType == targetType) {
+        return conversionCase.expectedValues[row % conversionCase.expectedValues.length];
+      }
+    }
+    throw new IllegalArgumentException("No Boolean conversion expectation for " + targetType);
   }
 
   // Loading aligned and non-aligned devices extends the bound template and preserves every point.
