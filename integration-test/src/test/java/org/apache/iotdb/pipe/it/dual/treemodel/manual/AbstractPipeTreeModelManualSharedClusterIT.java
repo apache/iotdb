@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -143,15 +144,11 @@ public abstract class AbstractPipeTreeModelManualSharedClusterIT
   private static void deleteTreeDatabases(final BaseEnv env) throws SQLException {
     try (final Connection connection = env.getConnection();
         final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet result = statement.executeQuery("show databases")) {
-        while (result.next()) {
-          databases.add(result.getString(1));
-        }
-      }
+      final List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, false);
       for (final String database : databases) {
-        statement.execute("delete database " + database);
+        TestUtils.deleteDatabaseWithRetry(statement, database);
       }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
     }
   }
 

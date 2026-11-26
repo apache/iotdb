@@ -21,8 +21,11 @@ package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.InternalDatabaseUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -35,6 +38,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -93,6 +97,7 @@ public class TestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
   private static final int MAX_RESULT_SET_DIFF_ROWS = 20;
+  private static final int DATABASE_QUERY_TIMEOUT_SECONDS = 5;
   // Retry promptly while asynchronous data becomes visible, without continuously querying.
   private static final long DATA_ASSERTION_POLL_INTERVAL_MILLIS = 100;
 
@@ -1286,6 +1291,195 @@ public class TestUtils {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  public static List<String> showDatabasesWithRetry(final Statement statement) throws SQLException {
+    return withDatabaseQueryTimeout(
+        statement,
+        () -> {
+          final List<String> databases = new ArrayList<>();
+          await()
+              .pollInSameThread()
+              .pollDelay(0L, TimeUnit.MILLISECONDS)
+              .pollInterval(100L, TimeUnit.MILLISECONDS)
+              .atMost(60L, TimeUnit.SECONDS)
+              .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
+              .until(
+                  () -> {
+                    databases.clear();
+                    databases.addAll(readDatabases(statement));
+                    return true;
+                  });
+          return databases;
+        });
+  }
+
+  public static List<String> showUserDatabasesWithRetry(
+      final Statement statement, final boolean tableModel) throws SQLException {
+    final List<String> databases = new ArrayList<>();
+    for (final String database : showDatabasesWithRetry(statement)) {
+      if (!isSystemDatabase(database, tableModel)) {
+        databases.add(database);
+      }
+    }
+    return databases;
+  }
+
+  private static boolean isSystemDatabase(final String database, final boolean tableModel) {
+    return database == null
+        || (tableModel && "information_schema".equalsIgnoreCase(database))
+        || InternalDatabaseUtils.isInternalDatabase(database);
+  }
+
+  public static void waitForDatabasesAbsent(
+      final Statement statement, final Collection<String> databases) throws SQLException {
+    if (databases.isEmpty()) {
+      return;
+    }
+    withDatabaseQueryTimeout(
+        statement,
+        () -> {
+          await()
+              .pollInSameThread()
+              .pollDelay(0L, TimeUnit.MILLISECONDS)
+              .pollInterval(100L, TimeUnit.MILLISECONDS)
+              .atMost(60L, TimeUnit.SECONDS)
+              .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
+              .until(() -> Collections.disjoint(readDatabases(statement), databases));
+          return null;
+        });
+  }
+
+  private static <T> T withDatabaseQueryTimeout(
+      final Statement statement, final SqlSupplier<T> operation) throws SQLException {
+    final int originalQueryTimeout = statement.getQueryTimeout();
+    final int boundedQueryTimeout =
+        originalQueryTimeout > 0
+            ? Math.min(originalQueryTimeout, DATABASE_QUERY_TIMEOUT_SECONDS)
+            : DATABASE_QUERY_TIMEOUT_SECONDS;
+    Throwable operationFailure = null;
+    try {
+      statement.setQueryTimeout(boundedQueryTimeout);
+      return operation.get();
+    } catch (final SQLException | RuntimeException | Error e) {
+      operationFailure = e;
+      throw e;
+    } finally {
+      try {
+        statement.setQueryTimeout(originalQueryTimeout);
+      } catch (final SQLException e) {
+        if (operationFailure == null) {
+          throw e;
+        }
+        operationFailure.addSuppressed(e);
+      }
+    }
+  }
+
+  @FunctionalInterface
+  private interface SqlSupplier<T> {
+    T get() throws SQLException;
+  }
+
+  private static List<String> readDatabases(final Statement statement) throws SQLException {
+    final List<String> databases = new ArrayList<>();
+    try (final ResultSet result = statement.executeQuery("show databases")) {
+      while (result.next()) {
+        databases.add(result.getString(1));
+      }
+    }
+    return databases;
+  }
+
+  public static void deleteDatabaseWithRetry(final Statement statement, final String database)
+      throws SQLException {
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+    final String databasePath = quoteTreeDatabasePath(database);
+    while (true) {
+      try {
+        statement.execute("DELETE DATABASE " + databasePath);
+        return;
+      } catch (final SQLException e) {
+        if (e.getErrorCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+          return;
+        }
+        if (e.getErrorCode() != TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+            || System.nanoTime() >= deadline) {
+          throw e;
+        }
+      }
+      try {
+        Thread.sleep(100);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new SQLException(e);
+      }
+    }
+  }
+
+  static String quoteTreeDatabasePath(final String database) throws SQLException {
+    final List<String> nodes = new ArrayList<>();
+    int nodeStart = 0;
+    boolean quoted = false;
+    for (int i = 0; i < database.length(); i++) {
+      final char current = database.charAt(i);
+      if (current == '`') {
+        if (quoted && i + 1 < database.length() && database.charAt(i + 1) == '`') {
+          i++;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (current == '.' && !quoted) {
+        nodes.add(database.substring(nodeStart, i));
+        nodeStart = i + 1;
+      }
+    }
+    if (quoted) {
+      throw new SQLException("Invalid tree database path: " + database);
+    }
+    nodes.add(database.substring(nodeStart));
+
+    final StringBuilder quotedPath = new StringBuilder();
+    for (int i = 0; i < nodes.size(); i++) {
+      if (i > 0) {
+        quotedPath.append('.');
+      }
+      final String node = nodes.get(i);
+      if (node.isEmpty()) {
+        throw new SQLException("Invalid tree database path: " + database);
+      }
+      if ("*".equals(node) || "**".equals(node)) {
+        quotedPath.append(node);
+        continue;
+      }
+      final boolean quotedNode = node.length() >= 2 && node.startsWith("`") && node.endsWith("`");
+      if ((node.startsWith("`") || node.endsWith("`")) && !quotedNode) {
+        throw new SQLException("Invalid tree database path: " + database);
+      }
+      final String unquotedNode =
+          quotedNode ? node.substring(1, node.length() - 1).replace("``", "`") : node;
+      if (unquotedNode.isEmpty() || (!quotedNode && unquotedNode.indexOf('`') >= 0)) {
+        throw new SQLException("Invalid tree database path: " + database);
+      }
+      if (i == 0 && "root".equalsIgnoreCase(unquotedNode)) {
+        quotedPath.append("root");
+      } else {
+        boolean canUseUnquotedNode = !quotedNode;
+        if (canUseUnquotedNode) {
+          try {
+            PathUtils.checkAndReturnSingleMeasurement(unquotedNode);
+          } catch (final IllegalPathException e) {
+            canUseUnquotedNode = false;
+          }
+        }
+        if (canUseUnquotedNode) {
+          quotedPath.append(unquotedNode);
+        } else {
+          quotedPath.append('`').append(unquotedNode.replace("`", "``")).append('`');
+        }
+      }
+    }
+    return quotedPath.toString();
   }
 
   public static void dropDatabaseWithRetry(final Statement statement, final String database)

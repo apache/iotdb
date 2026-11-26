@@ -42,6 +42,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -68,7 +69,7 @@ public class IoTDBRelationalAuthIT {
     }
   }
 
-  private static void cleanupAfterTest() {
+  private static void cleanupAfterTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       // drop all non-root users
@@ -99,22 +100,13 @@ public class IoTDBRelationalAuthIT {
         // ignore
       }
       // drop all non-system databases
-      try (ResultSet rs = statement.executeQuery("SHOW DATABASES")) {
-        java.util.List<String> dbs = new java.util.ArrayList<>();
-        while (rs.next()) {
-          String name = rs.getString(1);
-          if (name != null && !name.startsWith("information_schema") && !name.startsWith("__")) {
-            dbs.add(name);
-          }
-        }
-        for (String db : dbs) {
-          executeQuietly(statement, "DROP DATABASE IF EXISTS \"" + db + "\"");
-        }
-      } catch (SQLException ignored) {
-        // ignore
+      final List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, true);
+      for (String database : databases) {
+        final String quote = String.valueOf('"');
+        TestUtils.dropDatabaseWithRetry(
+            statement, quote + database.replace(quote, quote + quote) + quote);
       }
-    } catch (SQLException ignored) {
-      // ignore
+      TestUtils.waitForDatabasesAbsent(statement, databases);
     }
   }
 

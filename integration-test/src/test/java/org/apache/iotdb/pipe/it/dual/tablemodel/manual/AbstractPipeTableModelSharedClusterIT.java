@@ -164,24 +164,18 @@ public abstract class AbstractPipeTableModelSharedClusterIT
         new String[] {BaseEnv.TREE_SQL_DIALECT, BaseEnv.TABLE_SQL_DIALECT}) {
       try (final Connection connection = env.getConnection(dialect);
           final Statement statement = connection.createStatement()) {
-        final List<String> databases = new ArrayList<>();
-        try (final ResultSet result = statement.executeQuery("show databases")) {
-          while (result.next()) {
-            final String database = result.getString(1);
-            if (!"information_schema".equals(database)) {
-              databases.add(database);
-            }
-          }
-        }
+        final boolean tableModel = BaseEnv.TABLE_SQL_DIALECT.equals(dialect);
+        final List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, tableModel);
         for (final String database : databases) {
           if (BaseEnv.TABLE_SQL_DIALECT.equals(dialect)) {
             // A preceding DROP TABLE/VIEW can still be running after the pipe progress marker.
             TestUtils.dropDatabaseWithRetry(
                 statement, "\"" + database.replace("\"", "\"\"") + "\"");
           } else {
-            statement.execute("delete database " + database);
+            TestUtils.deleteDatabaseWithRetry(statement, database);
           }
         }
+        TestUtils.waitForDatabasesAbsent(statement, databases);
         if (BaseEnv.TREE_SQL_DIALECT.equals(dialect)) {
           deleteUsersAndRoles(statement);
         }

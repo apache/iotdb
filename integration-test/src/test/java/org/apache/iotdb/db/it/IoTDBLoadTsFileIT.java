@@ -213,11 +213,8 @@ public class IoTDBLoadTsFileIT {
 
   private void deleteDatabaseIfExists(final Statement statement, final String database)
       throws SQLException {
-    try (final ResultSet resultSet = statement.executeQuery("show databases " + database)) {
-      if (resultSet.next()) {
-        statement.execute("delete database " + database);
-      }
-    }
+    TestUtils.deleteDatabaseWithRetry(statement, database);
+    TestUtils.waitForDatabasesAbsent(statement, Collections.singletonList(database));
   }
 
   private boolean deleteDir() {
@@ -363,7 +360,7 @@ public class IoTDBLoadTsFileIT {
               Files.readAllBytes(entry.getKey().toPath()));
         }
       } finally {
-        statement.execute("delete database " + database);
+        deleteDatabaseIfExists(statement, database);
       }
     }
   }

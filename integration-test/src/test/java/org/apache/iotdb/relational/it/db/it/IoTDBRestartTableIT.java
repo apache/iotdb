@@ -47,6 +47,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
@@ -99,7 +100,8 @@ public class IoTDBRestartTableIT {
     // Recreate each scenario's tables without retaining data or schema from the preceding test.
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("drop database if exists \"test\"");
+      TestUtils.dropDatabaseWithRetry(statement, "\"test\"");
+      TestUtils.waitForDatabasesAbsent(statement, Collections.singletonList("test"));
     }
   }
 

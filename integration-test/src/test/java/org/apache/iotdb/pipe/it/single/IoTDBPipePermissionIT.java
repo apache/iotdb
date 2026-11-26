@@ -145,31 +145,20 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
   private static void resetCatalog(final BaseEnv env) throws SQLException {
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet result = statement.executeQuery("show databases")) {
-        while (result.next()) {
-          final String database = result.getString(1);
-          if (!"information_schema".equals(database)) {
-            databases.add(database);
-          }
-        }
-      }
+      final List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, true);
       for (final String database : databases) {
         TestUtils.dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
       }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
     }
 
     try (final Connection connection = env.getConnection();
         final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet result = statement.executeQuery("show databases")) {
-        while (result.next()) {
-          databases.add(result.getString(1));
-        }
-      }
+      final List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, false);
       for (final String database : databases) {
-        statement.execute("delete database " + database);
+        TestUtils.deleteDatabaseWithRetry(statement, database);
       }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
 
       for (final String type : new String[] {"user", "role"}) {
         final List<String> names = new ArrayList<>();

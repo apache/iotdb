@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.utils.TsFileGenerator;
@@ -194,18 +195,17 @@ public class IoTDBLoadLastCacheIT {
         final Statement statement = connection.createStatement()) {
       for (final String database :
           Arrays.asList(SchemaConfig.STORAGE_GROUP_0, SchemaConfig.STORAGE_GROUP_1)) {
-        final boolean exists;
-        try (final ResultSet resultSet = statement.executeQuery("show databases " + database)) {
-          exists = resultSet.next();
-        }
-        if (exists) {
-          statement.execute("delete database " + database);
-        }
+        TestUtils.deleteDatabaseWithRetry(statement, database);
       }
+      TestUtils.waitForDatabasesAbsent(
+          statement, Arrays.asList(SchemaConfig.STORAGE_GROUP_0, SchemaConfig.STORAGE_GROUP_1));
     }
     try (final Connection connection = EnvFactory.getEnv().getTableConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("DROP DATABASE IF EXISTS " + SchemaConfig.DATABASE_0);
+      TestUtils.dropDatabaseWithRetry(
+          statement, "\"" + SchemaConfig.DATABASE_0.replace("\"", "\"\"") + "\"");
+      TestUtils.waitForDatabasesAbsent(
+          statement, Collections.singletonList(SchemaConfig.DATABASE_0));
     }
   }
 

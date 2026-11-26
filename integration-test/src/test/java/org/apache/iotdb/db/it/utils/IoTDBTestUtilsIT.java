@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.it.utils;
 
+import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -78,6 +80,20 @@ public class IoTDBTestUtilsIT {
   public void testHalfTimeoutElapsedUsesSeconds() {
     assertFalse(TestUtils.isHalfTimeoutElapsed(299_999, 600));
     assertTrue(TestUtils.isHalfTimeoutElapsed(300_001, 600));
+  }
+
+  @Test
+  public void testQuoteTreeDatabasePath() throws SQLException {
+    assertEquals("root.select", TestUtils.quoteTreeDatabasePath("root.select"));
+    assertEquals("root.`a.b`", TestUtils.quoteTreeDatabasePath("root.`a.b`"));
+    assertEquals("root.`a``b`", TestUtils.quoteTreeDatabasePath("root.`a``b`"));
+    assertEquals("root.`111`", TestUtils.quoteTreeDatabasePath("root.111"));
+    assertEquals("root.test.**", TestUtils.quoteTreeDatabasePath("root.test.**"));
+    assertTrue(
+        StatementGenerator.createStatement(
+                "DELETE DATABASE " + TestUtils.quoteTreeDatabasePath("root.select"),
+                TestUtils.DEFAULT_ZONE_ID)
+            instanceof DeleteDatabaseStatement);
   }
 
   @Test
