@@ -195,6 +195,11 @@ class LoadTreeTsFileTabletIterator
             public void close() {
               parser.close();
             }
+
+            @Override
+            public long getCurrentOffset() {
+              return parser.getCurrentOffset();
+            }
           };
         });
   }
@@ -1073,6 +1078,10 @@ class LoadTreeTsFileTabletIterator
 
   interface QueryParser extends AutoCloseable {
     Iterator<Pair<Tablet, Boolean>> iterator();
+
+    default long getCurrentOffset() {
+      return -1;
+    }
 
     @Override
     void close();

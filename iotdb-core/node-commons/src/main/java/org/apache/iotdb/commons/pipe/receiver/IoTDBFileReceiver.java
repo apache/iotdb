@@ -508,17 +508,14 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
 
       if (req.isSetCrc32() && req.getStartWritingOffset() == 0 && writingFileWriter.length() > 0) {
-        org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
-        writingFileWriter.seek(0);
+        truncateWritingFile(0);
       }
 
       // If the request is through air gap, the sender will resend the file piece from the beginning
       // of the file. So the receiver should reset the offset of the writing file to the beginning
       // of the file.
       if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
-        org.apache.iotdb.commons.utils.FileUtils.truncateFile(
-            writingFile, req.getStartWritingOffset());
-        writingFileWriter.seek(req.getStartWritingOffset());
+        truncateWritingFile(req.getStartWritingOffset());
       }
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
@@ -526,8 +523,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           // If the file is a tsFile, then the content will not be changed for a specific filename.
           // However, for other files (mod, snapshot, etc.) the content varies for the same name in
           // different times, then we must rewrite the file to apply the newest version.
-          org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
-          writingFileWriter.seek(0);
+          truncateWritingFile(0);
         }
 
         final TSStatus status =
@@ -570,6 +566,35 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       } catch (Exception ex) {
         return PipeTransferFilePieceResp.toTPipeTransferResp(status);
       }
+    }
+  }
+
+  private void truncateWritingFile(final long size) throws IOException {
+    writingFileWriter.close();
+    writingFileWriter = null;
+
+    Exception truncationFailure = null;
+    try {
+      org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, size);
+    } catch (final IOException | RuntimeException e) {
+      truncationFailure = e;
+    }
+
+    try {
+      writingFileWriter = new RandomAccessFile(writingFile, "rw");
+      writingFileWriter.seek(size);
+    } catch (final IOException | RuntimeException e) {
+      if (Objects.nonNull(truncationFailure)) {
+        e.addSuppressed(truncationFailure);
+      }
+      throw e;
+    }
+
+    if (truncationFailure instanceof IOException) {
+      throw (IOException) truncationFailure;
+    }
+    if (truncationFailure instanceof RuntimeException) {
+      throw (RuntimeException) truncationFailure;
     }
   }
 

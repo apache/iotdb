@@ -172,6 +172,39 @@ public class ActiveLoadTsFileLoaderTest {
   }
 
   @Test
+  public void testOversizedNewestFailureGroupStillDeletesSourceFiles() throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final File failDir = new File(config.getLoadActiveListeningFailDir());
+    final File oldGroup = new File(failDir, "active-load-old");
+    Files.createDirectories(oldGroup.toPath());
+    Files.write(new File(oldGroup, "old.tsfile").toPath(), new byte[4]);
+    config.setLoadActiveListeningFailDirMaxSizeInBytes(1);
+    invokeInitFailDirIfNecessary(loader);
+
+    final File tsFile = createTsFileWithCompanionFiles("oversized-failed.tsfile");
+    invokeHandleLoadFailure(
+        loader,
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            tsFile.getAbsolutePath(), tempDir.getAbsolutePath(), false, false),
+        new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage("permanent error"));
+
+    Assert.assertFalse(oldGroup.exists());
+    final File[] failedGroups = failDir.listFiles(File::isDirectory);
+    Assert.assertNotNull(failedGroups);
+    Assert.assertEquals(1, failedGroups.length);
+    Assert.assertTrue(new File(failedGroups[0], tsFile.getName()).exists());
+    for (final String suffix :
+        new String[] {
+          "",
+          TsFileResource.RESOURCE_SUFFIX,
+          ModificationFileV1.FILE_SUFFIX,
+          ModificationFile.FILE_SUFFIX
+        }) {
+      Assert.assertFalse(new File(tsFile.getAbsolutePath() + suffix).exists());
+    }
+  }
+
+  @Test
   public void testFailureDirectoryMaxSizeIsEnforcedDuringInitialization() throws Exception {
     final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
     final File failDir = new File(config.getLoadActiveListeningFailDir());
