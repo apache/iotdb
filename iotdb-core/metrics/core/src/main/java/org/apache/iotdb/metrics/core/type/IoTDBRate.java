@@ -23,8 +23,8 @@ import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
-import com.codahale.metrics.Clock;
-import com.codahale.metrics.Meter;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Clock;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Meter;
 
 /**
  * could not publish to other metrics system exclude jmx and csv, because micrometer assumes that

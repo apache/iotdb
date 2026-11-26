@@ -39,8 +39,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
-import com.codahale.metrics.Clock;
-import com.codahale.metrics.Meter;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Clock;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Meter;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

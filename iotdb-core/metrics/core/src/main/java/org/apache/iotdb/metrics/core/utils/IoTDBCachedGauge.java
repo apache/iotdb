@@ -22,7 +22,7 @@ package org.apache.iotdb.metrics.core.utils;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
-import com.codahale.metrics.Clock;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Clock;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.TimeUnit;
