@@ -65,6 +65,12 @@ public final class DataNodeQueryMessages {
       EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
           "数据库 %s 不存在，且 auto-create-schema 已禁用。";
   public static final String LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060 = "加载后删除 {} 时出错。";
+  public static final String
+      LOG_CONFIGNODE_LEADER_ARG_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
+          "ConfigNode Leader {} 正在预热，暂不能处理 DataNode {}，将等待并重试。原因：{}";
+  public static final String
+      LOG_UNEXPECTED_INTERRUPTION_WHILE_WAITING_TO_RETRY_CONFIGNODE_CONNECTION_D4F49D21 =
+          "等待重试 ConfigNode 连接时发生意外中断。";
   public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
       "CQ {} 的用户 {} 鉴权失败：{}";
 }

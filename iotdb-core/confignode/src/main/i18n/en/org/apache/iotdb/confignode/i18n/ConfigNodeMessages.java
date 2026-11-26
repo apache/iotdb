@@ -89,5 +89,66 @@ public final class ConfigNodeMessages {
   public static final String UNEXPECTED_INTERRUPTION_DURING_THE_CLOSE_METHOD_OF_LOGWRITER =
       "[ConfigRegion Update] Unexpected interruption during the close method of logWriter";
 
+  public static final String
+      MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D =
+          "The current ConfigNode is not leader, please redirect to a new ConfigNode.";
+  public static final String
+      MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_CONSENSUS_NOT_READY_YET_F1FB7C9A =
+          "The current ConfigNode is leader but consensus is not ready yet.";
+  public static final String
+      MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_LEADER_SERVICES_NOT_READY_YET_ECC25E1A =
+          "The current ConfigNode is leader but leader services are not ready yet.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_NOT_STARTED_1C75DB82 =
+      "ConfigNode leader load services are not started.";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F =
+          "ConfigNode leader is waiting for cluster heartbeat sampling.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_STOPPED_5884BB0F =
+      "ConfigNode leader load services are stopped.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_READY_CC9C90E7 =
+      "ConfigNode leader load services are ready.";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_FIRST_HEARTBEAT_FROM_REGISTERED_CONFIGNODES_DATANODES_ARG_2FD3F6FA =
+          "ConfigNode leader is waiting for first heartbeat from registered ConfigNodes/DataNodes: %s";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_READY_AFTER_WAITING_ARG_MS_FOR_FIRST_HEARTBEAT_MISSING_HEARTBEATS_ARG_A3AEA8B4 =
+          "ConfigNode leader load services are ready after waiting %dms for first heartbeat. Missing heartbeats: %s";
+  public static final String
+      LOG_UNEXPECTED_INTERRUPTION_WHILE_WAITING_FOR_CONFIGNODE_LEADER_LOAD_WARM_UP_BB5AA4F7 =
+          "Unexpected interruption while waiting for ConfigNode leader load warm-up.";
+  public static final String
+      LOG_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_WARM_UP_IS_STILL_IN_PROGRESS_ARG_17C09A31 =
+          "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load warm-up is still in progress: {}";
+  public static final String
+      LOG_CONFIGNODE_LEADER_WARMING_UP_BEFORE_SERVING_REGISTERING_CONFIGNODE_STATUS_ARG_RETRY_ARG_3C924873 =
+          "ConfigNode leader is warming up before serving the registering ConfigNode, will wait and retry. Status: {}, retry: {}";
+  public static final String
+      LOG_CONFIGNODE_LEADER_ARG_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
+          "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry. Reason: {}";
+  public static final String
+      LOG_SKIP_STARTING_CONFIGNODE_LEADER_SERVICES_BECAUSE_THE_LEADER_EPOCH_IS_STALE_9E4467F6 =
+          "Skip starting ConfigNode leader services because the leader epoch is stale.";
+  public static final String LOG_CONFIGNODE_ARG_AT_ARG_IS_NO_LONGER_LEADER_NEW_LEADER_ARG_5C41D7D7 =
+      "ConfigNode %d at %s is no longer the leader; new leader is node %d.";
+  public static final String
+      LOG_CONFIGNODE_ARG_AT_ARG_IS_NO_LONGER_LEADER_CLEANING_SERVICES_37CA9A1A =
+          "ConfigNode %d at %s is no longer the leader; cleaning up leader services.";
+  public static final String LOG_CONFIGNODE_ARG_AT_ARG_BECOMES_CONFIG_REGION_LEADER_2EB9B9E2 =
+      "ConfigNode %d at %s becomes ConfigRegion leader.";
+  public static final String LOG_CONFIGNODE_ARG_AT_ARG_AS_CONFIG_REGION_LEADER_IS_READY_74DFCB26 =
+      "ConfigNode %d at %s as ConfigRegion leader is ready to work.";
+  public static final String LOG_CONFIGNODE_ARG_AT_ARG_LEADER_SERVICES_ARE_UNAVAILABLE_0223CF16 =
+      "ConfigNode %d at %s is no longer leader; all leader services are unavailable.";
+  public static final String
+      LOG_FAILED_TO_START_CONFIGNODE_LEADER_SERVICE_ON_NODE_ARG_AT_ARG_ARG_THE_NODE_WILL_FINISH_WARMING_UP_BUT_THIS_SERVICE_REMAINS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_9E0D12F9 =
+          "Failed to start ConfigNode leader service on node %s at %s: %s; the node will finish warming up, but this service remains unavailable until the next leadership transition.";
+
+  public static final String MESSAGE_UNREADY_NODES_ARG_144B31E1 = "nodes=%s";
+  public static final String MESSAGE_MORE_UNREADY_NODES_ARG_C7CDA960 = "...(%d more)";
+
+  public static final String
+      LOG_FAILED_TO_START_ONE_OR_MORE_CONFIGNODE_LEADER_SERVICES_ON_NODE_ARG_AT_ARG_THE_NODE_WILL_CONTINUE_STARTUP_BUT_FAILED_SERVICES_MAY_REMAIN_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_42BDDB32 =
+          "Failed to start one or more ConfigNode leader services on node %d at %s; the node will continue startup, but failed services may remain unavailable until the next leadership transition.";
+
   private ConfigNodeMessages() {}
 }
