@@ -18,6 +18,7 @@
 
 package org.apache.iotdb.mqtt;
 
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 
 import java.util.List;
@@ -52,6 +53,23 @@ public interface PayloadFormatter {
    */
   default List<Message> format(String topic, ByteBuf payload) {
     return format(payload);
+  }
+
+  /**
+   * Formats a publication, including its client ID, username, QoS, topic and payload.
+   *
+   * <p>The default implementation delegates to {@link #format(String, ByteBuf)}, preserving
+   * existing formatters. Override this method when the publication metadata is needed to construct
+   * messages.
+   *
+   * <p>The broker releases the payload after publication handling. Implementations must not release
+   * it or keep it for later use without retaining their own reference.
+   *
+   * @param message the publication received by the MQTT broker
+   * @return parsed messages, or {@code null} to ignore the publication
+   */
+  default List<Message> formatMessage(InterceptPublishMessage message) {
+    return format(message.getTopicName(), message.getPayload());
   }
 
   /**
