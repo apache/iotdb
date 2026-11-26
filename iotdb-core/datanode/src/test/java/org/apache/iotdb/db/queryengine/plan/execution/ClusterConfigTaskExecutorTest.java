@@ -19,17 +19,34 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.Collections;
 
 import static org.junit.Assert.fail;
 
 public class ClusterConfigTaskExecutorTest {
+
+  @Test
+  public void testCreatePipeRejectsSourcePasswordWithoutUsername() {
+    final CreatePipeStatement statement = new CreatePipeStatement(StatementType.CREATE_PIPE);
+    statement.setPipeName("test_pipe");
+    statement.setSourceAttributes(
+        Collections.singletonMap(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, "password"));
+
+    Assert.assertThrows(
+        SemanticException.class, () -> new ConfigTaskVisitor().visitCreatePipe(statement, null));
+  }
 
   @Test
   public void testPipePlugin() {

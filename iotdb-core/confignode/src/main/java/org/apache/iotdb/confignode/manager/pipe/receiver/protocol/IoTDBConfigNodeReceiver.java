@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -221,14 +222,35 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       return null;
     }
 
+    final TSStatus loginStatus = loginIfNecessary();
+    if (loginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      userEntity = null;
+      return new TPipeTransferResp(loginStatus);
+    }
+
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (hasPipeHandshakeCredential || (clientSession != null && clientSession.isLogin())) {
-      if (!hasPipeHandshakeCredential && clientSession != null) {
-        username = clientSession.getUsername();
+    if (hasPipeHandshakeCredential) {
+      if (username == null || username.isEmpty() || userEntity == null) {
+        return new TPipeTransferResp(getNotLoggedInStatus());
+      }
+      final String loggedInSessionUsername = getLoggedInSessionUsername();
+      if (loggedInSessionUsername != null && !loggedInSessionUsername.equals(username)) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION,
+                "Pipe receiver connection identity does not match the logged-in session."));
       }
       return null;
     }
 
+    if (clientSession != null && clientSession.isLogin()) {
+      username = clientSession.getUsername();
+      userEntity = createAuditEntity(username, clientSession.getClientAddress());
+      return null;
+    }
+
+    username = null;
+    userEntity = null;
     return new TPipeTransferResp(getNotLoggedInStatus());
   }
 
@@ -555,6 +577,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
 
     return configManager.login(username, password).getStatus();
+  }
+
+  @Override
+  protected String getLoggedInSessionUsername() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    return session != null && session.isLogin() ? session.getUsername() : null;
+  }
+
+  @Override
+  protected UserEntity createAuditEntity(final String username, final String cliHostname) {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    final String clientAddress = session == null ? null : session.getClientAddress();
+    return new UserEntity(
+        -1,
+        username,
+        clientAddress == null || clientAddress.isEmpty() ? cliHostname : clientAddress);
   }
 
   @Override

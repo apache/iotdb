@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -43,6 +45,7 @@ import java.nio.file.Files;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -54,7 +57,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -105,6 +110,129 @@ public class ActiveLoadTsFileLoaderTest {
     Assert.assertTrue(new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists());
     Assert.assertTrue(new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists());
     Assert.assertFalse(new File(config.getLoadActiveListeningFailDir(), tsFile.getName()).exists());
+  }
+
+  @Test
+  public void testPipeLoadWithoutPersistedUserIdentityIsRejected() throws Exception {
+    final Map<String, String> legacyPipeAttributes =
+        ActiveLoadPathHelper.buildAttributes(
+            null, null, null, null, null, true, AuthorityChecker.SUPER_USER);
+    final File pipeGeneratedDir =
+        ActiveLoadPathHelper.resolveTargetDir(tempDir, legacyPipeAttributes);
+    Assert.assertTrue(pipeGeneratedDir.mkdirs());
+    final File tsFile = new File(pipeGeneratedDir, "legacy-pipe.tsfile");
+    Assert.assertTrue(tsFile.createNewFile());
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            tsFile.getAbsolutePath(), tempDir.getAbsolutePath(), true);
+    final IClientSession session = mock(IClientSession.class);
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final Method method =
+        ActiveLoadTsFileLoader.class.getDeclaredMethod(
+            "loadTsFile", ActiveLoadPendingQueue.ActiveLoadEntry.class, IClientSession.class);
+    method.setAccessible(true);
+
+    final TSStatus status = (TSStatus) method.invoke(loader, entry, session);
+
+    Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), status.getCode());
+    verify(session, never()).setUsername(anyString());
+  }
+
+  @Test
+  public void testUnmarkedLegacyPipeLoadWithConversionTaskIdIsRejected() throws Exception {
+    final String conversionTaskId = "legacy-unmarked-pipe-task";
+    final Map<String, String> legacyPipeAttributes =
+        ActiveLoadPathHelper.buildAttributes(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            AuthorityChecker.SUPER_USER,
+            conversionTaskId);
+    final File taskDir =
+        new File(
+            ActiveLoadPathHelper.resolvePipeTransferTargetDir(tempDir, legacyPipeAttributes),
+            ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName(conversionTaskId));
+    Assert.assertTrue(taskDir.mkdirs());
+    final File tsFile = new File(taskDir, "legacy-unmarked-pipe.tsfile");
+    Assert.assertTrue(tsFile.createNewFile());
+    final Map<String, String> persistedAttributes =
+        ActiveLoadPathHelper.parseAttributes(tsFile, tempDir);
+    Assert.assertEquals(
+        conversionTaskId,
+        persistedAttributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
+    Assert.assertEquals(
+        AuthorityChecker.SUPER_USER, persistedAttributes.get(ActiveLoadPathHelper.USER_KEY));
+    Assert.assertFalse(
+        persistedAttributes.containsKey(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY));
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            tsFile.getAbsolutePath(),
+            tempDir.getAbsolutePath(),
+            false,
+            persistedAttributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
+    final IClientSession session = mock(IClientSession.class);
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final Method method =
+        ActiveLoadTsFileLoader.class.getDeclaredMethod(
+            "loadTsFile", ActiveLoadPendingQueue.ActiveLoadEntry.class, IClientSession.class);
+    method.setAccessible(true);
+
+    final TSStatus status = (TSStatus) method.invoke(loader, entry, session);
+
+    Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), status.getCode());
+    verify(session, never()).setUsername(anyString());
+  }
+
+  @Test
+  public void testLegacyPipeLoadWithoutPipeFlagsOrTaskIdIsRejected() throws Exception {
+    final Map<String, String> legacyPipeAttributes =
+        ActiveLoadPathHelper.buildAttributes(
+            null, null, null, null, null, null, false, AuthorityChecker.SUPER_USER);
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(tempDir, legacyPipeAttributes);
+    Assert.assertTrue(targetDir.mkdirs());
+    final File tsFile = new File(targetDir, "legacy-unmarked-pipe.tsfile");
+    Assert.assertTrue(tsFile.createNewFile());
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            tsFile.getAbsolutePath(), tempDir.getAbsolutePath(), false);
+    final IClientSession session = mock(IClientSession.class);
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final Method method =
+        ActiveLoadTsFileLoader.class.getDeclaredMethod(
+            "loadTsFile", ActiveLoadPendingQueue.ActiveLoadEntry.class, IClientSession.class);
+    method.setAccessible(true);
+
+    final TSStatus status = (TSStatus) method.invoke(loader, entry, session);
+
+    Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), status.getCode());
+    verify(session, never()).setUsername(anyString());
+  }
+
+  @Test
+  public void testLegacyRawPipeUserSegmentDoesNotFallBackToRoot() throws Exception {
+    final File targetDir = new File(tempDir, "user-root");
+    Assert.assertTrue(targetDir.mkdirs());
+    final File tsFile = new File(targetDir, "legacy-raw-pipe.tsfile");
+    Assert.assertTrue(tsFile.createNewFile());
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            tsFile.getAbsolutePath(), tempDir.getAbsolutePath(), false);
+    final IClientSession session = mock(IClientSession.class);
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final Method method =
+        ActiveLoadTsFileLoader.class.getDeclaredMethod(
+            "loadTsFile", ActiveLoadPendingQueue.ActiveLoadEntry.class, IClientSession.class);
+    method.setAccessible(true);
+
+    final TSStatus status = (TSStatus) method.invoke(loader, entry, session);
+
+    Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), status.getCode());
+    verify(session, never()).setUsername(anyString());
   }
 
   @Test

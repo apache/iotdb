@@ -68,7 +68,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(extractorAttributes))
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -97,7 +97,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(extractorAttributes))
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -176,7 +176,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(extractorAttributes))
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -205,7 +205,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(extractorAttributes))
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -224,6 +224,9 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
             "insert into root.sg1.d1(time, s1, s2, s3) values(0, 1, 2, 3);",
             "flush"),
         null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
 
     TestUtils.executeNonQueries(
         receiverEnv,

@@ -283,6 +283,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               tabletConversionThresholdBytes,
               isGeneratedByPipe,
               context.getSession().getUserName());
+      activeLoadAttributes.put(
+          ActiveLoadPathHelper.AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+      if (isGeneratedByPipe) {
+        activeLoadAttributes.put(
+            ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+      }
       if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
           tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);

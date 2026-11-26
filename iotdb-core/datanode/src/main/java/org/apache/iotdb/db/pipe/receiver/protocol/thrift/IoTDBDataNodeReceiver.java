@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -72,6 +73,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFil
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -173,6 +175,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private final List<PipeMemoryBlock> allocatedSliceMemoryBlocks = new ArrayList<>();
+  private long authenticatedSessionId = -1;
 
   static {
     try {
@@ -217,6 +220,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             }
           case HANDSHAKE_DATANODE_V2:
             {
+              hasPipeHandshakeCredential = false;
               try {
                 if (PipeConfig.getInstance().isPipeEnableMemoryCheck()
                     && PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
@@ -229,6 +233,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 return handleTransferHandshakeV2(
                     PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
               } finally {
+                if (!hasPipeHandshakeCredential) {
+                  username = null;
+                  password = null;
+                  userEntity = null;
+                }
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordHandshakeDatanodeV2Timer(System.nanoTime() - startTime);
               }
@@ -504,14 +513,55 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (hasPipeHandshakeCredential || (clientSession != null && clientSession.isLogin())) {
-      if (!hasPipeHandshakeCredential && clientSession != null) {
-        username = clientSession.getUsername();
-      }
-      return null;
+    final boolean hasLoggedInSession =
+        clientSession != null
+            && clientSession.isLogin()
+            && clientSession.getUsername() != null
+            && !clientSession.getUsername().isEmpty();
+    final boolean hasAuthenticatedPipeHandshake =
+        hasPipeHandshakeCredential && username != null && !username.isEmpty() && userEntity != null;
+    if (!hasLoggedInSession && !hasAuthenticatedPipeHandshake) {
+      clearSliceReqHandler();
+      username = null;
+      password = null;
+      userEntity = null;
+      hasPipeHandshakeCredential = false;
+      return new TPipeTransferResp(getNotLoggedInStatus());
     }
 
-    return new TPipeTransferResp(getNotLoggedInStatus());
+    if (hasLoggedInSession) {
+      if (authenticatedSessionId != clientSession.getId()) {
+        clearSliceReqHandler();
+        authenticatedSessionId = clientSession.getId();
+      }
+    } else if (authenticatedSessionId != -1) {
+      clearSliceReqHandler();
+      authenticatedSessionId = -1;
+    }
+
+    if (hasLoggedInSession
+        && hasPipeHandshakeCredential
+        && !clientSession.getUsername().equals(username)) {
+      clearSliceReqHandler();
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.NO_PERMISSION,
+              "Pipe receiver connection identity does not match the logged-in session."));
+    }
+
+    final TSStatus loginStatus = loginIfNecessary();
+    if (loginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      clearSliceReqHandler();
+      userEntity = null;
+      return new TPipeTransferResp(loginStatus);
+    }
+    if (hasLoggedInSession) {
+      username = clientSession.getUsername();
+      if (!hasPipeHandshakeCredential || userEntity == null) {
+        userEntity = createAuditEntity(username, clientSession.getClientAddress());
+      }
+    }
+    return null;
   }
 
   private static boolean requiresAuthentication(final PipeRequestType requestType) {
@@ -527,6 +577,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       case TRANSFER_SCHEMA_PLAN:
       case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
       case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
+      case TRANSFER_COMPRESSED:
+      case TRANSFER_SLICE:
         return true;
       default:
         return false;
@@ -667,6 +719,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldWaitForSchemaBeforeLoad,
       final String conversionTaskId)
       throws IOException {
+    if (username == null) {
+      return getNotLoggedInStatus();
+    }
     final Map<String, String> loadAttributes =
         buildLoadTsFileAttributesForAsync(
             dataBaseName,
@@ -674,7 +729,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             validateTsFile.get(),
             shouldMarkAsPipeRequest.get(),
             shouldWaitForSchemaBeforeLoad,
-            conversionTaskId);
+            conversionTaskId,
+            username);
     if (!ActiveLoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
@@ -733,16 +789,40 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldMarkAsPipeRequest,
       final boolean shouldWaitForSchemaBeforeLoad,
       final String conversionTaskId) {
-    return ActiveLoadPathHelper.buildAttributes(
+    return buildLoadTsFileAttributesForAsync(
         dataBaseName,
-        LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
         shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile || shouldConvertDataTypeOnTypeMismatch || shouldWaitForSchemaBeforeLoad,
-        !shouldWaitForSchemaBeforeLoad,
-        null,
+        validateTsFile,
         shouldMarkAsPipeRequest,
-        AuthorityChecker.SUPER_USER,
-        conversionTaskId);
+        shouldWaitForSchemaBeforeLoad,
+        conversionTaskId,
+        null);
+  }
+
+  static Map<String, String> buildLoadTsFileAttributesForAsync(
+      final String dataBaseName,
+      final boolean shouldConvertDataTypeOnTypeMismatch,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldWaitForSchemaBeforeLoad,
+      final String conversionTaskId,
+      final String userName) {
+    final Map<String, String> attributes =
+        ActiveLoadPathHelper.buildAttributes(
+            dataBaseName,
+            LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
+            shouldConvertDataTypeOnTypeMismatch,
+            validateTsFile || shouldConvertDataTypeOnTypeMismatch || shouldWaitForSchemaBeforeLoad,
+            !shouldWaitForSchemaBeforeLoad,
+            null,
+            shouldMarkAsPipeRequest,
+            userName,
+            conversionTaskId);
+    if (userName != null && !userName.isEmpty()) {
+      attributes.put(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+      attributes.put(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+    }
+    return attributes;
   }
 
   private TSStatus loadTsFileSync(
@@ -1212,8 +1292,29 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    final boolean hasLoggedInSession =
+        clientSession != null
+            && clientSession.isLogin()
+            && clientSession.getUsername() != null
+            && !clientSession.getUsername().isEmpty();
+    if (!hasLoggedInSession && !hasPipeHandshakeCredential) {
+      return getNotLoggedInStatus();
+    }
+    if (hasPipeHandshakeCredential
+        && hasLoggedInSession
+        && !username.equals(clientSession.getUsername())) {
+      return RpcUtils.getStatus(
+          TSStatusCode.NO_PERMISSION,
+          "Pipe receiver connection identity does not match the logged-in session.");
+    }
 
-    final TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+    final String authenticatedUsername =
+        hasLoggedInSession ? clientSession.getUsername() : username;
+    if (authenticatedUsername == null || authenticatedUsername.isEmpty()) {
+      return getNotLoggedInStatus();
+    }
+
+    final TSStatus status = AuthorityChecker.checkAuthority(statement, authenticatedUsername);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       PipeLogger.log(
           LOGGER::warn,
@@ -1230,11 +1331,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       clearTreeDatabaseName(statement);
     }
 
+    final SessionInfo sessionInfo =
+        hasLoggedInSession
+            ? SESSION_MANAGER.getSessionInfo(clientSession)
+            : new SessionInfo(
+                0, authenticatedUsername, ZoneId.systemDefault(), userEntity.getCliHostname());
+
     return Coordinator.getInstance()
         .executeForTreeModel(
             shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
             SessionManager.getInstance().requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(clientSession),
+            sessionInfo,
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
@@ -1355,8 +1462,25 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected String getLoggedInSessionUsername() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    return session != null && session.isLogin() ? session.getUsername() : null;
+  }
+
+  @Override
+  protected UserEntity createAuditEntity(final String username, final String cliHostname) {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    final String clientAddress = session == null ? null : session.getClientAddress();
+    return new UserEntity(
+        -1,
+        username,
+        clientAddress == null || clientAddress.isEmpty() ? cliHostname : clientAddress);
+  }
+
+  @Override
   public synchronized void handleExit() {
     clearSliceReqHandler();
+    authenticatedSessionId = -1;
     if (Objects.nonNull(configReceiverId.get())) {
       try {
         ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId.get());

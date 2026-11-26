@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
@@ -92,6 +93,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.treeModelDatabaseName = treeModelDatabaseName;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
+    inheritSourceAuthentication(sourceEvent);
     inheritSourceEventReportSkippingIfNecessary();
 
     // Allocate empty memory block, will be resized later.
@@ -445,7 +447,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public Tablet convertToTablet() {
-    if (!shouldParseTimeOrPattern()) {
+    if (!shouldConvertTablet()) {
       PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     }
@@ -459,8 +461,19 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public long count() {
-    final Tablet convertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
+    final Tablet convertedTablet = shouldConvertTablet() ? convertToTablet() : tablet;
     return (long) convertedTablet.rowSize * convertedTablet.getSchemas().size();
+  }
+
+  private boolean shouldConvertTablet() {
+    if (shouldParseTimeOrPattern()) {
+      return true;
+    }
+    if (!isSourcePrivilegeCheckEnabled()) {
+      return false;
+    }
+    return getSourceUserEntity() == null
+        || !AuthorityChecker.SUPER_USER.equals(getSourceUserEntity().getUsername());
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
@@ -481,7 +494,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {
-    return !shouldParseTimeOrPattern() && isTabletEmpty(tablet);
+    return !shouldConvertTablet() && isTabletEmpty(tablet);
   }
 
   public static boolean isTabletEmpty(final Tablet tablet) {

@@ -26,6 +26,8 @@ public class SystemConstant {
   public static final boolean RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE = false;
   public static final String SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY =
       "__system.sink-wait-for-schema-before-load";
+  public static final String SOURCE_AUTHENTICATION_INJECTED_KEY =
+      "__system.source-authentication-injected";
 
   private SystemConstant() {
     throw new IllegalStateException("Utility class");

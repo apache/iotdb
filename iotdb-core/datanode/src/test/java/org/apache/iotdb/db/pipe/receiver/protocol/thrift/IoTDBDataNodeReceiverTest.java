@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
@@ -27,12 +31,25 @@ import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.binary.arithmetic.AdditionViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
+import org.apache.iotdb.commons.schema.view.viewExpression.multi.FunctionViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.ternary.BetweenViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.unary.NegationViewExpression;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -48,18 +65,44 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class IoTDBDataNodeReceiverTest {
+
+  private static final String ADMISSION_USER = "pipe-test-user";
+  private final SessionManager sessionManager = SessionManager.getInstance();
+  private final IClientSession testSession = new InternalClientSession("pipe-test-host");
+
+  @Before
+  public void registerSession() {
+    Assert.assertTrue(sessionManager.registerSession(testSession));
+    AuthorityChecker.getAuthorityFetcher()
+        .getAuthorCache()
+        .putUserCache(ADMISSION_USER, new User(ADMISSION_USER, "password"));
+  }
+
+  @After
+  public void removeSession() {
+    sessionManager.removeCurrSession();
+    AuthorityChecker.invalidateCache(ADMISSION_USER, null);
+  }
+
+  private void authenticateSession(final String userName) {
+    sessionManager.supplySession(
+        testSession, userName, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_1_0);
+  }
 
   @Test
   public void testRatisRejectsInsertionInPlanNodeRequests() throws Exception {
@@ -165,11 +208,12 @@ public class IoTDBDataNodeReceiverTest {
 
   private void assertPlanRequestEnvelopes(final PlanNode node, final boolean rejected)
       throws Exception {
+    authenticateSession(ADMISSION_USER);
     final AdmissionTestReceiver receiver = new AdmissionTestReceiver();
     final int expectedCode =
         rejected
             ? TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()
-            : TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode();
+            : TSStatusCode.NO_PERMISSION.getStatusCode();
     Assert.assertEquals(
         expectedCode,
         receiver.receive(PipeTransferPlanNodeReq.toTPipeTransferReq(node)).getStatus().getCode());
@@ -212,21 +256,209 @@ public class IoTDBDataNodeReceiverTest {
                     1, sliced.getType(), 1, 2, body, midpoint, body.limit()))
             .getStatus()
             .getCode());
-    Assert.assertEquals(rejected ? 0 : 4, receiver.executionAttempts);
+    Assert.assertEquals(rejected ? 7 : 11, receiver.loginAttempts);
+  }
+
+  @Test
+  public void testCompressedAndSliceRequestsRequireAuthentication() throws Exception {
+    final AdmissionTestReceiver receiver = new AdmissionTestReceiver(false);
+
+    final PlanNode node = insertionPlans().get(0);
+    final TPipeTransferReq planRequest = PipeTransferPlanNodeReq.toTPipeTransferReq(node);
+    final TPipeTransferReq compressedRequest =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            planRequest,
+            Collections.singletonList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    Assert.assertEquals(
+        TSStatusCode.NOT_LOGIN.getStatusCode(),
+        receiver.receive(compressedRequest).getStatus().getCode());
+
+    final ByteBuffer body = planRequest.body.duplicate();
+    Assert.assertEquals(
+        TSStatusCode.NOT_LOGIN.getStatusCode(),
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, planRequest.getType(), 0, 2, body, 0, body.limit() / 2))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(0, receiver.loginAttempts);
+  }
+
+  @Test
+  public void testClosedSessionCannotContinueReceivingSlices() throws Exception {
+    authenticateSession(ADMISSION_USER);
+    final IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
+    final TPipeTransferReq request =
+        PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0));
+    final ByteBuffer body = request.body.duplicate();
+    final int midpoint = body.limit() / 2;
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, request.getType(), 0, 2, body, 0, midpoint))
+            .getStatus()
+            .getCode());
+
+    Assert.assertTrue(sessionManager.closeSession(testSession, queryId -> {}));
+    Assert.assertFalse(testSession.isLogin());
+    Assert.assertNull(testSession.getUsername());
+    authenticateSession(ADMISSION_USER);
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER.getStatusCode(),
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, request.getType(), 1, 2, body, midpoint, body.limit()))
+            .getStatus()
+            .getCode());
+  }
+
+  @Test
+  public void testSessionlessHandshakeCannotContinueSessionSlices() throws Exception {
+    authenticateSession(ADMISSION_USER);
+    final IoTDBDataNodeReceiver receiver = new AdmissionTestReceiver();
+    final TPipeTransferReq request =
+        PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0));
+    final ByteBuffer body = request.body.duplicate();
+    final int midpoint = body.limit() / 2;
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, request.getType(), 0, 2, body, 0, midpoint))
+            .getStatus()
+            .getCode());
+    Assert.assertTrue(sessionManager.closeSession(testSession, queryId -> {}));
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER.getStatusCode(),
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, request.getType(), 1, 2, body, midpoint, body.limit()))
+            .getStatus()
+            .getCode());
+  }
+
+  @Test
+  public void testFailedPipeHandshakeStillUsesExistingSessionAuthorization() throws Exception {
+    authenticateSession(ADMISSION_USER);
+    final IoTDBDataNodeReceiver receiver = new AdmissionTestReceiver();
+    Assert.assertNotEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .receive(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(Collections.emptyMap()))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        receiver
+            .receive(PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0)))
+            .getStatus()
+            .getCode());
+  }
+
+  @Test
+  public void testPipeHandshakeCredentialsAuthorizeWithoutSession() throws Exception {
+    final IoTDBDataNodeReceiver receiver = new AdmissionTestReceiver();
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        receiver
+            .receive(PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0)))
+            .getStatus()
+            .getCode());
+  }
+
+  @Test
+  public void testCreateLogicalViewPlanRequiresReadSchemaForEveryNestedSource() throws Exception {
+    final List<PartialPath> sourcePaths =
+        Arrays.asList(
+            new PartialPath("root.sg.secret.unary"),
+            new PartialPath("root.sg.secret.binary"),
+            new PartialPath("root.sg.secret.ternaryFirst"),
+            new PartialPath("root.sg.secret.ternarySecond"),
+            new PartialPath("root.sg.secret.ternaryThird"));
+    final ViewExpression viewExpression =
+        new FunctionViewExpression(
+            "nested",
+            Collections.emptyList(),
+            Collections.emptyList(),
+            Arrays.asList(
+                new AdditionViewExpression(
+                    new NegationViewExpression(
+                        new TimeSeriesViewOperand(sourcePaths.get(0).getFullPath())),
+                    new TimeSeriesViewOperand(sourcePaths.get(1).getFullPath())),
+                new BetweenViewExpression(
+                    new TimeSeriesViewOperand(sourcePaths.get(2).getFullPath()),
+                    new TimeSeriesViewOperand(sourcePaths.get(3).getFullPath()),
+                    new TimeSeriesViewOperand(sourcePaths.get(4).getFullPath()))));
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap =
+        Collections.singletonMap(new PartialPath("root.sg.target.view"), viewExpression);
+    final List<PlanNode> viewNodes =
+        Arrays.asList(
+            new CreateLogicalViewNode(new PlanNodeId("create-view"), viewPathToSourceMap),
+            new AlterLogicalViewNode(new PlanNodeId("alter-view"), viewPathToSourceMap));
+    final IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
+
+    for (int deniedSourceIndex = 0; deniedSourceIndex < sourcePaths.size(); deniedSourceIndex++) {
+      final String username = "pipeLogicalViewReceiverUser" + deniedSourceIndex;
+      final User user = new User(username, "password");
+      user.addPathPrivilege(
+          new PartialPath("root.sg.target.**"), PrivilegeType.WRITE_SCHEMA.ordinal(), false);
+      for (int sourceIndex = 0; sourceIndex < sourcePaths.size(); sourceIndex++) {
+        if (sourceIndex != deniedSourceIndex) {
+          user.addPathPrivilege(
+              sourcePaths.get(sourceIndex), PrivilegeType.READ_SCHEMA.ordinal(), false);
+        }
+      }
+      AuthorityChecker.getAuthorityFetcher().getAuthorCache().putUserCache(username, user);
+
+      try {
+        authenticateSession(username);
+        Assert.assertTrue(
+            AuthorityChecker.checkFullPathListPermission(
+                    username,
+                    Collections.singletonList(new PartialPath("root.sg.target.view")),
+                    PrivilegeType.WRITE_SCHEMA.ordinal())
+                .isEmpty());
+        for (final PlanNode node : viewNodes) {
+          Assert.assertEquals(
+              TSStatusCode.NO_PERMISSION.getStatusCode(),
+              receiver
+                  .receive(PipeTransferPlanNodeReq.toTPipeTransferReq(node))
+                  .getStatus()
+                  .getCode());
+        }
+      } finally {
+        AuthorityChecker.invalidateCache(username, null);
+      }
+    }
   }
 
   private static class AdmissionTestReceiver extends IoTDBDataNodeReceiver {
-    private int executionAttempts;
+    private int loginAttempts;
 
     private AdmissionTestReceiver() {
-      hasPipeHandshakeCredential = true;
+      this(true);
+    }
+
+    private AdmissionTestReceiver(final boolean authenticated) {
+      hasPipeHandshakeCredential = authenticated;
+      if (authenticated) {
+        username = ADMISSION_USER;
+        userEntity = new UserEntity(-1, username, "pipe-test-host");
+      }
     }
 
     @Override
     protected TSStatus loginIfNecessary() {
-      // Record arrival at statement execution without starting a cluster or writing data.
-      executionAttempts++;
-      return new TSStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode());
+      loginAttempts++;
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
   }
 
@@ -251,11 +483,17 @@ public class IoTDBDataNodeReceiverTest {
     try {
       final Map<String, String> attributes =
           IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
-              "root.test.sg_0", true, false, true);
+              "root.test.sg_0", true, false, true, false, null, "load-test-user");
 
       Assert.assertEquals(
           "root.test.sg_0", attributes.get(LoadTsFileConfigurator.DATABASE_NAME_KEY));
       Assert.assertEquals("2", attributes.get(LoadTsFileConfigurator.DATABASE_LEVEL_KEY));
+      Assert.assertEquals("load-test-user", attributes.get(ActiveLoadPathHelper.USER_KEY));
+      Assert.assertEquals(
+          Boolean.TRUE.toString(), attributes.get(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY));
+      Assert.assertEquals(
+          Boolean.TRUE.toString(),
+          attributes.get(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY));
 
       final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.toString());
       ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, false);
@@ -280,7 +518,7 @@ public class IoTDBDataNodeReceiverTest {
 
       final Map<String, String> asyncAttributes =
           IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
-              "root.test.sg_0", false, false, true, true);
+              "root.test.sg_0", false, false, true, true, null, "load-test-user");
       Assert.assertEquals(
           Boolean.TRUE.toString(), asyncAttributes.get(LoadTsFileConfigurator.VERIFY_KEY));
       Assert.assertEquals(

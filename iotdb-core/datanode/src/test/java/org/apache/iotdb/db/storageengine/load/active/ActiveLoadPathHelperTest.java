@@ -83,6 +83,50 @@ public class ActiveLoadPathHelperTest {
   }
 
   @Test
+  public void testAuthenticatedPipeUserMarkerSurvivesActiveLoadPath() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-pipe-user").toFile();
+    try {
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.buildAttributes(null, null, null, null, null, true, "root");
+      attributes.put(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+      attributes.put(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+      final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
+      Assert.assertTrue(targetDir.mkdirs());
+      final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
+      Assert.assertTrue(tsFile.createNewFile());
+
+      final Map<String, String> parsedAttributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertEquals("root", parsedAttributes.get(ActiveLoadPathHelper.USER_KEY));
+      Assert.assertEquals(
+          Boolean.TRUE.toString(),
+          parsedAttributes.get(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY));
+      Assert.assertEquals(
+          Boolean.TRUE.toString(),
+          parsedAttributes.get(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY));
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testLegacyRawUserSegmentCanBeDetectedAfterValueParsingFails() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
+    try {
+      final File tsFile = new File(new File(pendingDir, "user-root"), "1-0-0-0.tsfile");
+
+      Assert.assertFalse(
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir)
+              .containsKey(ActiveLoadPathHelper.USER_KEY));
+      Assert.assertTrue(
+          ActiveLoadPathHelper.hasAttributeSegment(
+              tsFile, pendingDir, ActiveLoadPathHelper.USER_KEY));
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
   public void testRawUserAttributeShouldBeIgnored() throws Exception {
     final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
     try {

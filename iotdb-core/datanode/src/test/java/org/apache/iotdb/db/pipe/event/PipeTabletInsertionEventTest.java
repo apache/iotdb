@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.pipe.event;
 
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -580,5 +584,39 @@ public class PipeTabletInsertionEventTest {
             .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                 null, 0, null, null, 113L, Long.MAX_VALUE);
     Assert.assertFalse(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
+  }
+
+  @Test
+  public void dottedMeasurementDoesNotInheritFlattenedReadDataPrivilege() throws Exception {
+    final String username = "pipeDottedMeasurementDataUser";
+    final User user = new User(username, "password");
+    user.addPathPrivilege(
+        new PartialPath("root.sg.d.s.**"), PrivilegeType.READ_DATA.ordinal(), false);
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().putUserCache(username, user);
+
+    try {
+      Assert.assertTrue(
+          AuthorityChecker.checkFullPathListPermission(
+                  username,
+                  Arrays.asList(new PartialPath("root.sg.d.s.one")),
+                  PrivilegeType.READ_DATA.ordinal())
+              .isEmpty());
+
+      final MeasurementSchema dottedMeasurementSchema =
+          new MeasurementSchema("s.one", TSDataType.INT32);
+      final Tablet tablet = new Tablet("root.sg.d", Arrays.asList(dottedMeasurementSchema), 1);
+      tablet.addTimestamp(0, 1L);
+      tablet.addValue("s.one", 0, 1);
+
+      final PipeRawTabletInsertionEvent sourceEvent =
+          new PipeRawTabletInsertionEvent(tablet, false);
+      sourceEvent.bindSourceAuthentication(new UserEntity(-1, username, "pipe-test-host"), true);
+
+      final Tablet filteredTablet = sourceEvent.convertToTablet();
+
+      Assert.assertTrue(filteredTablet.getSchemas().isEmpty());
+    } finally {
+      AuthorityChecker.invalidateCache(username, null);
+    }
   }
 }

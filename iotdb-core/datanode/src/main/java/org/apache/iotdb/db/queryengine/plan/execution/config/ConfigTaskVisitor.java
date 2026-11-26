@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
@@ -185,8 +188,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.exception.NotImplementedException;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
@@ -515,13 +524,108 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   @Override
   public IConfigTask visitCreatePipe(
       CreatePipeStatement createPipeStatement, MPPQueryContext context) {
+    Map<String, String> sourceAttributes = createPipeStatement.getSourceAttributes();
+    if (sourceAttributes == null) {
+      sourceAttributes = new HashMap<>();
+      createPipeStatement.setSourceAttributes(sourceAttributes);
+    }
+    checkAndEnrichSourceUser(createPipeStatement.getPipeName(), sourceAttributes, context, false);
     return new CreatePipeTask(createPipeStatement);
   }
 
   @Override
   public IConfigTask visitAlterPipe(
       AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
+    final Map<String, String> sourceAttributes = alterPipeStatement.getExtractorAttributes();
+    if (sourceAttributes != null) {
+      if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
+        checkAndEnrichSourceUser(alterPipeStatement.getPipeName(), sourceAttributes, context, true);
+      } else {
+        markSourceAuthenticationAsExplicitIfNecessary(sourceAttributes, context);
+      }
+    }
     return new AlterPipeTask(alterPipeStatement);
+  }
+
+  private static void checkAndEnrichSourceUser(
+      final String pipeName,
+      final Map<String, String> sourceAttributes,
+      final MPPQueryContext context,
+      final boolean isAlter) {
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    final String pluginName =
+        sourceParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase(Locale.ENGLISH);
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+
+    final boolean hasUsername =
+        sourceParameters.hasAnyAttributes(
+            PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+            PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    final boolean hasPassword =
+        sourceParameters.hasAnyAttributes(
+            PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+    if (hasUsername && !hasPassword) {
+      throw new SemanticException(
+          String.format(
+              "Failed to %s pipe %s: source password must be set when source username is specified.",
+              isAlter ? "alter" : "create", pipeName));
+    }
+    if (!hasUsername && hasPassword) {
+      throw new SemanticException(
+          String.format(
+              "Failed to %s pipe %s: source username must be set when source password is specified.",
+              isAlter ? "alter" : "create", pipeName));
+    }
+
+    final String cliHostname = context.getClientHostName();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USER_ID, "-1");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, cliHostname);
+    if (!hasUsername) {
+      if (context.getSession() == null || context.getSession().getUserName() == null) {
+        throw new SemanticException("Pipe source creator identity is unavailable.");
+      }
+      sourceAttributes.put(
+          PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, context.getSession().getUserName());
+      sourceAttributes.put(
+          SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
+    } else {
+      sourceAttributes.put(
+          SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.FALSE.toString());
+    }
+  }
+
+  private static void markSourceAuthenticationAsExplicitIfNecessary(
+      final Map<String, String> sourceAttributes, final MPPQueryContext context) {
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    if (sourceParameters.hasAnyAttributes(
+        PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+        PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY,
+        PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
+      sourceAttributes.put(
+          SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.FALSE.toString());
+      sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USER_ID, "-1");
+      sourceAttributes.put(
+          PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, context.getClientHostName());
+    } else {
+      sourceAttributes.remove(PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID);
+      sourceAttributes.remove(PipeSourceConstant.SOURCE_IOTDB_USER_ID);
+      sourceAttributes.remove(PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME);
+      sourceAttributes.remove(PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
+      sourceAttributes.remove(SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY);
+    }
   }
 
   @Override

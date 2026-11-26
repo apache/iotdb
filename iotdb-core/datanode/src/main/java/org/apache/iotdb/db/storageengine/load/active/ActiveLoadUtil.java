@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -111,18 +110,32 @@ public class ActiveLoadUtil {
   }
 
   private static Map<String, String> appendCurrentUserIfAbsent(
-      final Map<String, String> loadAttributes) {
+      final Map<String, String> loadAttributes) throws IOException {
     final Map<String, String> attributes =
         Objects.nonNull(loadAttributes)
             ? new LinkedHashMap<>(loadAttributes)
             : new LinkedHashMap<>();
-    if (!attributes.containsKey(ActiveLoadPathHelper.USER_KEY)) {
-      final IClientSession session = SessionManager.getInstance().getCurrSession();
-      attributes.put(
-          ActiveLoadPathHelper.USER_KEY,
-          session == null || session.getUsername() == null
-              ? AuthorityChecker.SUPER_USER
-              : session.getUsername());
+    final IClientSession session = SessionManager.getInstance().getCurrSession();
+    final String sessionUsername =
+        session != null && session.isLogin() ? session.getUsername() : null;
+    String userName = attributes.get(ActiveLoadPathHelper.USER_KEY);
+    if (userName == null || userName.isEmpty()) {
+      if (sessionUsername == null || sessionUsername.isEmpty()) {
+        throw new IOException("The authenticated user for active LOAD could not be resolved.");
+      }
+      userName = sessionUsername;
+      attributes.put(ActiveLoadPathHelper.USER_KEY, userName);
+    }
+    if (sessionUsername != null) {
+      if (!sessionUsername.equals(userName)) {
+        throw new IOException("The active LOAD user does not match the authenticated session.");
+      }
+      attributes.put(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+    }
+    if (!Boolean.TRUE
+        .toString()
+        .equals(attributes.get(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY))) {
+      throw new IOException("The authenticated user marker for active LOAD is missing.");
     }
     return attributes;
   }

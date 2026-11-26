@@ -450,6 +450,50 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
     }
   }
 
+  @Test
+  public void testAsyncPipeTreeSqlLoadPersistsAuthenticatedIdentityMarkers() throws Exception {
+    final AtomicReference<Map<String, String>> handedOffAttributes = new AtomicReference<>();
+    PowerMockito.mockStatic(ActiveLoadUtil.class);
+    when(ActiveLoadUtil.loadTsFileAsyncToActiveDir(anyList(), anyMap(), anyBoolean()))
+        .thenAnswer(
+            invocation -> {
+              handedOffAttributes.set(new HashMap<>(invocation.getArgument(1)));
+              return true;
+            });
+
+    final File file = temporaryFolder.newFile("async-pipe-schema.tsfile");
+    final File pendingDir = temporaryFolder.newFolder("pending-pipe");
+    final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(file.getPath());
+    statement.markIsGeneratedByPipe();
+    statement.setLoadAttributes(Collections.singletonMap(ASYNC_LOAD_KEY, "true"));
+
+    try (final LoadTsFileAnalyzer analyzer = newAnalyzer(statement, true)) {
+      final Analysis analysis = analyzer.analyzeFileByFile(new Analysis());
+      Assert.assertTrue(analysis.isFinishQueryAfterAnalyze());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), analysis.getFailStatus().getCode());
+    }
+
+    final Map<String, String> attributes = handedOffAttributes.get();
+    Assert.assertNotNull(attributes);
+    Assert.assertEquals("root", attributes.get(ActiveLoadPathHelper.USER_KEY));
+    Assert.assertEquals(
+        Boolean.TRUE.toString(), attributes.get(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY));
+    Assert.assertEquals(
+        Boolean.TRUE.toString(), attributes.get(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY));
+
+    final File queuedFile =
+        new File(ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes), file.getName());
+    final Map<String, String> persistedAttributes =
+        ActiveLoadPathHelper.parseAttributes(queuedFile, pendingDir);
+    Assert.assertEquals(
+        Boolean.TRUE.toString(),
+        persistedAttributes.get(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY));
+    Assert.assertEquals(
+        Boolean.TRUE.toString(),
+        persistedAttributes.get(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY));
+  }
+
   private LoadTsFileAnalyzer newAnalyzer(
       final LoadTsFileStatement statement, final boolean allowed) {
     return new LoadTsFileAnalyzer(

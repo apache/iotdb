@@ -76,8 +76,6 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualManualIT {
       sourceAttributes.put("extractor.inclusion", "data.insert");
       sourceAttributes.put("extractor.forwarding-pipe-requests", "false");
       sourceAttributes.put("extractor.path", "root.source.**");
-      sourceAttributes.put("user", "root");
-
       sinkAttributes.put("sink", "write-back-sink");
       sinkAttributes.put("sink.database", targetDatabase);
       sinkAttributes.put("user", "root");
@@ -85,7 +83,7 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", sinkAttributes)
-                  .setExtractorAttributes(sourceAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(sourceAttributes))
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

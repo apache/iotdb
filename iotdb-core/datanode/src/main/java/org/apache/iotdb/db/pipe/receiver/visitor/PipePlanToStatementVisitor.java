@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -254,7 +256,14 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
       final CreateLogicalViewNode node, final Void context) {
     final CreateLogicalViewStatement statement = new CreateLogicalViewStatement();
     statement.setTargetFullPaths(node.getViewPathList());
-    statement.setViewExpressions(new ArrayList<>(node.getViewPathToSourceExpressionMap().values()));
+    final List<ViewExpression> viewExpressions =
+        new ArrayList<>(node.getViewPathToSourceExpressionMap().values());
+    final List<PartialPath> sourcePaths = new ArrayList<>();
+    for (final ViewExpression viewExpression : viewExpressions) {
+      sourcePaths.addAll(GetSourcePathsVisitor.getSourcePaths(viewExpression));
+    }
+    statement.setSourceFullPaths(sourcePaths);
+    statement.setViewExpressions(viewExpressions);
     return statement;
   }
 

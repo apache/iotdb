@@ -181,7 +181,24 @@ public class LoadTsFileDataTypeConverter {
   private TSStatus executeForTreeModel(
       final Statement statement, final boolean allowAutoCreateSchema) {
     final IClientSession session;
-    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
+    final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
+    final boolean needToCreateSession = currentSession == null;
+    final SessionInfo loadSessionInfo = context == null ? null : context.getSession();
+    final String loadUsername = loadSessionInfo == null ? null : loadSessionInfo.getUserName();
+    if (isGeneratedByPipe && (loadUsername == null || loadUsername.isEmpty())) {
+      return new TSStatus(TSStatusCode.NOT_LOGIN.getStatusCode())
+          .setMessage("The authenticated user for pipe LOAD could not be resolved.");
+    }
+    if (isGeneratedByPipe && !needToCreateSession) {
+      if (!currentSession.isLogin()) {
+        return new TSStatus(TSStatusCode.NOT_LOGIN.getStatusCode())
+            .setMessage("The current session for pipe LOAD is not authenticated.");
+      }
+      if (!loadUsername.equals(currentSession.getUsername())) {
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage("The authenticated user for pipe LOAD does not match the current session.");
+      }
+    }
     if (needToCreateSession) {
       session =
           new InternalClientSession(
@@ -189,7 +206,8 @@ public class LoadTsFileDataTypeConverter {
                   "%s_%s",
                   LoadTsFileDataTypeConverter.class.getSimpleName(),
                   Thread.currentThread().getName()));
-      session.setUsername(AuthorityChecker.SUPER_USER);
+      session.setUsername(
+          loadSessionInfo == null ? AuthorityChecker.SUPER_USER : loadSessionInfo.getUserName());
       session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
       session.setZoneId(ZoneId.systemDefault());
 

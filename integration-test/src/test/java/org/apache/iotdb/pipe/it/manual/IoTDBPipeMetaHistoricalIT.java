@@ -137,7 +137,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(extractorAttributes))
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -219,7 +219,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(extractorAttributes))
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -308,7 +308,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(extractorAttributes))
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -34,6 +35,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPendingQueue;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadTsFileLoader;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -54,10 +58,12 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -73,6 +79,8 @@ import static org.mockito.Mockito.when;
 public class LoadTsFileDataTypeConverterSchemaTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
   private final List<SessionInfo> conversionSessions = new ArrayList<>();
+  private final List<Boolean> conversionSessionLoginStates = new ArrayList<>();
+  private final List<String> conversionSessionUserNames = new ArrayList<>();
   private InternalClientSession session;
   private int originalDataNodeId;
   private File treeTsFile;
@@ -83,6 +91,7 @@ public class LoadTsFileDataTypeConverterSchemaTest {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     session = new InternalClientSession("load_schema_conversion");
     session.setUsername("root");
+    session.setLogin(true);
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneOffset.UTC);
     SessionManager.getInstance().registerSession(session);
@@ -102,6 +111,10 @@ public class LoadTsFileDataTypeConverterSchemaTest {
         .thenAnswer(
             invocation -> {
               conversionSessions.add(invocation.getArgument(2));
+              final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+              conversionSessionLoginStates.add(currentSession != null && currentSession.isLogin());
+              conversionSessionUserNames.add(
+                  currentSession == null ? null : currentSession.getUsername());
               return new ExecutionResult(
                   new QueryId("tree_load_schema_conversion"),
                   new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -128,7 +141,21 @@ public class LoadTsFileDataTypeConverterSchemaTest {
   @Test
   public void testTreeConversionHonorsRequestWithoutChangingClientSession() throws Exception {
     for (final boolean generatedByPipe : new boolean[] {false, true}) {
-      final MPPQueryContext context = new MPPQueryContext(new QueryId("tree_load_schema"));
+      final MPPQueryContext context =
+          generatedByPipe
+              ? new MPPQueryContext(
+                  "",
+                  new QueryId("tree_load_schema"),
+                  new SessionInfo(
+                      session.getId(),
+                      "root",
+                      ZoneOffset.UTC,
+                      IoTDBConstant.ClientVersion.V_1_0,
+                      "",
+                      true),
+                  null,
+                  null)
+              : new MPPQueryContext(new QueryId("tree_load_schema"));
       final LoadTsFileDataTypeConverter converter =
           new LoadTsFileDataTypeConverter(context, generatedByPipe);
       try {
@@ -139,6 +166,129 @@ public class LoadTsFileDataTypeConverterSchemaTest {
       } finally {
         DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
       }
+    }
+  }
+
+  @Test
+  public void testPipeTreeConversionRejectsMissingOrMismatchedIdentity() throws Exception {
+    assertPipeTreeConversionStatus(
+        new MPPQueryContext(new QueryId("pipe_load_missing_user")),
+        TSStatusCode.NOT_LOGIN.getStatusCode());
+    final SessionInfo mismatchedSession =
+        new SessionInfo(
+            session.getId(), "alice", ZoneOffset.UTC, IoTDBConstant.ClientVersion.V_1_0, "", true);
+    assertPipeTreeConversionStatus(
+        new MPPQueryContext(
+            "", new QueryId("pipe_load_mismatched_user"), mismatchedSession, null, null),
+        TSStatusCode.NO_PERMISSION.getStatusCode());
+  }
+
+  @Test
+  public void testPipeTreeConversionRejectsMatchingButUnauthenticatedWorkerSession()
+      throws Exception {
+    session.setLogin(false);
+    try {
+      assertPipeTreeConversionStatus(
+          new MPPQueryContext(
+              "",
+              new QueryId("pipe_load_unauthenticated_worker"),
+              new SessionInfo(
+                  session.getId(),
+                  "root",
+                  ZoneOffset.UTC,
+                  IoTDBConstant.ClientVersion.V_1_0,
+                  "",
+                  true),
+              null,
+              null),
+          TSStatusCode.NOT_LOGIN.getStatusCode());
+    } finally {
+      session.setLogin(true);
+    }
+  }
+
+  @Test
+  public void testActivePipeLoadBindsAndClearsWorkerIdentity() throws Exception {
+    final String pipeUser = "pipe_loader_user";
+    final Map<String, String> attributes =
+        ActiveLoadPathHelper.buildAttributes(null, null, null, null, null, true, pipeUser);
+    attributes.put(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+    attributes.put(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+    final File pendingDir = temporaryFolder.getRoot();
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(pendingDir, attributes);
+    Assert.assertTrue(targetDir.mkdirs());
+    final File activeTsFile = new File(targetDir, "authenticated-pipe-load.tsfile");
+    Assert.assertTrue(activeTsFile.createNewFile());
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            activeTsFile.getAbsolutePath(), pendingDir.getAbsolutePath(), true);
+
+    session.setLogin(false);
+    session.setUsername(null);
+    conversionSessionLoginStates.clear();
+    conversionSessionUserNames.clear();
+    final Method loadTsFile =
+        ActiveLoadTsFileLoader.class.getDeclaredMethod(
+            "loadTsFile", ActiveLoadPendingQueue.ActiveLoadEntry.class, IClientSession.class);
+    loadTsFile.setAccessible(true);
+
+    final TSStatus status =
+        (TSStatus) loadTsFile.invoke(new ActiveLoadTsFileLoader(), entry, session);
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(Collections.singletonList(true), conversionSessionLoginStates);
+    Assert.assertEquals(Collections.singletonList(pipeUser), conversionSessionUserNames);
+    Assert.assertFalse(session.isLogin());
+    Assert.assertNull(session.getUsername());
+  }
+
+  @Test
+  public void testPipeIdentityMarkerWithoutAuthenticatedMarkerIsRejected() throws Exception {
+    final String pipeUser = "pipe_loader_user";
+    final Map<String, String> attributes =
+        ActiveLoadPathHelper.buildAttributes(null, null, null, null, null, false, pipeUser);
+    attributes.put(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY, Boolean.TRUE.toString());
+    final File pendingDir = temporaryFolder.getRoot();
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(pendingDir, attributes);
+    Assert.assertTrue(targetDir.mkdirs());
+    final File activeTsFile = new File(targetDir, "unmarked-pipe-load.tsfile");
+    Assert.assertTrue(activeTsFile.createNewFile());
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            activeTsFile.getAbsolutePath(), pendingDir.getAbsolutePath(), false);
+    session.setLogin(false);
+    session.setUsername(null);
+    final Method loadTsFile =
+        ActiveLoadTsFileLoader.class.getDeclaredMethod(
+            "loadTsFile", ActiveLoadPendingQueue.ActiveLoadEntry.class, IClientSession.class);
+    loadTsFile.setAccessible(true);
+    conversionSessionLoginStates.clear();
+
+    final TSStatus status =
+        (TSStatus) loadTsFile.invoke(new ActiveLoadTsFileLoader(), entry, session);
+
+    Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), status.getCode());
+    Assert.assertTrue(conversionSessionLoginStates.isEmpty());
+    Assert.assertNull(session.getUsername());
+    Assert.assertFalse(session.isLogin());
+  }
+
+  private void assertPipeTreeConversionStatus(
+      final MPPQueryContext context, final int expectedStatusCode) throws Exception {
+    conversionSessions.clear();
+    try {
+      final Optional<TSStatus> status =
+          new LoadTsFileDataTypeConverter(context, true)
+              .convertForTreeModel(
+                  LoadTsFileStatement.createUnchecked(treeTsFile.getAbsolutePath()));
+      Assert.assertTrue(status.isPresent());
+      Assert.assertEquals(expectedStatusCode, status.get().getCode());
+      Assert.assertTrue(conversionSessions.isEmpty());
+      Assert.assertSame(session, SessionManager.getInstance().getCurrSession());
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     }
   }
 

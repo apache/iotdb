@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
@@ -442,6 +443,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     }
 
     if (Objects.nonNull(event)) {
+      bindSourceAuthentication(event);
       if (event instanceof TabletInsertionEvent) {
         PipeDataRegionSourceMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
@@ -452,6 +454,17 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     }
 
     return event;
+  }
+
+  @Override
+  protected void login(final String password) {
+    if (AuthorityChecker.checkUser(userName, password, true).getCode()
+            != org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && AuthorityChecker.checkUser(userName, password).getCode()
+            != org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new org.apache.iotdb.pipe.api.exception.PipeException(
+          String.format("Failed to check source password for pipe %s.", pipeName));
+    }
   }
 
   @Override

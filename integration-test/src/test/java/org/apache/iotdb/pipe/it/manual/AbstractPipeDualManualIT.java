@@ -26,10 +26,19 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.After;
 import org.junit.Before;
 
+import java.util.Map;
+
 abstract class AbstractPipeDualManualIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
+
+  protected Map<String, String> withRootSourceAuthentication(
+      final Map<String, String> sourceAttributes) {
+    sourceAttributes.put("source.user", "root");
+    sourceAttributes.put("source.password", "root");
+    return sourceAttributes;
+  }
 
   @Before
   public void setUp() {
