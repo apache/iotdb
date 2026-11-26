@@ -1485,11 +1485,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public boolean isEmpty() {
+    if (!isClosed()) {
+      return getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
+    }
     final boolean isCurrentlyEmpty =
         getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
-    if (!isClosed()) {
-      return isCurrentlyEmpty;
-    }
     isEmpty.compareAndSet(null, isCurrentlyEmpty);
     return isEmpty.get();
   }
