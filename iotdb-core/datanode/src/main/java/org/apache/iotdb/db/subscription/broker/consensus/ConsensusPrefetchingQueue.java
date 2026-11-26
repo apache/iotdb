@@ -124,6 +124,7 @@ public class ConsensusPrefetchingQueue {
   private final String consumerGroupId;
   private final String topicName;
   private final ConsensusGroupId consensusGroupId;
+  private final String consensusGroupIdString;
 
   private final IoTConsensusServerImpl serverImpl;
 
@@ -713,6 +714,7 @@ public class ConsensusPrefetchingQueue {
     this.consumerGroupId = consumerGroupId;
     this.topicName = topicName;
     this.consensusGroupId = consensusGroupId;
+    this.consensusGroupIdString = consensusGroupId.toString();
     this.serverImpl = serverImpl;
     this.consensusReqReader = serverImpl.getConsensusReqReader();
     this.retentionPolicy = retentionPolicy;
@@ -1307,7 +1309,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   private WriterId toWriterId(final IndexedConsensusRequest request) {
-    return new WriterId(consensusGroupId.toString(), request.getNodeId());
+    return new WriterId(consensusGroupIdString, request.getNodeId());
   }
 
   private WriterProgress toWriterProgress(final IndexedConsensusRequest request) {
@@ -2300,7 +2302,7 @@ public class ConsensusPrefetchingQueue {
         ignored -> {
           final WriterProgress recovered =
               recoveryWriterProgressByWriter.get(
-                  new WriterId(consensusGroupId.toString(), writerNodeId));
+                  new WriterId(consensusGroupIdString, writerNodeId));
           final WriterProgress materialized = materializedProgressByWriter.get(writerNodeId);
           return new WriterReplayState(
               createSubscriptionWALIterator(Long.MIN_VALUE),
@@ -2320,8 +2322,11 @@ public class ConsensusPrefetchingQueue {
       return true;
     }
     for (final IndexedConsensusRequest request : pendingEntries) {
-      if (shouldSkipForRecoveryProgress(request)
-          || shouldSkipForMaterializedProgress(request)
+      final boolean skipForRecoveryProgress = shouldSkipForRecoveryProgress(request);
+      final boolean skipForMaterializedProgress =
+          !skipForRecoveryProgress && shouldSkipForMaterializedProgress(request);
+      if (skipForRecoveryProgress
+          || skipForMaterializedProgress
           || (hasLocalSearchIndex(request)
               && request.getSearchIndex() < orderedReplayStartSearchIndex)) {
         if (pendingEntries.remove(request)) {
@@ -2330,8 +2335,6 @@ public class ConsensusPrefetchingQueue {
         continue;
       }
       if (request.getNodeId() == writerNodeId
-          && !shouldSkipForRecoveryProgress(request)
-          && !shouldSkipForMaterializedProgress(request)
           && (Objects.isNull(state.iterator)
               || request.getProgressLocalSeq() == state.consumedLocalSeq + 1L)) {
         state.head = request;
@@ -2618,8 +2621,7 @@ public class ConsensusPrefetchingQueue {
       sample.put("materializedProgress", materializedProgressByWriter.get(writerNodeId));
       sample.put(
           "recoveryProgress",
-          recoveryWriterProgressByWriter.get(
-              new WriterId(consensusGroupId.toString(), writerNodeId)));
+          recoveryWriterProgressByWriter.get(new WriterId(consensusGroupIdString, writerNodeId)));
       final WriterReplayState replay = orderedWriterReplay.get(writerNodeId);
       if (Objects.nonNull(replay)) {
         sample.put("consumedLocalSeq", replay.consumedLocalSeq);
@@ -2776,7 +2778,7 @@ public class ConsensusPrefetchingQueue {
       final long physicalTime, final int nodeId, final long localSeq) {
     final WriterProgress candidate = new WriterProgress(physicalTime, localSeq);
     final WriterProgress recoveryProgress =
-        recoveryWriterProgressByWriter.get(new WriterId(consensusGroupId.toString(), nodeId));
+        recoveryWriterProgressByWriter.get(new WriterId(consensusGroupIdString, nodeId));
     if (Objects.nonNull(recoveryProgress)
         && compareWriterProgress(candidate, recoveryProgress) <= 0) {
       return true;
@@ -3503,7 +3505,7 @@ public class ConsensusPrefetchingQueue {
         batchWriterNodeId >= 0
             ? batchWriterNodeId
             : IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-    final WriterId writerId = new WriterId(consensusGroupId.toString(), effectiveNodeId);
+    final WriterId writerId = new WriterId(consensusGroupIdString, effectiveNodeId);
     final WriterProgress writerProgress = new WriterProgress(batchPhysicalTime, localSeq);
     return new SubscriptionCommitContext(
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
@@ -4386,7 +4388,7 @@ public class ConsensusPrefetchingQueue {
 
   private WriterId extractCommitWriterId(final SubscriptionCommitContext commitContext) {
     final WriterId writerId = commitContext.getWriterId();
-    return Objects.nonNull(writerId) ? writerId : new WriterId(consensusGroupId.toString(), -1);
+    return Objects.nonNull(writerId) ? writerId : new WriterId(consensusGroupIdString, -1);
   }
 
   private WriterProgress extractCommitWriterProgress(
@@ -5113,8 +5115,7 @@ public class ConsensusPrefetchingQueue {
       if (Objects.isNull(requirement)) {
         try (final ProgressWALReader reader = openProgressWALReader(walFile)) {
           requirement =
-              WalFileCommitRequirement.fromMetadata(
-                  consensusGroupId.toString(), reader.getMetaData());
+              WalFileCommitRequirement.fromMetadata(consensusGroupIdString, reader.getMetaData());
           walFileCommitRequirements.put(versionId, requirement);
         } catch (final IOException e) {
           LOGGER.warn(
@@ -5298,7 +5299,7 @@ public class ConsensusPrefetchingQueue {
         continue;
       }
 
-      final WriterId writerId = new WriterId(consensusGroupId.toString(), writerNodeId);
+      final WriterId writerId = new WriterId(consensusGroupIdString, writerNodeId);
       final WriterProgress candidateProgress = new WriterProgress(physicalTime, localSeq);
       final WriterProgress currentProgress = tailProgressByWriter.get(writerId);
       if (Objects.isNull(currentProgress)
@@ -5693,7 +5694,7 @@ public class ConsensusPrefetchingQueue {
         consumerGroupId,
         INVALID_COMMIT_ID,
         seekGeneration.get(),
-        consensusGroupId.toString());
+        consensusGroupIdString);
   }
 
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
@@ -5920,7 +5921,7 @@ public class ConsensusPrefetchingQueue {
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
         consumerGroupId,
         topicName,
-        consensusGroupId.toString(),
+        consensusGroupIdString,
         isActive,
         prefetchInitialized,
         currentWalSearchIndex,
@@ -6267,7 +6268,7 @@ public class ConsensusPrefetchingQueue {
     final Map<String, String> result = new HashMap<>();
     result.put("consumerGroupId", consumerGroupId);
     result.put("topicName", topicName);
-    result.put("consensusGroupId", consensusGroupId.toString());
+    result.put("consensusGroupId", consensusGroupIdString);
     result.put("currentReadSearchIndex", String.valueOf(nextExpectedSearchIndex.get()));
     result.put("prefetchingQueueSize", String.valueOf(prefetchingQueue.size()));
     result.put("inFlightEventsSize", String.valueOf(inFlightEvents.size()));

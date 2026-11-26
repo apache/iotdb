@@ -130,6 +130,71 @@ public class ConsensusPrefetchingQueueTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
+  public void testToWriterIdReusesConsensusGroupIdString() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final CountingDataRegionId consensusGroupId = new CountingDataRegionId(1);
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      reader.currentSearchIndex = 1L;
+      final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
+      when(server.getConsensusReqReader()).thenReturn(reader);
+      when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE,
+              consensusGroupId,
+              server,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              mock(ConsensusLogToTabletConverter.class),
+              newCommitManager(temporaryFolder.newFolder("writer-id-cache")),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              false);
+
+      final int toStringCallCount = consensusGroupId.toStringCallCount;
+      final Method toWriterId =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod(
+              "toWriterId", IndexedConsensusRequest.class);
+      toWriterId.setAccessible(true);
+      final IndexedConsensusRequest request =
+          new IndexedConsensusRequest(1L, Collections.emptyList()).setNodeId(7);
+      for (int i = 0; i < 1000; i++) {
+        final WriterId writerId = (WriterId) toWriterId.invoke(queue, request);
+        assertEquals("DataRegion[1]", writerId.getRegionId());
+        assertEquals(7, writerId.getNodeId());
+      }
+      assertEquals(toStringCallCount, consensusGroupId.toStringCallCount);
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  private static final class CountingDataRegionId extends DataRegionId {
+
+    private int toStringCallCount;
+
+    private CountingDataRegionId(final int id) {
+      super(id);
+    }
+
+    @Override
+    public String toString() {
+      toStringCallCount++;
+      return super.toString();
+    }
+  }
+
+  @Test
   public void testReplayStallWarningIsThrottledAndResetsAfterProgress() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final Logger logger = (Logger) LoggerFactory.getLogger(ConsensusPrefetchingQueue.class);
