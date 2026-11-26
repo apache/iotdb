@@ -79,6 +79,7 @@ import java.net.ServerSocket;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -87,6 +88,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -396,6 +398,28 @@ public class SessionConnectionTest {
   public void testCheckTimeseriesExists()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionConnection.checkTimeseriesExists("root.test1.dev1.s1", 500l);
+  }
+
+  @Test
+  public void testCreateMultiTimeseriesWithAlignment()
+      throws IoTDBConnectionException, StatementExecutionException, TException {
+    TSCreateMultiTimeseriesReq request = new TSCreateMultiTimeseriesReq();
+    List<Boolean> aligned = Arrays.asList(true, false);
+    Whitebox.setInternalState(sessionConnection, "sessionId", 42L);
+    Mockito.when(client.createMultiTimeseriesWithAlignment(request, aligned))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    sessionConnection.createMultiTimeseries(request, aligned);
+    assertEquals(42L, request.getSessionId());
+    Mockito.verify(client).createMultiTimeseriesWithAlignment(request, aligned);
+    Mockito.verify(client, Mockito.never()).createMultiTimeseries(any());
+  }
+
+  @Test(expected = StatementExecutionException.class)
+  public void testCreateMultiTimeseriesWithAlignmentPermissionDenied()
+      throws IoTDBConnectionException, StatementExecutionException, TException {
+    Mockito.when(client.createMultiTimeseriesWithAlignment(any(), any()))
+        .thenReturn(new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()));
+    sessionConnection.createMultiTimeseries(new TSCreateMultiTimeseriesReq(), Arrays.asList(true));
   }
 
   @Test

@@ -982,6 +982,31 @@ public class Session implements ISession {
     getDefaultSessionConnection().createMultiTimeseries(request);
   }
 
+  @Override
+  public void createMultiTimeseries(
+      List<String> paths,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<Map<String, String>> propsList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList,
+      List<String> measurementAliasList,
+      List<Boolean> isAlignedList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSCreateMultiTimeseriesReq request =
+        genTSCreateMultiTimeseriesReq(
+            paths,
+            dataTypes,
+            encodings,
+            compressors,
+            replaceNullMapsForNonAligned(propsList, isAlignedList),
+            tagsList,
+            attributesList,
+            measurementAliasList);
+    getDefaultSessionConnection().createMultiTimeseries(request, isAlignedList);
+  }
+
   private TSCreateMultiTimeseriesReq genTSCreateMultiTimeseriesReq(
       List<String> paths,
       List<TSDataType> dataTypes,
@@ -2802,6 +2827,19 @@ public class Session implements ISession {
     List<Map<String, String>> replacedValues = new ArrayList<>(values.size());
     for (Map<String, String> value : values) {
       replacedValues.add(value != null ? value : new HashMap<>());
+    }
+    return replacedValues;
+  }
+
+  private static List<Map<String, String>> replaceNullMapsForNonAligned(
+      List<Map<String, String>> values, List<Boolean> isAlignedList) {
+    List<Map<String, String>> replacedValues = replaceNullMaps(values);
+    if (replacedValues != null && isAlignedList != null) {
+      for (int i = 0; i < replacedValues.size() && i < isAlignedList.size(); i++) {
+        if (Boolean.TRUE.equals(isAlignedList.get(i))) {
+          replacedValues.set(i, Collections.emptyMap());
+        }
+      }
     }
     return replacedValues;
   }
