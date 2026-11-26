@@ -1169,13 +1169,15 @@ public class AlignedTVListTest {
             new ArrayList<>(Collections.nCopies(columns, TSDataType.INT64)));
 
     // The per-column open-block state (last written row per column and the touched-column bitset)
-    // must be reported by the container cost, not only the pre-existing accounting arrays.
+    // must be reported by the container cost, not only the pre-existing accounting arrays. The
+    // columnTypes cache is one reference per column; the two int arrays are the materialized-array
+    // counts and blockLastRow.
     long expected =
         AlignedTVList.listRamCostWithReferences(tvList.getTsDataTypes())
+            + RamUsageEstimator.sizeOfObjectArray(columns)
             + RamUsageEstimator.sizeOfLongArray(columns)
-            + RamUsageEstimator.sizeOfIntArray(columns)
-            + RamUsageEstimator.sizeOfShortArray(columns)
-            + RamUsageEstimator.sizeOfLongArray((columns + 63) >>> 6)
+            + 2L * RamUsageEstimator.sizeOfIntArray(columns)
+            + new BitMap(columns).ramBytesUsed()
             + AlignedTVList.listRamCostWithoutReferences(tvList.getTimestamps())
             + AlignedTVList.listRamCostWithReferences(tvList.getValues())
             + (long) columns * AlignedTVList.listRamCostWithReferences(Collections.emptyList());
@@ -1203,17 +1205,16 @@ public class AlignedTVListTest {
     long afterExtension = tvList.getStructureRamSize();
 
     long expectedExtension =
-        2L
+        3L
                 * (RamUsageEstimator.sizeOfObjectArray(columnsAfterExtension)
                     - RamUsageEstimator.sizeOfObjectArray(1))
             + (RamUsageEstimator.sizeOfLongArray(columnsAfterExtension)
                 - RamUsageEstimator.sizeOfLongArray(1))
             + (RamUsageEstimator.sizeOfIntArray(columnsAfterExtension)
                 - RamUsageEstimator.sizeOfIntArray(1))
-            + (RamUsageEstimator.sizeOfShortArray(columnsAfterExtension)
-                - RamUsageEstimator.sizeOfShortArray(1))
-            + (RamUsageEstimator.sizeOfLongArray((columnsAfterExtension + 63) >>> 6)
-                - RamUsageEstimator.sizeOfLongArray(1))
+            + (RamUsageEstimator.sizeOfIntArray(columnsAfterExtension)
+                - RamUsageEstimator.sizeOfIntArray(1))
+            + (new BitMap(columnsAfterExtension).ramBytesUsed() - new BitMap(1).ramBytesUsed())
             + (long) extended * lazyColumnContainerRamCost();
     // Each lazy column also carries one null slot for the open block, so allow a small per-column
     // slack instead of pinning the exact wrapper capacity.
