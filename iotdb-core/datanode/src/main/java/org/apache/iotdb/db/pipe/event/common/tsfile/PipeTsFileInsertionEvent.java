@@ -375,8 +375,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       return true;
     }
 
-    if (isTsFileSealed) {
-      return !resource.isEmpty();
+    if (isTsFileSealed && !resource.isEmpty()) {
+      return true;
     }
 
     if (!isClosed.get()) {
@@ -630,7 +630,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
    * memTable becomes immutable.
    */
   public ProgressIndex forceGetProgressIndex() {
-    if (resource.isEmpty()) {
+    if (resource.isClosed() && resource.isEmpty()) {
       LOGGER.warn(
           DataNodePipeMessages.SKIPPING_TEMPORARY_TSFILE_S_PROGRESSINDEX_WILL_REPORT, tsFile);
       return MinimumProgressIndex.INSTANCE;
