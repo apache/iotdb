@@ -93,9 +93,30 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private static final int TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES = 8 * 1024;
 
+  private record ParserContext(
+      String pipeName,
+      long creationTime,
+      File tsFile,
+      ScanOptions scanOptions,
+      PipeTaskMeta pipeTaskMeta,
+      IAuditEntity entity,
+      ParserOptions parserOptions) {}
+
+  private record ParserOptions(
+      boolean skipIfNoPrivileges,
+      PipeInsertionEvent sourceEvent,
+      boolean isWithMod,
+      TsFileInsertionEventParserMemoryManager memoryManager) {}
+
+  public record ScanOptions(
+      TreePattern pattern, long startTime, long endTime, boolean trackPointCounts) {}
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
+  private final boolean trackPointCounts;
+  private final Map<IDeviceID, Map<String, Long>> parsedPointCountsByDevice = new HashMap<>();
+  private final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice = new HashMap<>();
 
   private IChunkReader chunkReader;
   private BatchData data;
@@ -167,23 +188,39 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final boolean isWithMod,
       final TsFileInsertionEventParserMemoryManager memoryManager)
       throws IOException, IllegalPathException {
-    super(
-        tsFile,
-        pipeName,
-        creationTime,
-        pattern,
-        null,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        entity,
-        skipIfNoPrivileges,
-        sourceEvent,
-        isWithMod,
-        memoryManager);
+    this(
+        new ParserContext(
+            pipeName,
+            creationTime,
+            tsFile,
+            new ScanOptions(pattern, startTime, endTime, false),
+            pipeTaskMeta,
+            entity,
+            new ParserOptions(skipIfNoPrivileges, sourceEvent, isWithMod, memoryManager)));
+  }
 
-    this.startTime = startTime;
-    this.endTime = endTime;
+  private TsFileInsertionEventScanParser(final ParserContext parserContext)
+      throws IOException, IllegalPathException {
+    super(
+        parserContext.tsFile(),
+        parserContext.pipeName(),
+        parserContext.creationTime(),
+        parserContext.scanOptions().pattern(),
+        null,
+        parserContext.scanOptions().startTime(),
+        parserContext.scanOptions().endTime(),
+        parserContext.pipeTaskMeta(),
+        parserContext.entity(),
+        parserContext.parserOptions().skipIfNoPrivileges(),
+        parserContext.parserOptions().sourceEvent(),
+        parserContext.parserOptions().isWithMod(),
+        parserContext.parserOptions().memoryManager());
+
+    final ScanOptions scanOptions = parserContext.scanOptions();
+    final ParserOptions parserOptions = parserContext.parserOptions();
+    this.trackPointCounts = scanOptions.trackPointCounts();
+    this.startTime = scanOptions.startTime();
+    this.endTime = scanOptions.endTime();
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
     this.allocatedMemoryBlockForBatchData =
@@ -194,15 +231,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     try {
       currentModifications =
-          isWithMod
-              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
+          parserOptions.isWithMod()
+              ? ModsOperationUtil.loadModificationsFromTsFile(parserContext.tsFile())
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
           allocateTabletMemory(
               TsFileInsertionEventScanParser.class.getSimpleName() + "#modifications",
               currentModifications.ramBytesUsed());
 
-      tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
+      tsFileSequenceReader =
+          createTsFileSequenceReader(parserContext.tsFile(), !currentModifications.isEmpty());
       tsFileSequenceReader.position(tsFileSequenceReader.getDataStartOffset());
 
       prepareData();
@@ -217,6 +255,25 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       }
       throw e;
     }
+  }
+
+  public TsFileInsertionEventScanParser(
+      final File tsFile,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager,
+      final ScanOptions scanOptions)
+      throws IOException, IllegalPathException {
+    this(
+        new ParserContext(
+            null,
+            0,
+            tsFile,
+            scanOptions,
+            pipeTaskMeta,
+            null,
+            new ParserOptions(false, sourceEvent, isWithMod, memoryManager)));
   }
 
   public TsFileInsertionEventScanParser(
@@ -250,18 +307,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final TsFileInsertionEventParserMemoryManager memoryManager)
       throws IOException, IllegalPathException {
     this(
-        null,
-        0,
         tsFile,
-        pattern,
-        startTime,
-        endTime,
         pipeTaskMeta,
-        null,
-        false,
         sourceEvent,
         isWithMod,
-        memoryManager);
+        memoryManager,
+        new ScanOptions(pattern, startTime, endTime, false));
   }
 
   private TsFileSequenceReader createTsFileSequenceReader(
@@ -418,6 +469,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     return measurementIds;
   }
 
+  public Map<IDeviceID, Map<String, Long>> getParsedPointCounts() {
+    final Map<IDeviceID, Map<String, Long>> result = new HashMap<>();
+    parsedPointCountsByDevice.forEach(
+        (device, pointCounts) -> result.put(device, new HashMap<>(pointCounts)));
+    return result;
+  }
+
+  public Map<IDeviceID, Map<String, Long>> getExpectedPointCounts() {
+    final Map<IDeviceID, Map<String, Long>> result = new HashMap<>();
+    expectedPointCountsByDevice.forEach(
+        (device, pointCounts) -> result.put(device, new HashMap<>(pointCounts)));
+    return result;
+  }
+
   private Tablet getNextTablet() {
     Tablet tablet = null;
     boolean tabletMemoryReserved = false;
@@ -459,6 +524,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
           final int rowIndex = tablet.getRowSize();
 
+          recordParsedPointCounts(data);
+          recordExpectedPointCounts(data);
           if (putValueToColumns(data, tablet, rowIndex)) {
             PipeTabletUtils.putTimestamp(tablet, rowIndex, data.currentTime());
           }
@@ -629,6 +696,61 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     return isNeedFillTime;
   }
 
+  private void recordParsedPointCounts(final BatchData batchData) {
+    if (!trackPointCounts) {
+      return;
+    }
+
+    if (batchData.getDataType() == TSDataType.VECTOR) {
+      final TsPrimitiveType[] values = batchData.getVector();
+      for (int column = 0; column < values.length; column++) {
+        if (values[column] != null) {
+          addParsedPointCount(currentMeasurements.get(column).getMeasurementName(), 1);
+        }
+      }
+      return;
+    }
+
+    addParsedPointCount(currentMeasurements.get(0).getMeasurementName(), 1);
+  }
+
+  private void recordExpectedPointCounts(final BatchData batchData) {
+    if (!trackPointCounts || currentModifications.isEmpty()) {
+      return;
+    }
+
+    if (batchData.getDataType() == TSDataType.VECTOR) {
+      final TsPrimitiveType[] values = batchData.getVector();
+      for (int column = 0; column < values.length; column++) {
+        if (values[column] != null
+            && !ModsOperationUtil.isDelete(batchData.currentTime(), modsInfos.get(column))) {
+          addExpectedPointCount(currentMeasurements.get(column).getMeasurementName());
+        }
+      }
+      return;
+    }
+
+    if (modsInfos.isEmpty()
+        || !ModsOperationUtil.isDelete(batchData.currentTime(), modsInfos.get(0))) {
+      addExpectedPointCount(currentMeasurements.get(0).getMeasurementName());
+    }
+  }
+
+  private void addParsedPointCount(final String measurement, final long pointCount) {
+    if (!trackPointCounts || pointCount == 0) {
+      return;
+    }
+    parsedPointCountsByDevice
+        .computeIfAbsent(currentDevice, key -> new HashMap<>())
+        .merge(measurement, pointCount, Long::sum);
+  }
+
+  private void addExpectedPointCount(final String measurement) {
+    expectedPointCountsByDevice
+        .computeIfAbsent(currentDevice, key -> new HashMap<>())
+        .merge(measurement, 1L, Long::sum);
+  }
+
   private void moveToNextChunkReader()
       throws IOException, IllegalStateException, IllegalPathException {
     releaseChunkReader();
@@ -724,17 +846,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               final long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-              if (filterChunk(currentChunkHeaderOffset, chunkHeader, true, marker)) {
-                break;
-              }
-
-              // Increase value index.
               final String measurementID =
                   tabletStringInternPool.intern(chunkHeader.getMeasurementID());
               final int valueIndex =
                   measurementIndexMap.compute(
                       measurementID,
                       (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
+
+              if (filterChunk(currentChunkHeaderOffset, chunkHeader, true, marker)) {
+                break;
+              }
 
               // Do not record or end current value chunks when there are empty chunks.
               if (chunkHeader.getDataSize() == 0) {
@@ -859,6 +980,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               statistics.getEndTime(),
               currentModifications,
               false)) {
+        addParsedPointCount(chunkHeader.getMeasurementID(), statistics.getCount());
         tsFileSequenceReader.position(nextMarkerOffset);
         return true;
       }

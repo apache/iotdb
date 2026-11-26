@@ -60,6 +60,9 @@ public final class StorageEngineMessages {
     public static final String IS_NOT_SUPPORTED =
       " 不受支持";
 
+  public static final String
+      EXCEPTION_QUERY_FALLBACK_POINT_COUNT_MISMATCH_FOR_DEVICE_ARG_MEASUREMENT_ARG_EXPECTED_ARG_POINTS_BUT_RECOVERED_ARG_POINTS_0BEC4004 =
+          "设备 %s 的测量值 %s 查询回退点数不匹配：预期 %d 个点，但恢复了 %d 个点。";
   public static final String EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3 =
       "加载 TsFile 时迭代 tablet 失败。";
   public static final String EXCEPTION_USAGE_WALPRINTTOOL_FILE_11D2FB79 = "用法：WALPrintTool <file>";

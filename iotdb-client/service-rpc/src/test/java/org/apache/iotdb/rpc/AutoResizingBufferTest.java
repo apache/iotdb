@@ -20,16 +20,26 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TMemoryBuffer;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AutoResizingBufferTest {
 
@@ -108,6 +118,465 @@ public class AutoResizingBufferTest {
       transport.write(new byte[8]);
       Assert.assertEquals(32, memoryControl.getUsedMemoryInBytes());
       Assert.assertEquals(8, transport.writeBuffer.getPos());
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReclaimsIdleServerTransportBuffers() throws Exception {
+    memoryControl.setLimit(96);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport transport = newServerTransport(pool, new TMemoryBuffer(0))) {
+        transport.write(new byte[64]);
+        transport.flush();
+        Assert.assertEquals(64, transport.writeBuffer.getBuffer().length);
+        Assert.assertEquals(72, memoryControl.getUsedMemoryInBytes());
+
+        try (TElasticFramedTransport requester = newServerTransport(pool, new TMemoryBuffer(0))) {
+          requester.write(new byte[32]);
+          requester.flush();
+          Assert.assertEquals(8, transport.writeBuffer.getBuffer().length);
+          Assert.assertEquals(32, requester.writeBuffer.getBuffer().length);
+          Assert.assertEquals(56, memoryControl.getUsedMemoryInBytes());
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReusesPreferredPoolCandidateSnapshot() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport oldest = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport newer = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport firstRequester = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport secondRequester =
+              newServerTransport(pool, new TMemoryBuffer(0))) {
+        oldest.write(new byte[64]);
+        oldest.flush();
+        Thread.sleep(10);
+        newer.write(new byte[64]);
+        newer.flush();
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+
+        firstRequester.write(new byte[16]);
+        firstRequester.flush();
+        Object candidateSnapshot =
+            getFieldValue(
+                pool, AutoResizingBufferMemoryManager.ServerBufferPool.class, "candidateSnapshot");
+        Assert.assertNotNull(candidateSnapshot);
+
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+        secondRequester.write(new byte[16]);
+        secondRequester.flush();
+
+        Assert.assertSame(
+            candidateSnapshot,
+            getFieldValue(
+                pool, AutoResizingBufferMemoryManager.ServerBufferPool.class, "candidateSnapshot"));
+        Assert.assertEquals(8, oldest.writeBuffer.getBuffer().length);
+        Assert.assertEquals(8, newer.writeBuffer.getBuffer().length);
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReusesOtherPoolCandidateSnapshot() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport oldest = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport newer = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport firstRequester =
+              new TElasticFramedTransport(new TMemoryBuffer(0), 8, 128, true);
+          TElasticFramedTransport secondRequester =
+              new TElasticFramedTransport(new TMemoryBuffer(0), 8, 128, true)) {
+        oldest.write(new byte[64]);
+        oldest.flush();
+        Thread.sleep(10);
+        newer.write(new byte[64]);
+        newer.flush();
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+
+        firstRequester.write(new byte[16]);
+        firstRequester.flush();
+        Object candidateSnapshot =
+            getFieldValue(
+                null, AutoResizingBufferMemoryManager.class, "otherPoolCandidateSnapshot");
+        Assert.assertNotNull(candidateSnapshot);
+
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+        secondRequester.write(new byte[16]);
+        secondRequester.flush();
+
+        Assert.assertSame(
+            candidateSnapshot,
+            getFieldValue(
+                null, AutoResizingBufferMemoryManager.class, "otherPoolCandidateSnapshot"));
+        Assert.assertEquals(8, oldest.writeBuffer.getBuffer().length);
+        Assert.assertEquals(8, newer.writeBuffer.getBuffer().length);
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureDoesNotReclaimAnActiveServerTransport() throws Exception {
+    memoryControl.setLimit(96);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport transport = newServerTransport(pool, new TMemoryBuffer(0))) {
+        transport.write(new byte[64]);
+        transport.flush();
+        transport.beginServerRequest();
+        try {
+          try (TElasticFramedTransport requester = newServerTransport(pool, new TMemoryBuffer(0))) {
+            requester.write(new byte[32]);
+            Assert.fail("An active request must keep its buffers reserved");
+          } catch (TTransportException expected) {
+            Assert.assertEquals(
+                1, AutoResizingBufferMemoryManager.getMemoryAllocationFailureCount());
+          }
+          Assert.assertEquals(64, transport.writeBuffer.getBuffer().length);
+          Assert.assertEquals(72, memoryControl.getUsedMemoryInBytes());
+        } finally {
+          transport.endServerRequest();
+        }
+
+        try (TElasticFramedTransport requester = newServerTransport(pool, new TMemoryBuffer(0))) {
+          requester.write(new byte[32]);
+          requester.flush();
+          Assert.assertEquals(8, transport.writeBuffer.getBuffer().length);
+          Assert.assertEquals(56, memoryControl.getUsedMemoryInBytes());
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReclaimsOldestConnectionAndStopsWhenEnough() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport oldest = newServerTransport(pool, new TMemoryBuffer(0))) {
+        oldest.write(new byte[32]);
+        oldest.flush();
+        Thread.sleep(10);
+
+        try (TElasticFramedTransport newer = newServerTransport(pool, new TMemoryBuffer(0))) {
+          newer.write(new byte[64]);
+          newer.flush();
+
+          try (TElasticFramedTransport requester = newServerTransport(pool, new TMemoryBuffer(0))) {
+            memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+            requester.write(new byte[16]);
+            requester.flush();
+
+            Assert.assertEquals(8, oldest.writeBuffer.getBuffer().length);
+            Assert.assertEquals(64, newer.writeBuffer.getBuffer().length);
+            Assert.assertEquals(16, requester.writeBuffer.getBuffer().length);
+          }
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureDoesNotReclaimClosedServerPool() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool requesterPool =
+            AutoResizingBufferMemoryManager.createServerBufferPool();
+        AutoResizingBufferMemoryManager.ServerBufferPool otherPool =
+            AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport otherPoolTransport =
+              newServerTransport(otherPool, new TMemoryBuffer(0));
+          TElasticFramedTransport requester =
+              newServerTransport(requesterPool, new TMemoryBuffer(0))) {
+        otherPoolTransport.write(new byte[64]);
+        otherPoolTransport.flush();
+        otherPool.close();
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+
+        try {
+          requester.write(new byte[32]);
+          Assert.fail("An unrelated pool must not be reclaimed");
+        } catch (TTransportException expected) {
+          Assert.assertEquals(64, otherPoolTransport.writeBuffer.getBuffer().length);
+          Assert.assertEquals(88, memoryControl.getUsedMemoryInBytes());
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureFallsBackToAnotherServerPool() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool requesterPool =
+            AutoResizingBufferMemoryManager.createServerBufferPool();
+        AutoResizingBufferMemoryManager.ServerBufferPool otherPool =
+            AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport otherPoolTransport =
+              newServerTransport(otherPool, new TMemoryBuffer(0));
+          TElasticFramedTransport requester =
+              newServerTransport(requesterPool, new TMemoryBuffer(0))) {
+        otherPoolTransport.write(new byte[64]);
+        otherPoolTransport.flush();
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+
+        requester.write(new byte[32]);
+        requester.flush();
+
+        Assert.assertEquals(8, otherPoolTransport.writeBuffer.getBuffer().length);
+        Assert.assertEquals(32, requester.writeBuffer.getBuffer().length);
+        Assert.assertEquals(56, memoryControl.getUsedMemoryInBytes());
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReclaimsConnectionsRegisteredAfterPoolRetirement()
+      throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      pool.retire();
+      try (TElasticFramedTransport serverTransport =
+          newServerTransport(pool, new TMemoryBuffer(0))) {
+        serverTransport.write(new byte[64]);
+        serverTransport.flush();
+        long memoryBeforeClientAllocation = memoryControl.getUsedMemoryInBytes();
+        memoryControl.setLimit(memoryBeforeClientAllocation);
+
+        try (TElasticFramedTransport clientTransport =
+            new TElasticFramedTransport(new TMemoryBuffer(0), 8, 128, true)) {
+          Assert.assertTrue(memoryControl.getUsedMemoryInBytes() < memoryBeforeClientAllocation);
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReclaimsExistingConnectionsFromRetiredPool() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport serverTransport =
+          newServerTransport(pool, new TMemoryBuffer(0))) {
+        serverTransport.write(new byte[64]);
+        serverTransport.flush();
+        pool.retire();
+        long memoryBeforeClientAllocation = memoryControl.getUsedMemoryInBytes();
+        memoryControl.setLimit(memoryBeforeClientAllocation);
+
+        try (TElasticFramedTransport clientTransport =
+            new TElasticFramedTransport(new TMemoryBuffer(0), 8, 128, true)) {
+          Assert.assertTrue(memoryControl.getUsedMemoryInBytes() < memoryBeforeClientAllocation);
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressurePrefersRequestingPoolBeforeOtherPools() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool otherPool =
+            AutoResizingBufferMemoryManager.createServerBufferPool();
+        AutoResizingBufferMemoryManager.ServerBufferPool preferredPool =
+            AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport otherPoolTransport =
+          newServerTransport(otherPool, new TMemoryBuffer(0))) {
+        otherPoolTransport.write(new byte[64]);
+        otherPoolTransport.flush();
+        Thread.sleep(10);
+
+        try (TElasticFramedTransport preferredPoolTransport =
+                newServerTransport(preferredPool, new TMemoryBuffer(0));
+            TElasticFramedTransport requester =
+                newServerTransport(preferredPool, new TMemoryBuffer(0))) {
+          preferredPoolTransport.write(new byte[32]);
+          preferredPoolTransport.flush();
+          memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+
+          requester.write(new byte[16]);
+          requester.flush();
+
+          Assert.assertEquals(64, otherPoolTransport.writeBuffer.getBuffer().length);
+          Assert.assertEquals(8, preferredPoolTransport.writeBuffer.getBuffer().length);
+          Assert.assertEquals(16, requester.writeBuffer.getBuffer().length);
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testClientBufferAllocationCanReclaimIdleServerBuffers() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool serverPool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport serverTransport =
+              newServerTransport(serverPool, new TMemoryBuffer(0));
+          TElasticFramedTransport clientTransport =
+              new TElasticFramedTransport(new TMemoryBuffer(0), 8, 2048, true)) {
+        serverTransport.write(new byte[64]);
+        serverTransport.flush();
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+
+        clientTransport.write(new byte[32]);
+        clientTransport.flush();
+
+        Assert.assertEquals(8, serverTransport.writeBuffer.getBuffer().length);
+        Assert.assertEquals(32, clientTransport.writeBuffer.getBuffer().length);
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testReclaimOneIdleConnectionKeepsOtherConnectionsUnchanged() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport oldest = newServerTransport(pool, new TMemoryBuffer(0))) {
+        oldest.write(new byte[32]);
+        oldest.flush();
+        Thread.sleep(10);
+
+        try (TElasticFramedTransport newer = newServerTransport(pool, new TMemoryBuffer(0))) {
+          newer.write(new byte[64]);
+          newer.flush();
+
+          Assert.assertTrue(pool.reclaimOneIdleConnection() > 0);
+          Assert.assertEquals(8, oldest.writeBuffer.getBuffer().length);
+          Assert.assertEquals(64, newer.writeBuffer.getBuffer().length);
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testReclaimOneIdleConnectionRefreshesCandidateSnapshot() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport oldest = newServerTransport(pool, new TMemoryBuffer(0))) {
+        oldest.write(new byte[32]);
+        oldest.flush();
+        Thread.sleep(10);
+
+        try (TElasticFramedTransport next = newServerTransport(pool, new TMemoryBuffer(0))) {
+          next.write(new byte[64]);
+          next.flush();
+
+          Assert.assertTrue(pool.reclaimOneIdleConnection() > 0);
+          Assert.assertEquals(8, oldest.writeBuffer.getBuffer().length);
+
+          next.getServerConnectionState().setRequestInProgress(true);
+          try (TElasticFramedTransport newest = newServerTransport(pool, new TMemoryBuffer(0))) {
+            newest.write(new byte[48]);
+            newest.flush();
+
+            Assert.assertTrue(pool.reclaimOneIdleConnection() > 0);
+            Assert.assertEquals(8, newest.writeBuffer.getBuffer().length);
+
+            next.getServerConnectionState().setRequestInProgress(false);
+            Assert.assertTrue(pool.reclaimOneIdleConnection() > 0);
+            Assert.assertEquals(8, next.writeBuffer.getBuffer().length);
+          }
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReclaimsBothServerTransportsWhileWaitingForNextFrame()
+      throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    BlockingServerTransport socket = new BlockingServerTransport();
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+            AutoResizingBufferMemoryManager.createServerBufferPool();
+        TElasticFramedTransport input = newServerTransport(pool, socket);
+        TElasticFramedTransport output = newServerTransport(pool, socket)) {
+
+      byte[] firstFrame = new byte[64];
+      Arrays.fill(firstFrame, (byte) 7);
+      socket.offerFrame(firstFrame);
+      byte[] firstRead = new byte[firstFrame.length];
+      input.readAll(firstRead, 0, firstRead.length);
+      Assert.assertArrayEquals(firstFrame, firstRead);
+      output.write(firstFrame, 0, firstFrame.length);
+      output.flush();
+      Assert.assertEquals(64, input.readBuffer.getBuffer().length);
+      Assert.assertEquals(64, output.writeBuffer.getBuffer().length);
+
+      memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+      ExecutorService reader = Executors.newSingleThreadExecutor();
+      try {
+        byte[] secondFrame = new byte[8];
+        Future<byte[]> nextRead =
+            reader.submit(
+                () -> {
+                  byte[] result = new byte[secondFrame.length];
+                  input.readAll(result, 0, result.length);
+                  return result;
+                });
+        Assert.assertTrue(socket.awaitWaitingForNextFrame(5, TimeUnit.SECONDS));
+
+        try (TElasticFramedTransport requester = newServerTransport(pool, new TMemoryBuffer(0))) {
+          Assert.assertEquals(8, input.readBuffer.getBuffer().length);
+          Assert.assertEquals(8, output.writeBuffer.getBuffer().length);
+          Assert.assertEquals(0, input.readBuffer.getBufferPosition());
+          Assert.assertEquals(0, input.readBuffer.getBytesRemainingInBuffer());
+          Assert.assertEquals(48, memoryControl.getUsedMemoryInBytes());
+        }
+
+        Arrays.fill(secondFrame, (byte) 9);
+        socket.offerFrame(secondFrame);
+        Assert.assertArrayEquals(secondFrame, nextRead.get(5, TimeUnit.SECONDS));
+      } finally {
+        reader.shutdownNow();
+        Assert.assertTrue(reader.awaitTermination(5, TimeUnit.SECONDS));
+      }
     }
     Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
   }
@@ -685,6 +1154,14 @@ public class AutoResizingBufferTest {
     field.set(buffer, lastShrinkTime);
   }
 
+  private Object getFieldValue(Object target, Class<?> declaringClass, String fieldName)
+      throws Exception {
+    Field field = declaringClass.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    Object value = field.get(target);
+    return value instanceof AtomicReference<?> reference ? reference.get() : value;
+  }
+
   private void setLastShrinkTime(Object transport, long lastShrinkTime) throws Exception {
     Field field = transport.getClass().getDeclaredField("buf");
     field.setAccessible(true);
@@ -697,10 +1174,101 @@ public class AutoResizingBufferTest {
         : new TElasticFramedTransport(new TMemoryBuffer(0), 100, 2048, true);
   }
 
+  private TElasticFramedTransport newServerTransport(
+      AutoResizingBufferMemoryManager.ServerBufferPool pool, TTransport socket)
+      throws TTransportException {
+    return (TElasticFramedTransport)
+        pool.wrapTransportFactory(new TElasticFramedTransport.Factory(8, 128, false))
+            .getTransport(socket);
+  }
+
+  private static class BlockingServerTransport extends org.apache.thrift.transport.TTransport {
+
+    private final BlockingQueue<byte[]> frames = new LinkedBlockingQueue<>();
+    private final ByteArrayOutputStream writes = new ByteArrayOutputStream();
+    private final CountDownLatch waitingForNextFrame = new CountDownLatch(1);
+    private byte[] currentFrame;
+    private int currentFramePosition;
+    private boolean open = true;
+
+    private void offerFrame(byte[] payload) {
+      byte[] frame = new byte[payload.length + Integer.BYTES];
+      frame[0] = (byte) (payload.length >>> 24);
+      frame[1] = (byte) (payload.length >>> 16);
+      frame[2] = (byte) (payload.length >>> 8);
+      frame[3] = (byte) payload.length;
+      System.arraycopy(payload, 0, frame, Integer.BYTES, payload.length);
+      frames.add(frame);
+    }
+
+    private boolean awaitWaitingForNextFrame(long timeout, TimeUnit unit)
+        throws InterruptedException {
+      return waitingForNextFrame.await(timeout, unit);
+    }
+
+    @Override
+    public boolean isOpen() {
+      return open;
+    }
+
+    @Override
+    public void open() {
+      open = true;
+    }
+
+    @Override
+    public void close() {
+      open = false;
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length)
+        throws org.apache.thrift.transport.TTransportException {
+      try {
+        if (currentFrame == null || currentFramePosition == currentFrame.length) {
+          if (frames.isEmpty()) {
+            waitingForNextFrame.countDown();
+          }
+          currentFrame = frames.take();
+          currentFramePosition = 0;
+        }
+        int bytesToRead = Math.min(length, currentFrame.length - currentFramePosition);
+        System.arraycopy(currentFrame, currentFramePosition, buffer, offset, bytesToRead);
+        currentFramePosition += bytesToRead;
+        return bytesToRead;
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new org.apache.thrift.transport.TTransportException(e);
+      }
+    }
+
+    @Override
+    public void write(byte[] buffer, int offset, int length) {
+      writes.write(buffer, offset, length);
+    }
+
+    @Override
+    public void flush() {}
+
+    @Override
+    public org.apache.thrift.TConfiguration getConfiguration() {
+      return null;
+    }
+
+    @Override
+    public void updateKnownMessageSize(long size) {}
+
+    @Override
+    public void checkReadBytesAvailable(long numBytes) {}
+
+    @Override
+    public void resetMessageSizeAndConsumedBytes(long newSize) {}
+  }
+
   private static class TestMemoryControl implements AutoResizingBufferMemoryControl {
 
     private final AtomicLong usedMemoryInBytes = new AtomicLong();
-    private long limit = Long.MAX_VALUE;
+    private volatile long limit = Long.MAX_VALUE;
 
     @Override
     public boolean allocate(long sizeInBytes) {

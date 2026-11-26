@@ -21,9 +21,11 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
@@ -49,6 +51,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -87,6 +90,10 @@ public class AsyncTimeSeriesDeletionTest {
   private ConcurrentHashMap<Long, Procedure<ConfigNodeProcedureEnv>> running;
   private List<Procedure<ConfigNodeProcedureEnv>> completed;
   private ClusterSchemaManager schemaManager;
+  private int deletionTargetPrecheckCount;
+  private boolean failDeletionTargetPrecheck;
+  private boolean addDuplicateDuringDeletionTargetPrecheck;
+  private boolean addOverlapDuringDeletionTargetPrecheck;
 
   @Before
   public void setUp() throws Exception {
@@ -117,8 +124,38 @@ public class AsyncTimeSeriesDeletionTest {
     manager =
         new ProcedureManager(configManager, mock(ProcedureInfo.class)) {
           @Override
+          protected void precheckTimeSeriesDeletionTarget(
+              PathPatternTree patternTree, boolean mayDeleteAudit) throws MetadataException {
+            deletionTargetPrecheckCount++;
+            if (addDuplicateDuringDeletionTargetPrecheck) {
+              final DeleteTimeSeriesProcedure duplicate =
+                  new DeleteTimeSeriesProcedure("concurrent", patternTree, false, false);
+              duplicate.setProcId(1L);
+              duplicate.setProcRunnable();
+              running.put(duplicate.getProcId(), duplicate);
+            }
+            if (addOverlapDuringDeletionTargetPrecheck) {
+              final DeleteTimeSeriesProcedure overlapping =
+                  new DeleteTimeSeriesProcedure("overlapping", patternTree, false, false);
+              overlapping.setProcId(2L);
+              overlapping.setProcRunnable();
+              running.put(overlapping.getProcId(), overlapping);
+            }
+            if (failDeletionTargetPrecheck) {
+              throw new PathNotExistException(
+                  Collections.singletonList("root.async.d.missing"), false);
+            }
+          }
+
+          @Override
           protected TSStatus waitingProcedureFinished(Procedure<?> procedure, long timeout) {
             throw new AssertionError("SQL submission must not wait for deletion");
+          }
+
+          @Override
+          TSStatus waitForSchemaDeletionIfEnabled(
+              Procedure<?> procedure, TSStatus asynchronousStatus) {
+            return asynchronousStatus;
           }
         };
     manager.setExecutor(executor);
@@ -139,6 +176,14 @@ public class AsyncTimeSeriesDeletionTest {
         .setTableName("t")
         .setQueryId(queryId)
         .setUpdateInfo(ByteBuffer.wrap(bytes.toByteArray()));
+  }
+
+  private TAlterOrDropTableReq dropTableRequest(String queryId, boolean isView) {
+    return new TAlterOrDropTableReq()
+        .setDatabase("test")
+        .setTableName("t")
+        .setQueryId(queryId)
+        .setIsView(isView);
   }
 
   @Test
@@ -305,6 +350,75 @@ public class AsyncTimeSeriesDeletionTest {
   }
 
   @Test
+  public void testTableDeletionIsDurableAsynchronousAndIdempotent() throws Exception {
+    final TsTable table = new TsTable("t");
+    when(schemaManager.getTableAndStatusIfExists("test", "t"))
+        .thenReturn(Optional.of(new Pair<>(table, TableNodeStatus.USING)));
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        manager.dropTable(dropTableRequest("query", false)).getCode());
+    assertTrue(
+        manager.dropTable(dropTableRequest("query", false)).getMessage().contains("asynchronous"));
+    assertEquals(
+        TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode(),
+        manager.dropTable(dropTableRequest("another", false)).getCode());
+    verify(executor, times(1)).submitProcedureAndPersist(any());
+  }
+
+  @Test
+  public void testPreCreateTableDeletionIsRejectedBeforeSubmission() throws Exception {
+    final TsTable table = new TsTable("t");
+    when(schemaManager.getTableAndStatusIfExists("test", "t"))
+        .thenReturn(Optional.of(new Pair<>(table, TableNodeStatus.PRE_CREATE)));
+
+    assertEquals(
+        TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode(),
+        manager.dropTable(dropTableRequest("query", false)).getCode());
+    verify(executor, times(0)).submitProcedureAndPersist(any());
+  }
+
+  @Test
+  public void testViewDeletionTypeMismatchIsRejectedBeforeSubmission() throws Exception {
+    final TsTable table = new TsTable("t");
+    when(schemaManager.getTableAndStatusIfExists("test", "t"))
+        .thenReturn(Optional.of(new Pair<>(table, TableNodeStatus.USING)));
+
+    assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+        manager.dropTable(dropTableRequest("query", true)).getCode());
+    verify(executor, times(0)).submitProcedure(any());
+  }
+
+  @Test
+  public void testViewColumnDeletionTypeMismatchIsRejectedBeforeSubmission() throws Exception {
+    final TsTable table = new TsTable("t");
+    table.addColumnSchema(new FieldColumnSchema("s", TSDataType.INT32));
+    when(schemaManager.getTableAndStatusIfExists("test", "t"))
+        .thenReturn(Optional.of(new Pair<>(table, TableNodeStatus.USING)));
+
+    assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+        manager.alterTableDropColumn(dropColumnRequest("query", "s").setIsView(true)).getCode());
+    verify(executor, times(0)).submitProcedure(any());
+  }
+
+  @Test
+  public void testMissingViewColumnIsRejectedBeforeSubmission() throws Exception {
+    final TsTable table = new TsTable("t");
+    table.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.async.**");
+    when(schemaManager.getTableAndStatusIfExists("test", "t"))
+        .thenReturn(Optional.of(new Pair<>(table, TableNodeStatus.USING)));
+
+    assertEquals(
+        TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode(),
+        manager
+            .alterTableDropColumn(dropColumnRequest("query", "missing").setIsView(true))
+            .getCode());
+    verify(executor, times(0)).submitProcedure(any());
+  }
+
+  @Test
   public void testCompletionDuringSnapshotDoesNotLoseTaskOrResubmit() throws Exception {
     final PathPatternTree tree = pattern("root.async.d.s");
     manager.deleteTimeSeries("query", tree, false, false);
@@ -462,7 +576,54 @@ public class AsyncTimeSeriesDeletionTest {
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         manager.deleteTimeSeries("query", tree, false, false).getCode());
     verify(executor, times(1)).submitProcedureAndPersist(any());
+    assertEquals(1, deletionTargetPrecheckCount);
     assertEquals(1, manager.getDeleteTimeSeriesProcedures().size());
+  }
+
+  @Test
+  public void testDeletionTargetPrecheckFailureDoesNotEnqueue() throws Exception {
+    failDeletionTargetPrecheck = true;
+
+    assertEquals(
+        TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
+        manager
+            .deleteTimeSeries("missing", pattern("root.async.d.missing"), false, false)
+            .getCode());
+
+    assertEquals(1, deletionTargetPrecheckCount);
+    assertTrue(running.isEmpty());
+    assertEquals(0, executor.getDeleteTimeSeriesScheduler().getWaitingTaskCount());
+    verify(executor, times(0)).submitProcedureAndPersist(any());
+  }
+
+  @Test
+  public void testConcurrentDuplicateWinsOverDeletionTargetPrecheckFailure() throws Exception {
+    failDeletionTargetPrecheck = true;
+    addDuplicateDuringDeletionTargetPrecheck = true;
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        manager
+            .deleteTimeSeries("concurrent", pattern("root.async.d.missing"), false, false)
+            .getCode());
+
+    assertEquals(1, deletionTargetPrecheckCount);
+    assertEquals(1, running.size());
+    verify(executor, times(0)).submitProcedureAndPersist(any());
+  }
+
+  @Test
+  public void testConcurrentOverlapWinsOverDeletionTargetPrecheckFailure() throws Exception {
+    failDeletionTargetPrecheck = true;
+    addOverlapDuringDeletionTargetPrecheck = true;
+
+    assertEquals(
+        TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode(),
+        manager.deleteTimeSeries("query", pattern("root.async.d.missing"), false, false).getCode());
+
+    assertEquals(1, deletionTargetPrecheckCount);
+    assertEquals(1, running.size());
+    verify(executor, times(0)).submitProcedureAndPersist(any());
   }
 
   @Test

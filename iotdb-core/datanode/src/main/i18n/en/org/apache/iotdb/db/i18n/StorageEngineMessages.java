@@ -62,6 +62,9 @@ public final class StorageEngineMessages {
 
   public static final String EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3 =
       "Failed to iterate tablets while loading TsFile.";
+  public static final String
+      EXCEPTION_QUERY_FALLBACK_POINT_COUNT_MISMATCH_FOR_DEVICE_ARG_MEASUREMENT_ARG_EXPECTED_ARG_POINTS_BUT_RECOVERED_ARG_POINTS_0BEC4004 =
+          "Query fallback point count mismatch for device %s, measurement %s: expected %d points, but recovered %d points.";
   public static final String EXCEPTION_USAGE_WALPRINTTOOL_FILE_11D2FB79 =
       "Usage: WALPrintTool <file>";
   public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_687C85BC =

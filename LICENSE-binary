@@ -226,7 +226,6 @@ com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.12
 com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.18.12
 com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.18.12
 com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations:2.18.12
-com.github.ben-manes.caffeine:caffeine:2.9.3
 com.github.moquette-io.moquette:moquette-broker:0.18.0
 com.google.code.findbugs:jsr305:3.0.2
 com.google.errorprone:error_prone_annotations:2.18.0
@@ -234,7 +233,6 @@ com.zaxxer:HikariCP:2.4.7
 commons-cli:commons-cli:1.5.0
 commons-codec:commons-codec:1.16.1
 io.airlift:units:1.7
-io.dropwizard.metrics:metrics-core:4.2.19
 io.micrometer:micrometer-commons:1.11.4
 io.micrometer:micrometer-core:1.11.4
 io.micrometer:micrometer-observation:1.11.4
@@ -311,7 +309,6 @@ com.github.luben:zstd-jni:1.5.6-3
 MIT License
 ------------
 io.github.classgraph:classgraph:4.8.184
-org.checkerframework:checker-qual:3.33.0
 org.java-websocket:Java-WebSocket:1.5.4
 org.slf4j:slf4j-api:2.0.9
 org.slf4j:slf4j-reload4j:1.7.36

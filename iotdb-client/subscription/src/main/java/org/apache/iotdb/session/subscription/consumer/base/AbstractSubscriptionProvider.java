@@ -73,7 +73,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -500,18 +499,15 @@ public abstract class AbstractSubscriptionProvider {
     }
 
     PipeSubscribeHeartbeatResp latestResp = null;
-    final Set<String> topicNamesToUnsubscribe = new LinkedHashSet<>();
     rpcLock.lock();
     try {
       for (final List<SubscriptionCommitContext> batch : batches) {
         latestResp = heartbeatOnce(batch);
-        topicNamesToUnsubscribe.addAll(latestResp.getTopicNamesToUnsubscribe());
       }
     } finally {
       rpcLock.unlock();
     }
-    latestResp.getTopicNamesToUnsubscribe().clear();
-    latestResp.getTopicNamesToUnsubscribe().addAll(topicNamesToUnsubscribe);
+    // Completion describes the current state. A later batch can revoke an earlier notice.
     return latestResp;
   }
 

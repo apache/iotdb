@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.storageengine.buffer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
+import org.apache.iotdb.commons.external.caffeine.cache.Weigher;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -32,9 +35,6 @@ import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;

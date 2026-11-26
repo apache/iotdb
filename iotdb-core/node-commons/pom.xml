@@ -33,6 +33,7 @@
         <commons.it.skip>${commons.test.skip}</commons.it.skip>
         <commons.test.skip>false</commons.test.skip>
         <commons.ut.skip>${commons.test.skip}</commons.ut.skip>
+        <sonar.cpd.exclusions>**/org/apache/iotdb/commons/external/caffeine/**</sonar.cpd.exclusions>
     </properties>
     <dependencies>
         <dependency>
@@ -126,10 +127,6 @@
             <version>2.0.13-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
@@ -165,10 +162,6 @@
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
         </dependency>
         <dependency>
             <groupId>com.github.luben</groupId>

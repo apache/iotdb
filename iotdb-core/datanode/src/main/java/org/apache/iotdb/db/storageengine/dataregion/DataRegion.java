@@ -33,6 +33,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.path.IFullPath;
@@ -181,8 +183,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 import org.apache.thrift.TException;
 import org.apache.tsfile.exception.write.PageException;

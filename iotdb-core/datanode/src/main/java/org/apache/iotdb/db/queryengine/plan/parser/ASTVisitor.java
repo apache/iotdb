@@ -266,6 +266,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
+import org.apache.iotdb.rpc.subscription.config.TopicProperty;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
@@ -4555,9 +4556,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<IoTDBSqlParser.TopicAttributeClauseContext> contexts) {
     final Map<String, String> collectorMap = new HashMap<>();
     for (IoTDBSqlParser.TopicAttributeClauseContext context : contexts) {
-      collectorMap.put(
-          parseStringLiteral(context.topicKey.getText()),
-          parseStringLiteral(context.topicValue.getText()));
+      final String key =
+          TopicProperty.canonicalizeKey(parseStringLiteral(context.topicKey.getText()));
+      if (collectorMap.containsKey(key)) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578,
+                key));
+      }
+      collectorMap.put(key, parseStringLiteral(context.topicValue.getText()));
     }
     return collectorMap;
   }

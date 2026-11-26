@@ -21,10 +21,10 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

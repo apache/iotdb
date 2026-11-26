@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 
-import com.codahale.metrics.Clock;
-import com.codahale.metrics.ExponentialMovingAverages;
-import com.codahale.metrics.Meter;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Clock;
+import org.apache.ratis.thirdparty.com.codahale.metrics.ExponentialMovingAverages;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Meter;
 
 import java.util.Collections;
 import java.util.Objects;

@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -33,6 +34,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
@@ -75,6 +77,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class SubscriptionConsumerMultiProviderPollTest {
@@ -1284,6 +1288,383 @@ public class SubscriptionConsumerMultiProviderPollTest {
     }
   }
 
+  @Test(timeout = 20_000)
+  public void testRetainedSnapshotWaitsForAllProvidersBeforeAutoUnsubscribe() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, false, 3);
+    try {
+      consumer.open();
+      consumer.subscribeRetainedSnapshotTopic();
+
+      final AtomicInteger unsubscribeCount = new AtomicInteger();
+      final List<Integer> terminatedByHeartbeat = new CopyOnWriteArrayList<>();
+      for (final TestSubscriptionProvider provider : consumer.createdProviders) {
+        final int nodeId = provider.getDataNodeId();
+        provider.unsubscribeHandler =
+            topicNames -> {
+              unsubscribeCount.incrementAndGet();
+              return Collections.emptyMap();
+            };
+        provider.pollHandler =
+            (topicNames, pollCount) -> {
+              if (nodeId == 1) {
+                return new ArrayList<>(
+                    Collections.singletonList(
+                        new SubscriptionPollResponse(
+                            SubscriptionPollResponseType.TERMINATION.getType(),
+                            new TerminationPayload(),
+                            new SubscriptionCommitContext(
+                                nodeId, 0, TOPIC, CONSUMER_GROUP_ID, -1L))));
+              }
+              if (pollCount == 1) {
+                final List<IMeasurementSchema> schemas =
+                    Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
+                final Tablet tablet = new Tablet("root.sg.d1", schemas, 1);
+                tablet.setTimestamps(new long[] {nodeId});
+                ((long[]) tablet.getValues()[0])[0] = nodeId;
+                tablet.setRowSize(1);
+                return new ArrayList<>(
+                    Collections.singletonList(
+                        new SubscriptionPollResponse(
+                            SubscriptionPollResponseType.TABLETS.getType(),
+                            new TabletsPayload(Collections.singletonList(tablet), -1),
+                            new SubscriptionCommitContext(
+                                nodeId, 0, TOPIC, CONSUMER_GROUP_ID, nodeId))));
+              }
+              terminatedByHeartbeat.add(nodeId);
+              return new ArrayList<>(
+                  Collections.singletonList(
+                      new SubscriptionPollResponse(
+                          SubscriptionPollResponseType.TERMINATION.getType(),
+                          new TerminationPayload(),
+                          new SubscriptionCommitContext(
+                              nodeId, 0, TOPIC, CONSUMER_GROUP_ID, -1L))));
+            };
+      }
+
+      final List<SubscriptionMessage> firstMessages = consumer.pollForTest(1_000L);
+      Assert.assertEquals(1, firstMessages.size());
+      // Provider 1 terminated early, so auto-unsubscribe must NOT have fired yet.
+      Assert.assertEquals(0, unsubscribeCount.get());
+      Assert.assertFalse(consumer.allTopicMessagesHaveBeenConsumed());
+      final int p1PollsAfterFirstTerm = consumer.getPollCount(1);
+
+      final List<SubscriptionMessage> secondMessages = consumer.pollForTest(1_000L);
+      Assert.assertEquals(1, secondMessages.size());
+      Assert.assertEquals(0, unsubscribeCount.get());
+      Assert.assertFalse(consumer.allTopicMessagesHaveBeenConsumed());
+      // Provider 1 already terminated for TOPIC and must not be re-polled for it.
+      Assert.assertEquals(p1PollsAfterFirstTerm, consumer.getPollCount(1));
+
+      final List<SubscriptionMessage> drainMessages = consumer.pollForTest(1_000L);
+      Assert.assertTrue(drainMessages.isEmpty());
+      Assert.assertTrue(consumer.allTopicMessagesHaveBeenConsumed());
+      Assert.assertEquals(1, unsubscribeCount.get());
+      Assert.assertTrue(terminatedByHeartbeat.containsAll(Arrays.asList(2, 3)));
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testRetainedSnapshotTerminationWaitsWhenEndpointDiscoveryFailsDuringOpen()
+      throws Exception {
+    final AtomicBoolean failDiscovery = new AtomicBoolean(true);
+    final AtomicInteger unsubscribeCount = new AtomicInteger();
+    final TestPullConsumer consumer =
+        new TestPullConsumer(1, 0, false, false, 2) {
+          @Override
+          protected AbstractSubscriptionProvider constructSubscriptionProvider(
+              final TEndPoint endPoint,
+              final String username,
+              final String password,
+              final String encryptedPassword,
+              final String consumerId,
+              final String consumerGroupId,
+              final String ownerId,
+              final Long ownerEpoch,
+              final int thriftMaxFrameSize,
+              final long heartbeatIntervalMs,
+              final int connectionTimeoutInMs) {
+            final TestSubscriptionProvider provider =
+                (TestSubscriptionProvider)
+                    super.constructSubscriptionProvider(
+                        endPoint,
+                        username,
+                        password,
+                        encryptedPassword,
+                        consumerId,
+                        consumerGroupId,
+                        ownerId,
+                        ownerEpoch,
+                        thriftMaxFrameSize,
+                        heartbeatIntervalMs,
+                        connectionTimeoutInMs);
+            if (provider.getDataNodeId() == 1) {
+              provider.heartbeatAction =
+                  () -> {
+                    if (failDiscovery.get()) {
+                      throw new SubscriptionConnectionException("endpoint discovery failed");
+                    }
+                  };
+            }
+            provider.unsubscribeHandler =
+                topicNames -> {
+                  unsubscribeCount.incrementAndGet();
+                  return Collections.emptyMap();
+                };
+            provider.pollHandler =
+                (topicNames, pollCount) ->
+                    new ArrayList<>(
+                        Collections.singletonList(
+                            new SubscriptionPollResponse(
+                                SubscriptionPollResponseType.TERMINATION.getType(),
+                                new TerminationPayload(),
+                                new SubscriptionCommitContext(
+                                    provider.getDataNodeId(), 0, TOPIC, CONSUMER_GROUP_ID, -1L))));
+            return provider;
+          }
+        };
+    try {
+      consumer.open();
+      consumer.subscribeRetainedSnapshotTopic();
+
+      Assert.assertTrue(consumer.getExpectedDataNodeIds().isEmpty());
+      Assert.assertTrue(consumer.pollForTest(500L).isEmpty());
+      Assert.assertEquals(0, unsubscribeCount.get());
+      Assert.assertFalse(consumer.allTopicMessagesHaveBeenConsumed());
+
+      failDiscovery.set(false);
+      getProviders(consumer).sync(consumer);
+      consumer.subscribeRetainedSnapshotTopic();
+      Assert.assertEquals(2, consumer.getExpectedDataNodeIds().size());
+
+      Assert.assertTrue(consumer.pollForTest(500L).isEmpty());
+      Assert.assertTrue(consumer.allTopicMessagesHaveBeenConsumed());
+      Assert.assertEquals(1, unsubscribeCount.get());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testRetainedSnapshotResumesPollingAfterHeartbeatRevokesCompletion() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, false, 2);
+    try {
+      consumer.open();
+      consumer.subscribeRetainedSnapshotTopic();
+      final Map<String, TopicConfig> topics = consumer.subscribedTopics;
+      final TestSubscriptionProvider newLeader = consumer.createdProviders.get(0);
+      final TestSubscriptionProvider oldLeader = consumer.createdProviders.get(1);
+      final AtomicInteger unsubscribeCount = new AtomicInteger();
+      newLeader.unsubscribeHandler =
+          topicNames -> {
+            unsubscribeCount.incrementAndGet();
+            return Collections.emptyMap();
+          };
+      newLeader.heartbeatResponse =
+          response -> {
+            response.getTopics().putAll(topics);
+            response.getTopicNamesToUnsubscribe().add(TOPIC);
+          };
+      heartbeat(consumer, newLeader);
+
+      // The new leader now has a region to stream, and the old leader has no remaining work.
+      newLeader.heartbeatResponse = response -> response.getTopics().putAll(topics);
+      heartbeat(consumer, newLeader);
+      oldLeader.heartbeatResponse =
+          response -> {
+            response.getTopics().putAll(topics);
+            response.getTopicNamesToUnsubscribe().add(TOPIC);
+          };
+      heartbeat(consumer, oldLeader);
+
+      Assert.assertEquals(0, unsubscribeCount.get());
+      Assert.assertFalse(consumer.allTopicMessagesHaveBeenConsumed());
+      Assert.assertEquals(1, consumer.pollForTest(500L).size());
+
+      consumer.handleProviderTopicTermination(1, TOPIC);
+      Assert.assertEquals(1, unsubscribeCount.get());
+      Assert.assertTrue(consumer.allTopicMessagesHaveBeenConsumed());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testRetainedSnapshotWaitsForDataNodeAdvertisedInCompletionHeartbeat()
+      throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(2, 0, false, false, 1);
+    try {
+      consumer.open();
+      consumer.subscribeRetainedSnapshotTopic();
+      final Map<String, TopicConfig> topics = consumer.subscribedTopics;
+      final TestSubscriptionProvider first = consumer.createdProviders.get(0);
+      final AtomicInteger unsubscribeCount = new AtomicInteger();
+      first.unsubscribeHandler =
+          topicNames -> {
+            unsubscribeCount.incrementAndGet();
+            return Collections.emptyMap();
+          };
+      first.heartbeatResponse =
+          response -> {
+            response.getTopics().putAll(topics);
+            response.getEndPoints().put(2, new TEndPoint(HOST, FIRST_PORT + 1));
+            response.getTopicNamesToUnsubscribe().add(TOPIC);
+          };
+      heartbeat(consumer, first);
+
+      Assert.assertEquals(Set.of(1, 2), consumer.getExpectedDataNodeIds());
+      Assert.assertEquals(0, unsubscribeCount.get());
+      Assert.assertFalse(consumer.allTopicMessagesHaveBeenConsumed());
+
+      getProviders(consumer).sync(consumer);
+      heartbeat(consumer, first);
+      Assert.assertEquals(1, consumer.pollForTest(500L).size());
+      Assert.assertEquals(1, consumer.getPollCount(2));
+      consumer.handleProviderTopicTermination(2, TOPIC);
+      Assert.assertEquals(1, unsubscribeCount.get());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testRetainedSnapshotKeepsProviderReadLockFromDecisionThroughUnsubscribe()
+      throws Exception {
+    final AtomicReference<ReentrantReadWriteLock> lock = new AtomicReference<>();
+    final TestPullConsumer consumer =
+        new TestPullConsumer(1, 0, false, false, 1) {
+          @Override
+          protected Map<String, String> coreReportMessage() {
+            if (lock.get() != null) {
+              Assert.assertTrue(lock.get().getReadHoldCount() > 0);
+            }
+            return super.coreReportMessage();
+          }
+        };
+    try {
+      consumer.open();
+      consumer.subscribeRetainedSnapshotTopic();
+      final Field lockField =
+          AbstractSubscriptionProviders.class.getDeclaredField("subscriptionProvidersLock");
+      lockField.setAccessible(true);
+      lock.set((ReentrantReadWriteLock) lockField.get(getProviders(consumer)));
+      consumer.createdProviders.get(0).unsubscribeHandler =
+          topicNames -> {
+            Assert.assertTrue(lock.get().getReadHoldCount() > 1);
+            return Collections.emptyMap();
+          };
+
+      consumer.handleProviderTopicTermination(1, TOPIC);
+      Assert.assertTrue(consumer.allTopicMessagesHaveBeenConsumed());
+    } finally {
+      lock.set(null);
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testRetainedSnapshotTerminationDoesNotUseStaleMembershipAcrossConcurrentSync()
+      throws Exception {
+    final AtomicInteger clusterSize = new AtomicInteger(1);
+    final AtomicInteger unsubscribeCount = new AtomicInteger();
+    final TestPullConsumer consumer =
+        new TestPullConsumer(1, 0, false, false, 2) {
+          @Override
+          protected AbstractSubscriptionProvider constructSubscriptionProvider(
+              final TEndPoint endPoint,
+              final String username,
+              final String password,
+              final String encryptedPassword,
+              final String consumerId,
+              final String consumerGroupId,
+              final String ownerId,
+              final Long ownerEpoch,
+              final int thriftMaxFrameSize,
+              final long heartbeatIntervalMs,
+              final int connectionTimeoutInMs) {
+            final TestSubscriptionProvider provider =
+                (TestSubscriptionProvider)
+                    super.constructSubscriptionProvider(
+                        endPoint,
+                        username,
+                        password,
+                        encryptedPassword,
+                        consumerId,
+                        consumerGroupId,
+                        ownerId,
+                        ownerEpoch,
+                        thriftMaxFrameSize,
+                        heartbeatIntervalMs,
+                        connectionTimeoutInMs);
+            provider.heartbeatResponse =
+                response -> response.getEndPoints().keySet().removeIf(id -> id > clusterSize.get());
+            provider.unsubscribeHandler =
+                topicNames -> {
+                  unsubscribeCount.incrementAndGet();
+                  return Collections.emptyMap();
+                };
+            return provider;
+          }
+
+          @Override
+          protected Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() {
+            final Map<Integer, TEndPoint> endpoints = new HashMap<>();
+            for (int id = 1; id <= clusterSize.get(); id++) {
+              endpoints.put(id, new TEndPoint(HOST, FIRST_PORT + id - 1));
+            }
+            return endpoints;
+          }
+        };
+    try {
+      consumer.open();
+      consumer.subscribeRetainedSnapshotTopic();
+      final AbstractSubscriptionProviders providers = getProviders(consumer);
+      // Restrict initial membership to {1} via sync, then re-apply retained snapshot topic config.
+      providers.sync(consumer);
+      consumer.subscribeRetainedSnapshotTopic();
+      Assert.assertEquals(Collections.singleton(1), consumer.getExpectedDataNodeIds());
+
+      final CountDownLatch readLockHeld = new CountDownLatch(1);
+      final ExecutorService executor = Executors.newSingleThreadExecutor();
+      try {
+        // Hold providers read lock while sync() waits for write lock to expand cluster to {1, 2}.
+        final Future<?> syncFuture =
+            executor.submit(
+                () -> {
+                  await(readLockHeld);
+                  clusterSize.set(2);
+                  providers.sync(consumer);
+                });
+
+        providers.acquireReadLock();
+        try {
+          readLockHeld.countDown();
+          // Give sync() a moment to queue on the write lock.
+          Thread.sleep(50L);
+        } finally {
+          providers.releaseReadLock();
+        }
+        syncFuture.get(5, TimeUnit.SECONDS);
+      } finally {
+        executor.shutdownNow();
+      }
+      consumer.subscribeRetainedSnapshotTopic();
+
+      // Now cluster membership is {1, 2}. A termination from DN 1 alone must NOT unsubscribe.
+      consumer.handleProviderTopicTermination(1, TOPIC);
+      Assert.assertEquals(0, unsubscribeCount.get());
+      Assert.assertFalse(consumer.allTopicMessagesHaveBeenConsumed());
+
+      // Termination from DN 2 completes the barrier.
+      consumer.handleProviderTopicTermination(2, TOPIC);
+      Assert.assertEquals(1, unsubscribeCount.get());
+      Assert.assertTrue(consumer.allTopicMessagesHaveBeenConsumed());
+    } finally {
+      consumer.close();
+    }
+  }
+
   private static void enableCommitBatching(
       final TestSubscriptionProvider provider, final SubscriptionCommitContext context)
       throws Exception {
@@ -1332,6 +1713,17 @@ public class SubscriptionConsumerMultiProviderPollTest {
     final Field field = AbstractSubscriptionConsumer.class.getDeclaredField("providers");
     field.setAccessible(true);
     return (AbstractSubscriptionProviders) field.get(consumer);
+  }
+
+  private static void heartbeat(
+      final TestPullConsumer consumer, final TestSubscriptionProvider provider) throws Exception {
+    final Method heartbeat =
+        AbstractSubscriptionProviders.class.getDeclaredMethod(
+            "heartbeatProvider",
+            AbstractSubscriptionConsumer.class,
+            AbstractSubscriptionProvider.class);
+    heartbeat.setAccessible(true);
+    heartbeat.invoke(getProviders(consumer), consumer, provider);
   }
 
   private static void await(final CountDownLatch latch) {
@@ -1470,6 +1862,13 @@ public class SubscriptionConsumerMultiProviderPollTest {
       subscribedTopics = Collections.singletonMap(TOPIC, new TopicConfig());
     }
 
+    private void subscribeRetainedSnapshotTopic() {
+      final Map<String, String> attrs = new HashMap<>();
+      attrs.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+      attrs.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, Boolean.TRUE.toString());
+      subscribedTopics = Collections.singletonMap(TOPIC, new TopicConfig(attrs));
+    }
+
     private List<SubscriptionMessage> pollForTest(final long timeoutMs)
         throws SubscriptionException {
       return poll(timeoutMs);
@@ -1514,11 +1913,15 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private final AtomicInteger sessionCloseCount = new AtomicInteger();
     private final AtomicInteger commitCount = new AtomicInteger();
     private volatile Runnable heartbeatAction = () -> {};
+    private Consumer<PipeSubscribeHeartbeatResp> heartbeatResponse = response -> {};
     private boolean emptyHeartbeatTopics;
     private Runnable handshakeAction = () -> {};
     private boolean failContinuation;
     private Runnable continuationAction = () -> {};
     private Runnable commitAction = () -> {};
+    private java.util.function.BiFunction<Set<String>, Integer, List<SubscriptionPollResponse>>
+        pollHandler;
+    private Function<Set<String>, Map<String, TopicConfig>> unsubscribeHandler;
     private Function<List<SubscriptionCommitContext>, CommitResult> commitResponse;
     private List<SubscriptionCommitContext> committed = Collections.emptyList();
     private Map<String, TopicProgress> committedProgressByTopic = Collections.emptyMap();
@@ -1634,7 +2037,17 @@ public class SubscriptionConsumerMultiProviderPollTest {
       for (int id = 1; id <= providerCount; id++) {
         response.getEndPoints().put(id, new TEndPoint(HOST, FIRST_PORT + id - 1));
       }
+      heartbeatResponse.accept(response);
       return response;
+    }
+
+    @Override
+    Map<String, TopicConfig> unsubscribe(final Set<String> topicNames)
+        throws SubscriptionException {
+      if (unsubscribeHandler != null) {
+        return unsubscribeHandler.apply(topicNames);
+      }
+      return super.unsubscribe(topicNames);
     }
 
     @Override
@@ -1643,8 +2056,11 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final long timeoutMs,
         final Map<String, TopicProgress> progressByTopic)
         throws SubscriptionException {
-      pollCounts.merge(dataNodeId, 1, Integer::sum);
+      final int currentPollCount = pollCounts.merge(dataNodeId, 1, Integer::sum);
       pollTimeouts.put(dataNodeId, timeoutMs);
+      if (pollHandler != null) {
+        return pollHandler.apply(topicNames, currentPollCount);
+      }
       if (dataNodeId == dataProviderId && failFirstPoll.compareAndSet(true, false)) {
         setUnavailable();
         throw new SubscriptionConnectionException("poll timed out");

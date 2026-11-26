@@ -60,7 +60,6 @@
         <awaitility.version>4.2.0</awaitility.version>
         <boost.include.dir/>
         <bouncycastle.version>1.84</bouncycastle.version>
-        <caffeine.version>2.9.3</caffeine.version>
         <cglib.version>3.3.0</cglib.version>
         <cmake.build.type>Release</cmake.build.type>
         <commons-cli.version>1.5.0</commons-cli.version>
@@ -71,7 +70,6 @@
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <ctest.skip.tests>false</ctest.skip.tests>
         <drill.freemarker.maven.plugin.version>1.21.1</drill.freemarker.maven.plugin.version>
-        <dropwizard.metrics.version>4.2.19</dropwizard.metrics.version>
         <eclipse-collections.version>11.1.0</eclipse-collections.version>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
@@ -464,11 +462,6 @@
                 <version>${commons-lang3.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-core</artifactId>
-                <version>${dropwizard.metrics.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-http</artifactId>
                 <version>${jetty.version}</version>
@@ -508,17 +501,6 @@
                 <groupId>org.eclipse.jetty.ee10</groupId>
                 <artifactId>jetty-ee10-servlet</artifactId>
                 <version>${jetty.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.github.ben-manes.caffeine</groupId>
-                <artifactId>caffeine</artifactId>
-                <version>${caffeine.version}</version>
-            </dependency>
-            <!-- Keep Caffeine on the checker-qual version already shipped by IoTDB. -->
-            <dependency>
-                <groupId>org.checkerframework</groupId>
-                <artifactId>checker-qual</artifactId>
-                <version>3.33.0</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
@@ -606,7 +588,6 @@
                 <artifactId>asm</artifactId>
                 <version>9.3</version>
             </dependency>
-            <!-- Caffeine pulls in 2.10.0. -->
             <dependency>
                 <groupId>com.google.errorprone</groupId>
                 <artifactId>error_prone_annotations</artifactId>

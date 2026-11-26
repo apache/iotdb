@@ -26,6 +26,7 @@ from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet
 from .iotdb_container import IoTDBContainer
+from .utils import wait_for_time_series_deletion
 
 # whether the test has passed
 final_flag = True
@@ -181,17 +182,18 @@ def session_test(use_session_pool=False):
         )
 
         # delete time series
+        paths_to_delete = [
+            "root.sg_test_01.d_01.s_07",
+            "root.sg_test_01.d_01.s_08",
+            "root.sg_test_01.d_01.s_09",
+        ]
         try:
-            session.delete_time_series(
-                [
-                    "root.sg_test_01.d_01.s_07",
-                    "root.sg_test_01.d_01.s_08",
-                    "root.sg_test_01.d_01.s_09",
-                ]
-            )
+            session.delete_time_series(paths_to_delete)
         except Exception:
             test_fail()
             print_message("delete time series failed")
+
+        wait_for_time_series_deletion(session, paths_to_delete)
 
         # checking time series
         # s_07 expecting False
