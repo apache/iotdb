@@ -589,6 +589,12 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                 DataNodePipeMessages.MESSAGE_PIPE_STARTING_ARG_A09517B7,
                 IoTDBDataRegionSource.class.getName()));
         try {
+          if (historicalSource instanceof PipeHistoricalDataRegionTsFileAndDeletionSource
+              && ((PipeHistoricalDataRegionTsFileAndDeletionSource) historicalSource)
+                  .shouldReportHistoricalDeletionProgress(dataRegion)) {
+            // Close existing files before realtime subscribes to file-close events.
+            dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+          }
           realtimeSource.start();
         } finally {
           dataRegion.writeUnlock();

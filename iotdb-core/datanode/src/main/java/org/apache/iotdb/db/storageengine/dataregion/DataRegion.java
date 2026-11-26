@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
@@ -309,6 +310,9 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final Map<Long, SchemaDeletionModProgress> modFileDeletionProgress =
       new ConcurrentHashMap<>();
+
+  // Guarded by the region write lock, like history extraction that snapshots it.
+  private ProgressIndex appliedLocalDeletionProgress = MinimumProgressIndex.INSTANCE;
 
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
@@ -3361,6 +3365,15 @@ public class DataRegion implements IDataRegionForQuery {
   public void writeLock(String holder) {
     insertLock.writeLock().lock();
     insertWriteLockHolder = holder;
+  }
+
+  public ProgressIndex getAppliedLocalDeletionProgress() {
+    return appliedLocalDeletionProgress;
+  }
+
+  public void recordAppliedLocalDeletion(ProgressIndex progressIndex) {
+    appliedLocalDeletionProgress =
+        appliedLocalDeletionProgress.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
   }
 
   /** unlock the write lock of the insert lock */

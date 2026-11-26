@@ -140,6 +140,7 @@ public class LoadTsFileManagerSplitCoverageTest {
 
   @Before
   public void setUp() throws Exception {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(false);
     tempDir = Files.createTempDirectory("load-split-coverage-test").toFile();
     config = IoTDBDescriptor.getInstance().getConfig();
     originalLoadBaseDirs = config.getLoadTsFileDirs();
@@ -167,6 +168,7 @@ public class LoadTsFileManagerSplitCoverageTest {
 
   @After
   public void tearDown() throws Exception {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(null);
     final TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
     tsFileConfig.setPageSizeInByte(originalPageSize);
     tsFileConfig.setMaxNumberOfPointsInPage(originalMaxPointsInPage);

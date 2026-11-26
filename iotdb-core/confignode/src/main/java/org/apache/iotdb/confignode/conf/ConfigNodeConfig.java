@@ -78,7 +78,7 @@ public class ConfigNodeConfig {
   private int schemaReplicationFactor = 1;
 
   /** Data region consensus protocol. */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS_V2;
 
   /** IoTConsensusV2 replicate mode: "batch" or "stream". */
   private String iotConsensusV2Mode = "batch";

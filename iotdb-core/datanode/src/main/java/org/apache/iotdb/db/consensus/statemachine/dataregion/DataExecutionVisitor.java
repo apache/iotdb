@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
@@ -348,6 +349,9 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
         }
       }
       dataRegion.insertSeparatorToWAL(node);
+      if (DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)) {
+        dataRegion.recordAppliedLocalDeletion(node.getProgressIndex());
+      }
       succeeded = true;
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
@@ -369,14 +373,26 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   @Override
   public TSStatus visitDeleteData(
       final RelationalDeleteDataNode node, final DataRegion dataRegion) {
+    final boolean isLocalIoTV2Delete = DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node);
+    if (isLocalIoTV2Delete) {
+      // Keep history extraction out until the DELETE has materialized its mods and progress.
+      dataRegion.writeLock("deleteData");
+    }
     try {
       dataRegion.deleteByTable(node);
+      if (isLocalIoTV2Delete) {
+        dataRegion.recordAppliedLocalDeletion(node.getProgressIndex());
+      }
       return StatusUtils.OK;
     } catch (final WriteProcessRejectException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final IOException e) {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
       return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.getMessage());
+    } finally {
+      if (isLocalIoTV2Delete) {
+        dataRegion.writeUnlock();
+      }
     }
   }
 

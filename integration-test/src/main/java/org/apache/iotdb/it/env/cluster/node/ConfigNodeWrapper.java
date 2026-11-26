@@ -30,6 +30,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONNECTION_TIMEOUT_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONSENSUS_DIR;
@@ -167,7 +168,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   protected void reloadMutableFields() {
     mutableCommonProperties.setProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS, SIMPLE_CONSENSUS);
     mutableCommonProperties.setProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS, SIMPLE_CONSENSUS);
-    mutableCommonProperties.setProperty(DATA_REGION_CONSENSUS_PROTOCOL_CLASS, SIMPLE_CONSENSUS);
+    mutableCommonProperties.setProperty(DATA_REGION_CONSENSUS_PROTOCOL_CLASS, IOT_CONSENSUS_V2);
 
     mutableCommonProperties.setProperty(SCHEMA_REPLICATION_FACTOR, "1");
     mutableCommonProperties.setProperty(DATA_REPLICATION_FACTOR, "1");

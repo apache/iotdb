@@ -68,6 +68,7 @@ public class LoadTsFileCleanerTest {
 
   @Before
   public void setUp() throws Exception {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(false);
     tempDir = Files.createTempDirectory("load-cleaner-test").toFile();
     config = IoTDBDescriptor.getInstance().getConfig();
     originalLoadBaseDirs = config.getLoadTsFileDirs();
@@ -87,6 +88,7 @@ public class LoadTsFileCleanerTest {
 
   @After
   public void tearDown() throws Exception {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(null);
     config.setLoadTsFileDirs(originalLoadBaseDirs);
     deleteRecursively(tempDir);
   }
@@ -224,7 +226,7 @@ public class LoadTsFileCleanerTest {
       cleaner.sweepRegisteredTasks();
       Assert.assertFalse("V2 does not expand staged references from the WAL", taskDir.exists());
     } finally {
-      LoadConsensusCompat.setIoTConsensusV2ForTest(null);
+      LoadConsensusCompat.setIoTConsensusV2ForTest(false);
     }
   }
 

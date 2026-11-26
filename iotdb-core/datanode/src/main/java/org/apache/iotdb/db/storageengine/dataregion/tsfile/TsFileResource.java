@@ -131,8 +131,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
   /** time index */
   private volatile ITimeIndex timeIndex;
 
-  private final AtomicReference<Boolean> isEmpty = new AtomicReference<>();
-
   private Future<ModificationFile> exclusiveModFileFuture;
   // this future suggest when the async recovery ends
   private CompletableFuture<String> sharedModFilePathFuture;
@@ -1485,9 +1483,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public boolean isEmpty() {
-    isEmpty.compareAndSet(
-        null, getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE);
-    return isEmpty.get();
+    // An open file can acquire data after the first check during Pipe extraction.
+    return getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
   }
 
   public String getDatabaseName() {
@@ -1698,7 +1695,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
     cloned.lastValues = this.lastValues;
     cloned.maxProgressIndex.set(this.maxProgressIndex.get());
     cloned.atomicStatus.set(this.atomicStatus.get());
-    cloned.isEmpty.set(this.isEmpty.get());
     cloned.tsFileID = this.tsFileID;
     cloned.prev = null;
     cloned.next = null;

@@ -99,6 +99,21 @@ public class TsFileResourceTest {
     }
   }
 
+  @Test
+  public void testEmptyResourceCanAcquireDataBeforeClosing() {
+    final TsFileResource resource = new TsFileResource(file);
+    resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
+    assertTrue(resource.isEmpty());
+
+    final IDeviceID device = Factory.DEFAULT_FACTORY.create("root.sg.d0");
+    resource.updateStartTime(device, 1);
+    resource.updateEndTime(device, 2);
+    assertFalse(resource.isEmpty());
+
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    assertFalse(resource.isEmpty());
+  }
+
   @Test(expected = IOException.class)
   public void testDeserializeMissingResource() throws IOException {
     tsFileResource.deserialize();

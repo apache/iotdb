@@ -33,6 +33,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import reactor.util.annotation.Nullable;
 
@@ -238,6 +239,16 @@ public interface BaseEnv {
   List<ConfigNodeWrapper> getConfigNodeWrapperList();
 
   List<DataNodeWrapper> getDataNodeWrapperList();
+
+  default List<String> getRestUrls() {
+    return getDataNodeWrapperList().stream()
+        .map(
+            node ->
+                "http://"
+                    + UrlUtils.formatTEndPointIpv4AndIpv6Url(
+                        node.getIp(), node.getRestServicePort()))
+        .toList();
+  }
 
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws ClientManagerException, IOException, InterruptedException;

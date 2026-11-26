@@ -116,6 +116,7 @@ public class LoadTsFileManagerTest {
 
   @Before
   public void setUp() throws Exception {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(false);
     tempDir = Files.createTempDirectory("load-tsfile-manager-test").toFile();
     config = IoTDBDescriptor.getInstance().getConfig();
     originalLoadBaseDirs = config.getLoadTsFileDirs();
@@ -130,6 +131,7 @@ public class LoadTsFileManagerTest {
 
   @After
   public void tearDown() throws Exception {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(null);
     config.setLoadTsFileDirs(originalLoadBaseDirs);
     deleteRecursively(tempDir);
   }
@@ -783,7 +785,7 @@ public class LoadTsFileManagerTest {
           "IoTConsensusV2 replicates through pipe, so there is no index to wait for",
           retention.mustRetain(10L));
     } finally {
-      LoadConsensusCompat.setIoTConsensusV2ForTest(null);
+      LoadConsensusCompat.setIoTConsensusV2ForTest(false);
     }
   }
 
@@ -900,7 +902,7 @@ public class LoadTsFileManagerTest {
       }
     } finally {
       manager.stop();
-      LoadConsensusCompat.setIoTConsensusV2ForTest(null);
+      LoadConsensusCompat.setIoTConsensusV2ForTest(false);
     }
   }
 
