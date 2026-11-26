@@ -172,6 +172,27 @@ public class ActiveLoadTsFileLoaderTest {
   }
 
   @Test
+  public void testFailureDirectoryMaxSizeIsEnforcedDuringInitialization() throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final File failDir = new File(config.getLoadActiveListeningFailDir());
+    final File oldGroup = new File(failDir, "active-load-old");
+    final File newestGroup = new File(failDir, "pipe-structure-newest");
+    Files.createDirectories(oldGroup.toPath());
+    Files.createDirectories(newestGroup.toPath());
+    Files.write(new File(oldGroup, "old.tsfile").toPath(), new byte[8]);
+    Files.write(new File(newestGroup, "new.tsfile").toPath(), new byte[8]);
+    Files.setLastModifiedTime(oldGroup.toPath(), FileTime.fromMillis(1));
+    Files.setLastModifiedTime(newestGroup.toPath(), FileTime.fromMillis(2));
+    config.setLoadActiveListeningFailDirMaxSizeInBytes(10);
+
+    invokeInitFailDirIfNecessary(loader);
+
+    Assert.assertFalse(oldGroup.exists());
+    Assert.assertTrue(newestGroup.exists());
+    Assert.assertEquals(8, Files.size(new File(newestGroup, "new.tsfile").toPath()));
+  }
+
+  @Test
   public void testPruningFailureGroupMakesSourceEligibleForLoading() throws Exception {
     final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
     final File oldTsFile = createTsFileWithCompanionFiles("pruned-failed.tsfile");

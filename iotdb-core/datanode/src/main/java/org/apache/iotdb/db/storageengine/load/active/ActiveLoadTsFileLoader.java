@@ -126,6 +126,7 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void initFailDirIfNecessary() {
+    File failDirToEnforce = null;
     if (!Objects.equals(failDir.get(), IOTDB_CONFIG.getLoadActiveListeningFailDir())) {
       synchronized (failDir) {
         if (!Objects.equals(failDir.get(), IOTDB_CONFIG.getLoadActiveListeningFailDir())) {
@@ -147,8 +148,13 @@ public class ActiveLoadTsFileLoader {
 
           ActiveLoadingFilesSizeMetricsSet.getInstance().updateFailedDir(failDir.get());
           ActiveLoadingFilesNumberMetricsSet.getInstance().updateFailedDir(failDir.get());
+          failDirToEnforce = failDirFile;
         }
       }
+    }
+    if (failDirToEnforce != null) {
+      enforceFailureDirectoryMaxSize(
+          failDirToEnforce, null, this::invalidateFailedFileIndexForGroup);
     }
   }
 
@@ -551,11 +557,12 @@ public class ActiveLoadTsFileLoader {
       return false;
     }
     if (directories.length <= 1) {
-      return newestGroup.isDirectory();
+      return newestGroup == null || newestGroup.isDirectory();
     }
 
     final List<File> groups = new ArrayList<>(List.of(directories));
     groups.sort(Comparator.comparingLong(File::lastModified));
+    final File groupToKeep = newestGroup == null ? groups.get(groups.size() - 1) : newestGroup;
     long totalSize = 0;
     try {
       for (final File group : groups) {
@@ -565,7 +572,7 @@ public class ActiveLoadTsFileLoader {
         if (totalSize <= maxSize) {
           break;
         }
-        if (group.equals(newestGroup)) {
+        if (group.equals(groupToKeep)) {
           continue;
         }
         totalSize -= getDirectorySize(group);
@@ -573,8 +580,8 @@ public class ActiveLoadTsFileLoader {
         deletedGroupConsumer.accept(group);
       }
       return totalSize <= maxSize
-          || (newestGroup.isDirectory()
-              && groups.stream().allMatch(group -> group.equals(newestGroup) || !group.exists()));
+          || (groupToKeep.isDirectory()
+              && groups.stream().allMatch(group -> group.equals(groupToKeep) || !group.exists()));
     } catch (final IOException | ArithmeticException e) {
       LOGGER.warn(StorageEngineMessages.ERROR_MOVING_FILE_TO_FAIL_DIR, failDirectory, e);
       return false;
