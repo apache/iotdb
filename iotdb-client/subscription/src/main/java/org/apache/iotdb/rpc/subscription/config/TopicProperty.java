@@ -83,9 +83,58 @@ public enum TopicProperty {
     return key == null ? null : PROPERTIES_BY_KEY.get(key.trim().toLowerCase(Locale.ROOT));
   }
 
-  /** Canonicalize built-in keys while preserving extension keys and all values verbatim. */
+  public static Map<String, String> normalizeAttributes(final Map<String, String> attributes) {
+    final Map<String, String> normalizedAttributes = new HashMap<>();
+    if (attributes == null) {
+      return normalizedAttributes;
+    }
+    attributes.forEach(
+        (key, value) -> {
+          final TopicProperty property = fromKey(key);
+          normalizedAttributes.put(
+              property == null ? key : property.key, property == null ? value : trim(value));
+        });
+    return normalizedAttributes;
+  }
+
+  public static void replaceNowTimeValues(
+      final Map<String, String> attributes, final String currentTime) {
+    attributes.replaceAll(
+        (key, value) -> {
+          final TopicProperty property = fromKey(key);
+          return value != null
+                  && TopicConstant.NOW_TIME_VALUE.equals(value.trim())
+                  && (property == START_TIME || property == END_TIME)
+              ? currentTime
+              : value;
+        });
+  }
+
+  public static boolean containsAttribute(
+      final Map<String, String> attributes, final String expectedKey) {
+    return attributes.keySet().stream()
+        .filter(key -> key != null)
+        .anyMatch(key -> expectedKey.equalsIgnoreCase(key.trim()));
+  }
+
+  public static String getAttributeValue(
+      final Map<String, String> attributes, final String expectedKey, final String defaultValue) {
+    return attributes.entrySet().stream()
+        .filter(entry -> entry.getKey() != null)
+        .filter(entry -> expectedKey.equalsIgnoreCase(entry.getKey().trim()))
+        .map(Map.Entry::getValue)
+        .filter(value -> value != null)
+        .map(String::trim)
+        .findFirst()
+        .orElse(defaultValue);
+  }
+
   public static String canonicalizeKey(final String key) {
     final TopicProperty property = fromKey(key);
     return property == null ? key : property.getKey();
+  }
+
+  private static String trim(final String value) {
+    return value == null ? null : value.trim();
   }
 }

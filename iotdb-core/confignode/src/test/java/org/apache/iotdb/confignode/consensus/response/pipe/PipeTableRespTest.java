@@ -171,6 +171,37 @@ public class PipeTableRespTest {
   }
 
   @Test
+  public void testConvertToTShowPipeRespDisplaysNormalizedParameters() {
+    final PipeStaticMeta staticMeta =
+        new PipeStaticMeta(
+            "normalizedPipe",
+            1L,
+            Map.of(" SOURCE ", " IOTDB-EXTRACTOR ", " Source.Path ", " ROOT.SG.** "),
+            Map.of(" PROCESSOR ", " DO-NOTHING-PROCESSOR ", " Processor.Mode ", " ON "),
+            Map.of(
+                " CONNECTOR ", " IOTDB-THRIFT-CONNECTOR ",
+                " Connector.User ", " ROOT ",
+                " Connector.Node-URLs ", " https://NODEA:6667,NodeB:6667 "));
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1));
+    final PipeMeta pipeMeta = new PipeMeta(staticMeta, new PipeRuntimeMeta(pipeTasks));
+    final PipeTableResp response =
+        new PipeTableResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), List.of(pipeMeta));
+
+    final TShowPipeInfo pipeInfo = response.convertToTShowPipeResp().getPipeInfoList().get(0);
+
+    Assert.assertTrue(pipeInfo.getPipeExtractor().contains("source.path= ROOT.SG.** "));
+    Assert.assertFalse(pipeInfo.getPipeExtractor().contains("source.path=root.sg.**"));
+    Assert.assertTrue(pipeInfo.getPipeProcessor().contains("processor.mode=on"));
+    Assert.assertTrue(pipeInfo.getPipeConnector().contains("connector.user= ROOT "));
+    Assert.assertTrue(
+        pipeInfo
+            .getPipeConnector()
+            .contains("connector.node-urls= https://NODEA:6667,NodeB:6667 "));
+  }
+
+  @Test
   public void testConvertToTShowPipeRespAggregatesRecentFailures() {
     final PipeTableResp pipeTableResp = constructPipeTableResp();
     final PipeTemporaryMetaInCoordinator temporaryMeta =

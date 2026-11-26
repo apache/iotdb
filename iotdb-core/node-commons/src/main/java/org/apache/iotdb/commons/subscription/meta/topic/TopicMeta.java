@@ -410,13 +410,7 @@ public class TopicMeta {
   // both "Tag-Filter" and "tag-filter" with different values. Extension keys remain unchanged.
   private static Map<String, String> canonicalizeTopicAttributes(
       final Map<String, String> topicAttributes) {
-    final Map<String, String> canonicalAttributes = new HashMap<>();
-    if (Objects.isNull(topicAttributes)) {
-      return canonicalAttributes;
-    }
-    topicAttributes.forEach(
-        (key, value) -> canonicalAttributes.put(canonicalizeTopicAttributeKey(key), value));
-    return canonicalAttributes;
+    return TopicProperty.normalizeAttributes(topicAttributes);
   }
 
   private static void canonicalizeTopicAttributesInPlace(final Map<String, String> attributes) {

@@ -20,11 +20,14 @@
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -38,10 +41,14 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -53,6 +60,41 @@ public abstract class PipePluginAgent {
   private final PipeSourceConstructor pipeExtractorConstructor;
   private final PipeProcessorConstructor pipeProcessorConstructor;
   private final PipeSinkConstructor pipeSinkConstructor;
+
+  private static final Set<String> PARAMETER_VALUE_PRESERVATION_KEYS =
+      Set.of(
+          "path",
+          "path.inclusion",
+          "path.exclusion",
+          "pattern",
+          "pattern.inclusion",
+          "pattern.exclusion",
+          "database-name",
+          "table-name",
+          "database",
+          "table",
+          "user",
+          "topic",
+          "consumer-group",
+          "username",
+          "password",
+          "scp.password",
+          "cli-hostname",
+          "ip",
+          "host",
+          "node-urls",
+          "ssl.trust-store-path",
+          "ssl.trust-store-pwd",
+          "ssl.key-store-path",
+          "ssl.key-store-pwd",
+          "output.database",
+          "output.measurements",
+          "output.series",
+          "output-series",
+          "new-db-name",
+          "opcda.clsid",
+          "opcda.progid",
+          "consensus.pipe-name");
 
   protected PipePluginAgent(final PipePluginMetaKeeper pipePluginMetaKeeper) {
     this.pipePluginMetaKeeper = pipePluginMetaKeeper;
@@ -82,6 +124,169 @@ public abstract class PipePluginAgent {
     return pipeSinkConstructor.reflectPlugin(sinkParameters);
   }
 
+  public static PipeParameters normalizeSourceParameters(final PipeParameters parameters) {
+    return normalizeSourceParameters(parameters, null);
+  }
+
+  public static PipeParameters normalizeSourceParametersForUpdate(
+      final PipeParameters parameters, final PipeParameters existingParameters) {
+    return normalizeSourceParametersForUpdate(parameters, existingParameters, false);
+  }
+
+  public static PipeParameters normalizeSourceParametersForUpdate(
+      final PipeParameters parameters,
+      final PipeParameters existingParameters,
+      final boolean replaceAll) {
+    return normalizeSourceParameters(parameters, replaceAll ? null : existingParameters);
+  }
+
+  private static PipeParameters normalizeSourceParameters(
+      final PipeParameters parameters, final PipeParameters existingParameters) {
+    return normalizePluginParameters(
+        parameters,
+        existingParameters,
+        Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+        null,
+        BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(),
+        PipeExtractor.class);
+  }
+
+  public static PipeParameters normalizeProcessorParameters(final PipeParameters parameters) {
+    return normalizeProcessorParameters(parameters, null, null);
+  }
+
+  public static PipeParameters normalizeProcessorParametersForUpdate(
+      final PipeParameters parameters, final PipeParameters existingParameters) {
+    return normalizeProcessorParameters(parameters, existingParameters, null);
+  }
+
+  private static PipeParameters normalizeProcessorParameters(
+      final PipeParameters parameters,
+      final PipeParameters existingParameters,
+      final String selectedPluginName) {
+    return normalizePluginParameters(
+        parameters,
+        existingParameters,
+        Collections.singletonList(PipeProcessorConstant.PROCESSOR_KEY),
+        selectedPluginName,
+        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(),
+        PipeProcessor.class);
+  }
+
+  public static PipeParameters normalizeSinkParameters(final PipeParameters parameters) {
+    return normalizeSinkParameters(parameters, null);
+  }
+
+  public static PipeParameters normalizeSinkParametersForUpdate(
+      final PipeParameters parameters, final PipeParameters existingParameters) {
+    return normalizeSinkParameters(parameters, existingParameters);
+  }
+
+  private static PipeParameters normalizeSinkParameters(
+      final PipeParameters parameters, final PipeParameters existingParameters) {
+    final PipeParameters defaultParameters =
+        existingParameters == null ? parameters : existingParameters;
+    return normalizePluginParameters(
+        parameters,
+        existingParameters,
+        Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
+        null,
+        PipeSinkConstant.getConnectorOrSinkNameWithDefault(defaultParameters),
+        PipeConnector.class);
+  }
+
+  private static PipeParameters normalizePluginParameters(
+      final PipeParameters parameters,
+      final PipeParameters existingParameters,
+      final List<String> pluginNameKeys,
+      final String selectedPluginName,
+      final String defaultPluginName,
+      final Class<?> pluginClass) {
+    String pluginName = selectedPluginName;
+    if (pluginName == null) {
+      pluginName = getPluginName(parameters, pluginNameKeys);
+    }
+    if (pluginName == null && existingParameters != null) {
+      pluginName = getPluginName(existingParameters, pluginNameKeys);
+    }
+    if (pluginName == null) {
+      pluginName = defaultPluginName;
+    }
+    final boolean builtinPlugin = isBuiltinPlugin(pluginName, pluginClass);
+    final Map<String, String> normalizedAttributes = new HashMap<>();
+    parameters
+        .getAttribute()
+        .forEach(
+            (key, value) -> {
+              if (key == null) {
+                normalizedAttributes.put(null, value);
+                return;
+              }
+
+              final String trimmedKey = key.trim();
+              final String normalizedKey = trimmedKey.toLowerCase(Locale.ROOT);
+              if (isPluginNameKey(trimmedKey, pluginNameKeys)) {
+                normalizedAttributes.put(
+                    normalizedKey,
+                    value == null || !builtinPlugin
+                        ? value
+                        : value.trim().toLowerCase(Locale.ROOT));
+              } else if (builtinPlugin) {
+                normalizedAttributes.put(
+                    normalizedKey,
+                    value == null || shouldPreserveParameterValue(normalizedKey)
+                        ? value
+                        : value.trim().toLowerCase(Locale.ROOT));
+              } else {
+                normalizedAttributes.put(key, value);
+              }
+            });
+    return new PipeParameters(normalizedAttributes);
+  }
+
+  private static String getPluginName(
+      final PipeParameters parameters, final List<String> pluginNameKeys) {
+    if (parameters == null) {
+      return null;
+    }
+    for (final String pluginNameKey : pluginNameKeys) {
+      for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
+        if (entry.getKey() != null
+            && pluginNameKey.equalsIgnoreCase(entry.getKey().trim())
+            && entry.getValue() != null) {
+          return entry.getValue();
+        }
+      }
+    }
+    return null;
+  }
+
+  private static boolean isPluginNameKey(final String key, final List<String> pluginNameKeys) {
+    for (final String pluginNameKey : pluginNameKeys) {
+      if (pluginNameKey.equalsIgnoreCase(key)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isBuiltinPlugin(final String pluginName, final Class<?> pluginClass) {
+    if (pluginName == null) {
+      return false;
+    }
+    final String normalizedPluginName = pluginName.trim().toLowerCase(Locale.ROOT);
+    return Arrays.stream(BuiltinPipePlugin.values())
+        .anyMatch(
+            builtinPipePlugin ->
+                pluginClass.isAssignableFrom(builtinPipePlugin.getPipePluginClass())
+                    && normalizedPluginName.equals(builtinPipePlugin.getPipePluginName()));
+  }
+
+  private static boolean shouldPreserveParameterValue(final String normalizedKey) {
+    return PARAMETER_VALUE_PRESERVATION_KEYS.contains(
+        PipeParameters.KeyReducer.reduce(normalizedKey).toLowerCase(Locale.ROOT));
+  }
+
   public void validate(
       final String pipeName,
       final Map<String, String> sourceAttributes,
@@ -95,7 +300,8 @@ public abstract class PipePluginAgent {
 
   protected PipeExtractor validateSource(
       final String pipeName, final Map<String, String> sourceAttributes) throws Exception {
-    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    final PipeParameters sourceParameters =
+        normalizeSourceParameters(new PipeParameters(sourceAttributes));
     final PipeExtractor temporarySource = reflectSource(sourceParameters);
     try {
       temporarySource.validate(new PipeParameterValidator(sourceParameters));
@@ -114,7 +320,8 @@ public abstract class PipePluginAgent {
 
   protected PipeProcessor validateProcessor(final Map<String, String> processorAttributes)
       throws Exception {
-    final PipeParameters processorParameters = new PipeParameters(processorAttributes);
+    final PipeParameters processorParameters =
+        normalizeProcessorParameters(new PipeParameters(processorAttributes));
     final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
     try {
       temporaryProcessor.validate(new PipeParameterValidator(processorParameters));
@@ -130,7 +337,8 @@ public abstract class PipePluginAgent {
 
   protected PipeConnector validateSink(
       final String pipeName, final Map<String, String> sinkAttributes) throws Exception {
-    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+    final PipeParameters sinkParameters =
+        normalizeSinkParameters(new PipeParameters(sinkAttributes));
     final PipeConnector temporarySink = reflectSink(sinkParameters);
     try {
       temporarySink.validate(new PipeParameterValidator(sinkParameters));
@@ -189,13 +397,16 @@ public abstract class PipePluginAgent {
       String pipeProcessorName,
       PipeParameters processorParameters,
       PipeProcessorRuntimeConfiguration runtimeConfigurations) {
+    final PipeParameters normalizedParameters =
+        normalizeProcessorParameters(processorParameters, null, pipeProcessorName);
     final HashMap<String, String> processorKeyMap = new HashMap<>();
     if (Objects.nonNull(pipeProcessorName)) {
       processorKeyMap.put(PipeProcessorConstant.PROCESSOR_KEY, pipeProcessorName);
     }
-    final PipeParameters replacedParameters =
-        processorParameters.addOrReplaceEquivalentAttributesWithClone(
+    final PipeParameters mergedParameters =
+        normalizedParameters.addOrReplaceEquivalentAttributesWithClone(
             new PipeParameters(processorKeyMap));
+    final PipeParameters replacedParameters = normalizeProcessorParameters(mergedParameters);
     final PipeProcessor processor = reflectProcessor(replacedParameters);
     // Validate and customize should be called to expose exceptions in advance
     // and configure the processor.

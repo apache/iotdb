@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -73,7 +72,7 @@ public class TopicConfig extends PipeParameters {
   }
 
   public TopicConfig(final Map<String, String> attributes) {
-    super(attributes);
+    super(TopicProperty.normalizeAttributes(attributes));
   }
 
   public TopicConfig(final TopicConfig config) {
@@ -444,7 +443,7 @@ public class TopicConfig extends PipeParameters {
     final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
     attributes.forEach(
         (key, value) -> {
-          if (key.toLowerCase().startsWith("sink")) {
+          if (key != null && key.trim().toLowerCase(Locale.ROOT).startsWith("sink")) {
             attributesWithProcessorPrefix.put(key, value);
           }
         });
@@ -452,15 +451,10 @@ public class TopicConfig extends PipeParameters {
   }
 
   private boolean containsKeyIgnoreCase(final String expectedKey) {
-    return attributes.keySet().stream().anyMatch(key -> expectedKey.equalsIgnoreCase(key));
+    return TopicProperty.containsAttribute(attributes, expectedKey);
   }
 
   private String getStringIgnoreCase(final String expectedKey, final String defaultValue) {
-    return attributes.entrySet().stream()
-        .filter(entry -> expectedKey.equalsIgnoreCase(entry.getKey()))
-        .map(Map.Entry::getValue)
-        .filter(Objects::nonNull)
-        .findFirst()
-        .orElse(defaultValue);
+    return TopicProperty.getAttributeValue(attributes, expectedKey, defaultValue);
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.stage;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
@@ -48,7 +49,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
       Supplier<? extends PipeSinkSubtaskExecutor> executor) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
-    this.pipeSinkParameters = pipeSinkParameters;
+    this.pipeSinkParameters = PipePluginAgent.normalizeSinkParameters(pipeSinkParameters);
     this.regionId = regionId;
     this.executor = executor;
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
@@ -89,7 +90,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   }
 
   private void initSource(final Map<String, String> sourceAttributes) throws Exception {
-    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    final PipeParameters sourceParameters =
+        PipePluginAgent.normalizeSourceParameters(new PipeParameters(sourceAttributes));
 
     // 1. Construct extractor
     source = PipeConfigNodeAgent.plugin().reflectSource(sourceParameters);
@@ -118,7 +120,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   }
 
   private void initProcessor(final Map<String, String> processorAttributes) {
-    final PipeParameters processorParameters = new PipeParameters(processorAttributes);
+    final PipeParameters processorParameters =
+        PipePluginAgent.normalizeProcessorParameters(new PipeParameters(processorAttributes));
 
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
@@ -136,7 +139,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   }
 
   private void initSink(final Map<String, String> sinkAttributes) throws Exception {
-    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+    final PipeParameters sinkParameters =
+        PipePluginAgent.normalizeSinkParameters(new PipeParameters(sinkAttributes));
 
     // 1. Construct connector
     outputPipeSink = PipeConfigNodeAgent.plugin().reflectSink(sinkParameters);

@@ -64,6 +64,7 @@ import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
@@ -359,7 +360,7 @@ import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicProperty;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -2332,7 +2333,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
 
     final PipeParameters sourcePipeParameters =
-        new PipeParameters(createPipeStatement.getSourceAttributes());
+        PipePluginAgent.normalizeSourceParameters(
+            new PipeParameters(createPipeStatement.getSourceAttributes()));
     final PipeParameters sinkPipeParameters =
         new PipeParameters(createPipeStatement.getSinkAttributes());
 
@@ -2408,11 +2410,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private void validateDoubleLivingPipeParameters(final PipeParameters sourcePipeParameters) {
-    final Boolean isForwardingPipeRequests =
-        sourcePipeParameters.getBooleanByKeys(
-            PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-            PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY);
-    if (Boolean.TRUE.equals(isForwardingPipeRequests)) {
+    if (PipeSourceConstant.isForwardingPipeRequestsEnabled(sourcePipeParameters)) {
       throw new PipeParameterNotValidException(
           PipeMessages
               .EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1);
@@ -2699,24 +2697,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> sinkAttributes;
     try {
       if (!alterPipeStatement.getSourceAttributes().isEmpty()) {
+        final PipeParameters existingSourceParameters =
+            pipeMetaFromCoordinator.getStaticMeta().getSourceParameters();
+        final PipeParameters updatedSourceParameters =
+            PipePluginAgent.normalizeSourceParametersForUpdate(
+                new PipeParameters(alterPipeStatement.getSourceAttributes()),
+                existingSourceParameters,
+                alterPipeStatement.isReplaceAllSourceAttributes());
         // We don't allow changing the extractor plugin type
-        if (alterPipeStatement.getSourceAttributes().containsKey(PipeSourceConstant.EXTRACTOR_KEY)
-            || alterPipeStatement.getSourceAttributes().containsKey(PipeSourceConstant.SOURCE_KEY)
+        if (updatedSourceParameters.hasAnyAttributes(
+                PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY)
             || alterPipeStatement.isReplaceAllSourceAttributes()) {
-          checkIfSourcePluginChanged(
-              pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
-              new PipeParameters(alterPipeStatement.getSourceAttributes()));
+          checkIfSourcePluginChanged(existingSourceParameters, updatedSourceParameters);
         }
         if (alterPipeStatement.isReplaceAllSourceAttributes()) {
-          sourceAttributes = alterPipeStatement.getSourceAttributes();
+          sourceAttributes = updatedSourceParameters.getAttribute();
         } else {
-          final boolean onlyContainsUser =
-              onlyContainsUser(alterPipeStatement.getSourceAttributes());
+          final boolean onlyContainsUser = onlyContainsUser(updatedSourceParameters.getAttribute());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getSourceParameters()
-              .addOrReplaceEquivalentAttributes(
-                  new PipeParameters(alterPipeStatement.getSourceAttributes()));
+              .addOrReplaceEquivalentAttributes(updatedSourceParameters);
           sourceAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
           if (onlyContainsUser) {
@@ -2725,21 +2726,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
         hasSourcePassword =
             !checkSourceType(sourceAttributes)
-                || containsPassword(alterPipeStatement.getSourceAttributes());
+                || containsPassword(updatedSourceParameters.getAttribute());
       } else {
         sourceAttributes =
             pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
       }
 
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+        final PipeParameters existingProcessorParameters =
+            pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters();
+        final PipeParameters updatedProcessorParameters =
+            PipePluginAgent.normalizeProcessorParametersForUpdate(
+                new PipeParameters(alterPipeStatement.getProcessorAttributes()),
+                existingProcessorParameters);
         if (alterPipeStatement.isReplaceAllProcessorAttributes()) {
-          processorAttributes = alterPipeStatement.getProcessorAttributes();
+          processorAttributes = updatedProcessorParameters.getAttribute();
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getProcessorParameters()
-              .addOrReplaceEquivalentAttributes(
-                  new PipeParameters(alterPipeStatement.getProcessorAttributes()));
+              .addOrReplaceEquivalentAttributes(updatedProcessorParameters);
           processorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
         }
@@ -2749,16 +2755,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       if (!alterPipeStatement.getSinkAttributes().isEmpty()) {
+        final PipeParameters existingSinkParameters =
+            pipeMetaFromCoordinator.getStaticMeta().getSinkParameters();
+        final PipeParameters updatedSinkParameters =
+            PipePluginAgent.normalizeSinkParametersForUpdate(
+                new PipeParameters(alterPipeStatement.getSinkAttributes()), existingSinkParameters);
         // Do not remove for handshake
         if (alterPipeStatement.isReplaceAllSinkAttributes()) {
-          sinkAttributes = alterPipeStatement.getSinkAttributes();
+          sinkAttributes = updatedSinkParameters.getAttribute();
         } else {
-          final boolean onlyContainsUser = onlyContainsUser(alterPipeStatement.getSinkAttributes());
+          final boolean onlyContainsUser = onlyContainsUser(updatedSinkParameters.getAttribute());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getSinkParameters()
-              .addOrReplaceEquivalentAttributes(
-                  new PipeParameters(alterPipeStatement.getSinkAttributes()));
+              .addOrReplaceEquivalentAttributes(updatedSinkParameters);
           sinkAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
           if (onlyContainsUser) {
@@ -2767,7 +2777,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
         hasSinkPassword =
             !checkSinkType(sinkAttributes)
-                || containsPassword(alterPipeStatement.getSinkAttributes());
+                || containsPassword(updatedSinkParameters.getAttribute());
       } else {
         sinkAttributes = pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
       }
@@ -2849,14 +2859,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   private static void checkIfSourcePluginChanged(
       final PipeParameters oldPipeParameters, final PipeParameters newPipeParameters) {
+    final PipeParameters normalizedOldParameters =
+        PipePluginAgent.normalizeSourceParameters(oldPipeParameters);
+    final PipeParameters normalizedNewParameters =
+        PipePluginAgent.normalizeSourceParameters(newPipeParameters);
     final String oldPluginName =
-        oldPipeParameters
+        normalizedOldParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase();
     final String newPluginName =
-        newPipeParameters
+        normalizedNewParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
@@ -2883,7 +2897,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private static boolean checkSourceType(final Map<String, String> replacedSourceAttributes) {
-    final PipeParameters sourceParameters = new PipeParameters(replacedSourceAttributes);
+    final PipeParameters sourceParameters =
+        PipePluginAgent.normalizeSourceParameters(new PipeParameters(replacedSourceAttributes));
     final String pluginName =
         sourceParameters
             .getStringOrDefault(
@@ -2925,7 +2940,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private static boolean checkSinkType(final Map<String, String> sinkAttributes) {
-    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+    final PipeParameters sinkParameters =
+        PipePluginAgent.normalizeSinkParameters(new PipeParameters(sinkAttributes));
     final String pluginName =
         sinkParameters
             .getStringOrDefault(
@@ -3225,22 +3241,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             System.currentTimeMillis(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    topicAttributes.computeIfPresent(
-        TopicConstant.START_TIME_KEY,
-        (k, v) -> {
-          if (TopicConstant.NOW_TIME_VALUE.equals(v)) {
-            return String.valueOf(currentTime);
-          }
-          return v;
-        });
-    topicAttributes.computeIfPresent(
-        TopicConstant.END_TIME_KEY,
-        (k, v) -> {
-          if (TopicConstant.NOW_TIME_VALUE.equals(v)) {
-            return String.valueOf(currentTime);
-          }
-          return v;
-        });
+    TopicProperty.replaceNowTimeValues(topicAttributes, String.valueOf(currentTime));
 
     // Validate topic config
     final TopicMeta temporaryTopicMeta =

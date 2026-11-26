@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -272,11 +273,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
         alterPipeRequest.setExtractorAttributes(
             copiedPipeStaticMetaFromCoordinator.getSourceParameters().getAttribute());
       } else {
+        final PipeParameters existingSourceParameters =
+            copiedPipeStaticMetaFromCoordinator.getSourceParameters();
         alterPipeRequest.setExtractorAttributes(
-            copiedPipeStaticMetaFromCoordinator
-                .getSourceParameters()
+            existingSourceParameters
                 .addOrReplaceEquivalentAttributes(
-                    new PipeParameters(alterPipeRequest.getExtractorAttributes()))
+                    PipePluginAgent.normalizeSourceParametersForUpdate(
+                        new PipeParameters(alterPipeRequest.getExtractorAttributes()),
+                        existingSourceParameters))
                 .getAttribute());
       }
     }
@@ -288,11 +292,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
         alterPipeRequest.setProcessorAttributes(
             copiedPipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
       } else {
+        final PipeParameters existingProcessorParameters =
+            copiedPipeStaticMetaFromCoordinator.getProcessorParameters();
         alterPipeRequest.setProcessorAttributes(
-            copiedPipeStaticMetaFromCoordinator
-                .getProcessorParameters()
+            existingProcessorParameters
                 .addOrReplaceEquivalentAttributes(
-                    new PipeParameters(alterPipeRequest.getProcessorAttributes()))
+                    PipePluginAgent.normalizeProcessorParametersForUpdate(
+                        new PipeParameters(alterPipeRequest.getProcessorAttributes()),
+                        existingProcessorParameters))
                 .getAttribute());
       }
     }
@@ -302,11 +309,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
         alterPipeRequest.setConnectorAttributes(
             copiedPipeStaticMetaFromCoordinator.getSinkParameters().getAttribute());
       } else {
+        final PipeParameters existingSinkParameters =
+            copiedPipeStaticMetaFromCoordinator.getSinkParameters();
         alterPipeRequest.setConnectorAttributes(
-            copiedPipeStaticMetaFromCoordinator
-                .getSinkParameters()
+            existingSinkParameters
                 .addOrReplaceEquivalentAttributes(
-                    new PipeParameters(alterPipeRequest.getConnectorAttributes()))
+                    PipePluginAgent.normalizeSinkParametersForUpdate(
+                        new PipeParameters(alterPipeRequest.getConnectorAttributes()),
+                        existingSinkParameters))
                 .getAttribute());
       }
     }

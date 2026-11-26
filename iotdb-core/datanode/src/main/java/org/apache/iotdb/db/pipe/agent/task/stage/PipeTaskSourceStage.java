@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.stage;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -51,23 +52,27 @@ public class PipeTaskSourceStage extends PipeTaskStage {
       PipeParameters sourceParameters,
       int regionId,
       PipeTaskMeta pipeTaskMeta) {
-    pipeExtractor =
+    final boolean isDataRegionSource =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-                || PipeRuntimeMeta.isSourceExternal(regionId)
-            ? PipeDataNodeAgent.plugin().dataRegion().reflectSource(sourceParameters)
-            : PipeDataNodeAgent.plugin().schemaRegion().reflectSource(sourceParameters);
+            || PipeRuntimeMeta.isSourceExternal(regionId);
+    final PipeParameters normalizedSourceParameters =
+        PipePluginAgent.normalizeSourceParameters(sourceParameters);
+    pipeExtractor =
+        isDataRegionSource
+            ? PipeDataNodeAgent.plugin().dataRegion().reflectSource(normalizedSourceParameters)
+            : PipeDataNodeAgent.plugin().schemaRegion().reflectSource(normalizedSourceParameters);
 
     // Validate and customize should be called before createSubtask. this allows source exposing
     // exceptions in advance.
     try {
       // 1. Validate source parameters
-      pipeExtractor.validate(new PipeParameterValidator(sourceParameters));
+      pipeExtractor.validate(new PipeParameterValidator(normalizedSourceParameters));
 
       // 2. Customize source
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(pipeName, creationTime, regionId, pipeTaskMeta));
-      pipeExtractor.customize(sourceParameters, runtimeConfiguration);
+      pipeExtractor.customize(normalizedSourceParameters, runtimeConfiguration);
     } catch (Exception e) {
       try {
         pipeExtractor.close();

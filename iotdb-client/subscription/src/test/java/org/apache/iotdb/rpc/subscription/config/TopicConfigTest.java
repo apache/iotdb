@@ -104,6 +104,8 @@ public class TopicConfigTest {
 
     Assert.assertTrue(topicConfigWithMode(" INITIAL ").isInitialMode());
     Assert.assertTrue(topicConfigWithMode(" INCREMENTAL ").isIncrementalMode());
+    Assert.assertTrue(
+        new TopicConfig(Collections.singletonMap(" MODE ", " SNAPSHOT ")).isSnapshotMode());
   }
 
   @Test
@@ -282,6 +284,28 @@ public class TopicConfigTest {
     Assert.assertTrue(
         new TopicConfig(Collections.singletonMap("Retain.Progress.After.Unsubscribe", " TRUE "))
             .isProgressRetainedAfterUnsubscribe());
+  }
+
+  @Test
+  public void testNowTimeValuesUseNormalizedBuiltinKeysAndValues() {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(" START-TIME ", " now ");
+    attributes.put("eNd-TiMe", "now");
+    attributes.put("extension.end-time", " now ");
+
+    TopicProperty.replaceNowTimeValues(attributes, "123");
+
+    Assert.assertEquals("123", attributes.get(" START-TIME "));
+    Assert.assertEquals("123", attributes.get("eNd-TiMe"));
+    Assert.assertEquals(" now ", attributes.get("extension.end-time"));
+  }
+
+  @Test
+  public void testSinkAttributesWithPaddedPrefixAreIncluded() {
+    final TopicConfig topicConfig = new TopicConfig(Map.of(" SINK.Topic ", " MixedTopic "));
+
+    Assert.assertEquals(
+        Map.of(" SINK.Topic ", " MixedTopic "), topicConfig.getAttributesWithSinkPrefix());
   }
 
   private static TopicConfig topicConfigWithMode(final String mode) {

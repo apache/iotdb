@@ -38,14 +38,14 @@ public class TopicMetaTest {
             "topic",
             1L,
             Map.of(
-                "Tag-Filter",
-                "region = \"north\"",
+                " Tag-Filter ",
+                " region = \"north\" ",
                 "RealTime.Mode",
                 " BATCH ",
                 "source.CustomOption",
                 "CaseSensitive"));
     final TopicMeta updated =
-        original.deepCopyWithUpdatedAttributes(Map.of(" TAG-FILTER ", "region = \"North\""));
+        original.deepCopyWithUpdatedAttributes(Map.of(" TAG-FILTER ", " region = \"North\" "));
     Assert.assertEquals(3, updated.getConfig().getAttribute().size());
     Assert.assertEquals("region = \"North\"", updated.getConfig().getTagFilter());
     Assert.assertEquals(
