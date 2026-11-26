@@ -274,6 +274,30 @@ public class AlignedWritableMemChunkTest {
   }
 
   @Test
+  public void testFullCoveragePointsWriteInReorderedPlan() {
+    IMeasurementSchema timestamp = new MeasurementSchema("timestamp", TSDataType.INT64);
+    IMeasurementSchema status = new MeasurementSchema("status", TSDataType.INT32);
+    IMeasurementSchema label = new MeasurementSchema("label", TSDataType.TEXT);
+    List<IMeasurementSchema> schemas = new ArrayList<>(Arrays.asList(timestamp, status, label));
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
+    Binary text = new Binary("value", TSFileConfig.STRING_CHARSET);
+    // The plan covers every device column, but in a different order, so the values must be routed
+    // by the destination mapping instead of by their position in the plan.
+    chunk.writeAlignedPoints(
+        0, new Object[] {text, 1L, 2}, Arrays.asList(label, timestamp, status));
+
+    AlignedTVList list = chunk.getWorkingTVList();
+    Assert.assertEquals(1L, list.getLongByValueIndex(0, 0));
+    Assert.assertEquals(2, list.getIntByValueIndex(0, 1));
+    Assert.assertEquals(text, list.getBinaryByValueIndex(0, 2));
+    // The row covers every column, so it must not be reported as having null cells.
+    for (int column = 0; column < schemas.size(); column++) {
+      Assert.assertFalse(list.isNullValue(0, column));
+    }
+    chunk.release();
+  }
+
+  @Test
   public void testWideTabletKeepsUnwrittenColumnsLazy() {
     int columnCount = 10_000;
     IMeasurementSchema existing = new MeasurementSchema("existing", TSDataType.INT64);

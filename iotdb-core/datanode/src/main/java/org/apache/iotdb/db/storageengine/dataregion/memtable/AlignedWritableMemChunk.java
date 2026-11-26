@@ -225,12 +225,24 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   public void writeAlignedPoints(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     int columnCount = ensureColumnsAndCount(schemaList);
-    if (columnCount == list.getTsDataTypes().size()
-        && isIdentityColumnMapping(schemaList, columnCount)) {
-      // The insert plan already covers every device column in device order, so the sparse mapping
-      // arrays would only add an O(columns) allocation per row.
-      list.putAlignedValue(insertTime, objectValue);
+    if (columnCount == list.getTsDataTypes().size() && schemaList.size() == columnCount) {
+      // The plan covers every device column, so the plan index of a measurement is also its value
+      // slot: the values can be passed through unchanged and only the destination columns are
+      // needed. Reordering the caller's array in place would save the destination array too, but
+      // it mutates an array owned by the caller for one int[] allocation, and the destination
+      // mapping does not have to be sorted anyway. The identity mapping skips even that array.
+      if (isIdentityColumnMapping(schemaList, columnCount)) {
+        list.putAlignedValue(insertTime, objectValue);
+      } else {
+        int[] destColumns = new int[columnCount];
+        for (int i = 0; i < columnCount; i++) {
+          destColumns[i] = measurementIndexMap.get(schemaList.get(i).getMeasurementName());
+        }
+        list.putAlignedValue(insertTime, objectValue, destColumns);
+      }
     } else {
+      // Some device columns are missing from the plan: compact the values so that the sparse
+      // mapping only walks the written columns.
       int[] destColumns = new int[columnCount];
       Object[] sparseValues = new Object[columnCount];
       int position = 0;
