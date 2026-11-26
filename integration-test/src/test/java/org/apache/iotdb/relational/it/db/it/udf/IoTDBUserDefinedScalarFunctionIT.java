@@ -113,6 +113,28 @@ public class IoTDBUserDefinedScalarFunctionIT {
   }
 
   @Test
+  public void testCaseThenBranchSelection() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      List<String> expectedResult = Arrays.asList("1,false", "2,false", "3,true", "5,false");
+      int row = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select time, CASE WHEN s1 > 1 THEN contain_null(s3, s4) ELSE false END as a from vehicle")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(
+              expectedResult.get(row), resultSet.getLong(1) + "," + resultSet.getString(2));
+          row++;
+        }
+        assertEquals(4, row);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testNormalQuery() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {

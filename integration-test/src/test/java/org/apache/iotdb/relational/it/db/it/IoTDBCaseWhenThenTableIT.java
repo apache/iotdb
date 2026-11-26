@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -31,13 +32,20 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertEquals;
 
 // TODO:fix the different type exception
 @RunWith(IoTDBTestRunner.class)
@@ -694,5 +702,338 @@ public class IoTDBCaseWhenThenTableIT {
     String[] expectedHeader = new String[] {"result"};
     String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
+  }
+
+  @Test
+  public void testCaseWhenReusesAggregationAcrossBlocks() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_aggregation_cache (dev STRING TAG, c DOUBLE FIELD, q INT32 FIELD)",
+          "INSERT INTO case_aggregation_cache(time, dev, c, q) VALUES "
+              + "(0, 'd0', 1.0, 0), (0, 'd1', 1.0, 0), (3600000, 'd1', 1.0, 0)"
+        });
+
+    // The non-pushdown predicate and the different device/window shapes make the aggregation
+    // produce multiple blocks. CASE clears the shared aggregate before the next output uses it.
+    String suffix = " FROM case_aggregation_cache WHERE q % 2 < 1 GROUP BY dev, date_bin(1h, time)";
+    for (String projection :
+        new String[] {
+          "CASE WHEN sum(c) > 0 THEN 1.0 END AS case_result, CAST(sum(c) AS DOUBLE) AS total",
+          "CASE WHEN sum(c) > 0 THEN 1.0 END AS case_result, sum(c) + 0 AS total",
+          "CASE WHEN sum(c) > 0 THEN CAST(sum(c) AS DOUBLE) / CAST(sum(c) AS DOUBLE) END "
+              + "AS case_result, CAST(sum(c) AS DOUBLE) AS total"
+        }) {
+      tableResultSetEqualTest(
+          "SELECT " + projection + suffix,
+          new String[] {"case_result", "total"},
+          new String[] {"1.0,1.0,", "1.0,1.0,", "1.0,1.0,"},
+          DATABASE);
+    }
+  }
+
+  @Test
+  public void testReusingCasePreservesPendingSiblingColumn() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_sibling_cache (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_sibling_cache(time, dev, x) VALUES "
+              + "(0, 'd0', -3.0), (1, 'd0', 0.0), (2, 'd0', 2.0)"
+        });
+
+    String sharedCase = "CASE WHEN x > 0 THEN 1.0 ELSE 0.0 END";
+    tableResultSetEqualTest(
+        "SELECT "
+            + sharedCase
+            + " AS a, x + CASE WHEN ("
+            + sharedCase
+            + ") > 0 THEN 2.0 ELSE 3.0 END AS b FROM case_sibling_cache ORDER BY time",
+        new String[] {"a", "b"},
+        new String[] {"0.0,0.0,", "0.0,3.0,", "1.0,4.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testSharedDiffAcrossCaseFilterAndProjection() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_shared_diff (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_shared_diff(time, dev, x) VALUES "
+              + "(1, 'd0', 1.0), (2, 'd0', 3.0), (3, 'd0', 6.0)",
+          "FLUSH",
+          "INSERT INTO case_shared_diff(time, dev, x) VALUES (4, 'd0', 10.0), (5, 'd0', 11.0)",
+          "FLUSH"
+        });
+    tableResultSetEqualTest(
+        "SELECT time, diff(x) AS d FROM case_shared_diff "
+            + "WHERE CASE WHEN diff(x) > 1.0 THEN 1.0 ELSE 0.0 END > 0.0",
+        new String[] {"time", "d"},
+        new String[] {
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.004Z,4.0,"
+        },
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT diff(x) AS d FROM case_shared_diff "
+            + "WHERE CASE WHEN diff(x) > 1.0 THEN true ELSE true END",
+        new String[] {"d"},
+        new String[] {"null,", "2.0,", "3.0,", "4.0,", "1.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 5 THEN diff(x) ELSE 100.0 END AS a, "
+            + "CASE WHEN x > 5 THEN 200.0 ELSE diff(x) END AS b, diff(x) AS d "
+            + "FROM case_shared_diff",
+        new String[] {"a", "b", "d"},
+        new String[] {
+          "100.0,null,null,", "100.0,2.0,2.0,", "3.0,200.0,3.0,", "4.0,200.0,4.0,", "1.0,200.0,1.0,"
+        },
+        DATABASE);
+  }
+
+  @Test
+  public void testDynamicIgnoreNullDiffAcrossCaseFilterAndProjection() throws Exception {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_dynamic_diff "
+              + "(dev STRING TAG, x DOUBLE FIELD, ignore_null BOOLEAN FIELD)",
+          "INSERT INTO case_dynamic_diff(time, dev, x, ignore_null) VALUES "
+              + "(1, 'd0', 1.0, true), (2, 'd0', 3.0, false), (3, 'd0', null, true), "
+              + "(4, 'd0', 10.0, null), (5, 'd0', null, false)",
+          "FLUSH",
+          "INSERT INTO case_dynamic_diff(time, dev, x, ignore_null) VALUES "
+              + "(6, 'd0', 20.0, true), (7, 'd0', 25.0, false), "
+              + "(8, 'd0', null, true), (9, 'd0', 30.0, true)",
+          "FLUSH"
+        });
+    String diff = "diff(x, ignore_null)";
+    tableResultSetEqualTest(
+        "SELECT " + diff + " AS d FROM case_dynamic_diff ORDER BY time",
+        new String[] {"d"},
+        new String[] {"null,", "2.0,", "null,", "7.0,", "null,", "null,", "5.0,", "null,", "5.0,"},
+        DATABASE);
+    // The masked CASE result is unspecified where it disagrees with the unmasked DIFF.
+    assertDefinedDiffValues(
+        "SELECT time, CASE WHEN x > 5 THEN "
+            + diff
+            + " ELSE 100.0 END AS a, CASE WHEN x > 5 THEN 200.0 ELSE "
+            + diff
+            + " END AS b, "
+            + diff
+            + " AS d FROM case_dynamic_diff ORDER BY time",
+        new String[] {"a", "b", "d"},
+        Map.of(
+            1L, new String[] {"100.0", "null", "null"},
+            2L, new String[] {"100.0", "2.0", "2.0"},
+            3L, new String[] {"100.0", "null", "null"},
+            4L, new String[] {null, "200.0", "7.0"},
+            5L, new String[] {"100.0", "null", "null"},
+            6L, new String[] {"null", "200.0", "null"},
+            7L, new String[] {"5.0", "200.0", "5.0"},
+            8L, new String[] {"100.0", "null", "null"},
+            9L, new String[] {null, "200.0", "5.0"}));
+    // Check the rows with unambiguous DIFF values. Do not require the current omissions at
+    // times 4 and 9: the masked binary-DIFF predicate disagrees with a full evaluation there.
+    assertDefinedDiffValues(
+        "SELECT time, "
+            + diff
+            + " AS d FROM case_dynamic_diff WHERE CASE WHEN x IS NULL THEN false WHEN "
+            + diff
+            + " > 1.0 THEN true ELSE false END ORDER BY time",
+        new String[] {"d"},
+        Map.of(2L, new String[] {"2.0"}, 7L, new String[] {"5.0"}));
+  }
+
+  @Test
+  public void testLocalDiffAndCaseCastGuards() throws Exception {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_partial_diff (dev STRING TAG, x DOUBLE FIELD, ignore_null BOOLEAN FIELD)",
+          "INSERT INTO case_partial_diff(time, dev, x, ignore_null) VALUES "
+              + "(1, 'd0', 1.0, true), (2, 'd0', -2.0, false), "
+              + "(3, 'd0', 3.0, true), (4, 'd0', -4.0, false)",
+          "CREATE TABLE case_guarded_diff (dev STRING TAG, src STRING FIELD)",
+          "INSERT INTO case_guarded_diff(time, dev, src) VALUES "
+              + "(1, 'd0', 'n/a'), (2, 'd0', '5'), (3, 'd0', '8')"
+        });
+    for (String diff : new String[] {"diff(x)", "diff(x, ignore_null)"}) {
+      String sql =
+          "SELECT time, CASE WHEN x > 0 THEN x ELSE "
+              + diff
+              + " END AS a, "
+              + diff
+              + " AS d FROM case_partial_diff ORDER BY time";
+      if (diff.equals("diff(x)")) {
+        assertDefinedDiffValues(
+            sql,
+            new String[] {"a", "d"},
+            Map.of(
+                1L,
+                new String[] {"1.0", "null"},
+                2L,
+                new String[] {"-3.0", "-3.0"},
+                3L,
+                new String[] {"3.0", "5.0"},
+                4L,
+                new String[] {"-7.0", "-7.0"}));
+      } else {
+        // A null expected entry leaves the known inconsistent masked CASE value unspecified.
+        // The unmasked DIFF and the CASE's ordinary branches still have exact expectations.
+        assertDefinedDiffValues(
+            sql,
+            new String[] {"a", "d"},
+            Map.of(
+                1L,
+                new String[] {"1.0", "null"},
+                2L,
+                new String[] {null, "-3.0"},
+                3L,
+                new String[] {"3.0", "5.0"},
+                4L,
+                new String[] {null, "-7.0"}));
+      }
+    }
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 0 THEN diff(diff(x)) ELSE 0.0 END AS a, "
+            + "diff(diff(x)) AS d FROM case_partial_diff ORDER BY time",
+        new String[] {"a", "d"},
+        new String[] {"null,null,", "0.0,null,", "8.0,8.0,", "0.0,-12.0,"},
+        DATABASE);
+    String guardedDiff = "diff(CASE WHEN src <> 'n/a' THEN CAST(src AS DOUBLE) END)";
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN src = 'n/a' THEN -1.0 ELSE "
+            + guardedDiff
+            + " END AS a, "
+            + guardedDiff
+            + " AS d FROM case_guarded_diff ORDER BY time",
+        new String[] {"a", "d"},
+        new String[] {"-1.0,null,", "null,null,", "3.0,3.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testBinaryDiffPreservesOuterCaseCastGuard() throws Exception {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_binary_guard (dev STRING TAG, src STRING FIELD, ignore_null BOOLEAN FIELD)",
+          "INSERT INTO case_binary_guard(time, dev, src, ignore_null) VALUES "
+              + "(1, 'd0', 'n/a', true), (2, 'd0', '5', true), (3, 'd0', '8', true)",
+          "FLUSH",
+          "INSERT INTO case_binary_guard(time, dev, src, ignore_null) VALUES "
+              + "(4, 'd0', 'n/a', true), (5, 'd0', '10', true), (6, 'd0', '14', true)",
+          "FLUSH"
+        });
+    // Keep the CAST guard and well-defined differences covered without prescribing the
+    // inconsistent cross-block value at time 5, where masked and full DIFF evaluation disagree.
+    assertDefinedDiffValues(
+        "SELECT time, CASE WHEN src <> 'n/a' THEN diff(CAST(src AS DOUBLE), ignore_null) END AS d "
+            + "FROM case_binary_guard ORDER BY time",
+        new String[] {"d"},
+        Map.of(
+            1L,
+            new String[] {"null"},
+            2L,
+            new String[] {"null"},
+            3L,
+            new String[] {"3.0"},
+            4L,
+            new String[] {"null"},
+            5L,
+            new String[] {null},
+            6L,
+            new String[] {"4.0"}));
+    // Literal flags use the unary transformer, which already evaluates all input rows on master.
+    tableAssertTestFail(
+        "SELECT CASE WHEN src <> 'n/a' THEN diff(CAST(src AS DOUBLE), true) END "
+            + "FROM case_binary_guard ORDER BY time",
+        "701: Cannot cast n/a to DOUBLE type",
+        DATABASE);
+  }
+
+  @Test
+  public void testBetweenRetainsSharedInputsAcrossCaseEvaluation() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_between_cache (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_between_cache(time,dev,x) VALUES (1,'d',1),(2,'d',2),(3,'d',-1)"
+        });
+    for (String expression :
+        new String[] {
+          "CASE WHEN x > 0 THEN x BETWEEN x - 1 AND x + 1 ELSE false END",
+          "CASE WHEN x > 0 THEN x BETWEEN x - 1 AND (x - 1) + 2 ELSE false END"
+        }) {
+      tableResultSetEqualTest(
+          "SELECT " + expression + " AS b FROM case_between_cache ORDER BY time",
+          new String[] {"b"},
+          new String[] {"true,", "true,", "false,"},
+          DATABASE);
+    }
+    tableResultSetEqualTest(
+        "SELECT x BETWEEN CASE WHEN x > 0 THEN 0.0 ELSE -10.0 END AND 10.0 AS b "
+            + "FROM case_between_cache ORDER BY time",
+        new String[] {"b"},
+        new String[] {"true,", "true,", "true,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testProjectionRetainsInputsClearedByCaseSibling() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_projection_inputs (dev STRING TAG, x DOUBLE FIELD, s STRING FIELD)",
+          "INSERT INTO case_projection_inputs(time,dev,x,s) VALUES "
+              + "(1,'d',1,'match'),(2,'d',2,'other'),(3,'d',-1,'match')"
+        });
+    tableResultSetEqualTest(
+        "SELECT x + CASE WHEN x > 0 THEN 2.0 ELSE 3.0 END AS a "
+            + "FROM case_projection_inputs ORDER BY time",
+        new String[] {"a"},
+        new String[] {"3.0,", "4.0,", "2.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT coalesce(x, CASE WHEN x > 0 THEN x ELSE 0.0 END) AS a "
+            + "FROM case_projection_inputs ORDER BY time",
+        new String[] {"a"},
+        new String[] {"1.0,", "2.0,", "-1.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT concat(s, CASE WHEN s = 'match' THEN '-m' ELSE '-o' END) AS a "
+            + "FROM case_projection_inputs ORDER BY time",
+        new String[] {"a"},
+        new String[] {"match-m,", "other-o,", "match-m,"},
+        DATABASE);
+  }
+
+  private static void assertDefinedDiffValues(
+      String sql, String[] columns, Map<Long, String[]> expectedRows) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      Set<Long> checked = new HashSet<>();
+      try (ResultSet result = statement.executeQuery(sql)) {
+        while (result.next()) {
+          long time = result.getLong("time");
+          String[] expected = expectedRows.get(time);
+          if (expected == null) {
+            continue;
+          }
+          for (int i = 0; i < columns.length; i++) {
+            if (expected[i] != null) {
+              String actual = result.getString(columns[i]);
+              assertEquals(expected[i], actual == null ? "null" : actual);
+            }
+          }
+          checked.add(time);
+        }
+      }
+      assertEquals(expectedRows.keySet(), checked);
+    }
   }
 }

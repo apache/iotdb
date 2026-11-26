@@ -26,6 +26,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   private final ColumnTransformer[] inputColumnTransformers;
@@ -79,6 +81,14 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     // do nothing
   }
 
+  @Override
+  public boolean canEvaluateWithSelection() {
+    // User code has no purity contract: a masked evaluation feeds the executor null-padded
+    // columns, which a stateful UDTF would process differently from a full evaluation. This
+    // tree-model transformer is not used by schema UPDATE.
+    return false;
+  }
+
   public ColumnTransformer[] getInputColumnTransformers() {
     return inputColumnTransformers;
   }
@@ -98,6 +108,13 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     super.clearCache();
     for (ColumnTransformer columnTransformer : inputColumnTransformers) {
       columnTransformer.clearCache();
+    }
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    for (ColumnTransformer columnTransformer : inputColumnTransformers) {
+      action.accept(columnTransformer);
     }
   }
 }

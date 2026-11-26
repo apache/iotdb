@@ -30,6 +30,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransformer {
 
@@ -243,5 +244,15 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
       whenThenColumnTransformer.right.close();
     }
     elseTransformer.close();
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
+        whenThenTransformers) {
+      action.accept(whenThenColumnTransformer.left);
+      action.accept(whenThenColumnTransformer.right);
+    }
+    action.accept(elseTransformer);
   }
 }
