@@ -96,6 +96,7 @@ class SchemaPageContext {
       if (((ReentrantReadWriteLock) page.getLock()).getWriteHoldCount() > 1) {
         logger.warn(
             DataNodeSchemaMessages.PAGE_LOCKED_TIMES,
+            page.getPageIndex(),
             ((ReentrantReadWriteLock) page.getLock()).getWriteHoldCount());
         // had already been locked twice
         page.getLock().writeLock().unlock();
