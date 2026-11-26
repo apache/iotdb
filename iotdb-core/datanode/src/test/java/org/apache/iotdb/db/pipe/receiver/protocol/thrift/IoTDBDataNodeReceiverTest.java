@@ -319,7 +319,34 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
-  public void testFailedPipeHandshakeCannotReuseExistingSession() throws Exception {
+  public void testSessionlessHandshakeCannotContinueSessionSlices() throws Exception {
+    authenticateSession(ADMISSION_USER);
+    final IoTDBDataNodeReceiver receiver = new AdmissionTestReceiver();
+    final TPipeTransferReq request =
+        PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0));
+    final ByteBuffer body = request.body.duplicate();
+    final int midpoint = body.limit() / 2;
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, request.getType(), 0, 2, body, 0, midpoint))
+            .getStatus()
+            .getCode());
+    Assert.assertTrue(sessionManager.closeSession(testSession, queryId -> {}));
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER.getStatusCode(),
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, request.getType(), 1, 2, body, midpoint, body.limit()))
+            .getStatus()
+            .getCode());
+  }
+
+  @Test
+  public void testFailedPipeHandshakeStillUsesExistingSessionAuthorization() throws Exception {
     authenticateSession(ADMISSION_USER);
     final IoTDBDataNodeReceiver receiver = new AdmissionTestReceiver();
     Assert.assertNotEquals(
@@ -329,7 +356,18 @@ public class IoTDBDataNodeReceiverTest {
             .getStatus()
             .getCode());
     Assert.assertEquals(
-        TSStatusCode.NOT_LOGIN.getStatusCode(),
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        receiver
+            .receive(PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0)))
+            .getStatus()
+            .getCode());
+  }
+
+  @Test
+  public void testPipeHandshakeCredentialsAuthorizeWithoutSession() throws Exception {
+    final IoTDBDataNodeReceiver receiver = new AdmissionTestReceiver();
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
         receiver
             .receive(PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0)))
             .getStatus()
