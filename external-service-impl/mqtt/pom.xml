@@ -75,6 +75,11 @@
                     <groupId>io.netty</groupId>
                     <artifactId>netty-codec-http</artifactId>
                 </exclusion>
+                <!-- IoTDB configures Moquette with a plain TCP listener. -->
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-tcnative-boringssl-static</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
