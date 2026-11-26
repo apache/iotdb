@@ -22,17 +22,23 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -87,5 +93,28 @@ public class SchemaUtilsTest {
     } finally {
       ConfigNodeDescriptor.getInstance().getConf().setMetadataLeaseFenceMs(originalFenceMs);
     }
+  }
+
+  @Test
+  public void testDeletionPrecheckSkipsPatternsCoveredByDatabaseDeletion() throws Exception {
+    final ConfigManager configManager = mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = mock(ClusterSchemaManager.class);
+    when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    when(clusterSchemaManager.getMatchedDatabaseSchemasByPrefix(any(PartialPath.class)))
+        .thenReturn(Collections.singletonMap("root.db", (TDatabaseSchema) null));
+
+    final PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.db.**"));
+    patternTree.appendPathPattern(new PartialPath("root.other.d.s"));
+    patternTree.constructTree();
+
+    final SchemaUtils.TimeSeriesDeletionPrecheckTarget precheckTarget =
+        SchemaUtils.getTimeSeriesDeletionPrecheckTarget(configManager, patternTree);
+
+    Assert.assertEquals(1, precheckTarget.patternTree.getAllPathPatterns().size());
+    Assert.assertEquals(
+        "root.other.d.s", precheckTarget.patternTree.getAllPathPatterns().get(0).getFullPath());
+    Assert.assertEquals(1, precheckTarget.databasePatternPaths.size());
+    Assert.assertEquals("root.db.**", precheckTarget.databasePatternPaths.get(0).getFullPath());
   }
 }

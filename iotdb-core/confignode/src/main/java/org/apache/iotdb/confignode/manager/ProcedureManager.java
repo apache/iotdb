@@ -110,6 +110,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProce
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
@@ -215,6 +216,7 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -454,47 +456,63 @@ public class ProcedureManager {
       PathPatternTree patternTree,
       boolean isGeneratedByPipe,
       boolean mayDeleteAudit) {
-    final DeleteTimeSeriesProcedure procedure;
+    DeleteTimeSeriesProcedure procedure;
     synchronized (this) {
       if (!executor.isRunning()) {
         return RpcUtils.getStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP);
       }
       final Optional<DeleteTimeSeriesProcedure> duplicate =
-          snapshotProcedures().stream()
-              .filter(p -> p instanceof DeleteTimeSeriesProcedure)
-              .map(p -> (DeleteTimeSeriesProcedure) p)
-              .filter(p -> queryId.equals(p.getQueryId()))
-              .findFirst();
+          findDuplicateTimeSeriesDeletion(queryId);
       if (duplicate.isPresent()) {
         procedure = duplicate.get();
       } else {
-        if (executor.getProcedures().values().stream()
-            .filter(p -> p instanceof DeleteTimeSeriesProcedure)
-            .map(p -> (DeleteTimeSeriesProcedure) p)
-            .anyMatch(p -> patternTree.isOverlapWith(p.getPatternTree()))) {
-          return RpcUtils.getStatus(
-              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              ManagerMessages
-                  .MESSAGE_SOME_OTHER_ASYNCHRONOUS_TASK_IS_DELETING_TARGET_TIMESERIES_USE_SHOW_DELETE_TIMESERIES_PROGRESS_TO_CHECK_ITS_PROGRESS_AND_RETRY_LATER_A799B41E);
+        final TSStatus status = checkTimeSeriesDeletionTaskAvailability(patternTree);
+        if (status != null) {
+          return status;
         }
-        final int waiting = executor.getDeleteTimeSeriesScheduler().getWaitingTaskCount();
-        if (waiting >= CONFIG_NODE_CONFIG.getTimeseriesDeletionQueueCapacity()) {
-          return RpcUtils.getStatus(
-              TSStatusCode.WRITE_PROCESS_REJECT,
-              String.format(
-                  ManagerMessages
-                      .MESSAGE_THE_ASYNCHRONOUS_TIMESERIES_DELETION_QUEUE_IS_FULL_ARG_WAITING_TASKS_RETRY_LATER_93F6F407,
-                  waiting));
+        procedure = null;
+      }
+    }
+
+    if (procedure == null) {
+      TSStatus precheckStatus = null;
+      try {
+        precheckTimeSeriesDeletionTarget(patternTree, mayDeleteAudit);
+      } catch (MetadataException e) {
+        precheckStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+
+      synchronized (this) {
+        if (!executor.isRunning()) {
+          return RpcUtils.getStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP);
         }
-        procedure =
-            new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe, mayDeleteAudit);
-        try {
-          executor.submitProcedureAndPersist(procedure);
-        } catch (Exception e) {
-          return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        final Optional<DeleteTimeSeriesProcedure> duplicate =
+            findDuplicateTimeSeriesDeletion(queryId);
+        if (duplicate.isPresent()) {
+          procedure = duplicate.get();
+        } else if (precheckStatus != null) {
+          final TSStatus overlapStatus = checkTimeSeriesDeletionTaskOverlap(patternTree);
+          if (overlapStatus != null) {
+            return overlapStatus;
+          }
+          return precheckStatus;
+        } else {
+          final TSStatus status = checkTimeSeriesDeletionTaskAvailability(patternTree);
+          if (status != null) {
+            return status;
+          }
+          procedure =
+              new DeleteTimeSeriesProcedure(
+                  queryId, patternTree, isGeneratedByPipe, mayDeleteAudit);
+          try {
+            executor.submitProcedureAndPersist(procedure);
+          } catch (Exception e) {
+            return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+          }
         }
       }
     }
+
     if (isGeneratedByPipe) {
       return waitingProcedureFinished(procedure, PROCEDURE_WAIT_TIME_OUT << 1);
     }
@@ -506,6 +524,49 @@ public class ProcedureManager {
                 ManagerMessages
                     .MESSAGE_TIMESERIES_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_USE_SHOW_DELETE_TIMESERIES_PROGRESS_TO_CHECK_ITS_PROGRESS_75958076,
                 procedure.getProcId())));
+  }
+
+  private Optional<DeleteTimeSeriesProcedure> findDuplicateTimeSeriesDeletion(String queryId) {
+    return snapshotProcedures().stream()
+        .filter(p -> p instanceof DeleteTimeSeriesProcedure)
+        .map(p -> (DeleteTimeSeriesProcedure) p)
+        .filter(p -> queryId.equals(p.getQueryId()))
+        .findFirst();
+  }
+
+  private TSStatus checkTimeSeriesDeletionTaskAvailability(PathPatternTree patternTree) {
+    final TSStatus overlapStatus = checkTimeSeriesDeletionTaskOverlap(patternTree);
+    if (overlapStatus != null) {
+      return overlapStatus;
+    }
+    final int waiting = executor.getDeleteTimeSeriesScheduler().getWaitingTaskCount();
+    if (waiting >= CONFIG_NODE_CONFIG.getTimeseriesDeletionQueueCapacity()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.WRITE_PROCESS_REJECT,
+          String.format(
+              ManagerMessages
+                  .MESSAGE_THE_ASYNCHRONOUS_TIMESERIES_DELETION_QUEUE_IS_FULL_ARG_WAITING_TASKS_RETRY_LATER_93F6F407,
+              waiting));
+    }
+    return null;
+  }
+
+  private TSStatus checkTimeSeriesDeletionTaskOverlap(PathPatternTree patternTree) {
+    if (executor.getProcedures().values().stream()
+        .filter(p -> p instanceof DeleteTimeSeriesProcedure)
+        .map(p -> (DeleteTimeSeriesProcedure) p)
+        .anyMatch(p -> patternTree.isOverlapWith(p.getPatternTree()))) {
+      return RpcUtils.getStatus(
+          TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+          ManagerMessages
+              .MESSAGE_SOME_OTHER_ASYNCHRONOUS_TASK_IS_DELETING_TARGET_TIMESERIES_USE_SHOW_DELETE_TIMESERIES_PROGRESS_TO_CHECK_ITS_PROGRESS_AND_RETRY_LATER_A799B41E);
+    }
+    return null;
+  }
+
+  protected void precheckTimeSeriesDeletionTarget(
+      PathPatternTree patternTree, boolean mayDeleteAudit) throws MetadataException {
+    SchemaUtils.checkTimeSeriesDeletionTarget(configManager, patternTree, mayDeleteAudit);
   }
 
   public List<TDeleteTimeSeriesProcedureInfo> getDeleteTimeSeriesProcedures() {
@@ -2713,6 +2774,70 @@ public class ProcedureManager {
     return procedures;
   }
 
+  private TSStatus checkTableDeletionTarget(
+      final String database, final String tableName, final boolean isView) {
+    try {
+      final Optional<Pair<TsTable, TableNodeStatus>> table =
+          configManager.getClusterSchemaManager().getTableAndStatusIfExists(database, tableName);
+      if (table.isEmpty()) {
+        final TableNotExistsException e = new TableNotExistsException(database, tableName);
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+      if (!isView && table.get().getRight() == TableNodeStatus.PRE_DELETE) {
+        return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+      }
+      final Optional<Pair<TSStatus, TsTable>> viewCheck =
+          ClusterSchemaManager.checkTable4View(database, table.get().getLeft(), isView);
+      if (viewCheck.isPresent()) {
+        return viewCheck.get().getLeft();
+      }
+      if (table.get().getRight() != TableNodeStatus.USING) {
+        return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+      }
+      return StatusUtils.OK;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  private TSStatus checkTableColumnDeletionTarget(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final boolean isView) {
+    try {
+      final Optional<Pair<TsTable, TableNodeStatus>> table =
+          configManager.getClusterSchemaManager().getTableAndStatusIfExists(database, tableName);
+      if (table.isEmpty()) {
+        final TableNotExistsException e = new TableNotExistsException(database, tableName);
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+      if (table.get().getRight() != TableNodeStatus.USING) {
+        return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+      }
+      final Optional<Pair<TSStatus, TsTable>> viewCheck =
+          ClusterSchemaManager.checkTable4View(database, table.get().getLeft(), isView);
+      if (viewCheck.isPresent()) {
+        return viewCheck.get().getLeft();
+      }
+      final TsTableColumnSchema column = table.get().getLeft().getColumnSchema(columnName);
+      if (column == null) {
+        final ColumnNotExistsException e =
+            new ColumnNotExistsException(database, tableName, columnName);
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+      if (column.getColumnCategory() == TsTableColumnCategory.TAG
+          || column.getColumnCategory() == TsTableColumnCategory.TIME) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SEMANTIC_ERROR,
+            ConfigNodeMessages.DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED);
+      }
+      return StatusUtils.OK;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
   private Procedure<?> tableProcedure(
       String queryId, Class<? extends AbstractAlterOrDropTableProcedure> type) {
     return snapshotProcedures().stream()
@@ -2730,9 +2855,11 @@ public class ProcedureManager {
           req.database,
           null,
           req.tableName,
+          null,
           req.queryId,
           ProcedureType.DROP_VIEW_COLUMN_PROCEDURE,
-          new DropViewColumnProcedure(req.database, req.tableName, req.queryId, columnName, false));
+          new DropViewColumnProcedure(req.database, req.tableName, req.queryId, columnName, false),
+          () -> checkTableColumnDeletionTarget(req.database, req.tableName, columnName, true));
     }
     Procedure<?> procedureToWait = null;
     TSStatus asynchronousStatus = StatusUtils.OK;
@@ -2772,38 +2899,10 @@ public class ProcedureManager {
         } else if (Boolean.TRUE.equals(duplicate.getRight())) {
           return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
         } else {
-          try {
-            final Optional<Pair<TsTable, TableNodeStatus>> table =
-                configManager
-                    .getClusterSchemaManager()
-                    .getTableAndStatusIfExists(req.database, req.tableName);
-            if (table.isEmpty()) {
-              final TableNotExistsException e =
-                  new TableNotExistsException(req.database, req.tableName);
-              return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-            }
-            if (table.get().getRight() != TableNodeStatus.USING) {
-              return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
-            }
-            final Optional<Pair<TSStatus, TsTable>> viewCheck =
-                ClusterSchemaManager.checkTable4View(req.database, table.get().getLeft(), false);
-            if (viewCheck.isPresent()) {
-              return viewCheck.get().getLeft();
-            }
-            final TsTableColumnSchema column = table.get().getLeft().getColumnSchema(columnName);
-            if (column == null) {
-              final ColumnNotExistsException e =
-                  new ColumnNotExistsException(req.database, req.tableName, columnName);
-              return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-            }
-            if (column.getColumnCategory() == TsTableColumnCategory.TAG
-                || column.getColumnCategory() == TsTableColumnCategory.TIME) {
-              return RpcUtils.getStatus(
-                  TSStatusCode.SEMANTIC_ERROR,
-                  ConfigNodeMessages.DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED);
-            }
-          } catch (MetadataException e) {
-            return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+          final TSStatus precheckStatus =
+              checkTableColumnDeletionTarget(req.database, req.tableName, columnName, false);
+          if (precheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return precheckStatus;
           }
           final DropTableColumnProcedure procedure =
               new DropTableColumnProcedure(
@@ -2850,9 +2949,11 @@ public class ProcedureManager {
           req.database,
           null,
           req.tableName,
+          null,
           req.queryId,
           ProcedureType.DROP_VIEW_PROCEDURE,
-          new DropViewProcedure(req.database, req.tableName, req.queryId, false));
+          new DropViewProcedure(req.database, req.tableName, req.queryId, false),
+          () -> checkTableDeletionTarget(req.database, req.tableName, true));
     }
     Procedure<?> procedureToWait = null;
     TSStatus asynchronousStatus = StatusUtils.OK;
@@ -2891,26 +2992,10 @@ public class ProcedureManager {
         } else if (Boolean.TRUE.equals(duplicate.getRight())) {
           return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
         } else {
-          try {
-            final Optional<Pair<TsTable, TableNodeStatus>> table =
-                configManager
-                    .getClusterSchemaManager()
-                    .getTableAndStatusIfExists(req.database, req.tableName);
-            if (table.isEmpty()) {
-              final TableNotExistsException e =
-                  new TableNotExistsException(req.database, req.tableName);
-              return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-            }
-            if (table.get().getRight() == TableNodeStatus.PRE_DELETE) {
-              return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
-            }
-            final Optional<Pair<TSStatus, TsTable>> viewCheck =
-                ClusterSchemaManager.checkTable4View(req.database, table.get().getLeft(), false);
-            if (viewCheck.isPresent()) {
-              return viewCheck.get().getLeft();
-            }
-          } catch (final MetadataException e) {
-            return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+          final TSStatus precheckStatus =
+              checkTableDeletionTarget(req.database, req.tableName, false);
+          if (precheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return precheckStatus;
           }
           final Procedure<ConfigNodeProcedureEnv> procedure =
               new DropTableProcedure(req.database, req.tableName, req.queryId, false);
@@ -3138,6 +3223,19 @@ public class ProcedureManager {
       final String queryId,
       final ProcedureType thisType,
       final Procedure<ConfigNodeProcedureEnv> procedure) {
+    return executeWithoutDuplicate(
+        database, table, tableName, newName, queryId, thisType, procedure, null);
+  }
+
+  private TSStatus executeWithoutDuplicate(
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final @Nullable String newName,
+      final String queryId,
+      final ProcedureType thisType,
+      final Procedure<ConfigNodeProcedureEnv> procedure,
+      final Supplier<TSStatus> preEnqueueCheck) {
     final Procedure<?> procedureToWait;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
@@ -3149,6 +3247,12 @@ public class ProcedureManager {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               ManagerMessages.EXCEPTION_SOME_OTHER_TASK_IS_OPERATING_TABLE_WITH_SAME_NAME_2959424C);
+        }
+        if (preEnqueueCheck != null) {
+          final TSStatus precheckStatus = preEnqueueCheck.get();
+          if (precheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return precheckStatus;
+          }
         }
         this.executor.submitProcedure(procedure);
         procedureToWait = procedure;

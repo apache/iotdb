@@ -64,7 +64,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -825,16 +824,10 @@ public class IoTDBSessionSimpleIT {
       assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
       assertFalse(session.checkTimeseriesExists("root.sg1.d1.t3"));
 
-      // When no timeseries matches, admission succeeds and the asynchronous task fails.
-      session.deleteTimeseries("root.sg1.d1.t6");
-      SQLException exception =
+      StatementExecutionException exception =
           assertThrows(
-              SQLException.class,
-              () ->
-                  TestUtils.waitForTimeSeriesDeletion(
-                      EnvFactory.getEnv(), "DELETE TIMESERIES root.sg1.d1.t6"));
-      assertTrue(
-          exception.getMessage().contains(TSStatusCode.PATH_NOT_EXIST.getStatusCode() + ":"));
+              StatementExecutionException.class, () -> session.deleteTimeseries("root.sg1.d1.t6"));
+      assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), exception.getStatusCode());
       assertTrue(exception.getMessage().contains("root.sg1.d1.t6"));
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     }
