@@ -125,6 +125,37 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
+  public void testReceiverRejectsSliceWithMismatchedCrcBeforeReassembly() throws Exception {
+    final TPipeTransferReq originalRequest =
+        PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0));
+    final ByteBuffer body = originalRequest.body.duplicate();
+    final int midpoint = body.limit() / 2;
+    final PipeTransferSliceReq firstSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(
+            1, originalRequest.getType(), 0, 2, body, 0, midpoint);
+    PipeTransferIntegrityUtils.setCrc32(firstSlice);
+    final PipeTransferSliceReq secondSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(
+            1, originalRequest.getType(), 1, 2, body, midpoint, body.limit());
+    PipeTransferIntegrityUtils.setCrc32(secondSlice);
+
+    final AdmissionTestReceiver receiver = new AdmissionTestReceiver();
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver.receive(firstSlice).getStatus().getCode());
+
+    final byte[] corruptedBody = secondSlice.getBody().clone();
+    corruptedBody[corruptedBody.length - 9] ^= 1;
+    secondSlice.setBody(corruptedBody);
+    final TPipeTransferResp response = receiver.receive(secondSlice);
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
+    Assert.assertTrue(PipeTransferIntegrityUtils.isCrcMismatch(response.getStatus().getMessage()));
+    Assert.assertEquals(0, receiver.executionAttempts);
+  }
+
+  @Test
   public void testReceiverRejectsCompressedRequestWithMismatchedCrc() throws Exception {
     final AdmissionTestReceiver receiver = new AdmissionTestReceiver();
     final TPipeTransferReq originalRequest =
