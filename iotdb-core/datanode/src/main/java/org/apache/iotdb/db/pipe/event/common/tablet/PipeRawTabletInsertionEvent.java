@@ -38,7 +38,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventT
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -126,20 +125,18 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     inheritSourceEventReportSkippingIfNecessary();
 
     // Allocate empty memory block, will be resized later.
-    final PipeMemoryBlock parentMemoryBlock =
+    final boolean hasSourceEventMemoryBlock =
         sourceEvent instanceof PipeInsertionEvent
-            ? ((PipeInsertionEvent) sourceEvent).getEventMemoryBlock()
-            : null;
+            && ((PipeInsertionEvent) sourceEvent).getEventMemoryBlock() != null;
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 PipeRawTabletInsertionEvent.class.getSimpleName(),
                 0,
-                parentMemoryBlock == null
-                    ? PipeMemoryBlockCategory.EVENT
-                    : PipeMemoryBlockCategory.TABLET,
-                this,
-                parentMemoryBlock);
+                hasSourceEventMemoryBlock
+                    ? PipeMemoryBlockCategory.TABLET
+                    : PipeMemoryBlockCategory.EVENT,
+                this);
     this.allocatedMemoryBlock.setAssigner(this);
 
     if (needToReport || sourceTsFileInsertionEvent != null) {
