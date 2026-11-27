@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -53,6 +54,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -813,6 +815,87 @@ public class MemTableFlushTaskTest {
       }
     } finally {
       chunk.release();
+    }
+  }
+
+  /**
+   * End-to-end check of a wide, sparse aligned device: only the written columns materialize block
+   * slots, and the flushed TsFile returns exactly the written values while the untouched columns
+   * stay null.
+   */
+  @Test
+  public void testAlignedFlushWideSparseDevice() throws Exception {
+    final int columns = 2000;
+    // 65 rows open two blocks (primitive_array_size = 64).
+    final int rows = 65;
+    final int writtenColumns = 8;
+    final String device = "root.d";
+
+    List<IMeasurementSchema> schemas = new ArrayList<>(columns);
+    for (int i = 0; i < columns; i++) {
+      schemas.add(new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
+    }
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
+    String wideFilePath = TestConstant.OUTPUT_DATA_DIR.concat("wideSparseAligned.tsfile");
+
+    Object[] rowValues = new Object[columns];
+    for (int row = 0; row < rows; row++) {
+      Arrays.fill(rowValues, null);
+      for (int column = 0; column < writtenColumns; column++) {
+        rowValues[column] = (long) row;
+      }
+      memChunk.putAlignedRow(row, rowValues);
+    }
+
+    AlignedTVList tvList = memChunk.getWorkingTVList();
+    // A column that was never written only carries implicit nulls for the opened blocks.
+    Assert.assertEquals(2, tvList.getValues().get(columns - 1).size());
+    for (int row = 0; row < rows; row++) {
+      Assert.assertTrue(tvList.isNullValue(row, columns - 1));
+    }
+    // The retained memory follows the written data, not the device width.
+    Assert.assertTrue(
+        "wide sparse TVList cost: " + tvList.getRamSize(),
+        tvList.getRamSize() < (long) columns * 200);
+
+    // Flush and read the file back: written values survive, untouched columns stay null.
+    memChunk.sortTvListForFlush();
+    BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 1000, 100, false);
+    try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(wideFilePath))) {
+      alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(device));
+      Object task;
+      while ((task = ioTaskQueue.poll()) != null) {
+        if (task instanceof IChunkWriter chunkWriter) {
+          chunkWriter.writeToFileWriter(alignedWriter);
+        }
+      }
+      alignedWriter.endChunkGroup();
+      alignedWriter.endFile();
+    }
+
+    try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(wideFilePath);
+        TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+      QueryDataSet dataSet =
+          fileReader.query(
+              QueryExpression.create(Arrays.asList(new Path(device, "s0", false)), null));
+      int expected = 0;
+      while (dataSet.hasNext()) {
+        RowRecord row = dataSet.next();
+        Assert.assertEquals(expected, row.getTimestamp());
+        Assert.assertEquals(expected, row.getFields().get(0).getLongV());
+        expected++;
+      }
+      Assert.assertEquals(rows, expected);
+
+      QueryDataSet untouched =
+          fileReader.query(
+              QueryExpression.create(
+                  Arrays.asList(new Path(device, "s" + (columns - 1), false)), null));
+      while (untouched.hasNext()) {
+        // An unwritten column is encoded as null values, never as invented data.
+        Assert.assertNull(untouched.next().getFields().get(0).getObjectValue(TSDataType.INT64));
+      }
     }
   }
 
