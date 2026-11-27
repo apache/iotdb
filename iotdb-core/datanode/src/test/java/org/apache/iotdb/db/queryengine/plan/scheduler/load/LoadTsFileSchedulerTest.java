@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -28,17 +34,22 @@ import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 
 import org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
@@ -46,6 +57,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.function.Function;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -169,6 +182,61 @@ public class LoadTsFileSchedulerTest {
     when(node.getDatabase()).thenReturn("test");
 
     Assert.assertEquals("test", LoadTsFileScheduler.getPartitionQueryDatabase(node, false));
+  }
+
+  @Test
+  public void testPartitionClientManagerFailureSkipsTabletFallback() {
+    final LoadSingleTsFileNode node = mock(LoadSingleTsFileNode.class);
+    final TsFileResource tsFileResource = mock(TsFileResource.class);
+    Mockito.when(node.getTsFileResource()).thenReturn(tsFileResource);
+    Mockito.when(tsFileResource.getTsFilePath()).thenReturn("partition-failed.tsfile");
+    Mockito.when(node.isTsFileEmpty()).thenReturn(false);
+    Mockito.when(node.needDecodeTsFile(Mockito.any()))
+        .thenAnswer(
+            invocation -> {
+              final Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
+                  partitionQuery = invocation.getArgument(0);
+              partitionQuery.apply(
+                  Collections.singletonList(
+                      new Pair<>(mock(IDeviceID.class), mock(TTimePartitionSlot.class))));
+              return true;
+            });
+    final FragmentInstance instance = Mockito.mock(FragmentInstance.class);
+    final PlanFragment fragment = Mockito.mock(PlanFragment.class);
+    Mockito.when(instance.getFragment()).thenReturn(fragment);
+    Mockito.when(fragment.getPlanNodeTree()).thenReturn(node);
+    Mockito.when(distributedQueryPlan.getInstances())
+        .thenReturn(Collections.singletonList(instance));
+
+    final QueryStateMachine stateMachine = newStateMachine("load_partition_rpc_failure");
+    final MPPQueryContext queryContext = mock(MPPQueryContext.class);
+    final SessionInfo sessionInfo = mock(SessionInfo.class);
+    Mockito.when(queryContext.getSession()).thenReturn(sessionInfo);
+    Mockito.when(sessionInfo.getUserName()).thenReturn("root");
+    final IPartitionFetcher partitionFetcher = mock(IPartitionFetcher.class);
+    Mockito.when(
+            partitionFetcher.getOrCreateDataPartition(
+                Mockito.<DataPartitionQueryParam>anyList(), Mockito.anyString()))
+        .thenThrow(
+            new StatementAnalyzeException(
+                "partition query failed", new ClientManagerException("pool failure")));
+
+    final LoadTsFileScheduler scheduler =
+        new LoadTsFileScheduler(
+            distributedQueryPlan,
+            queryContext,
+            stateMachine,
+            mock(IClientManager.class),
+            partitionFetcher,
+            false);
+
+    scheduler.start();
+
+    Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
+    Assert.assertTrue(stateMachine.getFailureMessage().contains("partition-failed.tsfile"));
+    Assert.assertTrue(stateMachine.getFailureMessage().contains("RPC transport failure"));
+    Mockito.verify(partitionFetcher)
+        .getOrCreateDataPartition(Mockito.<DataPartitionQueryParam>anyList(), Mockito.anyString());
   }
 
   @Test

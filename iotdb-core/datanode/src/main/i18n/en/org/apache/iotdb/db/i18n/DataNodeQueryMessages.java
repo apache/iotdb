@@ -44,6 +44,11 @@ public final class DataNodeQueryMessages {
       "Failed to read TsFile model information before tablet conversion for statement %s: %s";
   public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
       "Failed to load TsFiles after tablet conversion. Details: %s";
+  public static final String
+      EXCEPTION_TSFILE_ARG_IS_UNCERTAIN_AFTER_AN_RPC_TRANSPORT_FAILURE_2A59AF17 =
+          "TsFile %s is uncertain after an RPC transport failure.";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_DETAILS_ARG_D79C19DB =
+      "Failed to load TsFiles. Details: %s";
   public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
       "LOAD rejected: uuid={}, region={}, endpoint={}, status={}";
   public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =

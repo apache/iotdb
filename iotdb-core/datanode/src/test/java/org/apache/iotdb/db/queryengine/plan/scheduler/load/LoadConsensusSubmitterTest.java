@@ -24,7 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -36,8 +38,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,11 +55,14 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Pins how the write peer of a LOAD consensus command is resolved.
@@ -139,6 +149,107 @@ public class LoadConsensusSubmitterTest {
     assertEquals(TSStatusCode.DISPATCH_ERROR, status);
   }
 
+  @Test
+  public void testTransportExceptionIsClassified() throws Exception {
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    stubLeader(11);
+    final TEndPoint endPoint = new TEndPoint("192.0.2.1", 9003);
+    final SyncDataNodeInternalServiceClient client =
+        Mockito.mock(SyncDataNodeInternalServiceClient.class);
+    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
+        newClientManager();
+    Mockito.when(clientManager.borrowClient(endPoint)).thenReturn(client);
+    Mockito.when(client.sendBatchPlanNode(Mockito.any())).thenThrow(new TTransportException());
+    final LoadTsFileConsensusNode node =
+        LoadTsFileConsensusNode.prepare(
+            new PlanNodeId("load-prepare"), "load-id", 0, 0L, false, Collections.emptyMap());
+    final LoadConsensusSubmitter submitter = new LoadConsensusSubmitter(clientManager);
+
+    final TSStatus status =
+        submitter.submit(replicaSet(location(11, endPoint.getIp(), endPoint.getPort())), node);
+
+    assertEquals(TSStatusCode.DISPATCH_ERROR.getStatusCode(), status.getCode());
+    assertTrue(submitter.isLastSubmissionRpcTransportFailure());
+  }
+
+  @Test
+  public void testGenericThriftFailureIsClassified() throws Exception {
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    stubLeader(11);
+    final TEndPoint endPoint = new TEndPoint("192.0.2.1", 9003);
+    final SyncDataNodeInternalServiceClient client =
+        Mockito.mock(SyncDataNodeInternalServiceClient.class);
+    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
+        newClientManager();
+    Mockito.when(clientManager.borrowClient(endPoint)).thenReturn(client);
+    Mockito.when(client.sendBatchPlanNode(Mockito.any())).thenThrow(new TException("rpc failure"));
+    final LoadTsFileConsensusNode node =
+        LoadTsFileConsensusNode.prepare(
+            new PlanNodeId("load-prepare"), "load-id", 0, 0L, false, Collections.emptyMap());
+    final LoadConsensusSubmitter submitter = new LoadConsensusSubmitter(clientManager);
+
+    final TSStatus status =
+        submitter.submit(replicaSet(location(11, endPoint.getIp(), endPoint.getPort())), node);
+
+    assertEquals(TSStatusCode.DISPATCH_ERROR.getStatusCode(), status.getCode());
+    assertTrue(submitter.isLastSubmissionRpcTransportFailure());
+  }
+
+  @Test
+  public void testClientManagerFailureIsClassified() throws Exception {
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    stubLeader(11);
+    final TEndPoint endPoint = new TEndPoint("192.0.2.1", 9003);
+    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
+        newClientManager();
+    Mockito.when(clientManager.borrowClient(endPoint))
+        .thenThrow(new ClientManagerException("pool failure"));
+    final LoadTsFileConsensusNode node =
+        LoadTsFileConsensusNode.prepare(
+            new PlanNodeId("load-prepare"), "load-id", 0, 0L, false, Collections.emptyMap());
+    final LoadConsensusSubmitter submitter = new LoadConsensusSubmitter(clientManager);
+
+    final TSStatus status =
+        submitter.submit(replicaSet(location(11, endPoint.getIp(), endPoint.getPort())), node);
+
+    assertEquals(TSStatusCode.DISPATCH_ERROR.getStatusCode(), status.getCode());
+    assertTrue(submitter.isLastSubmissionRpcTransportFailure());
+  }
+
+  @Test
+  public void testLocalIOExceptionIsNotClassifiedAsUnstableRpcFailure() {
+    assertFalse(
+        LoadConsensusSubmitter.isPotentiallyUnstableRpcFailure(new IOException("local failure")));
+  }
+
+  @Test
+  public void testReceiverRejectionIsNotClassifiedAsTransportFailure() throws Exception {
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    stubLeader(11);
+    final TEndPoint endPoint = new TEndPoint("192.0.2.1", 9003);
+    final SyncDataNodeInternalServiceClient client =
+        Mockito.mock(SyncDataNodeInternalServiceClient.class);
+    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
+        newClientManager();
+    Mockito.when(clientManager.borrowClient(endPoint)).thenReturn(client);
+    final TSendSinglePlanNodeResp singleResponse = new TSendSinglePlanNodeResp();
+    singleResponse.setAccepted(false);
+    singleResponse.setStatus(RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR));
+    final TSendBatchPlanNodeResp batchResponse = new TSendBatchPlanNodeResp();
+    batchResponse.setResponses(Collections.singletonList(singleResponse));
+    Mockito.when(client.sendBatchPlanNode(Mockito.any())).thenReturn(batchResponse);
+    final LoadTsFileConsensusNode node =
+        LoadTsFileConsensusNode.prepare(
+            new PlanNodeId("load-prepare"), "load-id", 0, 0L, false, Collections.emptyMap());
+    final LoadConsensusSubmitter submitter = new LoadConsensusSubmitter(clientManager);
+
+    final TSStatus status =
+        submitter.submit(replicaSet(location(11, endPoint.getIp(), endPoint.getPort())), node);
+
+    assertEquals(TSStatusCode.DISPATCH_ERROR.getStatusCode(), status.getCode());
+    assertFalse(submitter.isLastSubmissionRpcTransportFailure());
+  }
+
   /**
    * A route that is looked up again drops the cached route of that region first: a lookup answers
    * with the route the cache holds, and the route that has to be resolved again is the one that may
@@ -219,9 +330,13 @@ public class LoadConsensusSubmitterTest {
 
   @SuppressWarnings("unchecked")
   private static LoadConsensusSubmitter newSubmitter() {
-    return new LoadConsensusSubmitter(
-        (IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
-            Mockito.mock(IClientManager.class));
+    return new LoadConsensusSubmitter(newClientManager());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> newClientManager() {
+    return (IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
+        Mockito.mock(IClientManager.class);
   }
 
   private static ConsensusGroupId groupId() {

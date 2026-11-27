@@ -40,6 +40,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY;
@@ -60,6 +61,7 @@ public class LoadFallbackHandler {
   private final boolean isGeneratedByPipe;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
   private final List<Integer> failedTsFileNodeIndexes;
+  private final Set<Integer> rpcTransportFailureNodeIndexes;
   private final QueryStateMachine stateMachine;
 
   public LoadFallbackHandler(
@@ -67,6 +69,22 @@ public class LoadFallbackHandler {
       final boolean isGeneratedByPipe,
       final List<LoadSingleTsFileNode> tsFileNodeList,
       final List<Integer> failedTsFileNodeIndexes,
+      final QueryStateMachine stateMachine) {
+    this(
+        queryContext,
+        isGeneratedByPipe,
+        tsFileNodeList,
+        failedTsFileNodeIndexes,
+        Collections.emptySet(),
+        stateMachine);
+  }
+
+  public LoadFallbackHandler(
+      final MPPQueryContext queryContext,
+      final boolean isGeneratedByPipe,
+      final List<LoadSingleTsFileNode> tsFileNodeList,
+      final List<Integer> failedTsFileNodeIndexes,
+      final Set<Integer> rpcTransportFailureNodeIndexes,
       final QueryStateMachine stateMachine) {
     this.queryContext =
         Objects.requireNonNull(
@@ -79,6 +97,7 @@ public class LoadFallbackHandler {
         Objects.requireNonNull(
             failedTsFileNodeIndexes,
             DataNodeQueryMessages.EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6);
+    this.rpcTransportFailureNodeIndexes = Objects.requireNonNull(rpcTransportFailureNodeIndexes);
     this.stateMachine =
         Objects.requireNonNull(
             stateMachine, DataNodeQueryMessages.EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790);
@@ -96,10 +115,12 @@ public class LoadFallbackHandler {
     }
 
     final String initialFailedFiles = getFailedFilePathsString();
-    LOGGER.info(
-        DataNodeQueryMessages
-            .LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG,
-        initialFailedFiles);
+    if (initialFailedFiles != null && !initialFailedFiles.isEmpty()) {
+      LOGGER.info(
+          DataNodeQueryMessages
+              .LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG,
+          initialFailedFiles);
+    }
 
     final long startTime = System.nanoTime();
     try {
@@ -132,6 +153,17 @@ public class LoadFallbackHandler {
 
       final LoadSingleTsFileNode failedNode = tsFileNodeList.get(nodeIndex);
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
+
+      if (rpcTransportFailureNodeIndexes.contains(nodeIndex)) {
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_TSFILE_ARG_IS_UNCERTAIN_AFTER_AN_RPC_TRANSPORT_FAILURE_2A59AF17,
+                filePath);
+        failureDetails.add(message);
+        LOGGER.warn(message);
+        continue;
+      }
 
       try {
         final TSStatus status =
@@ -233,8 +265,10 @@ public class LoadFallbackHandler {
 
     final String message =
         String.format(
-            DataNodeQueryMessages
-                .EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5,
+            failedTsFileNodeIndexes.stream().anyMatch(rpcTransportFailureNodeIndexes::contains)
+                ? DataNodeQueryMessages.EXCEPTION_FAILED_TO_LOAD_TSFILES_DETAILS_ARG_D79C19DB
+                : DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5,
             String.join("; ", failureDetails));
     LOGGER.warn(message);
     stateMachine.transitionToFailed(new LoadFileException(message));
@@ -247,6 +281,7 @@ public class LoadFallbackHandler {
   private String getFailedFilePathsString() {
     return failedTsFileNodeIndexes.stream()
         .filter(index -> index >= 0 && index < tsFileNodeList.size())
+        .filter(index -> !rpcTransportFailureNodeIndexes.contains(index))
         .map(index -> tsFileNodeList.get(index).getTsFileResource().getTsFilePath())
         .collect(Collectors.joining(", "));
   }

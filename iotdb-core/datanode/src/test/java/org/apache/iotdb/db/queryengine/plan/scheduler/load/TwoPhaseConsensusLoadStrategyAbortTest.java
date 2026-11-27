@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
@@ -49,6 +50,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -64,6 +67,34 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
 
   private static final TConsensusGroupId REGION_2 =
       new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
+
+  @Test
+  public void testExhaustedTransportRetriesRemainClassified() throws Exception {
+    final LoadConsensusSubmitter submitter = mock(LoadConsensusSubmitter.class);
+    when(submitter.submit(any(), any()))
+        .thenReturn(RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR));
+    when(submitter.isLastSubmissionRpcTransportFailure()).thenReturn(true);
+    when(submitter.resolveRoute(any(), any(Integer.class)))
+        .thenAnswer(invocation -> currentRoute(invocation.getArgument(0)));
+    final TwoPhaseConsensusLoadStrategy strategy =
+        strategy(submitter, twoRegionsInOrder(), loadIds(), pieceCounts());
+    final Method submitWithRetry =
+        TwoPhaseConsensusLoadStrategy.class.getDeclaredMethod(
+            "submitWithRetry",
+            TConsensusGroupId.class,
+            LoadTsFileConsensusNode.class,
+            boolean.class);
+    submitWithRetry.setAccessible(true);
+    final LoadTsFileConsensusNode command =
+        LoadTsFileConsensusNode.abort(
+            new PlanNodeId("load-abort"), "load-id", false, Collections.emptyMap());
+
+    final TSStatus status = (TSStatus) submitWithRetry.invoke(strategy, REGION_1, command, false);
+
+    assertEquals(TSStatusCode.DISPATCH_ERROR.getStatusCode(), status.getCode());
+    assertTrue(strategy.hasRpcTransportFailure());
+    verify(submitter, times(3)).submit(any(), any());
+  }
 
   /**
    * Fails the given operation for the given region with a permanent error, accepts the rest. The

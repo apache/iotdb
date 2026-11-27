@@ -347,7 +347,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           String.format(
               DataNodeQueryMessages
                   .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETORCREATEDATAPARTITION_2EB2EBBE,
-              e.getMessage()));
+              e.getMessage()),
+          e);
     }
     return dataPartition;
   }
