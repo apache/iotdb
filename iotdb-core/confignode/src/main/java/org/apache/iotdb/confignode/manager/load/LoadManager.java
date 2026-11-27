@@ -29,12 +29,14 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
@@ -48,13 +50,19 @@ import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
 import org.apache.iotdb.confignode.manager.load.service.TopologyService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.consensus.ConsensusFactory;
 
+import org.apache.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 /**
@@ -100,7 +108,7 @@ public class LoadManager {
     setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
     this.topologyService = new TopologyService(configManager, loadCache::updateTopology);
-    this.eventService = new EventService(loadCache);
+    this.eventService = new EventService(loadCache, routeBalancer::refreshRegionPriorityIfNeeded);
     this.eventService.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
     this.eventService.register(
         configManager.getSubscriptionManager().getSubscriptionLeaderChangeHandler());
@@ -167,7 +175,24 @@ public class LoadManager {
     partitionBalancer.reBalanceDataPartitionPolicy(database);
   }
 
-  public void startLoadServices() {
+  public void startLoadServices(BooleanSupplier isCurrentEpoch) {
+    final ConsensusManager consensusManager = configManager.getConsensusManager();
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(
+        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeConsensusProtocolClass())) {
+      try {
+        routeBalancer.startLeaderEpochFromPersistentState(
+            Path.of(ConfigNodeDescriptor.getInstance().getConf().getSystemDir()), isCurrentEpoch);
+      } catch (IOException e) {
+        throw new IllegalStateException(e);
+      }
+    } else {
+      routeBalancer.startLeaderEpoch(
+          () ->
+              consensusManager
+                  .getConsensusImpl()
+                  .getLogicalClock(consensusManager.getConsensusGroupId()),
+          isCurrentEpoch);
+    }
     loadReady.set(false);
     loadReadyStartTimeMillis.set(System.currentTimeMillis());
     loadReadyReason =
@@ -501,7 +526,6 @@ public class LoadManager {
    */
   public void removeRegionGroupRelatedCache(TConsensusGroupId consensusGroupId) {
     loadCache.removeRegionGroupCache(consensusGroupId);
-    routeBalancer.removeRegionPriority(consensusGroupId);
     loadCache.updateRegionGroupStatistics();
     loadCache.updateConsensusGroupStatistics();
     eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
@@ -533,6 +557,10 @@ public class LoadManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     return routeBalancer.getRegionPriorityMap();
+  }
+
+  public Pair<Long, Map<TConsensusGroupId, TRegionReplicaSet>> getRegionPriorityMapSnapshot() {
+    return routeBalancer.getRegionPriorityMapSnapshot();
   }
 
   /**

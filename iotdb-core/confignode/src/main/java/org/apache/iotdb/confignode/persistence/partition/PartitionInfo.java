@@ -125,6 +125,8 @@ public class PartitionInfo implements SnapshotProcessor {
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
 
+  private volatile long regionReplicaSetVersion;
+
   // Map<DatabaseName, DatabasePartitionInfo>
   // For tree model databases: The databaseName is a partial path's full path with "root."
   // For table model databases: The databaseName is a full name without "root."
@@ -157,7 +159,8 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param updateDataNodePlan UpdateDataNodePlan
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the DataNodeLocations are updated successfully.
    */
-  public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+  public synchronized TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    regionReplicaSetVersion++;
     TDataNodeLocation newDataNodeLocation =
         updateDataNodePlan.getDataNodeConfiguration().getLocation();
     databasePartitionTables.forEach(
@@ -176,7 +179,8 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the new DatabasePartitionTable is created
    *     successfully.
    */
-  public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
+  public synchronized TSStatus createDatabase(final DatabaseSchemaPlan plan) {
+    regionReplicaSetVersion++;
     final String databaseName = plan.getSchema().getName();
     final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(databaseName);
     databasePartitionTables.put(databaseName, databasePartitionTable);
@@ -189,7 +193,8 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param plan CreateRegionGroupsPlan
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
-  public TSStatus createRegionGroups(CreateRegionGroupsPlan plan) {
+  public synchronized TSStatus createRegionGroups(CreateRegionGroupsPlan plan) {
+    regionReplicaSetVersion++;
     TSStatus result;
     AtomicInteger maxRegionId = new AtomicInteger(Integer.MIN_VALUE);
 
@@ -294,7 +299,9 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param preDeleteDatabasePlan PreDeleteStorageGroupPlan
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
-  public TSStatus preDeleteDatabase(final PreDeleteDatabasePlan preDeleteDatabasePlan) {
+  public synchronized TSStatus preDeleteDatabase(
+      final PreDeleteDatabasePlan preDeleteDatabasePlan) {
+    regionReplicaSetVersion++;
     final PreDeleteDatabasePlan.PreDeleteType preDeleteType =
         preDeleteDatabasePlan.getPreDeleteType();
     final String database = preDeleteDatabasePlan.getDatabase();
@@ -325,7 +332,8 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param plan DeleteDatabasePlan
    */
-  public void deleteDatabase(final DeleteDatabasePlan plan) {
+  public synchronized void deleteDatabase(final DeleteDatabasePlan plan) {
+    regionReplicaSetVersion++;
     // Clean the databaseTable cache
     databasePartitionTables.remove(plan.getName());
   }
@@ -607,7 +615,7 @@ public class PartitionInfo implements SnapshotProcessor {
             databasePartitionTable -> databasePartitionTable.containRegionGroup(regionGroupId));
   }
 
-  public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
+  public synchronized TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
     TSStatus addStatus =
         addRegionLocation(new AddRegionLocationPlan(req.getRegionId(), req.getNewNode()));
     if (addStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -617,7 +625,8 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** The region has expanded to a new DataNode, now update the databasePartitionTable. */
-  public TSStatus addRegionLocation(AddRegionLocationPlan req) {
+  public synchronized TSStatus addRegionLocation(AddRegionLocationPlan req) {
+    regionReplicaSetVersion++;
     databasePartitionTables.values().stream()
         .filter(
             databasePartitionTable -> databasePartitionTable.containRegionGroup(req.getRegionId()))
@@ -629,7 +638,8 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** The region is no longer located on a DataNode, now update the databasePartitionTable. */
-  public TSStatus removeRegionLocation(RemoveRegionLocationPlan req) {
+  public synchronized TSStatus removeRegionLocation(RemoveRegionLocationPlan req) {
+    regionReplicaSetVersion++;
     databasePartitionTables.values().stream()
         .filter(
             databasePartitionTable -> databasePartitionTable.containRegionGroup(req.getRegionId()))
@@ -717,6 +727,28 @@ public class PartitionInfo implements SnapshotProcessor {
     return databasePartitionTables.values().stream()
         .flatMap(DatabasePartitionTable::getAllReplicaSets)
         .collect(Collectors.toList());
+  }
+
+  public synchronized List<TRegionReplicaSet> getAllActiveReplicaSets() {
+    final List<TRegionReplicaSet> replicaSets = new ArrayList<>();
+    databasePartitionTables.values().stream()
+        .filter(DatabasePartitionTable::isNotPreDeleted)
+        .forEach(
+            databasePartitionTable -> {
+              replicaSets.addAll(
+                  databasePartitionTable.getAllReplicaSets(TConsensusGroupType.SchemaRegion));
+              replicaSets.addAll(
+                  databasePartitionTable.getAllReplicaSets(TConsensusGroupType.DataRegion));
+            });
+    return replicaSets;
+  }
+
+  public synchronized Pair<Long, List<TRegionReplicaSet>> getAllActiveReplicaSetsSnapshot() {
+    return new Pair<>(regionReplicaSetVersion, getAllActiveReplicaSets());
+  }
+
+  public long getRegionReplicaSetVersion() {
+    return regionReplicaSetVersion;
   }
 
   /**
@@ -1074,7 +1106,8 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
-  public void processLoadSnapshot(final File snapshotDir) throws TException, IOException {
+  public synchronized void processLoadSnapshot(final File snapshotDir)
+      throws TException, IOException {
 
     final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
@@ -1277,7 +1310,8 @@ public class PartitionInfo implements SnapshotProcessor {
         .findFirst();
   }
 
-  public void clear() {
+  public synchronized void clear() {
+    regionReplicaSetVersion++;
     nextRegionGroupId.set(-1);
     databasePartitionTables.clear();
     regionMaintainTaskList.clear();

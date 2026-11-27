@@ -659,6 +659,9 @@ public final class ManagerMessages {
       MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F =
           "ConfigNode leader 正在等待集群心跳采样。";
   public static final String
+      MESSAGE_THE_CURRENT_CONFIGNODE_LEADER_CANNOT_PROVIDE_THE_REGION_ROUTE_MAP_YET_RETRY_LATER_FA500387 =
+          "当前 ConfigNode leader 暂时无法提供 Region 路由表，请稍后重试。";
+  public static final String
       MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_FIRST_HEARTBEAT_FROM_REGISTERED_CONFIGNODES_DATANODES_ARG_2FD3F6FA =
           "ConfigNode leader 正在等待已注册的 ConfigNode/DataNode 的首次心跳：%s";
   public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_NOT_STARTED_1C75DB82 =

@@ -25,12 +25,14 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -41,6 +43,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -236,6 +239,40 @@ public class AbstractConfigNodeClientTest {
     assertEquals(FIRST, client.configLeader);
     verify(nodeInfo, never()).getLatestConfigNodes();
     verify(client, never()).connect(eq(SECOND), anyInt());
+  }
+
+  @Test
+  public void testWarmingUpRetriesAreBounded() throws Exception {
+    TestConfigNodeClient client = newClient(Collections.singletonList(FIRST));
+    client.configLeader = FIRST;
+    client.configNode = FIRST;
+    doNothing().when(client).waitBeforeRetry();
+    AtomicInteger attempts = new AtomicInteger();
+
+    try {
+      client.executeRemoteCallWithRetry(
+          () -> {
+            attempts.incrementAndGet();
+            return new TSStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode());
+          },
+          status -> !client.updateConfigNodeLeader(status));
+      fail();
+    } catch (TException expected) {
+      assertEquals(15, attempts.get());
+    }
+  }
+
+  @Test
+  public void testExpiredConnectionDeadlineIncludesDiagnosticMessage() throws Exception {
+    TestConfigNodeClient client = newClient(Collections.singletonList(FIRST));
+
+    try {
+      client.getBoundedTimeoutMs(() -> 0);
+      fail();
+    } catch (TTransportException expected) {
+      assertEquals(TTransportException.TIMED_OUT, expected.getType());
+      assertTrue(expected.getMessage() != null && !expected.getMessage().isEmpty());
+    }
   }
 
   private static TestConfigNodeClient newClient(List<TEndPoint> latestNodes) throws TException {

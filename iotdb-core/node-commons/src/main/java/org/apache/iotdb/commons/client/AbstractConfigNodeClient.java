@@ -204,6 +204,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 
 public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClient<C>>
@@ -283,28 +285,43 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
   }
 
   protected final void connectAndSync() throws TException {
-    try {
-      tryToConnect(property.getConnectionTimeoutMs());
-    } catch (TException e) {
-      // Can not connect to each config node
-      syncLatestConfigNodeList();
-      tryToConnect(property.getConnectionTimeoutMs());
-    }
+    connectAndSync(property.getConnectionTimeoutMs());
   }
 
   protected final void connectAndSync(int timeoutMs) throws TException {
+    connectAndSync(() -> timeoutMs, true);
+  }
+
+  protected final void connectAndSync(LongSupplier remainingNanos) throws TException {
+    connectAndSync(() -> getBoundedTimeoutMs(remainingNanos), false);
+  }
+
+  protected final int getBoundedTimeoutMs(LongSupplier remainingNanos) throws TTransportException {
+    final long nanos = remainingNanos.getAsLong();
+    if (nanos <= 0) {
+      throw new TTransportException(
+          TTransportException.TIMED_OUT,
+          String.format(ConfigMessages.MSG_RECONNECTION_FAIL, getNodeTypeName()));
+    }
+    final long millis = 1 + TimeUnit.NANOSECONDS.toMillis(nanos - 1);
+    final int configuredTimeout = property.getConnectionTimeoutMs();
+    return (int) Math.min(configuredTimeout > 0 ? configuredTimeout : Integer.MAX_VALUE, millis);
+  }
+
+  private void connectAndSync(Operation<Integer> timeout, boolean waitForLeader) throws TException {
     try {
-      tryToConnect(timeoutMs);
+      tryToConnect(timeout, waitForLeader);
     } catch (TException e) {
       // Can not connect to each config node
       syncLatestConfigNodeList();
-      tryToConnect(timeoutMs);
+      tryToConnect(timeout, waitForLeader);
     }
   }
 
-  private void tryToConnect(int timeoutMs) throws TException {
+  private void tryToConnect(Operation<Integer> timeout, boolean waitForLeader) throws TException {
     TException exception = null;
     if (configLeader != null) {
+      final int timeoutMs = timeout.execute();
       try {
         connect(configLeader, timeoutMs);
         return;
@@ -313,7 +330,7 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
         configLeader = null;
         exception = e;
       }
-    } else {
+    } else if (waitForLeader) {
       try {
         // Wait to start the next try
         Thread.sleep(RETRY_INTERVAL_MS);
@@ -331,6 +348,7 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
     for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
       cursor = (cursor + 1) % configNodes.size();
       TEndPoint tryEndpoint = configNodes.get(cursor);
+      final int timeoutMs = timeout.execute();
 
       try {
         connect(tryEndpoint, timeoutMs);
@@ -407,7 +425,7 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
               status.getMessage());
         }
         try {
-          Thread.sleep(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
+          waitBeforeRetry();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           LOGGER.warn(ConfigMessages.UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK);
@@ -466,7 +484,7 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
         detectedNodeNum = 0;
         // Wait to start the next try
         try {
-          Thread.sleep(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
+          waitBeforeRetry();
         } catch (InterruptedException ignore) {
           Thread.currentThread().interrupt();
           LOGGER.warn(ConfigMessages.UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK);
@@ -477,6 +495,10 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
       connectAndSync();
     }
     throw new TException(String.format(ConfigMessages.MSG_RECONNECTION_FAIL, getNodeTypeName()));
+  }
+
+  protected void waitBeforeRetry() throws InterruptedException {
+    Thread.sleep(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
   }
 
   @Override

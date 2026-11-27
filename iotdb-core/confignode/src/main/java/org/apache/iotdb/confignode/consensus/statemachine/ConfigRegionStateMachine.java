@@ -374,7 +374,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
 
     // Always start load services first. ConsensusManager gates external serving until warm-up.
-    configManager.getLoadManager().startLoadServices();
+    configManager.getLoadManager().startLoadServices(() -> isCurrentLeaderServicesEpoch(epoch));
     if (CONF.isEnableTopologyProbing()) {
       configManager.getLoadManager().startTopologyService();
     }

@@ -96,6 +96,7 @@ public class PartitionCache {
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
+  private static final int MAX_REGION_ROUTE_MAP_FETCH_ATTEMPTS = 3;
 
   private static boolean isNeedLastCacheEnabled(final TDatabaseSchema databaseSchema) {
     return !databaseSchema.isSetNeedLastCache() || databaseSchema.isNeedLastCache();
@@ -119,6 +120,8 @@ public class PartitionCache {
   /** the latest time when groupIdToReplicaSetMap updated. */
   private final AtomicLong latestUpdateTime = new AtomicLong(0);
 
+  private final AtomicLong regionReplicaSetCacheInvalidationVersion = new AtomicLong();
+
   /** TConsensusGroupId -> TRegionReplicaSet */
   private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap = new HashMap<>();
 
@@ -129,13 +132,18 @@ public class PartitionCache {
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
 
-  private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
-      ConfigNodeClientManager.getInstance();
+  private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager;
 
   private final CacheMetrics cacheMetrics;
   private final IMemoryBlock memoryBlock;
 
   public PartitionCache() {
+    this(ConfigNodeClientManager.getInstance());
+  }
+
+  protected PartitionCache(
+      IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager) {
+    this.configNodeClientManager = configNodeClientManager;
     this.memoryBlock =
         memoryConfig
             .getPartitionCacheMemoryManager()
@@ -679,58 +687,75 @@ public class PartitionCache {
     if (consensusGroupIds.isEmpty()) {
       return Collections.emptyList();
     }
-    List<TRegionReplicaSet> result;
-    // try to get regionReplicaSet from cache
+    for (int attempt = 0; attempt < MAX_REGION_ROUTE_MAP_FETCH_ATTEMPTS; attempt++) {
+      List<TRegionReplicaSet> result = getCachedRegionReplicaSets(consensusGroupIds);
+      if (!result.isEmpty()) {
+        return result;
+      }
+
+      final long invalidationVersion = regionReplicaSetCacheInvalidationVersion.get();
+      try (ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()
+            && resp.isSetTimestamp()
+            && resp.isSetRegionRouteMap()) {
+          updateGroupIdToReplicaSetMap(
+              resp.getTimestamp(), resp.getRegionRouteMap(), invalidationVersion);
+        } else if (isRetryableRegionRouteMapStatus(resp.getStatus())
+            && attempt + 1 < MAX_REGION_ROUTE_MAP_FETCH_ATTEMPTS) {
+          continue;
+        } else {
+          throw new TException(resp.getStatus().toString());
+        }
+      } catch (ClientManagerException | TException e) {
+        result = getCachedRegionReplicaSets(consensusGroupIds);
+        if (!result.isEmpty()) {
+          return result;
+        }
+        if (invalidationVersion != regionReplicaSetCacheInvalidationVersion.get()
+            && attempt + 1 < MAX_REGION_ROUTE_MAP_FETCH_ATTEMPTS) {
+          continue;
+        }
+        throw new StatementAnalyzeException(
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETREGIONREPLICASET_S_370D5526,
+                e.getMessage()),
+            e);
+      }
+
+      result = getCachedRegionReplicaSets(consensusGroupIds);
+      if (!result.isEmpty()) {
+        return result;
+      }
+      if (invalidationVersion != regionReplicaSetCacheInvalidationVersion.get()
+          && attempt + 1 < MAX_REGION_ROUTE_MAP_FETCH_ATTEMPTS) {
+        continue;
+      }
+      break;
+    }
+    throw new RuntimeException(
+        String.format(
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_FAILED_TO_GET_REPLICASET_OF_CONSENSUS_GROUPS_IDS_S_CC30C7A6,
+            consensusGroupIds));
+  }
+
+  private boolean isRetryableRegionRouteMapStatus(TSStatus status) {
+    return status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()
+        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+  }
+
+  private List<TRegionReplicaSet> getCachedRegionReplicaSets(
+      List<TConsensusGroupId> consensusGroupIds) {
     regionReplicaSetLock.readLock().lock();
     try {
       failIfMetadataLeaseFenced();
-      result = getRegionReplicaSetInternal(consensusGroupIds);
+      return getRegionReplicaSetInternal(consensusGroupIds);
     } finally {
       regionReplicaSetLock.readLock().unlock();
     }
-    if (result.isEmpty()) {
-      // if not hit then try to get regionReplicaSet from configNode
-      regionReplicaSetLock.writeLock().lock();
-      try {
-        // double check after getting the write lock
-        result = getRegionReplicaSetInternal(consensusGroupIds);
-        if (result.isEmpty()) {
-          try (ConfigNodeClient client =
-              configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-            TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
-            if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-              updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
-            } else {
-              logger.warn(
-                  DataNodeQueryMessages
-                      .UNEXPECTED_ERROR_WHEN_GETREGIONREPLICASET_STATUS_ARG_REGIONMAP_ARG,
-                  resp.getStatus(),
-                  resp.getRegionRouteMap());
-            }
-            result = getRegionReplicaSetInternal(consensusGroupIds);
-            // if configNode don't have then will throw RuntimeException
-            if (result.isEmpty()) {
-              // failed to get RegionReplicaSet from configNode
-              throw new RuntimeException(
-                  String.format(
-                      DataNodeQueryMessages
-                          .QUERY_EXCEPTION_FAILED_TO_GET_REPLICASET_OF_CONSENSUS_GROUPS_IDS_S_CC30C7A6,
-                      consensusGroupIds));
-            }
-          } catch (ClientManagerException | TException e) {
-            throw new StatementAnalyzeException(
-                String.format(
-                    DataNodeQueryMessages
-                        .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETREGIONREPLICASET_S_370D5526,
-                    e.getMessage()));
-          }
-        }
-      } finally {
-        regionReplicaSetLock.writeLock().unlock();
-      }
-    }
-    // try to get regionReplicaSet by consensusGroupId
-    return result;
   }
 
   private List<TRegionReplicaSet> getRegionReplicaSetInternal(
@@ -756,8 +781,19 @@ public class PartitionCache {
    */
   public boolean updateGroupIdToReplicaSetMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> map) {
+    return updateGroupIdToReplicaSetMap(timestamp, map, -1);
+  }
+
+  private boolean updateGroupIdToReplicaSetMap(
+      long timestamp,
+      Map<TConsensusGroupId, TRegionReplicaSet> map,
+      long expectedInvalidationVersion) {
     regionReplicaSetLock.writeLock().lock();
     try {
+      if (expectedInvalidationVersion >= 0
+          && expectedInvalidationVersion != regionReplicaSetCacheInvalidationVersion.get()) {
+        return false;
+      }
       boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
       // if timestamp is greater than latestUpdateTime, then update
       if (result) {
@@ -774,6 +810,7 @@ public class PartitionCache {
   public void invalidReplicaSetCache() {
     regionReplicaSetLock.writeLock().lock();
     try {
+      regionReplicaSetCacheInvalidationVersion.incrementAndGet();
       groupIdToReplicaSetMap.clear();
     } finally {
       regionReplicaSetLock.writeLock().unlock();
@@ -784,6 +821,7 @@ public class PartitionCache {
   public void invalidReplicaSetCache(final TConsensusGroupId regionId) {
     regionReplicaSetLock.writeLock().lock();
     try {
+      regionReplicaSetCacheInvalidationVersion.incrementAndGet();
       groupIdToReplicaSetMap.remove(regionId);
     } finally {
       regionReplicaSetLock.writeLock().unlock();
