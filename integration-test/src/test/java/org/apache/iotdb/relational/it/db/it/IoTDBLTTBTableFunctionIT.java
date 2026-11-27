@@ -40,6 +40,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringJoiner;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
@@ -151,6 +152,27 @@ public class IoTDBLTTBTableFunctionIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testSparseTailInOverlappingCountWindows() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute("CREATE TABLE sparse_tail(a DOUBLE FIELD, b DOUBLE FIELD)");
+      StringJoiner values = new StringJoiner(",");
+      for (int t = 0; t < 1000; t++) {
+        values.add("(" + t + "," + (t < 2 ? Integer.toString(t) : "NULL") + "," + t + ")");
+      }
+      statement.execute("INSERT INTO sparse_tail(time, a, b) VALUES " + values);
+    }
+    tableResultSetEqualTest(
+        "SELECT count(*) AS rows_sampled, count(a) AS a_points, count(b) AS b_points, "
+            + "max(a_time) AS last_a FROM LTTB(DATA => sparse_tail ORDER BY time, "
+            + "TIMECOL => 'time', SIZE => 3, SLIDE => 2)",
+        new String[] {"rows_sampled", "a_points", "b_points", "last_a"},
+        new String[] {"502,2,502,1970-01-01T00:00:00.001Z,"},
+        DATABASE_NAME);
   }
 
   @Test

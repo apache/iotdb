@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.i18n.QueryMessages;
@@ -40,6 +42,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -344,6 +347,28 @@ public class LTTBRegressionTest {
           expected.getMessage());
     } finally {
       processor.beforeDestroy();
+    }
+  }
+
+  @Test
+  public void testWindowColumnStateCountsTowardMemoryBudget() {
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    long previousBudget = config.getLttbBufferSize();
+    long budget = 32 * 1024L;
+    try {
+      config.setLttbBufferSize(budget);
+      for (String mode : Arrays.asList("COUNT_WINDOW", "TIME_WINDOW")) {
+        SemanticException exception =
+            assertThrows(SemanticException.class, () -> processor(mode, 1, 1, 0, 512));
+        assertEquals(
+            String.format(
+                CommonMessages
+                    .EXCEPTION_LTTB_BUFFERS_EXCEED_LTTB_BUFFER_SIZE_IN_BYTES_ARG_BYTES_26BDE62D,
+                budget),
+            exception.getMessage());
+      }
+    } finally {
+      config.setLttbBufferSize(previousBudget);
     }
   }
 

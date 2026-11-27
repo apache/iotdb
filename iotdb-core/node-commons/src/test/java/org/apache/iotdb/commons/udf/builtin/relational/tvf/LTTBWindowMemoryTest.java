@@ -445,6 +445,67 @@ public class LTTBWindowMemoryTest {
   }
 
   @Test
+  public void testExclusiveSingletonStreamsAcrossOverlappingWindows() {
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    long previousBudget = config.getLttbBufferSize();
+    try {
+      config.setLttbBufferSize(32 * 1024);
+      for (boolean timeWindow : new boolean[] {false, true}) {
+        TableFunctionDataProcessor processor =
+            processor(timeWindow, 3, 2, Type.DOUBLE, Type.DOUBLE);
+        List<ColumnBuilder> builders = new ArrayList<>(builders(timeWindow));
+        builders.add(new LongColumnBuilder(null, 16));
+        builders.add(new DoubleColumnBuilder(null, 16));
+        try {
+          for (int t = 0; t < 120; t++) {
+            processor.process(record(t, t < 2 ? (double) t : null, (double) t), builders, null);
+          }
+          // t=1 can only be reported by [0,3). The dense column keeps streaming.
+          assertTrue(builders.get(0).getPositionCount() > 0);
+          processor.finish(builders, null);
+          int firstTime = timeWindow ? 2 : 1;
+          Column sparseTimes = builders.get(firstTime).build();
+          Column denseTimes = builders.get(firstTime + 2).build();
+          assertEquals(62, denseTimes.getPositionCount());
+          assertEquals(0, sparseTimes.getLong(0));
+          assertEquals(1, sparseTimes.getLong(1));
+          assertEquals(0, builders.get(0).build().getLong(1));
+          for (int i = 2; i < sparseTimes.getPositionCount(); i++) {
+            assertTrue(sparseTimes.isNull(i));
+          }
+          assertEquals(119, denseTimes.getLong(61));
+        } finally {
+          processor.beforeDestroy();
+        }
+      }
+    } finally {
+      config.setLttbBufferSize(previousBudget);
+    }
+  }
+
+  @Test
+  public void testSharedSingletonEndpointIsEmittedOnlyByItsLastWindow() {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 3, 2, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(timeWindow);
+      try {
+        for (int t = 0; t < 6; t++) {
+          processor.process(record(t, t == 0 || t == 2 ? (double) t : null), builders, null);
+        }
+        processor.finish(builders, null);
+        Column times = builders.get(timeWindow ? 2 : 1).build();
+        assertEquals(2, times.getPositionCount());
+        assertEquals(0, times.getLong(0));
+        assertEquals(2, times.getLong(1));
+        // t=2 belongs to [0,3) and [2,5). The latter owns the final endpoint.
+        assertEquals(timeWindow ? 2 : 1, builders.get(0).build().getLong(1));
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
   public void testMultiPointLookaheadWaitsForTheFinalEndpoint() {
     for (boolean timeWindow : new boolean[] {false, true}) {
       TableFunctionDataProcessor processor = processor(timeWindow, 3, 3, Type.DOUBLE);

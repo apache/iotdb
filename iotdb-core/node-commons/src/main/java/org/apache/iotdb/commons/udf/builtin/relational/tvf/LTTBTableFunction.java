@@ -1463,7 +1463,15 @@ public class LTTBTableFunction implements TableFunction {
       this.memoryBudget = new BufferMemoryBudget(maxBufferedBytes);
       int columnCount = participantColumns.length;
       long referenceArrayBytes = RamUsageEstimator.sizeOfObjectArray(columnCount);
-      memoryBudget.reserve(2 * referenceArrayBytes);
+      // Each of the five remembered points has a presence flag, time, and floating and integral
+      // values. The last eligible point also keeps its position. Four arrays link columns to
+      // windows.
+      long longArrayBytes = RamUsageEstimator.sizeOfLongArray(columnCount);
+      long pointStateBytes =
+          RamUsageEstimator.sizeOfBooleanArray(columnCount)
+              + 2 * longArrayBytes
+              + RamUsageEstimator.sizeOfDoubleArray(columnCount);
+      memoryBudget.reserve(5 * pointStateBytes + longArrayBytes + 4 * referenceArrayBytes);
       this.firstPendingFinite = new WindowState[columnCount];
       this.lastPendingFinite = new WindowState[columnCount];
       this.windowMetadataBytes = WINDOW_INSTANCE_SIZE + 4 * referenceArrayBytes;
@@ -1735,13 +1743,13 @@ public class LTTBTableFunction implements TableFunction {
         return true;
       }
       for (int i = 0; i < participantColumns.length; i++) {
-        // A disjoint bucket's only candidate is emitted here even if it turns out to be L.
-        // Its selection needs no lookahead, and no later window can claim that endpoint.
-        if (slide >= size && window.buffers[i].size() == 1) {
-          continue;
-        }
         if (hasLastEligible[i] && containsPosition(window, lastEligiblePositions[i])) {
-          return false;
+          // A sole candidate before the next window start is emitted here even if it becomes L.
+          // Compare the offset within this window so the next start need not fit in a long.
+          long windowStart = window.endExclusive - size;
+          if (window.buffers[i].size() != 1 || lastEligiblePositions[i] - windowStart >= slide) {
+            return false;
+          }
         }
         // Once L is outside this bucket, a sole finite candidate wins for every possible C.
         if (firstPendingFinite[i] != window || window.buffers[i].onlyFiniteIndex != NOT_SELECTED) {
