@@ -75,6 +75,10 @@
                     <groupId>io.netty</groupId>
                     <artifactId>netty-codec-http</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-transport-native-kqueue</artifactId>
+                </exclusion>
                 <!-- IoTDB configures Moquette with a plain TCP listener. -->
                 <exclusion>
                     <groupId>io.netty</groupId>
@@ -91,6 +95,18 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-buffer</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- The server supplies the epoll classes and the Linux x86_64 library. -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-classes-epoll</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-epoll</artifactId>
+            <classifier>linux-x86_64</classifier>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -170,6 +186,11 @@
                         <ignoredDependency>io.netty:netty-codec-mqtt</ignoredDependency>
                         <ignoredDependency>org.apache.tsfile:common</ignoredDependency>
                     </ignoredDependencies>
+                    <usedDependencies>
+                        <!-- The Netty transport loads these classes and native code at runtime. -->
+                        <usedDependency>io.netty:netty-transport-classes-epoll</usedDependency>
+                        <usedDependency>io.netty:netty-transport-native-epoll</usedDependency>
+                    </usedDependencies>
                 </configuration>
             </plugin>
             <plugin>
