@@ -80,6 +80,24 @@ public class PipeDescriptorTest {
   }
 
   @Test
+  public void testHardlinkDirectoryNamesCanBeRelative() {
+    final String originalBaseDirName = config.getPipeHardlinkBaseDirName();
+    final String originalTsFileDirName = config.getPipeHardlinkTsFileDirName();
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("pipe_hardlink_base_dir_name", "custom-pipe");
+    properties.setProperty("pipe_hardlink_tsfile_dir_name", "custom-tsfile");
+
+    try {
+      PipeDescriptor.loadPipeStaticConfig(config, properties);
+      Assert.assertEquals("custom-pipe", config.getPipeHardlinkBaseDirName());
+      Assert.assertEquals("custom-tsfile", config.getPipeHardlinkTsFileDirName());
+    } finally {
+      config.setPipeHardlinkBaseDirName(originalBaseDirName);
+      config.setPipeHardlinkTsFileDirName(originalTsFileDirName);
+    }
+  }
+
+  @Test
   public void testInvalidTwoStageAggregateValuesFallBackToCurrentConfig() {
     final long originalMaxCombinerLiveTimeInMs =
         config.getTwoStageAggregateMaxCombinerLiveTimeInMs();

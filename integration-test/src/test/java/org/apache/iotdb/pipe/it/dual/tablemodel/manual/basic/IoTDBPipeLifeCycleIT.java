@@ -212,7 +212,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelSharedClusterIT 
 
       sourceAttributes.put("capture.table", "true");
       sourceAttributes.put("__system.sql-dialect", "table");
-      sourceAttributes.put("source.mode", "forced-log");
+      sourceAttributes.put("source.realtime.mode", "forced-log");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -324,7 +324,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelSharedClusterIT 
 
       sourceAttributes.put("capture.table", "true");
       sourceAttributes.put("__system.sql-dialect", "table");
-      sourceAttributes.put("source.mode", "hybrid");
+      sourceAttributes.put("source.realtime.mode", "hybrid");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");

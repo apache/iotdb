@@ -314,7 +314,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTreeModelSharedClusterIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.mode", "log");
+      sourceAttributes.put("source.realtime.mode", "log");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -380,7 +380,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTreeModelSharedClusterIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.mode", "file");
+      sourceAttributes.put("source.realtime.mode", "file");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -446,7 +446,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTreeModelSharedClusterIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.mode", "hybrid");
+      sourceAttributes.put("source.realtime.mode", "hybrid");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");

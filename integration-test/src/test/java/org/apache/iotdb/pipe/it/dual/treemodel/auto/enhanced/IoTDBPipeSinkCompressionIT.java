@@ -353,8 +353,10 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTreeModelSharedClust
     try {
       createZstdPipe(statement, pipeName, sourcePattern, zstdLevel, receiverIp, receiverPort);
       fail();
-    } catch (final SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("Zstd compression level should be in the range"));
+    } catch (final SQLException failure) {
+      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), failure.getErrorCode());
+      Assert.assertTrue(
+          failure.getMessage(), failure.getMessage().contains("compressor.zstd.level"));
     }
   }
 

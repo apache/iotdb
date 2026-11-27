@@ -335,10 +335,10 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelSharedClus
                   receiverIp,
                   receiverPort));
           fail();
-        } catch (SQLException e) {
-          // Make sure the error message in IoTDBConnector.java is returned
+        } catch (SQLException failure) {
+          Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), failure.getErrorCode());
           Assert.assertTrue(
-              e.getMessage().contains("Zstd compression level should be in the range"));
+              failure.getMessage(), failure.getMessage().contains("compressor.zstd.level"));
         }
 
         try {
@@ -358,10 +358,10 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelSharedClus
                   receiverIp,
                   receiverPort));
           fail();
-        } catch (SQLException e) {
-          // Make sure the error message in IoTDBConnector.java is returned
+        } catch (SQLException failure) {
+          Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), failure.getErrorCode());
           Assert.assertTrue(
-              e.getMessage().contains("Zstd compression level should be in the range"));
+              failure.getMessage(), failure.getMessage().contains("compressor.zstd.level"));
         }
       }
 

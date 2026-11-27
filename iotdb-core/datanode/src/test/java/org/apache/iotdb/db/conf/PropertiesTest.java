@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -89,12 +88,15 @@ public class PropertiesTest {
       Assert.assertEquals(8192, descriptor.getConfig().getLoadTsFileWriteBufferSize());
 
       properties.setProperty("load_tsfile_write_buffer_size_in_byte", "0");
-      Assert.assertThrows(
-          QueryProcessException.class, () -> descriptor.loadHotModifiedProps(properties));
+      descriptor.loadHotModifiedProps(properties);
       Assert.assertEquals(
           "an invalid value keeps the current one",
           8192,
           descriptor.getConfig().getLoadTsFileWriteBufferSize());
+      Assert.assertEquals(
+          "8192",
+          ConfigurationFileUtils.getAppliedProperties()
+              .get("load_tsfile_write_buffer_size_in_byte"));
     } finally {
       final TrimProperties properties = new TrimProperties();
       properties.setProperty(

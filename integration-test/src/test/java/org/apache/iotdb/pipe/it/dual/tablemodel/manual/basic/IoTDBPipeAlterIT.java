@@ -159,7 +159,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelSharedClusterIT {
 
       // Alter pipe (replace)
       statement.execute(
-          "alter pipe a2b replace source ('capture.table'='true','''source'='iotdb-source', 'table-name'='test','database-name'='test')");
+          "alter pipe a2b replace source ('capture.table'='true','source'='iotdb-source',"
+              + "'''source'='do-nothing-source','table-name'='test','database-name'='test')");
 
       // Show pipe
       {
@@ -175,6 +176,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelSharedClusterIT {
         Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
         // check configurations
         Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+        Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("'source="));
         Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
         Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
         Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));

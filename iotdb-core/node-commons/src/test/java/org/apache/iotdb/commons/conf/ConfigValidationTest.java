@@ -298,6 +298,18 @@ public class ConfigValidationTest {
   }
 
   @Test
+  public void testTopicAcceptsNormalizedModesAndCaseInsensitiveFormat() {
+    for (final String mode : new String[] {" LIVE ", " CONSENSUS "}) {
+      final Map<String, String> attributes =
+          Map.of(
+              "mode", mode,
+              "order-mode", " LEADER-ONLY ",
+              "format", "SUBSCRIPTIONRECORDHANDLER");
+      assertEquals(attributes, TopicParameterDefinitions.validate(attributes));
+    }
+  }
+
+  @Test
   public void testInvalidConfigurationDisplaysEffectiveFallback() throws IOException {
     final String key = "load_tsfile_allowed_dirs";
     final String previousValue = ConfigurationFileUtils.getAppliedProperties().get(key);
