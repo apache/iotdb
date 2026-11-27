@@ -6649,6 +6649,15 @@ public class StatementAnalyzer {
     private ArgumentAnalysis analyzeScalarArgument(
         Expression expression, ScalarParameterSpecification argumentSpecification, boolean isLttb) {
       if (expression instanceof TimeDurationLiteral) {
+        if (isLttb
+            && LTTBTableFunction.ORIGIN_PARAMETER_NAME.equals(argumentSpecification.getName())) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S,
+                  argumentSpecification.getName(),
+                  argumentSpecification.getType(),
+                  "DURATION"));
+        }
         if (((TimeDurationLiteral) expression).getValue().monthDuration != 0) {
           throw new SemanticException(
               DataNodeQueryMessages.SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);

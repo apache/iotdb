@@ -1200,6 +1200,20 @@ public class TableFunctionTest {
   }
 
   @Test
+  public void testLTTBTimeWindowOriginRequiresTimestampInsteadOfDuration() {
+    String prefix =
+        "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', SIZE => 2s, ORIGIN => ";
+    assertAnalyzeFails(
+        prefix + "1s)",
+        String.format(
+            DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S,
+            "ORIGIN",
+            "TIMESTAMP",
+            "DURATION"));
+    analyzeSQL(prefix + "CAST(1000 AS TIMESTAMP))", TEST_MATADATA, QUERY_CONTEXT);
+  }
+
+  @Test
   public void testLTTBWindowArgumentsRejectNonIntegralSqlTypes() {
     String prefix = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', ";
     for (String type : ImmutableList.of("TIMESTAMP", "DOUBLE")) {

@@ -85,6 +85,51 @@ public class LTTBWindowMemoryTest {
   }
 
   @Test
+  public void testAllNullRowsSkipCountWindowAllocation() {
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    long previousBudget = config.getLttbBufferSize();
+    try {
+      config.setLttbBufferSize(8 * 1024);
+      TableFunctionDataProcessor processor = processor(false, 100_000, 1, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(false);
+      try {
+        for (int t = 0; t < 64; t++) {
+          processor.process(record(t, (Number) null), builders, null);
+        }
+        processor.finish(builders, null);
+        assertEquals(0, builders.get(0).getPositionCount());
+      } finally {
+        processor.beforeDestroy();
+      }
+    } finally {
+      config.setLttbBufferSize(previousBudget);
+    }
+  }
+
+  @Test
+  public void testCountWindowsAfterNullRowsKeepTheirOriginalIndexes() {
+    TableFunctionDataProcessor processor = processor(false, 5, 2, Type.DOUBLE);
+    List<ColumnBuilder> builders = builders(false);
+    try {
+      for (int t = 0; t <= 15; t++) {
+        Double value = t == 7 || t == 14 ? (double) t : null;
+        processor.process(record(t, value), builders, null);
+      }
+      processor.finish(builders, null);
+      Column indexes = builders.get(0).build();
+      Column times = builders.get(1).build();
+      assertEquals(2, indexes.getPositionCount());
+      // F at position 7 belongs first to [4, 9), L at 14 belongs last to [14, 19).
+      assertEquals(2, indexes.getLong(0));
+      assertEquals(7, times.getLong(0));
+      assertEquals(7, indexes.getLong(1));
+      assertEquals(14, times.getLong(1));
+    } finally {
+      processor.beforeDestroy();
+    }
+  }
+
+  @Test
   public void testNullRowsPreserveTimeWindowAlignmentAndTimestampChecks() {
     TableFunctionDataProcessor processor = processor(true, 4, 2, Type.DOUBLE, Type.DOUBLE);
     List<ColumnBuilder> builders = new ArrayList<>(builders(true));

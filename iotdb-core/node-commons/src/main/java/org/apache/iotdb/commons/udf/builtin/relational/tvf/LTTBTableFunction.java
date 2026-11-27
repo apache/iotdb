@@ -1540,6 +1540,15 @@ public class LTTBTableFunction implements TableFunction {
 
     protected abstract void processRecord(Record input, long time);
 
+    protected final boolean hasParticipantValue(Record input) {
+      for (ParticipantColumn column : participantColumns) {
+        if (!column.isNull(input)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     /**
      * Adds one input row to every open window that contains it. The first eligible point of a
      * column is kept aside as the {@code F} bucket instead of being added to a window bucket.
@@ -1968,15 +1977,6 @@ public class LTTBTableFunction implements TableFunction {
       collectIntoWindows(time, input, time);
     }
 
-    private boolean hasParticipantValue(Record input) {
-      for (ParticipantColumn column : participantColumns) {
-        if (!column.isNull(input)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
     /** First aligned start whose window ends strictly after the current timestamp. */
     private long getFirstWindowStart(long time) {
       try {
@@ -2019,9 +2019,7 @@ public class LTTBTableFunction implements TableFunction {
   private static final class CountWindowLTTBDataProcessor
       extends AbstractWindowLTTBDataProcessor<CountWindowState> {
     private long rowCount = 0;
-    private long nextWindowStart = 0;
     private long nextWindowIndex = 0;
-    private boolean windowsExhausted;
 
     private CountWindowLTTBDataProcessor(
         long size,
@@ -2039,29 +2037,28 @@ public class LTTBTableFunction implements TableFunction {
 
     @Override
     protected void processRecord(Record input, long time) {
-      // Input row positions advance one at a time, so no expired starts need to be skipped.
-      // Check the end only when a window is reached: a distant future end may be unrepresentable
-      // even though every window that actually receives input is valid.
-      if (!windowsExhausted && nextWindowStart == rowCount) {
-        long windowEnd;
-        try {
-          windowEnd = Math.addExact(nextWindowStart, size);
-        } catch (ArithmeticException e) {
-          throw new SemanticException(
-              CommonMessages
-                  .EXCEPTION_LTTB_COUNT_WINDOW_BOUNDARIES_EXCEED_THE_INT64_RANGE_5BC980CA);
+      long position = rowCount++;
+      long lastIndex = position / slide;
+      if (lastIndex * slide > Long.MAX_VALUE - size) {
+        throw new SemanticException(
+            CommonMessages.EXCEPTION_LTTB_COUNT_WINDOW_BOUNDARIES_EXCEED_THE_INT64_RANGE_5BC980CA);
+      }
+
+      if (nextWindowIndex <= lastIndex) {
+        if (!hasParticipantValue(input)) {
+          return;
         }
-        activeWindows.addLast(
-            new CountWindowState(newWindowBuffers(), windowEnd, nextWindowIndex++));
-        if (nextWindowStart > Long.MAX_VALUE - slide) {
-          windowsExhausted = true;
-        } else {
-          nextWindowStart += slide;
+        // A NULL prefix may span many starts. Materialize only windows still containing this row,
+        // keeping their indexes on the original grid (including windows that emitted no rows).
+        long firstIndex = position < size ? 0 : (position - size) / slide + 1;
+        nextWindowIndex = Math.max(nextWindowIndex, firstIndex);
+        while (nextWindowIndex <= lastIndex) {
+          long end = nextWindowIndex * slide + size;
+          activeWindows.addLast(new CountWindowState(newWindowBuffers(), end, nextWindowIndex++));
         }
       }
 
-      collectIntoWindows(rowCount, input, time);
-      rowCount++;
+      collectIntoWindows(position, input, time);
     }
   }
 }

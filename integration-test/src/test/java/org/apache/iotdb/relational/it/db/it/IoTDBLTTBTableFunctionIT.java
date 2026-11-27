@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,6 +44,7 @@ import java.util.List;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -99,38 +104,6 @@ public class IoTDBLTTBTableFunctionIT {
       statement.execute(
           "INSERT INTO shared(time, site, device, s1) VALUES "
               + "(0, 'a', 'x1', 1.0), (1, 'a', 'x1', 2.0), (0, 'a', 'x2', 3.0), (1, 'a', 'x2', 4.0)");
-      // Eight devices of one query partition, each writing t = 0..3, so every timestamp occurs
-      // eight times in the partition. The eight devices own eight distinct series slots, and the
-      // partition allocator assigns slots to the four DataRegionGroups in order, so the duplicates
-      // are normally spread over several regions. The test does not depend on a particular
-      // distribution: it fails with 701 either way, and catches a lost partition boundary when the
-      // rows do come from more than one fragment.
-      statement.execute(
-          "CREATE TABLE frag_dup(part STRING TAG, device STRING TAG, s1 DOUBLE FIELD)");
-      for (int device = 0; device < 8; device++) {
-        statement.execute(
-            "INSERT INTO frag_dup(time, part, device, s1) VALUES "
-                + "(0, 'p', 'f"
-                + device
-                + "', "
-                + (device + 1)
-                + ".0),"
-                + "(1, 'p', 'f"
-                + device
-                + "', "
-                + (device + 2)
-                + ".0),"
-                + "(2, 'p', 'f"
-                + device
-                + "', "
-                + (device + 3)
-                + ".0),"
-                + "(3, 'p', 'f"
-                + device
-                + "', "
-                + (device + 4)
-                + ".0)");
-      }
       statement.execute("CREATE TABLE integral_values(device STRING TAG, value INT64 FIELD)");
       long baseline = 1L << 60;
       long[] deltas = {0, 1, 8, 2, 0, 0};
@@ -447,12 +420,43 @@ public class IoTDBLTTBTableFunctionIT {
   }
 
   @Test
-  public void testDuplicateTimestampsAcrossDistributedFragmentsAreRejected() {
-    // Every timestamp of the partition is written by all eight devices, whose series slots the
-    // partition allocator assigns to the four DataRegionGroups of the database, so the duplicates
-    // normally come from several regions. The function runs once over the merged partition, so the
-    // check sees the duplicates regardless of how many fragments supplied them. The
-    // window-function and SESSION inputs are the ones that used to lose the partition boundary.
+  public void testDuplicateTimestampsAcrossDistributedFragmentsAreRejected() throws SQLException {
+    try (Connection connection =
+            EnvFactory.getEnv()
+                .getConnection(
+                    EnvFactory.getEnv().getDataNodeWrapper(0),
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute(
+          "CREATE TABLE frag_dup(part STRING TAG, device STRING TAG, s1 DOUBLE FIELD)");
+      // The probe rows have unique timestamps in the same time partition as the duplicate pair.
+      // EXPLAIN identifies each device's actual DataRegion even when all regions use one node.
+      int firstRegion = -1;
+      int otherDevice = -1;
+      for (int device = 0; device < 32; device++) {
+        statement.execute(
+            "INSERT INTO frag_dup(time, part, device, s1) VALUES ("
+                + (device + 1)
+                + ", 'p', 'f"
+                + device
+                + "', 1.0)");
+        int region = fragDupDeviceRegion(statement, device);
+        if (device == 0) {
+          firstRegion = region;
+        } else if (region != firstRegion) {
+          otherDevice = device;
+          break;
+        }
+      }
+      assertTrue("Expected frag_dup devices in two different DataRegions", otherDevice > 0);
+      statement.execute(
+          "INSERT INTO frag_dup(time, part, device, s1) VALUES (0, 'p', 'f0', 1.0), (0, 'p', 'f"
+              + otherDevice
+              + "', 2.0)");
+    }
     String expected =
         "701: LTTB does not support duplicate timestamps, but timestamp 0 appears more than once"
             + " in the same partition.";
@@ -474,6 +478,23 @@ public class IoTDBLTTBTableFunctionIT {
           prefix + "SIZE => 2ms, ORIGIN => 1970-01-01T00:00:00.000+00:00)",
           expected,
           DATABASE_NAME);
+    }
+  }
+
+  private static int fragDupDeviceRegion(Statement statement, int device) throws SQLException {
+    try (ResultSet rs =
+        statement.executeQuery(
+            "EXPLAIN (FORMAT JSON) SELECT time, s1 FROM frag_dup WHERE part = 'p' AND device = 'f"
+                + device
+                + "'")) {
+      assertTrue(rs.next());
+      JsonObject node = JsonParser.parseString(rs.getString(1)).getAsJsonObject();
+      while (node.has("children") && !node.getAsJsonArray("children").isEmpty()) {
+        assertEquals(
+            "Expected a single scan for one device", 1, node.getAsJsonArray("children").size());
+        node = node.getAsJsonArray("children").get(0).getAsJsonObject();
+      }
+      return node.getAsJsonObject("properties").get("RegionId").getAsInt();
     }
   }
 
