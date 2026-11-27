@@ -19,11 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
@@ -35,8 +43,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICES_REGION_GROUP;
@@ -49,6 +62,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class InsertIntoQueryTest {
@@ -125,5 +140,86 @@ public class InsertIntoQueryTest {
       deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(rootOfFI, 3);
       assertTableScan(deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), DESC, 10, 0, true, "");
     }
+  }
+
+  @Test
+  public void compatibleInsertTypesAreAcceptedWithoutCast() {
+    TestMetadata metadata = metadataForInsert(TSDataType.INT32, TSDataType.INT64);
+    String insertSql = "INSERT INTO testdb.compat_target SELECT * FROM testdb.compat_source";
+
+    Analysis compatibleAnalysis = analyzeSQL(insertSql, metadata, QUERY_CONTEXT);
+    assertNotNull(compatibleAnalysis.getInsert());
+
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
+    LogicalQueryPlan compatiblePlan =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, metadata, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
+            .plan(compatibleAnalysis);
+    PlanNode inputNode = getChildrenNode(compatiblePlan.getRootNode(), 2);
+    if (inputNode instanceof ProjectNode) {
+      assertTrue(
+          ((ProjectNode) inputNode)
+              .getAssignments().getMap().values().stream()
+                  .allMatch(SymbolReference.class::isInstance));
+    } else {
+      assertTrue(inputNode instanceof DeviceTableScanNode);
+    }
+  }
+
+  @Test
+  public void incompatibleInsertTypesAreRejected() {
+    assertIncompatibleInsert(TSDataType.FLOAT, TSDataType.INT64);
+    assertIncompatibleInsert(TSDataType.DATE, TSDataType.INT32);
+    assertIncompatibleInsert(TSDataType.INT32, TSDataType.DATE);
+  }
+
+  private static void assertIncompatibleInsert(TSDataType sourceType, TSDataType targetType) {
+    TestMetadata metadata = metadataForInsert(sourceType, targetType);
+    SemanticException exception =
+        assertThrows(
+            SemanticException.class,
+            () ->
+                analyzeSQL(
+                    "INSERT INTO testdb.compat_target SELECT * FROM testdb.compat_source",
+                    metadata,
+                    QUERY_CONTEXT));
+    assertTrue(
+        exception.getMessage(),
+        exception.getMessage().contains("Insert query has mismatched column types"));
+  }
+
+  private static TestMetadata metadataForInsert(TSDataType sourceType, TSDataType targetType) {
+    return new TestMetadata() {
+      @Override
+      public boolean tableExists(QualifiedObjectName name) {
+        return name.getObjectName().equalsIgnoreCase("compat_source")
+            || name.getObjectName().equalsIgnoreCase("compat_target")
+            || super.tableExists(name);
+      }
+
+      @Override
+      public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
+        if (name.getObjectName().equalsIgnoreCase("compat_source")) {
+          return Optional.of(tableSchema("compat_source", sourceType));
+        }
+        if (name.getObjectName().equalsIgnoreCase("compat_target")) {
+          return Optional.of(tableSchema("compat_target", targetType));
+        }
+        return super.getTableSchema(session, name);
+      }
+    };
+  }
+
+  private static TableSchema tableSchema(String tableName, TSDataType fieldType) {
+    return new TableSchema(
+        tableName,
+        Arrays.asList(
+            new ColumnSchema(
+                "time",
+                TypeFactory.getType(TSDataType.TIMESTAMP),
+                false,
+                TsTableColumnCategory.TIME),
+            new ColumnSchema(
+                "value", TypeFactory.getType(fieldType), false, TsTableColumnCategory.FIELD)));
   }
 }

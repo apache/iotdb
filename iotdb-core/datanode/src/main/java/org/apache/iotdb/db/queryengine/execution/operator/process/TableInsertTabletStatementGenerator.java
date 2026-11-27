@@ -28,6 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.NullColumn;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -74,12 +76,18 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
   }
 
   public int processTsBlock(TsBlock tsBlock, int lastReadIndex) {
+    Column[] convertedColumns = new Column[measurements.length];
+    for (int i = 0; i < measurements.length; ++i) {
+      int valueColumnIndex = inputLocations[i].getValueColumnIndex();
+      convertedColumns[i] =
+          convertToTabletType(tsBlock.getValueColumns()[valueColumnIndex], dataTypes[i]);
+    }
+
     while (lastReadIndex < tsBlock.getPositionCount()) {
       times[rowCount] = tsBlock.getValueColumns()[timeColumnIndex].getLong(lastReadIndex);
 
       for (int i = 0; i < measurements.length; ++i) {
-        int valueColumnIndex = inputLocations[i].getValueColumnIndex();
-        Column valueColumn = tsBlock.getValueColumns()[valueColumnIndex];
+        Column valueColumn = convertedColumns[i];
 
         // if the value is NULL
         if (valueColumn.isNull(lastReadIndex)) {
@@ -99,6 +107,21 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
       }
     }
     return lastReadIndex;
+  }
+
+  private static Column convertToTabletType(Column column, TSDataType targetType) {
+    // Numeric writers widen from the original column; binary writers need a Binary column.
+    if (!targetType.isBinary() || isAllNullColumn(column) || column.getDataType() == targetType) {
+      return column;
+    }
+    return column.convertTo(targetType);
+  }
+
+  private static boolean isAllNullColumn(Column column) {
+    // All-null builders may expose a typed INT32 null block even for a different logical type.
+    return column instanceof NullColumn
+        || (column instanceof RunLengthEncodedColumn
+            && ((RunLengthEncodedColumn) column).getValue().isNull(0));
   }
 
   @Override
