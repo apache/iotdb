@@ -30,7 +30,8 @@ public interface AlignedPointReader extends IPointReader {
 
   /**
    * Returns {@code true} if the {@code TimeValuePair} most recently returned by {@link
-   * #nextTimeValuePair()} has no null sub-sensor fields.
+   * #nextTimeValuePair()} has no null sub-sensor fields. Calling {@link #hasNextTimeValuePair()}
+   * must not mutate this value.
    */
   boolean isLastRowComplete();
 }

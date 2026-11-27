@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.TsPrimitiveType.TsLong;
 import org.junit.Test;
 
 import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class PriorityMergeReaderTest {
 
@@ -74,6 +77,55 @@ public class PriorityMergeReaderTest {
         new long[] {2, 1},
         new long[] {10, Long.MAX_VALUE},
         new long[] {10});
+  }
+
+  @Test
+  public void testNullTopNextDoesNotThrowNpe() throws IOException {
+    PriorityMergeReader reader = new PriorityMergeReader();
+    reader.addReader(
+        new AscFakedSeriesReader(new long[] {10, 20}, 1),
+        new MergeReaderPriority(Long.MAX_VALUE, 1, 0, false),
+        20);
+    // Reader whose hasNextTimeValuePair() returns true once more but nextTimeValuePair() yields
+    // null
+    IPointReader nullAfterFirst =
+        new IPointReader() {
+          private int step = 0;
+
+          @Override
+          public boolean hasNextTimeValuePair() {
+            return step < 2;
+          }
+
+          @Override
+          public TimeValuePair nextTimeValuePair() {
+            step++;
+            return step == 1 ? new TimeValuePair(10, new TsLong(2)) : null;
+          }
+
+          @Override
+          public TimeValuePair currentTimeValuePair() {
+            return step == 0 ? new TimeValuePair(10, new TsLong(2)) : null;
+          }
+
+          @Override
+          public long getUsedMemorySize() {
+            return 0;
+          }
+
+          @Override
+          public void close() {}
+        };
+    reader.addReader(nullAfterFirst, new MergeReaderPriority(Long.MAX_VALUE, 2, 0, false), 10);
+
+    TimeValuePair first = reader.nextTimeValuePair();
+    assertEquals(10L, first.getTimestamp());
+    assertEquals(2L, first.getValue().getLong());
+
+    TimeValuePair second = reader.nextTimeValuePair();
+    assertEquals(20L, second.getTimestamp());
+    assertEquals(1L, second.getValue().getLong());
+    assertFalse(reader.hasNextTimeValuePair());
   }
 
   private void testAscAndDescPriorityMergeReader(

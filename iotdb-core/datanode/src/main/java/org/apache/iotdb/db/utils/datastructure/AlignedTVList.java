@@ -2297,7 +2297,9 @@ public abstract class AlignedTVList extends TVList {
       for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
         TsPrimitiveType val = getPrimitiveTypeObject(selectedIndices[columnIndex], columnIndex);
         vector[columnIndex] = val;
-        if (val == null || (val instanceof TsPrimitiveType.TsBinary && val.getBinary() == null)) {
+        if (complete
+            && (val == null
+                || (val instanceof TsPrimitiveType.TsBinary && val.getBinary() == null))) {
           complete = false;
         }
       }

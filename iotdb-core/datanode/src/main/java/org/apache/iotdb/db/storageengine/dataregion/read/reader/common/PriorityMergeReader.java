@@ -89,15 +89,20 @@ public class PriorityMergeReader implements IPointReader {
   public TimeValuePair nextTimeValuePair() throws IOException {
     Element top = heap.poll();
     TimeValuePair ret = top.getTimeValuePair();
-    boolean retComplete = isRowComplete(top);
+    boolean hasOverlap = !heap.isEmpty() && heap.peek().currTime() == ret.getTimestamp();
+    boolean retComplete = hasOverlap && isRowComplete(top);
     TimeValuePair topNext = null;
     boolean canSkipNext = false;
     if (top.hasNext()) {
       top.next();
       topNext = top.currPair();
-      canSkipNext = isRowComplete(top);
+      if (hasOverlap && topNext != null) {
+        canSkipNext = isRowComplete(top);
+      }
     }
-    updateHeap(ret, topNext, retComplete, canSkipNext);
+    if (hasOverlap) {
+      updateHeap(ret, topNext, retComplete, canSkipNext);
+    }
     if (topNext != null) {
       top.setTimeValuePair(topNext);
       heap.add(top);
@@ -128,7 +133,8 @@ public class PriorityMergeReader implements IPointReader {
       TimeValuePair ret, TimeValuePair topNext, boolean retComplete, boolean canSkipNext)
       throws IOException {
     long topTime = ret.getTimestamp();
-    long topNextTime = canSkipNext ? topNext.getTimestamp() : 0L;
+    boolean skipNext = canSkipNext && topNext != null;
+    long topNextTime = skipNext ? topNext.getTimestamp() : 0L;
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
       if (!retComplete) {
@@ -139,7 +145,7 @@ public class PriorityMergeReader implements IPointReader {
         continue;
       }
       e.next();
-      if (canSkipNext && e.currTime() == topNextTime) {
+      if (skipNext && e.currTime() == topNextTime) {
         // if the next value of the peek will be overwritten by the next of the top, skip it
         if (!e.hasNext()) {
           // the chunk is end

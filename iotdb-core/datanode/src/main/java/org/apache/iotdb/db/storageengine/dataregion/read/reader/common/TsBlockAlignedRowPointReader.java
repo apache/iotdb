@@ -63,7 +63,7 @@ public class TsBlockAlignedRowPointReader implements AlignedPointReader {
       } else {
         TsPrimitiveType val = col.getTsPrimitiveType(rowIndex);
         vector[i] = val;
-        if (val == null || (val instanceof TsBinary && val.getBinary() == null)) {
+        if (complete && (val == null || (val instanceof TsBinary && val.getBinary() == null))) {
           complete = false;
         }
       }

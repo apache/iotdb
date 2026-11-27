@@ -169,7 +169,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator
       TsPrimitiveType val =
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
       vector[columnIndex] = val;
-      if (val == null || (val instanceof TsBinary && val.getBinary() == null)) {
+      if (complete && (val == null || (val instanceof TsBinary && val.getBinary() == null))) {
         complete = false;
       }
     }
