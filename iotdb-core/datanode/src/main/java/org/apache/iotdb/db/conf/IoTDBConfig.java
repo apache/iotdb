@@ -1130,6 +1130,7 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   // IoTConsensus Config
   private int maxLogEntriesNumPerBatch = 1024;
   private int maxSizePerBatch = 16 * 1024 * 1024;
+  private CompressionType iotLogCompressionType = CompressionType.UNCOMPRESSED;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
@@ -1307,6 +1308,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public int getMaxLogEntriesNumPerBatch() {
     return maxLogEntriesNumPerBatch;
+  }
+
+  public CompressionType getIotLogCompressionType() {
+    return iotLogCompressionType;
+  }
+
+  public void setIotLogCompressionType(CompressionType type) {
+    iotLogCompressionType = type;
   }
 
   public int getMaxSizePerBatch() {

@@ -35,6 +35,7 @@ import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.i18n.IoTConsensusV2Messages;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.logdispatcher.LogCompression;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerRes;
@@ -65,6 +66,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
@@ -109,6 +111,18 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       TSStatus status = new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
       status.setMessage(message);
       return new TSyncLogEntriesRes(Collections.singletonList(status));
+    }
+    long decompressStart = System.nanoTime();
+    try {
+      // Every block is checked before constructing requests or entering the sync/apply path.
+      LogCompression.decompress(req, impl.getConfig().getRpc().getThriftMaxFrameSize());
+    } catch (IOException | IllegalArgumentException e) {
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return new TSyncLogEntriesRes(Collections.singletonList(status))
+          .setLogCompressionError(status);
+    } finally {
+      impl.getIoTConsensusServerMetrics().recordDecompressCost(System.nanoTime() - decompressStart);
     }
     BatchIndexedConsensusRequest logEntriesInThisBatch =
         new BatchIndexedConsensusRequest(req.peerId);

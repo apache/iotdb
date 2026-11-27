@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
@@ -38,6 +39,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -114,6 +116,45 @@ public class LogDispatcherThreadMetricsTest {
       service.removeMetricSet(second);
     }
     assertNull(findConstructBatchTimer());
+  }
+
+  @Test
+  public void testCompressionCountersShareRegionOwnership() {
+    LogDispatcherThreadMetrics first = new LogDispatcherThreadMetrics(mockThread(2));
+    LogDispatcherThreadMetrics second = new LogDispatcherThreadMetrics(mockThread(3));
+    service.addMetricSet(first);
+    service.addMetricSet(second);
+    try {
+      service.restartService();
+      first.recordCompressionBytes(10, 4, true);
+      second.recordCompressionBytes(20, 6, false);
+      assertEquals(30, findCompressionCounter(Metric.IOT_LOG_COMPRESSION_BYTES, "raw").getCount());
+      assertEquals(
+          10, findCompressionCounter(Metric.IOT_LOG_COMPRESSION_BYTES, "encoded").getCount());
+      assertEquals(
+          1, findCompressionCounter(Metric.IOT_LOG_COMPRESSION_MEMORY_FALLBACKS, null).getCount());
+      service.removeMetricSet(second);
+      first.recordCompressionBytes(5, 2, true);
+      assertEquals(35, findCompressionCounter(Metric.IOT_LOG_COMPRESSION_BYTES, "raw").getCount());
+      assertEquals(
+          2, findCompressionCounter(Metric.IOT_LOG_COMPRESSION_MEMORY_FALLBACKS, null).getCount());
+    } finally {
+      service.removeMetricSet(first);
+      service.removeMetricSet(second);
+    }
+    assertNull(findCompressionCounter(Metric.IOT_LOG_COMPRESSION_BYTES, "raw"));
+    assertNull(findCompressionCounter(Metric.IOT_LOG_COMPRESSION_BYTES, "encoded"));
+    assertNull(findCompressionCounter(Metric.IOT_LOG_COMPRESSION_MEMORY_FALLBACKS, null));
+  }
+
+  private Counter findCompressionCounter(Metric metric, String type) {
+    for (Map.Entry<MetricInfo, IMetric> entry : service.getAllMetrics().entrySet()) {
+      Map<String, String> tags = entry.getKey().getTags();
+      if (metric.toString().equals(entry.getKey().getName())
+          && REGION.toString().equals(tags.get(Tag.REGION.toString()))
+          && Objects.equals(type, tags.get(Tag.TYPE.toString()))) return (Counter) entry.getValue();
+    }
+    return null;
   }
 
   private static LogDispatcher.LogDispatcherThread mockThread(final int peerNodeId) {

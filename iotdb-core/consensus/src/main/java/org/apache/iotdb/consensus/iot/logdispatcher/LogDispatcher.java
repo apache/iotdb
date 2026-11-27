@@ -38,7 +38,10 @@ import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
+import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 
+import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -651,8 +654,8 @@ public class LogDispatcher {
     }
 
     public void sendBatchAsync(Batch batch, DispatchLogHandler handler) {
+      LogCompression.EncodedRequest encoded = null;
       try {
-        AsyncIoTConsensusServiceClient client = clientManager.borrowClient(peer.getEndpoint());
         TSyncLogEntriesReq req =
             new TSyncLogEntriesReq(
                 selfPeerId, peer.getGroupId().convertToTConsensusGroupId(), batch.getLogEntries());
@@ -661,8 +664,45 @@ public class LogDispatcher {
             batch.getStartIndex(),
             batch.getEndIndex(),
             peer.getGroupId().convertToTConsensusGroupId());
-        client.syncLogEntries(req, handler);
+        if (config.getReplication().getLogCompressionType() == CompressionType.UNCOMPRESSED) {
+          clientManager.borrowClient(peer.getEndpoint()).syncLogEntries(req, handler);
+          return;
+        }
+        long compressionStart = System.nanoTime();
+        encoded =
+            LogCompression.compress(
+                req,
+                config.getReplication().getLogCompressionType(),
+                config.getRpc().getThriftMaxFrameSize());
+        logDispatcherThreadMetrics.recordCompressTime(System.nanoTime() - compressionStart);
+        logDispatcherThreadMetrics.recordCompressionBytes(
+            encoded.getRawBytes(), encoded.getEncodedBytes(), encoded.isMemoryLimited());
+        if (encoded.getRequest() == req) {
+          encoded.close();
+          clientManager.borrowClient(peer.getEndpoint()).syncLogEntries(req, handler);
+          return;
+        }
+        handler.markCompressedAttempt();
+        final LogCompression.EncodedRequest attempt = encoded;
+        clientManager
+            .borrowClient(peer.getEndpoint())
+            .syncLogEntries(
+                attempt.getRequest(),
+                new AsyncMethodCallback<TSyncLogEntriesRes>() {
+                  @Override
+                  public void onComplete(TSyncLogEntriesRes response) {
+                    attempt.close();
+                    handler.onComplete(response);
+                  }
+
+                  @Override
+                  public void onError(Exception exception) {
+                    attempt.close();
+                    handler.onError(exception);
+                  }
+                });
       } catch (Exception e) {
+        if (encoded != null) encoded.close();
         logger.error(IoTConsensusMessages.CANNOT_SYNC_LOGS_TO_PEER, peer, e);
         handler.onError(e);
       }
