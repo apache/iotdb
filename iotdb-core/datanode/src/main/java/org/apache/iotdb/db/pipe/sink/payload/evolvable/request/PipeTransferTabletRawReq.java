@@ -26,8 +26,8 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.sorter.TreeModelTabletEventSorter;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -81,12 +81,12 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
    */
   public InsertTabletStatement constructStatement() {
     if (statement != null) {
-      new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+      new TreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
       return statement;
     }
 
     // Sort and deduplicate tablet before converting
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     try {
       if (isTabletEmpty(tablet)) {

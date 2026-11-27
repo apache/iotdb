@@ -27,9 +27,9 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.sorter.TableModelTabletEventSorter;
+import org.apache.iotdb.db.utils.sorter.TreeModelTabletEventSorter;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -62,10 +62,10 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
     if (statement != null) {
       if (isTableModel) {
-        new PipeTableModelTabletEventSorter(statement).sortByTimestampIfNecessary();
+        new TableModelTabletEventSorter(statement).sortByTimestampIfNecessary();
         statement.setWriteToTable(true);
       } else {
-        new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+        new TreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
       }
       if (Objects.nonNull(dataBaseName)) {
         statement.setDatabaseName(dataBaseName);
@@ -75,9 +75,9 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     }
 
     if (isTableModel) {
-      new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
+      new TableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
     } else {
-      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+      new TreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     }
 
     try {

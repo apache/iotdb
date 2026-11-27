@@ -96,6 +96,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   protected boolean singleDevice;
 
+  /**
+   * Set when the rows were reordered before planning: the row at position {@code i} came from row
+   * {@code originalRowIndexes[i]} of the order the statement was submitted in. {@code null} when
+   * nothing was moved.
+   */
+  protected int[] originalRowIndexes;
+
   protected int rowCount = 0;
 
   /**
@@ -216,6 +223,20 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
     super.setColumnCategories(columnCategories);
     deviceIDs = null;
+  }
+
+  /** Drops the device IDs cached from the tag columns. Called after the rows were reordered. */
+  public void clearDeviceIdCache() {
+    this.deviceIDs = null;
+  }
+
+  /** Records the permutation applied to the rows, or {@code null} when nothing was moved. */
+  public void setOriginalRowIndexes(final int[] originalRowIndexes) {
+    this.originalRowIndexes = originalRowIndexes;
+  }
+
+  public int[] getOriginalRowIndexes() {
+    return originalRowIndexes;
   }
 
   public long[] getTimes() {

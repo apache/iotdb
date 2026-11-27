@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.tagfilter;
 
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
+import org.apache.iotdb.db.utils.sorter.TableModelTabletEventSorter;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -59,7 +59,7 @@ public class TabletTagFilterTest {
     // Sorting replaces columns and bitmap entries in place, so the outer arrays must be private.
     final Object originalColumn = tablet.getValues()[0];
     final BitMap originalBitMap = tablet.getBitMaps()[0];
-    new PipeTableModelTabletEventSorter(filtered).sortAndDeduplicateByDevIdTimestamp();
+    new TableModelTabletEventSorter(filtered).sortAndDeduplicateByDevIdTimestamp();
     Assert.assertEquals(1, filtered.getTimestamp(0));
     Assert.assertNotSame(originalColumn, filtered.getValues()[0]);
     Assert.assertEquals(4, tablet.getRowSize());

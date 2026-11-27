@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.util.sorter;
+package org.apache.iotdb.db.utils.sorter;
 
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PipeTableModelTabletEventSorter extends PipeInsertEventSorter {
+public class TableModelTabletEventSorter extends InsertEventSorter {
   private int initIndexSize;
 
   /**
@@ -41,7 +41,7 @@ public class PipeTableModelTabletEventSorter extends PipeInsertEventSorter {
    *
    * @param tablet the tablet to sort
    */
-  public PipeTableModelTabletEventSorter(final Tablet tablet) {
+  public TableModelTabletEventSorter(final Tablet tablet) {
     super(tablet);
     deDuplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
@@ -51,7 +51,7 @@ public class PipeTableModelTabletEventSorter extends PipeInsertEventSorter {
    *
    * @param statement the insert tablet statement to sort
    */
-  public PipeTableModelTabletEventSorter(final InsertTabletStatement statement) {
+  public TableModelTabletEventSorter(final InsertTabletStatement statement) {
     super(statement);
     deDuplicatedSize = statement == null ? 0 : statement.getRowCount();
   }
@@ -170,45 +170,5 @@ public class PipeTableModelTabletEventSorter extends PipeInsertEventSorter {
       }
     }
     deDuplicatedIndex[deDuplicatedSize++] = endIndex - 1;
-  }
-
-  /** Sort by time only. */
-  public void sortByTimestampIfNecessary() {
-    if (dataAdapter == null || dataAdapter.getRowSize() == 0) {
-      return;
-    }
-
-    final long[] timestamps = dataAdapter.getTimestamps();
-    final int rowSize = dataAdapter.getRowSize();
-    for (int i = 1; i < rowSize; ++i) {
-      final long currentTimestamp = timestamps[i];
-      final long previousTimestamp = timestamps[i - 1];
-
-      if (currentTimestamp < previousTimestamp) {
-        isSorted = false;
-        break;
-      }
-    }
-
-    if (isSorted) {
-      return;
-    }
-
-    index = new Integer[rowSize];
-    for (int i = 0; i < rowSize; i++) {
-      index[i] = i;
-    }
-
-    if (!isSorted) {
-      sortTimestamps();
-    }
-
-    sortAndMayDeduplicateValuesAndBitMaps();
-  }
-
-  private void sortTimestamps() {
-    Arrays.sort(this.index, Comparator.comparingLong(dataAdapter::getTimestamp));
-    final long[] timestamps = dataAdapter.getTimestamps();
-    Arrays.sort(timestamps, 0, dataAdapter.getRowSize());
   }
 }

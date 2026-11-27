@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.sink.protocol.opcda;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.db.utils.sorter.TreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.sun.jna.Memory;
@@ -186,7 +186,7 @@ public class OpcDaServerHandle implements Closeable {
   }
 
   void transfer(final Tablet tablet) {
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
 
     for (int i = 0; i < schemas.size(); ++i) {

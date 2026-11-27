@@ -17,23 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.util.sorter;
+package org.apache.iotdb.db.utils.sorter;
 
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.write.record.Tablet;
 
-import java.util.Arrays;
-import java.util.Comparator;
-
-public class PipeTreeModelTabletEventSorter extends PipeInsertEventSorter {
+public class TreeModelTabletEventSorter extends InsertEventSorter {
 
   /**
    * Constructor for Tablet.
    *
    * @param tablet the tablet to sort
    */
-  public PipeTreeModelTabletEventSorter(final Tablet tablet) {
+  public TreeModelTabletEventSorter(final Tablet tablet) {
     super(tablet);
     deDuplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
@@ -43,7 +40,7 @@ public class PipeTreeModelTabletEventSorter extends PipeInsertEventSorter {
    *
    * @param statement the insert tablet statement to sort
    */
-  public PipeTreeModelTabletEventSorter(final InsertTabletStatement statement) {
+  public TreeModelTabletEventSorter(final InsertTabletStatement statement) {
     super(statement);
     deDuplicatedSize = statement == null ? 0 : statement.getRowCount();
   }
@@ -92,13 +89,6 @@ public class PipeTreeModelTabletEventSorter extends PipeInsertEventSorter {
     }
 
     sortAndMayDeduplicateValuesAndBitMaps();
-  }
-
-  private void sortTimestamps() {
-    // Index is sorted stably because it is Integer[]
-    Arrays.sort(index, Comparator.comparingLong(dataAdapter::getTimestamp));
-    final long[] timestamps = dataAdapter.getTimestamps();
-    Arrays.sort(timestamps, 0, dataAdapter.getRowSize());
   }
 
   private void deduplicateTimestamps() {
