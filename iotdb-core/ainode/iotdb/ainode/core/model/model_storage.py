@@ -35,6 +35,7 @@ from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
     CONFIG_JSON,
     MODEL_SAFETENSORS,
+    USER_PROVIDED_WEIGHTS_FILES,
     ModelCategory,
     ModelStates,
     UriType,
@@ -58,6 +59,35 @@ from iotdb.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
 from iotdb.thrift.common.ttypes import TSStatus
 
 logger = Logger()
+
+
+def _check_user_provided_files(model_dir: str) -> Optional[str]:
+    """None if the files of a user-provided model are in model_dir and readable, else what is
+    wrong with them."""
+    missing = [
+        name
+        for name in USER_PROVIDED_WEIGHTS_FILES
+        if not os.path.isfile(os.path.join(model_dir, name))
+    ]
+    if missing:
+        return f"{', '.join(missing)} not found"
+    try:
+        with open(os.path.join(model_dir, CONFIG_JSON), "r", encoding="utf-8") as f:
+            if not isinstance(json.load(f), dict):
+                return f"{CONFIG_JSON} is not a JSON object"
+    except (OSError, ValueError) as e:
+        return f"{CONFIG_JSON} cannot be read ({e})"
+    try:
+        # A safetensors file starts with the length of its JSON header, as a little-endian
+        # 64-bit integer
+        with open(os.path.join(model_dir, MODEL_SAFETENSORS), "rb") as f:
+            length = int.from_bytes(f.read(8), "little")
+            if not 0 < length < 100_000_000:
+                raise ValueError("bad header length")
+            json.loads(f.read(length))
+    except (OSError, ValueError) as e:
+        return f"{MODEL_SAFETENSORS} is not a safetensors file ({e})"
+    return None
 
 
 class ModelStorage:
@@ -132,6 +162,13 @@ class ModelStorage:
                 if existing_model.state in (ModelStates.ACTIVATING, ModelStates.ACTIVE):
                     return
 
+            model_info = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
+            if model_info.user_provided_weights:
+                # Never downloaded: active only once the user has placed its files here
+                self._models[ModelCategory.BUILTIN.value][model_id] = model_info
+                self._activate_user_provided_model(model_info, model_dir)
+                return
+
             # If model not exists or is INACTIVE, we'll try to update its info and download its weights
             self._models[ModelCategory.BUILTIN.value][model_id] = (
                 BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
@@ -175,6 +212,47 @@ class ModelStorage:
         future.add_done_callback(
             lambda f, mid=model_id: self._callback_model_download_result(f, mid)
         )
+
+    def validate_user_provided_model(self, model_id: str) -> Optional[str]:
+        """
+        For a built-in model whose weights the user provides, check its files in the local model
+        directory again, as they may have been placed after AINode started, and mark it ACTIVE
+        or INACTIVE. Nothing is downloaded.
+        Returns:
+            None if the model can be loaded (or is not such a model), else a message telling the
+            user how to install its files.
+        """
+        with self._lock_pool.get_lock(model_id).write_lock():
+            model_info = self._models[ModelCategory.BUILTIN.value].get(model_id)
+            if model_info is None or not model_info.user_provided_weights:
+                return None
+            model_dir = os.path.join(
+                self._models_dir, ModelCategory.BUILTIN.value, model_id
+            )
+            return self._activate_user_provided_model(model_info, model_dir)
+
+    @staticmethod
+    def _activate_user_provided_model(
+        model_info: ModelInfo, model_dir: str
+    ) -> Optional[str]:
+        """Mark the model ACTIVE if its files are in model_dir, else INACTIVE with the reason.
+        The caller holds the model's write lock."""
+        problem = _check_user_provided_files(model_dir)
+        if problem is not None:
+            model_info.state = ModelStates.INACTIVE
+            message = (
+                f"Model [{model_info.model_id}] is not installed: {problem}. AINode does not "
+                f"download or include its weights. Place {', '.join(USER_PROVIDED_WEIGHTS_FILES)} "
+                f"in {os.path.abspath(model_dir)}. {model_info.user_provided_weights}"
+            )
+            logger.info(message)
+            return message
+        with open(os.path.join(model_dir, CONFIG_JSON), "r", encoding="utf-8") as f:
+            config = json.load(f)
+        model_info.model_type = config.get("model_type", model_info.model_type)
+        model_info.state = ModelStates.ACTIVE
+        logger.info(f"Model {model_info.model_id} is installed and ready to use.")
+        return None
 
     def _callback_model_download_result(self, future, model_id: str):
         """Callback function for handling model download results"""

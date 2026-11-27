@@ -56,6 +56,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_LTSM_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.USER_PROVIDED_BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
@@ -241,13 +242,18 @@ public class AINodeSharedClusterIT {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
       while (resultSet.next()) {
-        built_in_model_count++;
         FakeModelInfo modelInfo =
             new FakeModelInfo(
                 resultSet.getString(1),
                 resultSet.getString(2),
                 resultSet.getString(3),
                 resultSet.getString(4));
+        if (USER_PROVIDED_BUILTIN_MODEL_MAP.containsKey(modelInfo.getModelId())) {
+          // Listed, and inactive as its files are not installed
+          assertEquals(USER_PROVIDED_BUILTIN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
+          continue;
+        }
+        built_in_model_count++;
         assertTrue(BUILTIN_MODEL_MAP.containsKey(modelInfo.getModelId()));
         assertEquals(BUILTIN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
       }
@@ -461,6 +467,43 @@ public class AINodeSharedClusterIT {
               treeStatement, tableStatement, modelInfo.getModelId(), devices);
         }
       }
+    }
+  }
+
+  @Test
+  public void userProvidedBuiltInModelNotInstalledTest() throws SQLException {
+    try (Connection treeConnection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement treeStatement = treeConnection.createStatement();
+        Connection tableConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement tableStatement = tableConnection.createStatement()) {
+      for (FakeModelInfo modelInfo : USER_PROVIDED_BUILTIN_MODEL_MAP.values()) {
+        // Without its files, LOAD MODEL and forecasts fail with the setup instructions, and
+        // nothing is downloaded
+        assertNotInstalled(
+            treeStatement,
+            String.format("LOAD MODEL %s TO DEVICES 'cpu'", modelInfo.getModelId()));
+        assertNotInstalled(
+            tableStatement,
+            String.format(
+                FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+                modelInfo.getModelId(),
+                0,
+                5760,
+                2880,
+                5760,
+                96,
+                1,
+                "time"));
+      }
+    }
+  }
+
+  private static void assertNotInstalled(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+      fail("Expected the statement to fail: " + sql);
+    } catch (SQLException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("is not installed"));
     }
   }
 

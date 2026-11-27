@@ -42,3 +42,34 @@ These source tests do not validate the packaged executable or GPU support.
 The `Cluster IT - 1C1D1A` workflow builds and exercises the packaged AINode,
 runs the Python tests, checks the Torch wheel's `sm_70` support, and executes a
 CUDA tensor operation on the GPU runner.
+
+## Timestral: weights provided by the user
+
+AINode includes the code of the Timestral forecasting model (`timestral`), adapted from
+[mistralai/timestral](https://github.com/mistralai/timestral) under the Apache License 2.0,
+but not its weights. The weights are under their own licence, a Modified MIT licence. AINode
+never downloads them, neither at start nor on `LOAD MODEL`, and IoTDB's source and binary
+distributions do not include or mirror them. Each user obtains them independently and must
+have the right to use them.
+
+The licence of the weights grants no rights if the global consolidated monthly revenue of your
+company, or of your employer, exceeded USD 20 million (or its equivalent in another currency)
+in the preceding month. Read the full licence before you install the weights.
+
+To install Timestral:
+
+1. Obtain these three files of a Timestral checkpoint, for example
+   [mistralai/Timestral-209M](https://huggingface.co/mistralai/Timestral-209M):
+   - `config.json`
+   - `model.safetensors`
+   - `LICENSE`, the checkpoint's full licence text
+2. Place them in `<ain_models_dir>/builtin/timestral/` of each AINode, by default
+   `data/ainode/models/builtin/timestral/` under the AINode directory (`ain_models_dir` is
+   set in `conf/iotdb-ainode.properties`). AINode creates this directory at start.
+3. Run `LOAD MODEL timestral TO DEVICES ...`. It checks the three files and loads the model;
+   if a file is missing or unreadable, it fails with a message that names the file and the
+   directory. `SHOW MODELS` lists `timestral` as active once the files are in place.
+
+Until then, `timestral` is listed as inactive, and `LOAD MODEL timestral` and forecasts with it
+fail with these instructions.
+

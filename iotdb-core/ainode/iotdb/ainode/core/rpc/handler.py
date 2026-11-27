@@ -22,6 +22,7 @@ from iotdb.ainode.core.manager.cluster_manager import ClusterManager
 from iotdb.ainode.core.manager.device_manager import DeviceManager
 from iotdb.ainode.core.manager.inference_manager import InferenceManager
 from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_constants import ModelStates
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.thrift.ainode import IAINodeRPCService
 from iotdb.thrift.ainode.ttypes import (
@@ -101,6 +102,11 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         status = self._ensure_device_id_is_available(req.deviceIdList)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
+        status = self._ensure_user_provided_model_is_installed(
+            req.existingModelId, TSStatusCode.LOAD_MODEL_ERROR.value, recheck=True
+        )
+        if status.code != TSStatusCode.SUCCESS_STATUS.value:
+            return status
         return self._inference_manager.load_model(
             req.existingModelId,
             [self._backend.torch_device(device_id) for device_id in req.deviceIdList],
@@ -139,16 +145,40 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             )
         return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
 
+    def _ensure_user_provided_model_is_installed(
+        self, model_id: str, error_code: int, recheck: bool
+    ) -> TSStatus:
+        """A built-in model whose weights the user provides can be used only once its files are
+        in the local model directory; other models pass unchecked. LOAD MODEL checks the files
+        again (recheck); a forecast checks them only while the model is not active yet.
+        """
+        model_info = self._model_manager.get_model_info(model_id)
+        if model_info is not None and model_info.user_provided_weights:
+            if not recheck and model_info.state == ModelStates.ACTIVE:
+                return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
+            message = self._model_manager.validate_user_provided_model(model_id)
+            if message is not None:
+                return TSStatus(code=error_code, message=message)
+        return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
+
     # ==================== Inference ====================
 
     def inference(self, req: TInferenceReq) -> TInferenceResp:
         status = self._ensure_model_is_registered(req.modelId)
+        if status.code == TSStatusCode.SUCCESS_STATUS.value:
+            status = self._ensure_user_provided_model_is_installed(
+                req.modelId, TSStatusCode.MODEL_NOT_EXIST_ERROR.value, recheck=False
+            )
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return TInferenceResp(status, [])
         return self._inference_manager.inference(req)
 
     def forecast(self, req: TForecastReq) -> TForecastResp:
         status = self._ensure_model_is_registered(req.modelId)
+        if status.code == TSStatusCode.SUCCESS_STATUS.value:
+            status = self._ensure_user_provided_model_is_installed(
+                req.modelId, TSStatusCode.MODEL_NOT_EXIST_ERROR.value, recheck=False
+            )
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return TForecastResp(status, [])
         return self._inference_manager.forecast(req)

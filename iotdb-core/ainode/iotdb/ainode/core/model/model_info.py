@@ -32,6 +32,7 @@ class ModelInfo:
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
         hub_mixin_cls: Optional[str] = None,
+        user_provided_weights: Optional[str] = None,
     ):
         self.model_id = model_id
         self.model_type = model_type
@@ -41,6 +42,10 @@ class ModelInfo:
         self.repo_id = repo_id
         self.auto_map = auto_map
         self.hub_mixin_cls = hub_mixin_cls
+        # For a built-in model whose weights AINode neither includes nor downloads: where users
+        # obtain them and under which licence. Such a model is active only when the user has
+        # placed its files in the local model directory (see USER_PROVIDED_WEIGHTS_FILES).
+        self.user_provided_weights = user_provided_weights
 
     def __repr__(self):
         return (
@@ -177,5 +182,22 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_moment.MomentConfig",
             "AutoModelForCausalLM": "modeling_moment.MomentForPrediction",
         },
+    ),
+    "timestral": ModelInfo(
+        model_id="timestral",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="timestral",
+        pipeline_cls="pipeline_timestral.TimestralPipeline",
+        hub_mixin_cls="modeling_timestral.TimestralForPrediction",
+        # The weights are not under an open-source licence: AINode neither includes nor
+        # downloads them, and each user obtains and installs them (see the AINode README)
+        user_provided_weights=(
+            "Obtain config.json, model.safetensors and LICENSE of a Timestral checkpoint "
+            "yourself, for example https://huggingface.co/mistralai/Timestral-209M. Its "
+            "weights are under a Modified MIT licence that grants no rights if the global "
+            "consolidated monthly revenue of your company, or of your employer, exceeded "
+            "USD 20 million in the preceding month: make sure you may use them."
+        ),
     ),
 }

@@ -35,6 +35,10 @@ MODEL_BIN = "pytorch_model.bin"  # legacy HuggingFace format
 # -- Ordered tuples for detection / searching --
 MODEL_WEIGHT_FILES = (MODEL_SAFETENSORS, MODEL_PT, MODEL_BIN)
 
+# -- Built-in models whose weights the user provides (ModelInfo.user_provided_weights) --
+LICENSE_FILE = "LICENSE"
+USER_PROVIDED_WEIGHTS_FILES = (CONFIG_JSON, MODEL_SAFETENSORS, LICENSE_FILE)
+
 # -- Backward-compatible aliases (deprecated, will be removed) --
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = MODEL_SAFETENSORS
 MODEL_CONFIG_FILE_IN_JSON = CONFIG_JSON

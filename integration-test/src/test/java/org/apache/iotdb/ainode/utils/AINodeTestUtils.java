@@ -71,6 +71,16 @@ public class AINodeTestUtils {
                   "moment", new FakeModelInfo("moment", "moment", "builtin", "active")))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+  /**
+   * Built-in models whose weights the user provides: AINode never downloads them, and they are
+   * inactive until their files are installed, which they are not in these tests.
+   */
+  public static final Map<String, FakeModelInfo> USER_PROVIDED_BUILTIN_MODEL_MAP =
+      Stream.of(
+              new AbstractMap.SimpleEntry<>(
+                  "timestral", new FakeModelInfo("timestral", "timestral", "builtin", "inactive")))
+          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
   public static final Map<String, FakeModelInfo> BUILTIN_MODEL_MAP;
 
   static {

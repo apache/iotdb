@@ -87,6 +87,9 @@ class ModelManager:
     ) -> Optional[ModelInfo]:
         return self._model_storage.get_model_info(model_id, category)
 
+    def validate_user_provided_model(self, model_id: str) -> Optional[str]:
+        return self._model_storage.validate_user_provided_model(model_id)
+
     def _refresh(self):
         """Refresh the model list (re-scan the file system)"""
         self._model_storage.discover_all_models()
