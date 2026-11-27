@@ -72,6 +72,40 @@ public class LazyBlockListTest {
   }
 
   @Test
+  public void testFirstWriteBeyondTheConfiguredCapacityFollowsRegularGrowth() {
+    // The configured capacity is only the starting point: a write far ahead must land on the same
+    // capacity as growing block by block from it.
+    LazyBlockList<Object> jump = new LazyBlockList(200, 4);
+    jump.set(99, "far");
+    LazyBlockList<Object> stepByStep = new LazyBlockList(200, 4);
+    stepByStep.set(0, "v0");
+    for (int block = 1; block <= 99; block++) {
+      stepByStep.set(block, "v" + block);
+    }
+
+    Assert.assertEquals(stepByStep.materializedLength(), jump.materializedLength());
+    Assert.assertEquals(stepByStep.ramCost(), jump.ramCost());
+    Assert.assertEquals("far", jump.get(99));
+    for (int block = 0; block < 99; block++) {
+      Assert.assertNull(jump.get(block));
+    }
+  }
+
+  @Test
+  public void testFirstWriteBeyondOneSlotFollowsRegularGrowth() {
+    LazyBlockList<Object> jump = new LazyBlockList(200, 0);
+    jump.set(99, "far");
+    LazyBlockList<Object> stepByStep = new LazyBlockList(200, 0);
+    stepByStep.set(0, "v0");
+    for (int block = 1; block <= 99; block++) {
+      stepByStep.set(block, "v" + block);
+    }
+
+    Assert.assertEquals(stepByStep.materializedLength(), jump.materializedLength());
+    Assert.assertEquals(stepByStep.ramCost(), jump.ramCost());
+  }
+
+  @Test
   public void testNonNullCounterSurvivesReplacement() {
     LazyBlockList<Object> container = new LazyBlockList(10, 0);
     container.set(1, "a");

@@ -200,14 +200,40 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
     return previous;
   }
 
+  /**
+   * Reserve at least {@code minLength} slots.
+   *
+   * <p>The first materialization starts from the configured capacity (or from a single slot when no
+   * capacity is configured) and then grows with the regular policy, so a column that is first
+   * written far ahead goes through exactly the same capacities as a column that is written block by
+   * block.
+   */
   private Object[] ensureCapacity(int minLength) {
     if (blocks == null) {
-      // First materialization of this column: honor the configured pre-allocation once. Later
-      // growth always follows the regular policy.
-      blocks = new Object[Math.max(minLength, initialCapacity)];
-    } else if (blocks.length < minLength) {
-      blocks = Arrays.copyOf(blocks, grownCapacity(blocks.length, minLength));
+      blocks = new Object[initialCapacity > 0 ? initialCapacity : Math.min(minLength, 1)];
+    }
+    if (blocks.length < minLength) {
+      blocks = Arrays.copyOf(blocks, grownTo(blocks.length, minLength));
     }
     return blocks;
+  }
+
+  /**
+   * Capacity reached by applying {@link #grownCapacity} repeatedly from {@code currentLength}.
+   *
+   * <p>A single write far ahead therefore lands on the same capacity as one that grows block by
+   * block, instead of jumping straight to the requested index.
+   */
+  static int grownTo(int currentLength, int minLength) {
+    int capacity = currentLength;
+    while (capacity < minLength) {
+      int grown = grownCapacity(capacity, capacity + 1);
+      if (grown <= capacity) {
+        // The cap is reached: request the exact length so the allocation fails instead of looping.
+        return Math.min(minLength, MAX_BLOCK_ARRAY_LENGTH);
+      }
+      capacity = grown;
+    }
+    return capacity;
   }
 }
