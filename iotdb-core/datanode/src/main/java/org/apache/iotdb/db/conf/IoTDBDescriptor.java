@@ -1067,6 +1067,9 @@ public class IoTDBDescriptor {
     // Timed flush memtable
     loadTimedService(properties);
 
+    // TVList block container pre-allocation
+    loadTVListProps(properties);
+
     // Set tsfile-format config
     loadTsFileProps(properties);
 
@@ -2129,6 +2132,17 @@ public class IoTDBDescriptor {
     }
   }
 
+  /**
+   * Load the TVList block container pre-allocation switch. The switch is read on every list
+   * creation, so a hot reload takes effect for the lists created afterwards.
+   */
+  private void loadTVListProps(TrimProperties properties) {
+    String enableBlockPreallocation = properties.getProperty("enable_tvlist_block_preallocation");
+    if (enableBlockPreallocation != null) {
+      conf.setEnableTVListBlockPreallocation(Boolean.parseBoolean(enableBlockPreallocation.trim()));
+    }
+  }
+
   // timed flush memtable
   private void loadTimedService(TrimProperties properties) throws IOException {
     conf.setEnableTimedFlushSeqMemtable(
@@ -2223,6 +2237,8 @@ public class IoTDBDescriptor {
       // update timed flush & close conf
       loadTimedService(properties);
       StorageEngine.getInstance().rebootTimedService();
+      // update TVList block container pre-allocation
+      loadTVListProps(properties);
       // update params of creating schema automatically
       boolean startUp = false;
       loadAutoCreateSchemaProps(properties, startUp);

@@ -70,6 +70,34 @@ public class PropertiesTest {
     }
   }
 
+  /**
+   * Verifies that the TVList block pre-allocation switch defaults off, can be set at startup, and
+   * is hot reloadable.
+   */
+  @Test
+  public void testTVListBlockPreallocationConfiguration() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final boolean originalValue = descriptor.getConfig().isEnableTVListBlockPreallocation();
+    final TrimProperties properties = new TrimProperties();
+
+    try {
+      Assert.assertFalse(new IoTDBConfig().isEnableTVListBlockPreallocation());
+      Assert.assertEquals(
+          "false",
+          ConfigurationFileUtils.getConfigurationDefaultValue("enable_tvlist_block_preallocation"));
+
+      properties.setProperty("enable_tvlist_block_preallocation", "true");
+      descriptor.loadProperties(properties);
+      Assert.assertTrue(descriptor.getConfig().isEnableTVListBlockPreallocation());
+
+      properties.setProperty("enable_tvlist_block_preallocation", "false");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertFalse(descriptor.getConfig().isEnableTVListBlockPreallocation());
+    } finally {
+      descriptor.getConfig().setEnableTVListBlockPreallocation(originalValue);
+    }
+  }
+
   /** The LOAD write buffer defaults to 1 MiB, can be overridden, and must stay positive. */
   @Test
   public void testLoadTsFileWriteBufferSizeDefaultsAndReloads() throws Exception {

@@ -21,10 +21,10 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -151,10 +151,13 @@ public abstract class TVList implements WALEntryValue {
 
   private final TVList outer = this;
 
-  protected static int defaultArrayNum = 0;
-  protected static volatile long defaultArrayNumLastUpdatedTimeMs = 0;
-
   protected TSDataType dataType;
+
+  /**
+   * Number of blocks a memtable container pre-allocates when block pre-allocation is enabled. The
+   * number is deliberately small: it only avoids the first few container growths.
+   */
+  static final int PREALLOCATED_BLOCK_NUM = 16;
 
   protected TVList() {
     timestamps = new ArrayList<>(getDefaultArrayNum());
@@ -370,7 +373,7 @@ public abstract class TVList implements WALEntryValue {
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     // prepare indices for sorting
     if (indices == null) {
-      indices = new ArrayList<>(getDefaultArrayNum());
+      indices = new ArrayList<>(Math.max(getDefaultArrayNum(), timestamps.size()));
       for (int i = 0; i < timestamps.size(); i++) {
         indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
         int offset = i * ARRAY_SIZE;
@@ -405,7 +408,7 @@ public abstract class TVList implements WALEntryValue {
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
-      List<BitMap> localBitMap = new ArrayList<>(getDefaultArrayNum());
+      List<BitMap> localBitMap = new ArrayList<>(Math.max(getDefaultArrayNum(), timestamps.size()));
       for (int i = 0; i < timestamps.size(); i++) {
         localBitMap.add(new BitMap(ARRAY_SIZE));
       }
@@ -1213,12 +1216,17 @@ public abstract class TVList implements WALEntryValue {
     }
   }
 
+  /**
+   * Initial block capacity of a memtable container.
+   *
+   * <p>A memtable list only holds the blocks that are written to it, which is unrelated to the
+   * lifetime length of a series, so containers grow on demand by default. Pre-allocation is opt-in
+   * through {@code enable_tvlist_block_preallocation}, and the switch is read on every call so that
+   * a hot reload affects the lists created afterwards.
+   */
   protected static int getDefaultArrayNum() {
-    if (System.currentTimeMillis() - defaultArrayNumLastUpdatedTimeMs > 10_000) {
-      defaultArrayNumLastUpdatedTimeMs = System.currentTimeMillis();
-      defaultArrayNum =
-          ((int) WritingMetrics.getInstance().getGlobalAvgSeriesPointNum() / ARRAY_SIZE);
-    }
-    return defaultArrayNum;
+    return IoTDBDescriptor.getInstance().getConfig().isEnableTVListBlockPreallocation()
+        ? PREALLOCATED_BLOCK_NUM
+        : 0;
   }
 }

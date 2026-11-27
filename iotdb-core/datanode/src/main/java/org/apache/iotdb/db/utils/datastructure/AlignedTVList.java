@@ -58,14 +58,12 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.RandomAccess;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -203,7 +201,11 @@ public abstract class AlignedTVList extends TVList {
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
-      values.add(initializeValueColumns ? new ArrayList<>(getDefaultArrayNum()) : null);
+      // A wide device owns many columns but writes only a few of them, and a memtable column holds
+      // only a few blocks, so a column container stays empty until a block of that column receives
+      // a
+      // value array. Pre-allocation is opt-in through getDefaultArrayNum().
+      values.add(initializeValueColumns ? new LazyBlockList<>(0, getDefaultArrayNum()) : null);
     }
     // arrayMemCostWithoutPrimitiveArrays depends on per-column value arrays, so values must be
     // initialized before computing it
@@ -735,14 +737,10 @@ public abstract class AlignedTVList extends TVList {
       return;
     }
     int existingBlockCount = timestamps.size();
-    // The block the next row will be appended to. The new column is null for every block before it,
-    // and that prefix is never materialized: storing its length is enough because rows are
-    // appended.
-    int targetBlock = rowCount / ARRAY_SIZE;
     int firstNewColumn = dataTypes.size();
     for (TSDataType dataType : newDataTypes) {
-      List<Object> columnValue =
-          new NullPrefixedValueList(targetBlock, existingBlockCount - targetBlock);
+      // The new column is null for every block that is already open; those slots stay implicit.
+      List<Object> columnValue = new LazyBlockList<>(existingBlockCount, getDefaultArrayNum());
       if (bitMaps != null) {
         bitMaps.add(null);
       }
@@ -1290,11 +1288,16 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
 
-      if (columnValues instanceof NullPrefixedValueList) {
-        // Preserve the lazy representation, otherwise the deep clone materializes one reference per
-        // block and reports a different container cost than the source.
-        cloneList.values.set(
-            i, ((NullPrefixedValueList) columnValues).cloneColumn(dataTypes.get(i)));
+      if (columnValues instanceof LazyBlockList) {
+        // Copy the structure (block count and allocated slots) as well, otherwise the deep clone
+        // would materialize one reference per block and retain a different container size.
+        LazyBlockList<Object> source = (LazyBlockList<Object>) columnValues;
+        LazyBlockList<Object> copy = source.copyStructure();
+        int blocks = Math.min(source.size(), source.materializedLength());
+        for (int block = 0; block < blocks; block++) {
+          copy.set(block, cloneValue(dataTypes.get(i), source.get(block)));
+        }
+        cloneList.values.set(i, copy);
       } else {
         for (Object valueArray : columnValues) {
           Object clonedValueArray = cloneValue(dataTypes.get(i), valueArray);
@@ -1311,9 +1314,18 @@ public abstract class AlignedTVList extends TVList {
           }
         }
         if (cloneList.bitMaps.get(i) == null) {
-          List<BitMap> cloneColumnBitMaps = new ArrayList<>();
-          for (BitMap bitMap : columnBitMaps) {
-            cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
+          LazyBlockList<BitMap> cloneColumnBitMaps;
+          int blocks;
+          if (columnBitMaps instanceof LazyBlockList) {
+            cloneColumnBitMaps = ((LazyBlockList<BitMap>) columnBitMaps).copyStructure();
+            blocks = Math.min(columnBitMaps.size(), cloneColumnBitMaps.materializedLength());
+          } else {
+            cloneColumnBitMaps = new LazyBlockList<>(columnBitMaps.size(), 0);
+            blocks = columnBitMaps.size();
+          }
+          for (int block = 0; block < blocks; block++) {
+            BitMap bitMap = columnBitMaps.get(block);
+            cloneColumnBitMaps.set(block, bitMap == null ? null : bitMap.clone());
           }
           cloneList.bitMaps.set(i, cloneColumnBitMaps);
         }
@@ -1400,7 +1412,6 @@ public abstract class AlignedTVList extends TVList {
       columnValues.add(null);
       if (bitMaps != null && bitMaps.get(i) != null) {
         bitMaps.get(i).add(null);
-        materializedBitmapMemoryCost += bitmapReferenceRamCost();
       }
     }
     invalidateStructureRamCost();
@@ -1668,8 +1679,11 @@ public abstract class AlignedTVList extends TVList {
     List<Object> columnValues = values.get(columnIndex);
     Object valueArray = columnValues.get(arrayIndex);
     if (valueArray == null) {
+      // The slot is about to be backed by the container array, so the container grows.
+      long previousContainerCost = containerRamCost(columnValues);
       valueArray = getPrimitiveArraysByType(dataTypes.get(columnIndex));
       columnValues.set(arrayIndex, valueArray);
+      updateStructureRamCost(previousContainerCost, columnValues);
       markTouched(columnIndex);
       materializedValueArrayCounts[columnIndex]++;
       materializedValueArrayMemCost += primitiveArrayMemCost(dataTypes.get(columnIndex));
@@ -1704,18 +1718,16 @@ public abstract class AlignedTVList extends TVList {
 
     // if the bitmap in columnIndex is null, init the bitmap of this column from the beginning
     if (bitMaps.get(columnIndex) == null) {
-      List<BitMap> columnBitMaps = new ArrayList<>(columnValues.size());
-      for (int i = 0; i < columnValues.size(); i++) {
-        columnBitMaps.add(null);
-      }
-      bitMaps.set(columnIndex, columnBitMaps);
-      materializedBitmapMemoryCost += (long) columnBitMaps.size() * bitmapReferenceRamCost();
+      // A bitmap column is mostly null, so its slots stay implicit like the value slots do.
+      bitMaps.set(columnIndex, new LazyBlockList<>(columnValues.size(), 0));
       invalidateStructureRamCost();
     }
 
     // if the bitmap in arrayIndex is null, init the bitmap
     if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
+      long previousContainerCost = containerRamCost(bitMaps.get(columnIndex));
       bitMaps.get(columnIndex).set(arrayIndex, BitMap.createBitMapDynamically(ARRAY_SIZE));
+      updateStructureRamCost(previousContainerCost, bitMaps.get(columnIndex));
       materializedBitmapMemoryCost += bitmapRamCost();
     }
 
@@ -1811,14 +1823,13 @@ public abstract class AlignedTVList extends TVList {
    * clone) are not charged anywhere else and are counted in full, including all their slot
    * references.
    *
-   * <p>For a retained column, the inner value list is charged with the references of all its slots
-   * (including null placeholders for blocks that were never materialized), so each slot reference
-   * is counted exactly once; the materialized primitive array payload and header are charged once
-   * per materialized block by {@code materializedValueArrayMemCost}. Columns added by {@link
-   * #extendColumns(List)} do not allocate those null placeholders, so a {@link
-   * NullPrefixedValueList} is charged for its wrapper and for the prefix only once the prefix array
-   * is actually allocated. The timestamps/indices inner lists only contribute their list object and
-   * backing-array header here, since their primitive arrays are already charged per block by {@code
+   * <p>For a retained column, the inner container is charged with the slots it allocated, so each
+   * reference is counted exactly once; the materialized primitive array payload and header are
+   * charged once per materialized block by {@code materializedValueArrayMemCost}. A {@link
+   * LazyBlockList} keeps the null placeholders implicit and is charged for the slots it actually
+   * allocated, so a column that holds no value is charged for nothing but its container. The
+   * timestamps/indices inner lists only contribute their list object and backing-array header here,
+   * since their primitive arrays are already charged per block by {@code
    * alignedTvListArrayMemCostWithoutPrimitiveArrays}.
    */
   long calculateContainerRamCost(Set<Integer> retainedColumns) {
@@ -1841,10 +1852,8 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
       List<Object> columnValues = values.get(i);
-      if (columnValues instanceof NullPrefixedValueList) {
-        size += ((NullPrefixedValueList) columnValues).ramCost();
-      } else if (columnValues != null) {
-        size += listRamCostWithReferences(columnValues);
+      if (columnValues != null) {
+        size += containerRamCost(columnValues);
       }
     }
 
@@ -1856,14 +1865,38 @@ public abstract class AlignedTVList extends TVList {
         }
         List<BitMap> columnBitMaps = bitMaps.get(i);
         if (columnBitMaps != null) {
-          size += listRamCostWithoutReferences(columnBitMaps);
+          size += containerRamCost(columnBitMaps);
         }
       }
     }
     if (segmentMovedMap != null) {
       size += segmentMovedMap.ramBytesUsed();
     }
+    if (timeColDeletedMap != null) {
+      size += timeColDeletedMap.ramBytesUsed();
+    }
+    if (allValueColDeletedMap != null) {
+      size += allValueColDeletedMap.ramBytesUsed();
+    }
     return size;
+  }
+
+  /** Retained memory of one column container. */
+  private static long containerRamCost(List<?> container) {
+    if (container instanceof LazyBlockList) {
+      return ((LazyBlockList<?>) container).ramCost();
+    }
+    return listRamCostWithReferences(container);
+  }
+
+  /**
+   * Keep the cached container cost exact after one column slot materialized, without recomputing
+   * the whole list. A stale cache is recomputed later, so only a valid cache is adjusted.
+   */
+  private void updateStructureRamCost(long previousContainerCost, List<?> container) {
+    if (!structureRamCostDirty) {
+      structureRamCost += containerRamCost(container) - previousContainerCost;
+    }
   }
 
   static long listRamCostWithReferences(List<?> list) {
@@ -1890,7 +1923,7 @@ public abstract class AlignedTVList extends TVList {
       if (columnBitMaps == null) {
         continue;
       }
-      size += columnBitMaps.size() * bitmapReferenceRamCost();
+      // The reference array of the bitmap column is charged by calculateContainerRamCost.
       for (BitMap bitMap : columnBitMaps) {
         if (bitMap != null) {
           size += bitMap.ramBytesUsed();
@@ -3205,87 +3238,6 @@ public abstract class AlignedTVList extends TVList {
         return true;
       }
       return outer.isNullValue(valueIndex, validColumnIndex);
-    }
-  }
-
-  /**
-   * A value column that starts with a run of implicit nulls and only materializes them when a block
-   * in that prefix receives its first value. Columns added by {@link #extendColumns(List)} use this
-   * representation so extending a wide device costs O(columns) instead of O(columns * blocks).
-   */
-  private final class NullPrefixedValueList extends AbstractList<Object> implements RandomAccess {
-
-    // Number of blocks before the column was created. They are always null and are never
-    // materialized: the length is enough because rows are append-only.
-    private int implicitNullCount;
-    private final List<Object> tail = new ArrayList<>();
-
-    private NullPrefixedValueList(int implicitNullCount, int existingTailSize) {
-      this.implicitNullCount = implicitNullCount;
-      for (int i = 0; i < existingTailSize; i++) {
-        tail.add(null);
-      }
-    }
-
-    @Override
-    public Object get(int index) {
-      Objects.checkIndex(index, size());
-      return index < implicitNullCount ? null : tail.get(index - implicitNullCount);
-    }
-
-    @Override
-    public int size() {
-      return implicitNullCount + tail.size();
-    }
-
-    @Override
-    public Object set(int index, Object element) {
-      Objects.checkIndex(index, size());
-      if (index < implicitNullCount) {
-        // Writes are append-only, so the implicit null prefix must never be materialized.
-        throw new IllegalStateException();
-      }
-      return tail.set(index - implicitNullCount, element);
-    }
-
-    /** Container memory actually retained by this column: the wrapper and the tail list only. */
-    private long ramCost() {
-      return MemoryEstimationHelper.ARRAY_LIST_INSTANCE_SIZE
-          + NUM_BYTES_OBJECT_REF
-          + listRamCostWithReferences(tail);
-    }
-
-    /** Deep-copy this column for a clone, keeping the lazy prefix representation. */
-    private NullPrefixedValueList cloneColumn(TSDataType type) {
-      NullPrefixedValueList clone = new NullPrefixedValueList(implicitNullCount, tail.size());
-      for (int i = 0; i < tail.size(); i++) {
-        clone.tail.set(i, cloneValue(type, tail.get(i)));
-      }
-      return clone;
-    }
-
-    @Override
-    public boolean add(Object element) {
-      modCount++;
-      boolean added = tail.add(element);
-      invalidateStructureRamCost();
-      return added;
-    }
-
-    @Override
-    public void add(int index, Object element) {
-      if (index != size()) {
-        throw new UnsupportedOperationException();
-      }
-      add(element);
-    }
-
-    @Override
-    public void clear() {
-      modCount++;
-      implicitNullCount = 0;
-      tail.clear();
-      invalidateStructureRamCost();
     }
   }
 }
