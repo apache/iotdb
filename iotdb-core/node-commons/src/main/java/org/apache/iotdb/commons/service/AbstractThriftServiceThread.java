@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager.ServerBufferPool;
 
 import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
@@ -63,6 +65,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
   private TProtocolFactory protocolFactory;
 
   private TTransportFactory transportFactory;
+  private volatile ServerBufferPool serverBufferPool;
 
   // currently, we can reuse the ProtocolFactory instance.
   private static TCompactProtocol.Factory compactProtocolFactory = new TCompactProtocol.Factory();
@@ -236,7 +239,12 @@ public abstract class AbstractThriftServiceThread extends Thread {
     poolArgs.executorService = executorService;
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
-    poolArgs.transportFactory(getTTransportFactory());
+    TTransportFactory factory = getTTransportFactory();
+    if (factory != null) {
+      serverBufferPool = AutoResizingBufferMemoryManager.createServerBufferPool();
+      factory = serverBufferPool.wrapTransportFactory(factory);
+    }
+    poolArgs.transportFactory(factory);
     return poolArgs;
   }
 
@@ -332,6 +340,10 @@ public abstract class AbstractThriftServiceThread extends Thread {
   }
 
   public synchronized void close() {
+    if (serverBufferPool != null) {
+      serverBufferPool.retire();
+      serverBufferPool = null;
+    }
     if (poolServer != null) {
       poolServer.setShouldStop(true);
       poolServer.stop();
@@ -346,6 +358,16 @@ public abstract class AbstractThriftServiceThread extends Thread {
     if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
       threadStopLatch.countDown();
     }
+  }
+
+  public long reclaimIdleServerBuffers(long targetBytes) {
+    ServerBufferPool pool = serverBufferPool;
+    return pool == null ? 0 : pool.reclaimIdleBuffers(targetBytes);
+  }
+
+  public long reclaimOneIdleServerConnection() {
+    ServerBufferPool pool = serverBufferPool;
+    return pool == null ? 0 : pool.reclaimOneIdleConnection();
   }
 
   public boolean isServing() {
