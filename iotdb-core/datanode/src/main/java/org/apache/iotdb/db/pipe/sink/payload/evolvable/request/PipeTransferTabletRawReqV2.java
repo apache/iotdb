@@ -184,7 +184,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     return buffer.array();
   }
 
-  static int calculateSerializedSize(final Tablet tablet, final String dataBaseName) {
+  public static int calculateSerializedSize(final Tablet tablet, final String dataBaseName) {
     return tablet.serializedSize() + Byte.BYTES + ReadWriteIOUtils.sizeToWrite(dataBaseName);
   }
 

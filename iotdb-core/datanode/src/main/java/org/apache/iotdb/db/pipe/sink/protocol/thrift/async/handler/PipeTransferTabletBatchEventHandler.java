@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.util.cacher.LeaderCacheUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -59,13 +61,28 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
       throws IOException {
     super(connector);
 
-    // Deep copy to keep events' reference
-    events = batch.deepCopyEvents();
-    pipeName2BytesAccumulated = batch.deepCopyPipeName2BytesAccumulated();
-
-    final TPipeTransferReq uncompressedReq = batch.toTPipeTransferReq();
-    req = connector.compressIfNeeded(uncompressedReq);
-    reqCompressionRatio = (double) req.getBody().length / uncompressedReq.getBody().length;
+    final PipeMemoryBlock requestMemoryBlock =
+        PipeAsyncThriftRequestMemoryBlock.allocateForSerializedBody(
+            batch.getSerializedRequestBodySizeUpperBound(), batch);
+    try {
+      final TPipeTransferReq uncompressedReq = batch.toTPipeTransferReq();
+      final long uncompressedBodySize = uncompressedReq.body.remaining();
+      req = connector.compressIfNeeded(uncompressedReq, requestMemoryBlock);
+      if (req != uncompressedReq) {
+        uncompressedReq.body = null;
+      }
+      PipeAsyncThriftRequestMemoryBlock.resizeForRequest(requestMemoryBlock, req);
+      reqCompressionRatio = (double) req.body.remaining() / uncompressedBodySize;
+      events = batch.deepCopyEvents();
+      pipeName2BytesAccumulated = batch.deepCopyPipeName2BytesAccumulated();
+      if (!events.isEmpty()) {
+        requestMemoryBlock.setAssigner(events.get(0));
+      }
+      setRequestMemoryBlock(requestMemoryBlock);
+    } catch (final IOException | RuntimeException | Error e) {
+      requestMemoryBlock.close();
+      throw e;
+    }
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
@@ -101,9 +118,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
       }
 
       events.forEach(
-          event ->
-              event.decreaseReferenceCount(
-                  PipeTransferTabletBatchEventHandler.class.getName(), true));
+          event -> event.decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), true));
     } catch (final Exception e) {
       onError(e);
       return false;
@@ -135,7 +150,12 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
 
   @Override
   public void clearEventsReferenceCount() {
+    events.forEach(event -> event.clearReferenceCount(PipeTransferBatchReqBuilder.class.getName()));
+  }
+
+  @Override
+  protected void onSynchronousErrorInternal() {
     events.forEach(
-        event -> event.clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName()));
+        event -> event.decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false));
   }
 }

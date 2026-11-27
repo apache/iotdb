@@ -60,6 +60,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_COMPRESSOR_DEFAULT_VALUE;
@@ -646,6 +647,46 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     // Explanation for +3: version 1 byte, type 2 bytes
     totalCompressedSize.addAndGet(req.body.array().length + 3);
     return req;
+  }
+
+  public TPipeTransferReq compressIfNeeded(
+      final TPipeTransferReq req, final LongConsumer reserveCompressionPeak) throws IOException {
+    reserveCompressionPeak(req, reserveCompressionPeak);
+    return compressIfNeeded(req);
+  }
+
+  public void reserveCompressionPeak(
+      final TPipeTransferReq req, final LongConsumer reserveCompressionPeak) {
+    if (isRpcCompressionEnabled) {
+      reserveCompressionPeak.accept(calculateCompressionMemoryPeak(req));
+    }
+  }
+
+  private long calculateCompressionMemoryPeak(final TPipeTransferReq req) {
+    final long inputBodyLength = req.body.remaining();
+    long currentLength = Math.addExact(inputBodyLength, 3);
+    final long outputMetadataLength = Math.addExact(1, Math.multiplyExact(5L, compressors.size()));
+    long outputMetadataCapacity = 32;
+    while (outputMetadataCapacity < outputMetadataLength) {
+      outputMetadataCapacity = Math.multiplyExact(outputMetadataCapacity, 2);
+    }
+
+    long peakMemoryUsage =
+        Math.addExact(
+            Math.addExact(inputBodyLength, currentLength),
+            Math.addExact(outputMetadataCapacity, 3));
+    for (final PipeCompressor compressor : compressors) {
+      final long maxCompressedLength = compressor.getMaxCompressedLength(currentLength);
+      peakMemoryUsage =
+          Math.max(
+              peakMemoryUsage,
+              Math.addExact(
+                  Math.addExact(currentLength, Math.multiplyExact(3, maxCompressedLength)),
+                  Math.addExact(
+                      compressor.getCompressionMemoryUsageInBytes(), outputMetadataCapacity)));
+      currentLength = maxCompressedLength;
+    }
+    return peakMemoryUsage;
   }
 
   protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {

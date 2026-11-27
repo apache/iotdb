@@ -69,7 +69,6 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
     final InsertBaseStatement statement =
         (InsertBaseStatement)
             IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
-
     // Tree model
     if (Objects.isNull(dataBaseName)) {
       return statement;
@@ -163,7 +162,8 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
     }
   }
 
-  static int calculateSerializedSize(final InsertNode insertNode, final String dataBaseName) {
+  public static int calculateSerializedSize(
+      final InsertNode insertNode, final String dataBaseName) {
     return PipeTransferTabletInsertNodeReq.calculateSerializedSize(insertNode)
         + ReadWriteIOUtils.sizeToWrite(dataBaseName);
   }

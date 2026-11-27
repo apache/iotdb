@@ -78,7 +78,8 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
 
     this.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(fileNames, fileLengths, parameters));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileNames.size(), outputStream);
       for (final String fileName : fileNames) {
@@ -97,6 +98,24 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
     }
 
     return this;
+  }
+
+  public static int calculateSerializedSize(
+      final List<String> fileNames,
+      final List<Long> fileLengths,
+      final Map<String, String> parameters) {
+    long size = 3L * Integer.BYTES + (long) Long.BYTES * fileLengths.size();
+    for (final String fileName : fileNames) {
+      size = Math.addExact(size, ReadWriteIOUtils.sizeToWrite(fileName));
+    }
+    for (final Map.Entry<String, String> entry : parameters.entrySet()) {
+      size =
+          Math.addExact(
+              size,
+              (long) ReadWriteIOUtils.sizeToWrite(entry.getKey())
+                  + ReadWriteIOUtils.sizeToWrite(entry.getValue()));
+    }
+    return Math.toIntExact(size);
   }
 
   public PipeTransferFileSealReqV2 translateFromTPipeTransferReq(final TPipeTransferReq req) {

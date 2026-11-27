@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfi
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -50,6 +51,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTransferTrackableHandlerTest {
 
@@ -132,6 +134,42 @@ public class PipeTransferTrackableHandlerTest {
     final ArgumentCaptor<Boolean> shouldReturnSelfCaptor = ArgumentCaptor.forClass(Boolean.class);
     Mockito.verify(client, Mockito.times(3)).setShouldReturnSelf(shouldReturnSelfCaptor.capture());
     Assert.assertEquals(Arrays.asList(false, false, true), shouldReturnSelfCaptor.getAllValues());
+  }
+
+  @Test
+  public void testSynchronousFallbackErrorFromSliceCallbackReleasesHandlerMemory()
+      throws Exception {
+    final IoTDBDataRegionAsyncSink sink = mockSinkThatClosesEliminatedHandlers();
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    Mockito.when(client.shouldReturnSelf()).thenReturn(true);
+    final AtomicReference<AsyncMethodCallback<TPipeTransferResp>> firstSliceCallback =
+        new AtomicReference<>();
+    final int[] transferCount = {0};
+    Mockito.doAnswer(
+            invocation -> {
+              if (++transferCount[0] == 1) {
+                firstSliceCallback.set(invocation.getArgument(1));
+                return null;
+              }
+              throw new AssertionError();
+            })
+        .when(client)
+        .pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
+
+    final long usedMemoryBefore = PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
+    final TestPipeTransferTrackableHandler handler = new TestPipeTransferTrackableHandler(sink);
+    handler.transfer(client, createReq(10));
+
+    Assert.assertNotNull(firstSliceCallback.get());
+    Assert.assertThrows(
+        AssertionError.class, () -> firstSliceCallback.get().onError(new TException()));
+
+    Assert.assertEquals(2, transferCount[0]);
+    Assert.assertEquals(1, handler.clearEventsReferenceCountCount);
+    Mockito.verify(sink).eliminateHandler(handler, true);
+    Assert.assertEquals(
+        usedMemoryBefore, PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes());
   }
 
   @Test
@@ -398,6 +436,22 @@ public class PipeTransferTrackableHandlerTest {
     return req;
   }
 
+  private static IoTDBDataRegionAsyncSink mockSinkThatClosesEliminatedHandlers() {
+    final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
+    Mockito.doAnswer(
+            invocation -> {
+              final PipeTransferTrackableHandler handler = invocation.getArgument(0);
+              if (invocation.getArgument(1)) {
+                handler.closeClient();
+              }
+              handler.close();
+              return null;
+            })
+        .when(sink)
+        .eliminateHandler(Mockito.any(PipeTransferTrackableHandler.class), Mockito.anyBoolean());
+    return sink;
+  }
+
   private static TPipeTransferResp successResp() {
     return resp(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
@@ -419,6 +473,7 @@ public class PipeTransferTrackableHandlerTest {
 
     private int completeCount;
     private int errorCount;
+    private int clearEventsReferenceCountCount;
 
     private TestPipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink sink) {
       super(sink);
@@ -450,7 +505,7 @@ public class PipeTransferTrackableHandlerTest {
 
     @Override
     public void clearEventsReferenceCount() {
-      // Do nothing
+      clearEventsReferenceCountCount++;
     }
   }
 
