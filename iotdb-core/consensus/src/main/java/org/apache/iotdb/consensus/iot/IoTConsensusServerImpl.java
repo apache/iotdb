@@ -291,6 +291,8 @@ public class IoTConsensusServerImpl {
   public TSStatus write(IConsensusRequest request) {
     long consensusWriteStartTime = System.nanoTime();
     stateMachineLock.lock();
+    IndexedConsensusRequest requestToSerialize = null;
+    boolean recordConsensusWriteTime = false;
     try {
       long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
@@ -345,6 +347,7 @@ public class IoTConsensusServerImpl {
             indexedConsensusRequest.getPhysicalTime(),
             thisNode.getNodeId(),
             indexedConsensusRequest.getLocalSeq());
+        requestToSerialize = indexedConsensusRequest;
         // The index is used when constructing batch in LogDispatcher. If its value
         // increases but the corresponding request does not exist or is not put into
         // the queue, the dispatcher will try to find the request in WAL. This behavior
@@ -388,13 +391,23 @@ public class IoTConsensusServerImpl {
             subscriptionQueueRegistry.size(),
             System.identityHashCode(this));
       }
-      // statistic the time of total write process
-      ioTConsensusServerMetrics.recordConsensusWriteTime(
-          System.nanoTime() - consensusWriteStartTime);
+      recordConsensusWriteTime = true;
       return result;
     } finally {
       stateMachineLock.unlock();
-      persistLatestWriterMeta(false);
+      try {
+        // Deferred requests are materialized after releasing the per-region lock and before the
+        // caller can reuse the applied plan node.
+        if (requestToSerialize != null) {
+          requestToSerialize.buildSerializedRequests();
+        }
+        if (recordConsensusWriteTime) {
+          ioTConsensusServerMetrics.recordConsensusWriteTime(
+              System.nanoTime() - consensusWriteStartTime);
+        }
+      } finally {
+        persistLatestWriterMeta(false);
+      }
     }
   }
 

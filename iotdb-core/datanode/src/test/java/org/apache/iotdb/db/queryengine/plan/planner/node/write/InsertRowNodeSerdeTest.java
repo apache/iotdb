@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
@@ -39,8 +40,35 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 
 public class InsertRowNodeSerdeTest {
+
+  // Type inference after queue creation must be reflected when IoTConsensus later serializes it.
+  @Test
+  public void testInsertRequestSerializationIsDeferred() throws IllegalPathException {
+    InsertRowNode insertRowNode = getInsertRowNodeWithStringValue();
+    IndexedConsensusRequest request =
+        new IndexedConsensusRequest(1L, 1L, Collections.singletonList(insertRowNode));
+
+    Assert.assertTrue(request.hasDeferredRequests());
+    Assert.assertTrue(request.getSerializedRequests().isEmpty());
+
+    insertRowNode.setDataTypes(
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+        });
+    insertRowNode.setValues(new Object[] {1.0, 2.0f, 10000L, 100, false});
+    insertRowNode.setNeedInferType(false);
+    request.buildSerializedRequests();
+
+    Assert.assertEquals(
+        insertRowNode, PlanNodeType.deserialize(request.getSerializedRequests().get(0)));
+  }
 
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
