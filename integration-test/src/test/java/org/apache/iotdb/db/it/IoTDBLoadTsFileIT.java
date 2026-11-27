@@ -1642,6 +1642,122 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testLoadWithAllConflictingAlignedDataTypes() throws Exception {
+    final String database = "root.load.aligned_type_conflict";
+    final String allConflictDevice = database + ".d_all_conflict";
+    final String oneConflictDevice = database + ".d_one_conflict";
+    final String nonAlignedDevice = database + ".na";
+    final File source = new File(tmpDir, "aligned-type-conflict.tsfile");
+    final List<TSDataType> conflictingTargetTypes =
+        Arrays.asList(
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.BLOB,
+            TSDataType.DATE,
+            TSDataType.TIMESTAMP,
+            TSDataType.INT32,
+            TSDataType.INT64);
+    final List<TSDataType> oneConflictTargetTypes =
+        new ArrayList<>(Collections.nCopies(conflictingTargetTypes.size(), TSDataType.BOOLEAN));
+    oneConflictTargetTypes.set(0, TSDataType.INT32);
+    final List<String> measurements = new ArrayList<>();
+    final List<MeasurementSchema> sourceSchemas = new ArrayList<>();
+    final List<MeasurementSchema> allConflictSchemas = new ArrayList<>();
+    final List<MeasurementSchema> oneConflictSchemas = new ArrayList<>();
+    for (int measurementIndex = 0;
+        measurementIndex < conflictingTargetTypes.size();
+        measurementIndex++) {
+      final String measurement = "s" + measurementIndex;
+      measurements.add(measurement);
+      sourceSchemas.add(new MeasurementSchema(measurement, TSDataType.BOOLEAN, TSEncoding.PLAIN));
+      allConflictSchemas.add(
+          new MeasurementSchema(measurement, conflictingTargetTypes.get(measurementIndex)));
+      oneConflictSchemas.add(
+          new MeasurementSchema(measurement, oneConflictTargetTypes.get(measurementIndex)));
+    }
+
+    boolean databaseCreated = false;
+    try {
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database " + database);
+        databaseCreated = true;
+        statement.execute(convert2AlignedSQL(allConflictDevice, allConflictSchemas));
+        statement.execute(convert2AlignedSQL(oneConflictDevice, oneConflictSchemas));
+        for (final MeasurementSchema schema : allConflictSchemas) {
+          statement.execute(convert2SQL(nonAlignedDevice, schema));
+        }
+      }
+
+      try (final TsFileWriter writer = new TsFileWriter(source)) {
+        writer.registerAlignedTimeseries(new Path(allConflictDevice), sourceSchemas);
+        writer.registerAlignedTimeseries(new Path(oneConflictDevice), sourceSchemas);
+        writer.registerTimeseries(new Path(nonAlignedDevice), sourceSchemas);
+        for (final String device :
+            Arrays.asList(allConflictDevice, oneConflictDevice, nonAlignedDevice)) {
+          final Tablet tablet = new Tablet(device, sourceSchemas, 4);
+          for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+            tablet.addTimestamp(rowIndex, rowIndex + 1);
+            for (int columnIndex = 0; columnIndex < sourceSchemas.size(); columnIndex++) {
+              tablet.addValue(
+                  sourceSchemas.get(columnIndex).getMeasurementId(), rowIndex, rowIndex % 3 != 1);
+            }
+          }
+          tablet.rowSize = 4;
+          if (device.equals(nonAlignedDevice)) {
+            writer.write(tablet);
+          } else {
+            writer.writeAligned(tablet);
+          }
+        }
+      }
+
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "load \"%s\" with ('auto-create-schema'='false', 'convert-on-type-mismatch'='true')",
+                source.getAbsolutePath()));
+        for (final String device :
+            Arrays.asList(allConflictDevice, oneConflictDevice, nonAlignedDevice)) {
+          try (final ResultSet resultSet =
+              statement.executeQuery(
+                  "select "
+                      + String.join(",", measurements)
+                      + " from "
+                      + device
+                      + " order by time")) {
+            for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+              Assert.assertTrue("Missing row " + rowIndex + " for " + device, resultSet.next());
+              Assert.assertEquals(rowIndex + 1, resultSet.getLong(1));
+              for (int columnIndex = 0; columnIndex < measurements.size(); columnIndex++) {
+                Assert.assertNotNull(
+                    "Unexpected null for "
+                        + device
+                        + "."
+                        + measurements.get(columnIndex)
+                        + " at row "
+                        + rowIndex,
+                    resultSet.getString(columnIndex + 2));
+              }
+            }
+            Assert.assertFalse(resultSet.next());
+          }
+        }
+      }
+    } finally {
+      if (databaseCreated) {
+        try (final Connection connection = EnvFactory.getEnv().getConnection();
+            final Statement statement = connection.createStatement()) {
+          statement.execute("delete database " + database);
+        }
+      }
+    }
+  }
+
+  @Test
   @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatch() throws Exception {
 

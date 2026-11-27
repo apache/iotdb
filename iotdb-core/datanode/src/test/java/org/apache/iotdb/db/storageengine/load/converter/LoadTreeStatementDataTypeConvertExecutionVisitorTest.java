@@ -65,6 +65,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -473,6 +474,114 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
     Assert.assertEquals(
         4, pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s0", 0).intValue());
+    Assert.assertEquals(
+        4, pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s1", 0).intValue());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
+  public void testScanParserFailureWithModsUsesParsedPointCounts() throws Exception {
+    tsFile = new File("load-tree-query-fallback-aligned-mods.tsfile");
+    writeAlignedBooleanTsFile(tsFile);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+      modificationFile.write(new Deletion(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 0, 0, 0));
+    }
+
+    final List<MeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    final Tablet partialTablet =
+        new Tablet(ALIGNED_DEVICE, Collections.singletonList(schemas.get(0)), 1);
+    partialTablet.addTimestamp(0, 1);
+    partialTablet.addValue("s0", 0, false);
+    partialTablet.rowSize = 1;
+
+    final Map<IDeviceID, Map<String, Long>> parsedPointCounts =
+        Collections.singletonMap(new PlainDeviceID(ALIGNED_DEVICE), Map.of("s0", 4L, "s1", 4L));
+    final Map<IDeviceID, Map<String, Long>> expectedPointCounts =
+        Collections.singletonMap(new PlainDeviceID(ALIGNED_DEVICE), Map.of("s0", 3L, "s1", 4L));
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            file ->
+                new LoadTreeTsFileTabletIterator(
+                    file,
+                    true,
+                    sourceFile ->
+                        new TsFileInsertionScanDataContainer(
+                            sourceFile,
+                            new IoTDBPipePattern(null),
+                            Long.MIN_VALUE,
+                            Long.MAX_VALUE,
+                            null,
+                            null,
+                            true,
+                            LoadTsFileParserMemoryManager.getInstance(),
+                            true) {
+                          private boolean parsedPointCountsRead;
+                          private boolean expectedPointCountsRead;
+                          private boolean closed;
+
+                          @Override
+                          public Iterable<Pair<Tablet, Boolean>> toTabletWithIsAligneds() {
+                            return () ->
+                                new Iterator<Pair<Tablet, Boolean>>() {
+                                  private boolean tabletReturned;
+
+                                  @Override
+                                  public boolean hasNext() {
+                                    if (tabletReturned) {
+                                      throw new IllegalStateException("synthetic parser failure");
+                                    }
+                                    return true;
+                                  }
+
+                                  @Override
+                                  public Pair<Tablet, Boolean> next() {
+                                    tabletReturned = true;
+                                    return new Pair<>(partialTablet, true);
+                                  }
+                                };
+                          }
+
+                          @Override
+                          public Map<IDeviceID, Map<String, Long>> getParsedPointCounts() {
+                            Assert.assertFalse(closed);
+                            parsedPointCountsRead = true;
+                            return parsedPointCounts;
+                          }
+
+                          @Override
+                          public Map<IDeviceID, Map<String, Long>> getExpectedPointCounts() {
+                            Assert.assertFalse(closed);
+                            expectedPointCountsRead = true;
+                            return expectedPointCounts;
+                          }
+
+                          @Override
+                          public void close() {
+                            Assert.assertTrue(parsedPointCountsRead);
+                            Assert.assertTrue(expectedPointCountsRead);
+                            closed = true;
+                            super.close();
+                          }
+                        }));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(
+        3, pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s0", 0).intValue());
     Assert.assertEquals(
         4, pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s1", 0).intValue());
     Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());

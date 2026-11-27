@@ -286,12 +286,16 @@ class LoadTreeTsFileTabletIterator
     }
 
     fallbackTriggered = true;
+    final Map<IDeviceID, Map<String, Long>> parsedPointCounts =
+        Objects.nonNull(scanParser) ? scanParser.getParsedPointCounts() : Collections.emptyMap();
+    final Map<IDeviceID, Map<String, Long>> scannedExpectedPointCounts =
+        Objects.nonNull(scanParser) ? scanParser.getExpectedPointCounts() : Collections.emptyMap();
     final IDeviceID currentDevice =
         Objects.nonNull(scanParser) ? scanParser.getCurrentDevice() : null;
     closeScanParser();
 
     try {
-      pendingQueryTasks.addAll(buildQueryTasks(emittedPointCountsByDevice, null));
+      pendingQueryTasks.addAll(buildQueryTasks(parsedPointCounts, scannedExpectedPointCounts));
     } catch (final Exception queryInitException) {
       LOGGER.warn(
           "Load: Failed to initialize query fallback for TsFile {} after scan parser failure.",
@@ -508,38 +512,63 @@ class LoadTreeTsFileTabletIterator
       throws IOException {
     for (final AlignedChunkMetadata alignedChunkMetadata :
         reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode)) {
-      final List<IChunkMetadata> valueChunkMetadata =
-          alignedChunkMetadata.getValueChunkMetadataList();
-      if (valueChunkMetadata.size() != measurements.size()) {
-        throw new IOException();
-      }
+      countAlignedChunk(
+          reader,
+          alignedChunkMetadata,
+          measurements,
+          modsInfos,
+          parsedPointCounts,
+          expectedPointCounts);
+    }
+  }
 
-      final Chunk timeChunk =
-          reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
-      final List<Chunk> valueChunks = new ArrayList<>(valueChunkMetadata.size());
+  private void countAlignedChunk(
+      final TsFileSequenceReader reader,
+      final AlignedChunkMetadata alignedChunkMetadata,
+      final List<String> measurements,
+      final List<ModsInfo> modsInfos,
+      final Map<String, Long> parsedPointCounts,
+      final Map<String, Long> expectedPointCounts)
+      throws IOException {
+    final List<IChunkMetadata> valueChunkMetadata =
+        alignedChunkMetadata.getValueChunkMetadataList();
+    if (valueChunkMetadata.size() != measurements.size()) {
+      throw new IOException();
+    }
+
+    final Chunk timeChunk =
+        reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+    final List<Chunk> valueChunks = new ArrayList<>(valueChunkMetadata.size());
+    try {
       for (final IChunkMetadata metadata : valueChunkMetadata) {
         valueChunks.add(metadata == null ? null : reader.readMemChunk((ChunkMetadata) metadata));
       }
       final IChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunks);
-      while (chunkReader.hasNextSatisfiedPage()) {
-        final BatchData pageData = chunkReader.nextPageData();
-        while (pageData.hasCurrent()) {
-          final TsPrimitiveType[] values = pageData.getVector();
-          if (values.length != measurements.size()) {
-            throw new IOException();
-          }
-          for (int column = 0; column < values.length; column++) {
-            if (values[column] != null) {
-              final String measurement = measurements.get(column);
-              parsedPointCounts.merge(measurement, 1L, Long::sum);
-              if (!ModsOperationUtil.isDelete(pageData.currentTime(), modsInfos.get(column))) {
-                expectedPointCounts.merge(measurement, 1L, Long::sum);
+      try {
+        while (chunkReader.hasNextSatisfiedPage()) {
+          final BatchData pageData = chunkReader.nextPageData();
+          while (pageData.hasCurrent()) {
+            final TsPrimitiveType[] values = pageData.getVector();
+            if (values.length != measurements.size()) {
+              throw new IOException();
+            }
+            for (int column = 0; column < values.length; column++) {
+              if (values[column] != null) {
+                final String measurement = measurements.get(column);
+                parsedPointCounts.merge(measurement, 1L, Long::sum);
+                if (!ModsOperationUtil.isDelete(pageData.currentTime(), modsInfos.get(column))) {
+                  expectedPointCounts.merge(measurement, 1L, Long::sum);
+                }
               }
             }
+            pageData.next();
           }
-          pageData.next();
         }
+      } finally {
+        chunkReader.close();
       }
+    } finally {
+      valueChunks.clear();
     }
   }
 
@@ -555,16 +584,21 @@ class LoadTreeTsFileTabletIterator
       final String measurement = measurements.get(index);
       for (final ChunkMetadata metadata :
           reader.getChunkMetadataList(new Path(device.toString(), measurement, false), true)) {
-        final IChunkReader chunkReader = new ChunkReader(reader.readMemChunk(metadata));
-        while (chunkReader.hasNextSatisfiedPage()) {
-          final BatchData pageData = chunkReader.nextPageData();
-          while (pageData.hasCurrent()) {
-            parsedPointCounts.merge(measurement, 1L, Long::sum);
-            if (!ModsOperationUtil.isDelete(pageData.currentTime(), modsInfos.get(index))) {
-              expectedPointCounts.merge(measurement, 1L, Long::sum);
+        final Chunk chunk = reader.readMemChunk(metadata);
+        final IChunkReader chunkReader = new ChunkReader(chunk);
+        try {
+          while (chunkReader.hasNextSatisfiedPage()) {
+            final BatchData pageData = chunkReader.nextPageData();
+            while (pageData.hasCurrent()) {
+              parsedPointCounts.merge(measurement, 1L, Long::sum);
+              if (!ModsOperationUtil.isDelete(pageData.currentTime(), modsInfos.get(index))) {
+                expectedPointCounts.merge(measurement, 1L, Long::sum);
+              }
+              pageData.next();
             }
-            pageData.next();
           }
+        } finally {
+          chunkReader.close();
         }
       }
     }
