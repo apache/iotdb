@@ -40,6 +40,7 @@ public class UDTFHistogram implements UDTF {
   private double gap;
   private int count;
   private double start;
+  private double end;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -64,7 +65,7 @@ public class UDTFHistogram implements UDTF {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);
     // input param min is var start, param max is var end
     start = parameters.getDoubleOrDefault("min", -Double.MAX_VALUE);
-    double end = parameters.getDoubleOrDefault("max", Double.MAX_VALUE);
+    end = parameters.getDoubleOrDefault("max", Double.MAX_VALUE);
     count = parameters.getIntOrDefault("count", 1);
     bucket = new int[count];
     gap = (end - start) / count;
@@ -74,9 +75,42 @@ public class UDTFHistogram implements UDTF {
   public void transform(Row row, PointCollector collector) throws Exception {
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
-      int id = Math.min(Math.max((int) Math.floor((value - start) / gap), 0), count - 1);
-      bucket[id]++;
+      bucket[bucketId(value)]++;
     }
+  }
+
+  /**
+   * Locate the bucket the given value belongs to. When (end - start) does not overflow, the
+   * original uniform binning is kept. When it overflows to +/-Infinity (e.g. the default min/max
+   * range), the bucket is found by comparing the value against the interior bucket boundaries. The
+   * boundary of bucket {@code k} is {@code start + k * (end - start) / count}, evaluated as the
+   * convex combination {@code start * (1 - k/count) + end * (k/count)}: it stays finite (the
+   * overflow only happens for start < 0 < end, where this combination lies between start and end)
+   * and never rounds a value onto the wrong side of a boundary, which keeps e.g. -1 below the 0
+   * boundary of the default [-MAX, MAX] range.
+   */
+  private int bucketId(double value) {
+    if (!Double.isInfinite(gap)) {
+      return Math.min(Math.max((int) Math.floor((value - start) / gap), 0), count - 1);
+    }
+    if (!(end > start)) {
+      // degenerate range (start == end); mirror the old clamping behavior
+      return value <= start ? 0 : count - 1;
+    }
+    // largest bucket index whose lower boundary is <= value
+    int low = 0;
+    int high = count - 1;
+    while (low < high) {
+      int mid = (low + high + 1) >>> 1;
+      double ratio = (double) mid / count;
+      double boundary = start * (1.0 - ratio) + end * ratio;
+      if (value >= boundary) {
+        low = mid;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return low;
   }
 
   @Override

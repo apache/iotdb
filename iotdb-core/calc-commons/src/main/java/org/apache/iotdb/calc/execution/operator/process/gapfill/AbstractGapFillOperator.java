@@ -61,6 +61,14 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   protected long currentTime;
   private SortKey lastGroupKey = null;
 
+  // Whether the inclusive endTime of the current group has already produced (or been superseded
+  // by) a row. When endTime == Long.MAX_VALUE, nextDateBin() saturates at that timestamp, so
+  // currentTime stops advancing once the endpoint is emitted. Without this flag the no-progress
+  // check in fillGaps() only exits the current call, and hasRemainingGapInPreviousGroup() would
+  // keep reporting a remaining gap, emitting the same final bucket again on every next() call
+  // and keeping isFinished() false forever.
+  private boolean endPointConsumedForCurrentGroup = false;
+
   AbstractGapFillOperator(
       CommonOperatorContext operatorContext,
       Operator child,
@@ -93,7 +101,6 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
         return null;
       }
     }
-
     TsBlock block = child.nextWithTimer();
     if (block == null || block.isEmpty()) {
       return null;
@@ -114,7 +121,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
       if (isNewGroup(currentGroupKey, previousGroupKey)) {
         // don't belong to same group, we need to gap fill the remaining time interval of previous
         // group and then reset the gap fill time iterator
-        if (currentTime <= endTime) {
+        if (currentTime <= endTime && !endPointConsumedForCurrentGroup) {
           fillGaps(previousGroupKey.tsBlock, previousGroupKey.rowIndex, endTime);
         }
         resetTimeIterator();
@@ -129,6 +136,10 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
       } else {
         // The real row is appended by writeCurrentRow, so its timestamp is an exclusive bound.
         fillGaps(block, i, timeColumn.getLong(i), false);
+        // a real row at endTime also consumes the inclusive endpoint for this group
+        if (timeColumn.getLong(i) == endTime) {
+          endPointConsumedForCurrentGroup = true;
+        }
       }
       writeCurrentRow(block, i);
     }
@@ -140,6 +151,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
 
   private void resetTimeIterator() {
     currentTime = startTime;
+    endPointConsumedForCurrentGroup = false;
   }
 
   private void writeCurrentRow(TsBlock block, int rowIndex) {
@@ -167,6 +179,9 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
       gapFillRow(currentTime, block, rowIndex);
       nextTime();
       if (currentTime <= previousTime) {
+        // currentTime stopped advancing (e.g. nextDateBin() saturating at Long.MAX_VALUE); the
+        // endpoint just emitted is the last row this group can produce
+        endPointConsumedForCurrentGroup = true;
         break;
       }
     }
@@ -224,7 +239,11 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   }
 
   private boolean hasRemainingGapInPreviousGroup() {
-    return lastGroupKey != null && currentTime < endTime;
+    // endTime is an inclusive bound (see fillGaps and the group-switch flush above), so a gap
+    // row at exactly endTime still needs to be emitted. Once the endpoint has been consumed for
+    // the current group (either emitted by fillGaps or supplied by a real row) there is nothing
+    // left to fill, even though currentTime may be pinned at endTime by saturation.
+    return lastGroupKey != null && !endPointConsumedForCurrentGroup && currentTime <= endTime;
   }
 
   @Override
