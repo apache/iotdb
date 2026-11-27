@@ -91,6 +91,13 @@ public abstract class AlignedTVList extends TVList {
   private long materializedValueArrayMemCost;
   private long materializedBitmapMemoryCost;
   private long arrayMemCostWithoutPrimitiveArraysAndIndex;
+  // Last array/structure RAM sizes reconciled into the owning MemTable's WriteMemoryBlocks.
+  // Query-side sort() may allocate indices/segmentMovedMap without charging the write blocks, so
+  // TsFileProcessor must diff post-write actual RAM against what was previously accounted rather
+  // than against a live pre-write snapshot.
+  private boolean ramSizeAccounted;
+  private long accountedArrayRamSize;
+  private long accountedStructureRamSize;
 
   /**
    * A fully prepared partial clone. All allocations and validations are completed before this plan
@@ -281,6 +288,9 @@ public abstract class AlignedTVList extends TVList {
     cloneList.materializedValueArrayCounts =
         Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
     cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
+    if (this.ramSizeAccounted) {
+      cloneList.setAccountedRamSize(this.accountedArrayRamSize, this.accountedStructureRamSize);
+    }
     return cloneList;
   }
 
@@ -408,6 +418,10 @@ public abstract class AlignedTVList extends TVList {
     // Refresh the cached per-block cost after the retained columns changed on both lists.
     refreshArrayMemCostWithoutPrimitiveArrays();
     plan.cloneList.refreshArrayMemCostWithoutPrimitiveArrays();
+    if (this.ramSizeAccounted) {
+      plan.cloneList.setAccountedRamSize(
+          this.accountedArrayRamSize, this.accountedStructureRamSize);
+    }
   }
 
   /**
@@ -1066,6 +1080,11 @@ public abstract class AlignedTVList extends TVList {
     }
     Arrays.fill(materializedValueArrayCounts, 0);
     materializedValueArrayMemCost = 0;
+    synchronized (this) {
+      ramSizeAccounted = false;
+      accountedArrayRamSize = 0;
+      accountedStructureRamSize = 0;
+    }
   }
 
   @Override
@@ -1428,6 +1447,40 @@ public abstract class AlignedTVList extends TVList {
 
   public synchronized long getStructureRamSize() {
     return calculateContainerRamCost(null);
+  }
+
+  public synchronized boolean isRamSizeAccounted() {
+    return ramSizeAccounted;
+  }
+
+  public synchronized long getAccountedArrayRamSize() {
+    return accountedArrayRamSize;
+  }
+
+  public synchronized long getAccountedStructureRamSize() {
+    return accountedStructureRamSize;
+  }
+
+  /**
+   * Records the array and structure RAM sizes (in bytes) that have already been reconciled into the
+   * owning MemTable's WriteMemoryBlocks.
+   *
+   * @param arrayRamSize non-negative accounted array RAM size in bytes
+   * @param structureRamSize non-negative accounted structure RAM size in bytes
+   * @throws IllegalArgumentException if either size is negative
+   */
+  public synchronized void setAccountedRamSize(long arrayRamSize, long structureRamSize) {
+    if (arrayRamSize < 0 || structureRamSize < 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_ACCOUNTED_RAM_SIZES_MUST_BE_NON_NEGATIVE_ARRAYRAMSIZE_ARG_STRUCTURERAMSIZE_ARG_76917547,
+              arrayRamSize,
+              structureRamSize));
+    }
+    this.accountedArrayRamSize = arrayRamSize;
+    this.accountedStructureRamSize = structureRamSize;
+    this.ramSizeAccounted = true;
   }
 
   public synchronized long getRamSize(Set<Integer> columnsToClone) {
@@ -1951,6 +2004,7 @@ public abstract class AlignedTVList extends TVList {
       tvList.timeColDeletedMap = new BitMap(rowCount, bytes);
     }
 
+    tvList.setAccountedRamSize(tvList.getArrayRamSize(), tvList.getStructureRamSize());
     return tvList;
   }
 

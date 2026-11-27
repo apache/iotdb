@@ -990,6 +990,129 @@ public class TsFileProcessorTest {
   }
 
   @Test
+  public void alignedStructureMemoryAccountingSurvivesRepeatedSortAndOutOfOrderWrites()
+      throws ExecutionException, WriteProcessException, IOException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".sort-structure-accounting");
+    insertAlignedRow(processor, deviceId, 100L, false);
+    insertAlignedRow(processor, deviceId, 50L, false);
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    for (int i = 1; i <= 10; i++) {
+      AlignedTVList list = getAlignedMemChunk(deviceId).getWorkingTVList();
+      list.sort();
+      Assert.assertNotNull(list.getSegmentMovedMap());
+
+      insertAlignedRow(processor, deviceId, 50L - i, false);
+      Assert.assertNull(list.getSegmentMovedMap());
+      assertAlignedTvListRamCostMatchesActual(deviceId);
+    }
+
+    AlignedTVList list = getAlignedMemChunk(deviceId).getWorkingTVList();
+    list.sort();
+    Assert.assertNotNull(list.getSegmentMovedMap());
+
+    // In-order write retains segmentMovedMap, charging its bytes into structureMemoryBlock.
+    insertAlignedRow(processor, deviceId, 200L, false);
+    Assert.assertNotNull(list.getSegmentMovedMap());
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    // Next out-of-order write clears segmentMovedMap and releases only the accounted bytes.
+    insertAlignedRow(processor, deviceId, 1L, false);
+    Assert.assertNull(list.getSegmentMovedMap());
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    processor.syncClose();
+    assertEquals(0, sgInfo.getMemCost());
+  }
+
+  @Test
+  public void alignedStructureMemoryAccountingSurvivesMultiDeviceSortAndOutOfOrderBatch()
+      throws ExecutionException, WriteProcessException, IOException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".multi-device-sort-accounting");
+    String[] devices = {
+      "root.vehicle.sort_d0", "root.vehicle.sort_d1", "root.vehicle.sort_d2", "root.vehicle.sort_d3"
+    };
+
+    for (String targetDevice : devices) {
+      insertAlignedRow(processor, targetDevice, 100L, false);
+      insertAlignedRow(processor, targetDevice, 50L, false);
+    }
+    for (String targetDevice : devices) {
+      AlignedTVList list = getAlignedMemChunk(targetDevice).getWorkingTVList();
+      list.sort();
+      Assert.assertNotNull(list.getSegmentMovedMap());
+    }
+
+    InsertRowsNode batch = new InsertRowsNode(new PlanNodeId("multi-device-sort"));
+    for (int i = 0; i < devices.length; i++) {
+      TSRecord record = new TSRecord(devices[i], 10L);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "10"));
+      InsertRowNode row = buildInsertRowNodeByTSRecord(record);
+      row.setAligned(true);
+      batch.addOneInsertRowNode(row, i);
+    }
+    processor.insertRows(batch, new long[5]);
+
+    long expectedArrayBytes = 0;
+    long expectedStructureBytes = 0;
+    long expectedTotalBytes = 0;
+    for (String targetDevice : devices) {
+      AlignedTVList list = getAlignedMemChunk(targetDevice).getWorkingTVList();
+      Assert.assertNull(list.getSegmentMovedMap());
+      expectedArrayBytes += list.getArrayRamSize();
+      expectedStructureBytes += list.getStructureRamSize();
+      expectedTotalBytes += list.calculateRamSize().getRamSize();
+    }
+    IMemTable table = processor.getWorkMemTable();
+    Assert.assertEquals(expectedArrayBytes, table.getArrayMemoryBlock().getUsedMemoryInBytes());
+    Assert.assertEquals(
+        expectedStructureBytes, table.getStructureMemoryBlock().getUsedMemoryInBytes());
+    Assert.assertEquals(expectedTotalBytes, table.getTVListsRamCost());
+
+    processor.syncClose();
+    assertEquals(0, sgInfo.getMemCost());
+  }
+
+  @Test
+  public void alignedStructureMemoryAccountingSurvivesCloneAndPartialCloneReplacement()
+      throws ExecutionException, WriteProcessException, IOException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".clone-sort-structure-accounting");
+    insertAlignedRow(processor, deviceId, 100L, false);
+    insertAlignedRow(processor, deviceId, 50L, false);
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    // Simulate query-side clone-on-write replacing the working TVList, followed by query sort and
+    // an out-of-order write that clears segmentMovedMap.
+    AlignedWritableMemChunk memChunk = getAlignedMemChunk(deviceId);
+    AlignedTVList original = memChunk.getWorkingTVList();
+    AlignedTVList fullClone = original.clone();
+    memChunk.setWorkingTVList(fullClone);
+    fullClone.sort();
+    Assert.assertNotNull(fullClone.getSegmentMovedMap());
+
+    insertAlignedRow(processor, deviceId, 40L, false);
+    Assert.assertNull(fullClone.getSegmentMovedMap());
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    // Repeat for partial clone replacement.
+    AlignedTVList.PartialClonePlan plan = fullClone.preparePartialClone(Collections.singleton(0));
+    plan.commit();
+    AlignedTVList partialClone = plan.getCloneList();
+    memChunk.setWorkingTVList(partialClone);
+    partialClone.sort();
+    Assert.assertNotNull(partialClone.getSegmentMovedMap());
+
+    insertAlignedRow(processor, deviceId, 30L, false);
+    Assert.assertNull(partialClone.getSegmentMovedMap());
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    original.clear();
+    fullClone.clear();
+    processor.syncClose();
+    assertEquals(0, sgInfo.getMemCost());
+  }
+
+  @Test
   public void alignedTabletRamCostSnapshotUsesSingleDeviceFastPath() {
     IMemTable memTable = new PrimitiveMemTable("root.snapshot", "0");
     IDeviceID firstDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.snapshot.d0");
