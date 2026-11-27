@@ -132,7 +132,7 @@ public class TemplateTable {
     try {
       Template temp = this.templateMap.remove(templateName);
       if (temp == null) {
-        LOGGER.error(ConfigNodeMessages.UNDEFINED_TEMPLATE, templateName);
+        LOGGER.warn(ConfigNodeMessages.UNDEFINED_TEMPLATE, templateName);
         throw new UndefinedTemplateException(templateName);
       }
       templateIdMap.remove(temp.getId());
