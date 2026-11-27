@@ -20,7 +20,6 @@ import concurrent.futures
 import json
 import os
 import shutil
-import threading
 from typing import Dict, Optional
 
 from huggingface_hub import hf_hub_download
@@ -36,6 +35,7 @@ from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
     CONFIG_JSON,
     MODEL_SAFETENSORS,
+    USER_PROVIDED_WEIGHTS_FILES,
     ModelCategory,
     ModelStates,
     UriType,
@@ -61,6 +61,35 @@ from iotdb.thrift.common.ttypes import TSStatus
 logger = Logger()
 
 
+def _check_user_provided_files(model_dir: str) -> Optional[str]:
+    """None if the files of a user-provided model are in model_dir and readable, else what is
+    wrong with them."""
+    missing = [
+        name
+        for name in USER_PROVIDED_WEIGHTS_FILES
+        if not os.path.isfile(os.path.join(model_dir, name))
+    ]
+    if missing:
+        return f"{', '.join(missing)} not found"
+    try:
+        with open(os.path.join(model_dir, CONFIG_JSON), "r", encoding="utf-8") as f:
+            if not isinstance(json.load(f), dict):
+                return f"{CONFIG_JSON} is not a JSON object"
+    except (OSError, ValueError) as e:
+        return f"{CONFIG_JSON} cannot be read ({e})"
+    try:
+        # A safetensors file starts with the length of its JSON header, as a little-endian
+        # 64-bit integer
+        with open(os.path.join(model_dir, MODEL_SAFETENSORS), "rb") as f:
+            length = int.from_bytes(f.read(8), "little")
+            if not 0 < length < 100_000_000:
+                raise ValueError("bad header length")
+            json.loads(f.read(length))
+    except (OSError, ValueError) as e:
+        return f"{MODEL_SAFETENSORS} is not a safetensors file ({e})"
+    return None
+
+
 class ModelStorage:
     """Model storage class - unified management of model discovery and registration"""
 
@@ -75,8 +104,6 @@ class ModelStorage:
         }
         # Async download executor
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-        # Serializes the on-request downloads of built-in models
-        self._download_lock = threading.Lock()
         # Thread lock pool for protecting concurrent access to model information
         self._lock_pool = ModelLockPool()
         self._initialize_directories()
@@ -136,116 +163,102 @@ class ModelStorage:
                     return
 
             model_info = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
-            self._models[ModelCategory.BUILTIN.value][model_id] = model_info
-            # A model whose weights are not downloaded at start stays INACTIVE until it is
-            # loaded, which downloads them (see download_builtin_model)
-            if not model_info.download_on_start and not self._builtin_files_exist(
-                model_dir
-            ):
-                model_info.state = ModelStates.INACTIVE
-                logger.info(
-                    f"Model {model_id} is not downloaded at start; "
-                    f"LOAD MODEL {model_id} downloads it from {model_info.repo_id}."
-                )
+            if model_info.user_provided_weights:
+                # Never downloaded: active only once the user has placed its files here
+                self._models[ModelCategory.BUILTIN.value][model_id] = model_info
+                self._activate_user_provided_model(model_info, model_dir)
                 return
 
             # If model not exists or is INACTIVE, we'll try to update its info and download its weights
-            model_info.state = ModelStates.ACTIVATING
+            self._models[ModelCategory.BUILTIN.value][model_id] = (
+                BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
+            )
+            self._models[ModelCategory.BUILTIN.value][
+                model_id
+            ].state = ModelStates.ACTIVATING
 
-        future = self._executor.submit(
-            self._download_builtin_model_files, model_id, model_dir
-        )
+        def _download_model_if_necessary() -> bool:
+            """Returns: True if the model is existed or downloaded successfully, False otherwise."""
+            repo_id = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id].repo_id
+            weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
+            config_path = os.path.join(model_dir, CONFIG_JSON)
+            if not os.path.exists(weights_path):
+                try:
+                    hf_hub_download(
+                        repo_id=repo_id,
+                        filename=MODEL_SAFETENSORS,
+                        local_dir=model_dir,
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to download model weights from HuggingFace: {e}"
+                    )
+                    return False
+            if not os.path.exists(config_path):
+                try:
+                    hf_hub_download(
+                        repo_id=repo_id,
+                        filename=CONFIG_JSON,
+                        local_dir=model_dir,
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to download model config from HuggingFace: {e}"
+                    )
+                    return False
+            return True
+
+        future = self._executor.submit(_download_model_if_necessary)
         future.add_done_callback(
             lambda f, mid=model_id: self._callback_model_download_result(f, mid)
         )
 
-    @staticmethod
-    def _builtin_files_exist(model_dir: str) -> bool:
-        return os.path.exists(
-            os.path.join(model_dir, MODEL_SAFETENSORS)
-        ) and os.path.exists(os.path.join(model_dir, CONFIG_JSON))
-
-    def _download_builtin_model_files(self, model_id: str, model_dir: str) -> bool:
-        """Returns: True if the model is existed or downloaded successfully, False otherwise."""
-        repo_id = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id].repo_id
-        weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
-        config_path = os.path.join(model_dir, CONFIG_JSON)
-        if not os.path.exists(weights_path):
-            try:
-                hf_hub_download(
-                    repo_id=repo_id,
-                    filename=MODEL_SAFETENSORS,
-                    local_dir=model_dir,
-                )
-            except Exception as e:
-                logger.error(f"Failed to download model weights from HuggingFace: {e}")
-                return False
-        if not os.path.exists(config_path):
-            try:
-                hf_hub_download(
-                    repo_id=repo_id,
-                    filename=CONFIG_JSON,
-                    local_dir=model_dir,
-                )
-            except Exception as e:
-                logger.error(f"Failed to download model config from HuggingFace: {e}")
-                return False
-        return True
-
-    def download_builtin_model(self, model_id: str) -> bool:
+    def validate_user_provided_model(self, model_id: str) -> Optional[str]:
         """
-        Download the weights of a built-in model that is not downloaded at start, and wait
-        until the download ends.
-        Args:
-            model_id (str): Unique identifier for the model.
+        For a built-in model whose weights the user provides, check its files in the local model
+        directory again, as they may have been placed after AINode started, and mark it ACTIVE
+        or INACTIVE. Nothing is downloaded.
         Returns:
-            bool: True if the model is ready to use, False if the download failed.
-        Raises:
-            ModelNotExistException: If the model_id is not a built-in model.
+            None if the model can be loaded (or is not such a model), else a message telling the
+            user how to install its files.
         """
-        with self._download_lock:
-            with self._lock_pool.get_lock(model_id).write_lock():
-                model_info = self._models[ModelCategory.BUILTIN.value].get(model_id)
-                if (
-                    model_info is None
-                    or model_id not in BUILTIN_HF_TRANSFORMERS_MODEL_MAP
-                ):
-                    raise ModelNotExistException(model_id)
-                if model_info.state == ModelStates.ACTIVE:
-                    return True
-                model_info.state = ModelStates.ACTIVATING
-            logger.info(
-                f"Downloading model {model_id} from HuggingFace: {model_info.repo_id}"
-            )
+        with self._lock_pool.get_lock(model_id).write_lock():
+            model_info = self._models[ModelCategory.BUILTIN.value].get(model_id)
+            if model_info is None or not model_info.user_provided_weights:
+                return None
             model_dir = os.path.join(
                 self._models_dir, ModelCategory.BUILTIN.value, model_id
             )
-            succeeded = False
-            try:
-                succeeded = self._download_builtin_model_files(model_id, model_dir)
-            finally:
-                succeeded = self._set_model_download_result(model_id, succeeded)
-            return succeeded
+            return self._activate_user_provided_model(model_info, model_dir)
+
+    @staticmethod
+    def _activate_user_provided_model(
+        model_info: ModelInfo, model_dir: str
+    ) -> Optional[str]:
+        """Mark the model ACTIVE if its files are in model_dir, else INACTIVE with the reason.
+        The caller holds the model's write lock."""
+        problem = _check_user_provided_files(model_dir)
+        if problem is not None:
+            model_info.state = ModelStates.INACTIVE
+            message = (
+                f"Model [{model_info.model_id}] is not installed: {problem}. AINode does not "
+                f"download or include its weights. Place {', '.join(USER_PROVIDED_WEIGHTS_FILES)} "
+                f"in {os.path.abspath(model_dir)}. {model_info.user_provided_weights}"
+            )
+            logger.info(message)
+            return message
+        with open(os.path.join(model_dir, CONFIG_JSON), "r", encoding="utf-8") as f:
+            config = json.load(f)
+        model_info.model_type = config.get("model_type", model_info.model_type)
+        model_info.state = ModelStates.ACTIVE
+        logger.info(f"Model {model_info.model_id} is installed and ready to use.")
+        return None
 
     def _callback_model_download_result(self, future, model_id: str):
         """Callback function for handling model download results"""
-        try:
-            succeeded = future.result()
-        except Exception as e:
-            logger.error(f"Error in download callback for model {model_id}: {e}")
-            succeeded = False
-        self._set_model_download_result(model_id, succeeded)
-
-    def _set_model_download_result(self, model_id: str, succeeded: bool) -> bool:
-        """
-        Mark a built-in model ACTIVE after a successful download, INACTIVE otherwise.
-        Returns:
-            bool: True if the model is ACTIVE, False if the download or reading its
-            config.json failed.
-        """
         with self._lock_pool.get_lock(model_id).write_lock():
             try:
-                if succeeded:
+                if future.result():
                     model_info = self._models[ModelCategory.BUILTIN.value][model_id]
                     model_info.state = ModelStates.ACTIVE
                     config_path = os.path.join(
@@ -276,10 +289,6 @@ class ModelStorage:
                 self._models[ModelCategory.BUILTIN.value][
                     model_id
                 ].state = ModelStates.INACTIVE
-            return (
-                self._models[ModelCategory.BUILTIN.value][model_id].state
-                == ModelStates.ACTIVE
-            )
 
     def _process_user_defined_model_directory(self, model_dir: str, model_id: str):
         """Handling the discovery logic for a user-defined model directory."""

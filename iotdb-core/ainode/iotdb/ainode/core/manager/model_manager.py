@@ -87,8 +87,8 @@ class ModelManager:
     ) -> Optional[ModelInfo]:
         return self._model_storage.get_model_info(model_id, category)
 
-    def download_builtin_model(self, model_id: str) -> bool:
-        return self._model_storage.download_builtin_model(model_id)
+    def validate_user_provided_model(self, model_id: str) -> Optional[str]:
+        return self._model_storage.validate_user_provided_model(model_id)
 
     def _refresh(self):
         """Refresh the model list (re-scan the file system)"""

@@ -72,10 +72,10 @@ public class AINodeTestUtils {
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   /**
-   * Built-in models whose weights are downloaded only when they are loaded. They are inactive until
-   * then.
+   * Built-in models whose weights the user provides: AINode never downloads them, and they are
+   * inactive until their files are installed, which they are not in these tests.
    */
-  public static final Map<String, FakeModelInfo> ON_REQUEST_BUILTIN_MODEL_MAP =
+  public static final Map<String, FakeModelInfo> USER_PROVIDED_BUILTIN_MODEL_MAP =
       Stream.of(
               new AbstractMap.SimpleEntry<>(
                   "timestral", new FakeModelInfo("timestral", "timestral", "builtin", "inactive")))

@@ -16,6 +16,8 @@
 # under the License.
 #
 
+import os
+
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 from safetensors.torch import load_file
@@ -34,6 +36,17 @@ class TimestralForPrediction(TimestralModel, PyTorchModelHubMixin):
 
     def __init__(self, **fields):
         super().__init__(TimestralConfig.from_dict(fields))
+
+    @classmethod
+    def from_pretrained(cls, pretrained_model_name_or_path, **kwargs):
+        """Load from a local directory only: Timestral's weights are provided by the user, and
+        are never fetched from the Hugging Face Hub."""
+        if not os.path.isdir(pretrained_model_name_or_path):
+            raise FileNotFoundError(
+                f"No Timestral checkpoint directory at {pretrained_model_name_or_path}"
+            )
+        kwargs["local_files_only"] = True
+        return super().from_pretrained(pretrained_model_name_or_path, **kwargs)
 
     def _apply(self, fn, *args, **kwargs):
         module = super()._apply(fn, *args, **kwargs)

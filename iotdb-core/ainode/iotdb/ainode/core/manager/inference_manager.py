@@ -110,7 +110,7 @@ class InferenceManager:
         self, model_id: str, device_id_list: list[torch.device]
     ) -> TSStatus:
         # As for loads: deciding and queueing are one step in the controller. A load still
-        # pending, e.g. while the model downloads, counts as loaded, and the unload follows it.
+        # pending counts as loaded, and the unload follows it.
         devices_to_be_processed = self._pool_controller.request_unload(
             model_id, device_id_list
         )
