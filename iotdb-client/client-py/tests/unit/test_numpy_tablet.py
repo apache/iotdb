@@ -17,6 +17,7 @@
 #
 
 import numpy as np
+import pytest
 
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType
@@ -153,15 +154,18 @@ def test_sort_numpy_tablet():
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
 
 
-def test_sort_numpy_tablet_with_null_bitmaps():
-    timestamps = [90, 10, 20, 30, 40, 50, 60, 70, 80]
+@pytest.mark.parametrize("row_count", [8, 9])
+def test_sort_numpy_tablet_with_null_bitmaps(row_count):
+    timestamps = [row_count, *range(1, row_count)]
     columns = ["a", "b", "c"]
     types = [TSDataType.INT32] * len(columns)
     first_nulls = BitMap(len(timestamps))
-    first_nulls.mark(0)  # Time 90 moves from bit 0 to bit 8.
+    first_nulls.mark(0)  # The null moves to bit 7 or 8.
     second_nulls = BitMap(len(timestamps))
     second_nulls.mark(1)
-    rows = [(None if t == 90 else t, None if t == 10 else t, t) for t in timestamps]
+    rows = [
+        (None if t == row_count else t, None if t == 1 else t, t) for t in timestamps
+    ]
     expected = Tablet("root.sg.d", columns, types, rows, timestamps)
     tablet = NumpyTablet(
         "root.sg.d",
