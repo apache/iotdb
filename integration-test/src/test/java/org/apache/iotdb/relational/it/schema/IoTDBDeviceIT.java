@@ -33,6 +33,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
@@ -53,6 +54,40 @@ public class IoTDBDeviceIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testLiteralAsteriskInDeviceTag() throws SQLException {
+    final String database = "literal_tag_test";
+    final String delete = "delete devices from sensors where name = 'rack*'";
+    // A delete that returns a result set must execute only once, even in a multi-node test.
+    try (final Connection connection = EnvFactory.getEnv().getAvailableTableConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + database);
+      statement.execute("use " + database);
+      statement.execute("create table sensors(name string tag, v int32 field)");
+      statement.execute(
+          "insert into sensors(time, name, v) values (1, 'rack*', 10), (1, 'rack1', 20)");
+      TestUtils.tableResultSetEqualTestUnordered(
+          "show devices from sensors where name = 'rack*'",
+          new String[] {"name"},
+          new String[] {"rack*,"},
+          database);
+
+      for (final String expectedCount : new String[] {"1", "0"}) {
+        try (final ResultSet deleted = statement.executeQuery(delete)) {
+          assertTrue(deleted.next());
+          assertEquals(expectedCount, deleted.getString("num_of_deleted_devices"));
+        }
+      }
+      TestUtils.tableResultSetEqualTestUnordered(
+          "show devices from sensors", new String[] {"name"}, new String[] {"rack1,"}, database);
+      TestUtils.tableResultSetEqualTestUnordered(
+          "select name, v from sensors",
+          new String[] {"name", "v"},
+          new String[] {"rack1,20,"},
+          database);
+    }
   }
 
   @Test

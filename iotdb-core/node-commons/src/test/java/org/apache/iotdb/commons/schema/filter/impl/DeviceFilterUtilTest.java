@@ -51,6 +51,14 @@ public class DeviceFilterUtilTest {
   private static final int TAG_COLUMN_NUM = 3;
 
   @Test
+  public void testPreciseTagValuesContainingAsterisks() {
+    for (final String value : Arrays.asList("*", "**", "*meter", "meter*", "*meter*", "me*ter")) {
+      final PartialPath pattern = convert(branch(precise(1, value))).get(0);
+      assertPreciseTransitionsAfterFirstTag(pattern, value);
+    }
+  }
+
+  @Test
   public void testCompactExpandedInOrOnNonLeadingTag() {
     final List<PartialPath> patterns =
         convert(branch(precise(1, "card1")), branch(precise(1, "card2")));
