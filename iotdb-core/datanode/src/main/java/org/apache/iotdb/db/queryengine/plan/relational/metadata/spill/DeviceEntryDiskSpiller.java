@@ -50,6 +50,7 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
   private int nextSegmentId;
   private boolean closed;
   private boolean outputCloseFailed;
+  private boolean segmentPublicationFailed;
 
   public DeviceEntryDiskSpiller(
       DeviceEntrySpillManager spillManager,
@@ -108,6 +109,11 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
   }
 
   private void checkOpen() throws IOException {
+    if (segmentPublicationFailed) {
+      throw new IOException(
+          DataNodeQueryMessages
+              .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_COULD_NOT_BE_PUBLISHED_992816AF);
+    }
     if (outputCloseFailed) {
       throw new IOException(
           DataNodeQueryMessages.EXCEPTION_DEVICEENTRY_SPILLER_OUTPUT_CLOSE_FAILED_327C3F35);
@@ -142,8 +148,14 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
           sealedFile,
           StandardCopyOption.ATOMIC_MOVE,
           StandardCopyOption.REPLACE_EXISTING);
-    } catch (IOException e) {
-      Files.move(temporaryFile, sealedFile, StandardCopyOption.REPLACE_EXISTING);
+    } catch (IOException atomicMoveFailure) {
+      try {
+        Files.move(temporaryFile, sealedFile, StandardCopyOption.REPLACE_EXISTING);
+      } catch (IOException moveFailure) {
+        moveFailure.addSuppressed(atomicMoveFailure);
+        segmentPublicationFailed = true;
+        throw moveFailure;
+      }
     }
     sealedSegments.add(sealedFile);
     temporaryFile = null;

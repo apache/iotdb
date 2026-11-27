@@ -41,6 +41,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -304,6 +308,43 @@ public class DeviceEntryMaterializerTest {
     List<DeviceEntry> expected = new ArrayList<>(input);
     expected.sort(Comparator.comparing(entry -> entry.getDeviceID().toString()));
     assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testSortedMaterializerStopsMergingWhenQueryCleanupStarts() throws Exception {
+    String queryId = "q_sorted_cleanup";
+    MPPQueryContext queryContext = new MPPQueryContext(new QueryId(queryId));
+    queryContext.setStartTime(System.currentTimeMillis());
+    queryContext.setTimeOut(Long.MAX_VALUE);
+    ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
+    FutureTask<Void> queryCleanup =
+        new FutureTask<>(
+            () -> {
+              DeviceEntrySpillManager.getInstance().deregisterQuery(queryId);
+              return null;
+            });
+    Comparator<DeviceEntry> comparator =
+        (left, right) -> {
+          assertFalse(queryContext.isDeviceEntrySpillCleanupRequested());
+          queryContext.markDeviceEntrySpillCleanupRequested();
+          cleanupExecutor.execute(queryCleanup);
+          return DeviceEntry.compareDeviceId(left, right);
+        };
+
+    try (DeviceEntrySortedMaterializer materializer =
+        new DeviceEntrySortedMaterializer(
+            queryId, new PlanNodeId("scan-0"), 128, comparator, queryContext)) {
+      for (DeviceEntry entry : createEntries(3)) {
+        materializer.append(entry);
+        materializer.forceSpill();
+      }
+
+      assertThrows(IOException.class, materializer::finish);
+      queryCleanup.get(10, TimeUnit.SECONDS);
+      assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
+    } finally {
+      cleanupExecutor.shutdownNow();
+    }
   }
 
   @Test

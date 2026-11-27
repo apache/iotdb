@@ -120,6 +120,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     checkSpillCleanupRequested();
     long entryRamBytes = entry.ramBytesUsed();
     if (!isBufferEmpty() && getBufferedRamBytes() + entryRamBytes > thresholdInBytes()) {
+      sortBufferedRun();
       return withSpillDirectoryLock(
           () -> {
             long releasedRamBytes = getBufferedRamBytes();
@@ -143,6 +144,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
   public void forceSpill() throws IOException {
     checkNotFinished();
     checkSpillCleanupRequested();
+    sortBufferedRun();
     withSpillDirectoryLock(
         () -> {
           flushRun();
@@ -181,6 +183,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     }
 
     try {
+      sortBufferedRun();
       return withSpillDirectoryLock(this::finishSpilled);
     } catch (IOException | RuntimeException e) {
       try {
@@ -213,6 +216,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
         finalSegments = outputSpiller.finish();
       }
     }
+    checkSpillCleanupRequested();
     setEntryCount(finalEntryCount);
     DeviceEntryDataSet dataSet =
         new SpilledDeviceEntryDataSet(
@@ -229,9 +233,11 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
   }
 
   private List<Path> moveRun(List<Path> run, Path finalDirectory) throws IOException {
+    checkSpillCleanupRequested();
     Files.createDirectories(finalDirectory);
     List<Path> finalSegments = new ArrayList<>(run.size());
     for (Path segment : run) {
+      checkSpillCleanupRequested();
       Path target = finalDirectory.resolve(segment.getFileName());
       try {
         Files.move(segment, target, StandardCopyOption.ATOMIC_MOVE);
@@ -243,18 +249,27 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     return finalSegments;
   }
 
+  private void sortBufferedRun() throws IOException {
+    if (!isBufferEmpty()) {
+      sortBufferedEntries(comparator);
+      checkSpillCleanupRequested();
+      checkTimeout();
+    }
+  }
+
   private void flushRun() throws IOException {
+    checkSpillCleanupRequested();
     if (isBufferEmpty()) {
       return;
     }
     ensureSpillDirectory();
-    sortBufferedEntries(comparator);
-    checkTimeout();
     Path currentRunDirectory = runDirectory.resolve(String.format("run-%06d", sortedRuns.size()));
     try (DeviceEntryDiskSpiller runSpiller = createSpiller(currentRunDirectory)) {
       for (DeviceEntry entry : bufferedEntries()) {
+        checkSpillCleanupRequested();
         runSpiller.append(entry.serializeToBytes());
       }
+      checkSpillCleanupRequested();
       sortedRuns.add(runSpiller.finish());
     }
     clearBuffer();
@@ -272,6 +287,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     DeviceEntry previous = null;
     try (DeviceEntryFileSpillerReader reader = createReader(run, true)) {
       while (reader.hasNext()) {
+        checkSpillCleanupRequested();
         DeviceEntry entry = reader.next();
         if (!distinct || previous == null || comparator.compare(previous, entry) != 0) {
           outputSpiller.append(entry.serializeToBytes());
@@ -296,6 +312,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     while (runs.size() > MAX_MERGE_FAN_IN) {
       List<List<Path>> nextRuns = new ArrayList<>();
       for (int from = 0, group = 0; from < runs.size(); from += MAX_MERGE_FAN_IN, group++) {
+        checkSpillCleanupRequested();
         int to = Math.min(from + MAX_MERGE_FAN_IN, runs.size());
         List<List<Path>> runGroup = new ArrayList<>(runs.subList(from, to));
         if (runGroup.size() == 1) {
@@ -331,6 +348,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     DeviceEntry previous = null;
     try {
       for (int i = 0; i < runs.size(); i++) {
+        checkSpillCleanupRequested();
         DeviceEntryFileSpillerReader reader = createReader(runs.get(i), true);
         readers.add(reader);
         if (reader.hasNext()) {
@@ -338,6 +356,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
         }
       }
       while (!queue.isEmpty()) {
+        checkSpillCleanupRequested();
         MergeElement element = queue.poll();
         if (!distinct || previous == null || comparator.compare(previous, element.entry) != 0) {
           outputSpiller.append(element.entry.serializeToBytes());

@@ -169,6 +169,7 @@ public final class DeviceEntrySpillManager {
     if (lock == null) {
       return;
     }
+    // Keep segment deletion exclusive with readers and query cleanup.
     withQueryDirectoryLock(
         queryId,
         lock,
@@ -391,10 +392,6 @@ public final class DeviceEntrySpillManager {
         },
         false,
         true);
-  }
-
-  <T> T withQueryDirectoryLock(String queryId, IOCallable<T> operation) throws IOException {
-    return withQueryDirectoryLock(queryId, operation, true);
   }
 
   <T> T withQueryDirectoryReadLock(String queryId, IOCallable<T> operation) throws IOException {

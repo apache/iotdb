@@ -382,6 +382,37 @@ public class SegmentDeviceEntrySourceTest {
   }
 
   @Test
+  public void testSpillerDoesNotPublishSegmentAfterRenameFailure() throws Exception {
+    String queryId = "q-seal-failure";
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    Path ownerDirectory = manager.register(queryId, new PlanNodeId(queryId));
+    Path spillDirectory = ownerDirectory.resolve("fi");
+    DeviceEntryDiskSpiller spiller =
+        manager.createSpiller(queryId, ownerDirectory, spillDirectory, 1024, null, false);
+    Path temporarySegment = spillDirectory.resolve("segment-000000.tmp");
+    Path sealedSegment = spillDirectory.resolve("segment-000000.bin");
+    Files.createDirectory(sealedSegment);
+    Files.write(sealedSegment.resolve("blocker"), new byte[] {1});
+
+    try {
+      spiller.append(new byte[] {1});
+
+      IOException sealFailure = assertThrows(IOException.class, spiller::finish);
+      assertNotNull(sealFailure.getMessage());
+      assertTrue(Files.isRegularFile(temporarySegment));
+
+      IOException appendFailure =
+          assertThrows(IOException.class, () -> spiller.append(new byte[] {2}));
+      assertNotNull(appendFailure.getMessage());
+      assertThrows(IOException.class, spiller::finish);
+      assertTrue(Files.isRegularFile(temporarySegment));
+      assertFalse(Files.exists(spillDirectory.resolve("segment-000001.tmp")));
+    } finally {
+      manager.deregisterQuery(queryId);
+    }
+  }
+
+  @Test
   public void testQueryCleanupClosesActiveReaderBeforeDeletingDirectory() throws Exception {
     String queryId = "q-cleanup-active-reader";
     DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();

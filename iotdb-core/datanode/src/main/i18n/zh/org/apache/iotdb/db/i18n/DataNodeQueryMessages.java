@@ -4890,6 +4890,9 @@ public final class DataNodeQueryMessages {
           "Query 清理已开始，无法继续溢写 DeviceEntry";
   public static final String EXCEPTION_DEVICEENTRY_SPILLER_OUTPUT_CLOSE_FAILED_327C3F35 =
       "DeviceEntry spiller 输出关闭失败";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_COULD_NOT_BE_PUBLISHED_992816AF =
+          "DeviceEntry 溢写分段无法发布";
   public static final String EXCEPTION_DEVICEENTRY_SPILLER_IS_ALREADY_CLOSED_ARG_FB427109 =
       "DeviceEntry spiller 已关闭：%s";
   public static final String

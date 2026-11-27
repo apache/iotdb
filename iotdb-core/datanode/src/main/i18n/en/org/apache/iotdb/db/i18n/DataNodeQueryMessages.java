@@ -4139,6 +4139,9 @@ public final class DataNodeQueryMessages {
           "Cannot spill device entries after query cleanup has started";
   public static final String EXCEPTION_DEVICEENTRY_SPILLER_OUTPUT_CLOSE_FAILED_327C3F35 =
       "DeviceEntry spiller output close failed";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_COULD_NOT_BE_PUBLISHED_992816AF =
+          "DeviceEntry spill segment could not be published";
   public static final String EXCEPTION_DEVICEENTRY_SPILLER_IS_ALREADY_CLOSED_ARG_FB427109 =
       "Device-entry spiller is already closed: %s";
   public static final String
