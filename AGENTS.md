@@ -226,6 +226,8 @@ Generated source directories that need to be on the source path:
 
 ### i18n (Chinese Messages)
 
+Chinese text in source code, especially zh message constants, must use literal Chinese characters rather than Unicode escape sequences (for example, `\u4E2D`).
+
 The project uses compile-time i18n via the `build-helper-maven-plugin`. The property `i18n.locale` (default: `en`) controls which source directory is added: `src/main/i18n/${i18n.locale}`. Activating `-P with-zh-locale` sets `i18n.locale=zh`, swapping English message constant classes for Chinese ones. Each module that participates has both `src/main/i18n/en/` and `src/main/i18n/zh/` directories containing Java classes with identical structure but different string literals.
 
 **Rule — never inline a user-facing English string literal.** Every string a user, operator, or log reader will see MUST be a `public static final String` constant in the module's `*Messages` class (e.g. `DataNodeQueryMessages`), referenced as `MessagesClass.CONSTANT` — never a `"raw literal"`. This applies to: `LOGGER/log.info|warn|error|debug|trace(...)`, `throw new …Exception(…)`, `super(…)` in exception constructors, `resp.setMessage(…)`, the message arg of `requireNonNull/checkArgument/checkState/checkNotNull`, and the template of `String.format(…)`. A raw literal is invisible to the zh build and renders English under `-P with-zh-locale` — that is the bug this rule prevents. (`toString()` debug output is exempt.) Reviewers and AI agents must reject/fix any new code that introduces such a literal.
