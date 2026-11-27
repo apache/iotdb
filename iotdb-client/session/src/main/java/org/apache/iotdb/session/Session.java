@@ -1505,6 +1505,9 @@ public class Session implements ISession {
   }
 
   private Map<IDeviceID, TEndPoint> getTableModelDatabaseRoutes(String routeDatabase) {
+    if (tableModelDeviceIdToEndpoint == null) {
+      return Collections.emptyMap();
+    }
     Map<IDeviceID, TEndPoint> databaseToEndpoint = tableModelDeviceIdToEndpoint.get(routeDatabase);
     return databaseToEndpoint == null ? Collections.emptyMap() : databaseToEndpoint;
   }
@@ -1601,7 +1604,7 @@ public class Session implements ISession {
 
   private void handleRedirection(String routeDatabase, IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
-      if (closing) {
+      if (closing || tableModelDeviceIdToEndpoint == null || endPointToSessionConnection == null) {
         return;
       }
       // no need to redirection
@@ -3063,8 +3066,7 @@ public class Session implements ISession {
    * compatibility with subsequent versions.
    *
    * <p>A multi-device Tablet may be written to multiple DataNodes. The operation is not atomic;
-   * some rows may be persisted even if an error is returned. Mixed-version clusters in which some
-   * DataNodes do not support database-scoped Tablet insertion are not supported.
+   * some rows may be persisted even if an error is returned.
    *
    * @param tablet data batch
    */

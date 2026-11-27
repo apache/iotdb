@@ -41,8 +41,7 @@ public interface ITableSession extends AutoCloseable {
    * Inserts a {@link Tablet} into the database.
    *
    * <p>A multi-device Tablet may be written to multiple DataNodes. The operation is not atomic;
-   * some rows may be persisted even if an error is returned. Mixed-version clusters in which some
-   * DataNodes do not support database-scoped Tablet insertion are not supported.
+   * some rows may be persisted even if an error is returned.
    *
    * @param tablet the tablet containing time-series data to be inserted.
    * @throws StatementExecutionException if an error occurs while executing the statement.
