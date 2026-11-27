@@ -367,6 +367,34 @@ class Session(object):
         finally:
             self.__is_close = True
 
+    def _pipe_subscribe(self, request):
+        """Send a Subscription RPC on this session's Thrift connection."""
+        if self.__is_close or self.__client is None:
+            raise IoTDBConnectionException("Session is not open.")
+
+        protocol = self.__client._oprot
+        fast_encode = getattr(protocol, "_fast_encode", None)
+        if fast_encode is not None:
+            # The pipeSubscribe argument has Thrift field id -1 and an empty
+            # fastbinary schema, so the accelerated encoder drops the request.
+            protocol._fast_encode = None
+        try:
+            return self.__client.pipeSubscribe(request)
+        finally:
+            if fast_encode is not None:
+                protocol._fast_encode = fast_encode
+
+    def _get_server_thrift_max_frame_size(self, fallback):
+        """Return the negotiated frame limit when the server exposes it."""
+        if self.__is_close or self.__client is None:
+            return fallback
+        try:
+            properties = self.__client.getProperties()
+        except TTransport.TException:
+            return fallback
+        server_limit = getattr(properties, "thriftMaxFrameSize", None)
+        return server_limit if server_limit and server_limit > 0 else fallback
+
     def set_storage_group(self, group_name):
         """
         create one database
