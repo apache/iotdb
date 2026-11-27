@@ -105,13 +105,6 @@ public class PipeSinkSubtaskManager {
       final String connectorKey,
       final String attributeSortedString,
       final PipeSinkSubtaskKey pipeSinkSubtaskKey) {
-    PipeEventCommitManager.getInstance()
-        .register(
-            environment.getPipeName(),
-            environment.getCreationTime(),
-            environment.getRegionId(),
-            connectorKey);
-
     final boolean isDataRegionSink = isDataRegionSink(environment.getRegionId());
     final int sinkNum = calculateSinkSubtaskNum(pipeSinkParameters, isDataRegionSink, connectorKey);
     boolean realTimeFirst = false;
@@ -134,6 +127,12 @@ public class PipeSinkSubtaskManager {
 
     List<PipeSinkSubtaskLifeCycle> lifeCycles = getLifeCycles(pipeSinkSubtaskKey);
     if (lifeCycles == null) {
+      PipeEventCommitManager.getInstance()
+          .register(
+              environment.getPipeName(),
+              environment.getCreationTime(),
+              environment.getRegionId(),
+              connectorKey);
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
       final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList = new ArrayList<>(sinkNum);
 

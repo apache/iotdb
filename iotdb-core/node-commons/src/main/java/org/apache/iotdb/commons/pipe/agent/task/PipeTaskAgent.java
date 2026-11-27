@@ -297,7 +297,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  private boolean tryWaitForPipeLifecycleOperationsAndReacquireWriteLock(
+  protected final boolean tryWaitForPipeLifecycleOperationsAndReacquireWriteLock(
       final long startTimeInNanos, final long timeoutInNanos) {
     boolean interrupted = false;
     try {
@@ -676,17 +676,24 @@ public abstract class PipeTaskAgent {
 
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       final List<PipeMeta> pipeMetaListFromCoordinator) {
-    if (!tryWriteLockWithTimeOutInMs(
-        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+    final long timeoutInMs =
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3;
+    final long startTimeInNanos = System.nanoTime();
+    if (!tryWriteLockWithTimeOutInMs(timeoutInMs)) {
       return null;
     }
+    boolean writeLockHeld = true;
     try {
-      if (hasPipeLifecycleOperationsInProgress()) {
+      if (!tryWaitForPipeLifecycleOperationsAndReacquireWriteLock(
+          startTimeInNanos, TimeUnit.MILLISECONDS.toNanos(timeoutInMs))) {
+        writeLockHeld = false;
         return null;
       }
       return handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
     } finally {
-      releaseWriteLock();
+      if (writeLockHeld) {
+        releaseWriteLock();
+      }
     }
   }
 

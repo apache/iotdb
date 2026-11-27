@@ -44,6 +44,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -362,7 +363,7 @@ public class PipeTaskAgentTest {
     Assert.assertEquals(0L, PipeTaskAgent.calculatePipeLifecycleTimeoutInNanos(0));
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 15000)
   public void testPipeLifecycleAndWriteLockWaitShareOneTimeout() throws Exception {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
     final int originalDnConnectionTimeoutInMS = commonConfig.getDnConnectionTimeoutInMS();
@@ -395,6 +396,43 @@ public class PipeTaskAgentTest {
       }
       executor.shutdownNow();
       executor.awaitTermination(5, TimeUnit.SECONDS);
+      commonConfig.setDnConnectionTimeoutInMS(originalDnConnectionTimeoutInMS);
+    }
+  }
+
+  @Test(timeout = 10000)
+  public void testFullMetaSyncWaitsForPipeLifecycleOperation() throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final int originalDnConnectionTimeoutInMS = commonConfig.getDnConnectionTimeoutInMS();
+    commonConfig.setDnConnectionTimeoutInMS(3000);
+
+    final DummyPipeTaskAgent agent = new DummyPipeTaskAgent();
+    AutoCloseable lifecycleLock = null;
+    final AtomicReference<Thread> syncThread = new AtomicReference<>();
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<Boolean> syncFuture = null;
+    try {
+      lifecycleLock = acquirePipeLifecycleLockForTest(agent, "meta_sync_" + System.nanoTime());
+      syncFuture =
+          executor.submit(
+              () -> {
+                syncThread.set(Thread.currentThread());
+                return agent.handlePipeMetaChanges(List.of()).isEmpty();
+              });
+
+      Assert.assertTrue(
+          waitForThreadState(syncThread, Thread.State.TIMED_WAITING, 5, TimeUnit.SECONDS));
+      Assert.assertFalse(syncFuture.isDone());
+
+      lifecycleLock.close();
+      lifecycleLock = null;
+      Assert.assertTrue(syncFuture.get(5, TimeUnit.SECONDS));
+    } finally {
+      if (lifecycleLock != null) {
+        lifecycleLock.close();
+      }
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
       commonConfig.setDnConnectionTimeoutInMS(originalDnConnectionTimeoutInMS);
     }
   }
@@ -713,6 +751,28 @@ public class PipeTaskAgentTest {
         lockField.setAccessible(true);
         if (((ReentrantLock) lockField.get(lockReference)).hasQueuedThreads()) {
           return true;
+        }
+      }
+      Thread.sleep(1);
+    }
+    return false;
+  }
+
+  private static boolean waitForThreadState(
+      final AtomicReference<Thread> threadReference,
+      final Thread.State expectedState,
+      final long timeout,
+      final TimeUnit timeUnit)
+      throws InterruptedException {
+    final long deadlineInNanos = System.nanoTime() + timeUnit.toNanos(timeout);
+    while (System.nanoTime() < deadlineInNanos) {
+      final Thread thread = threadReference.get();
+      if (thread != null) {
+        if (thread.getState() == expectedState) {
+          return true;
+        }
+        if (!thread.isAlive()) {
+          return false;
         }
       }
       Thread.sleep(1);

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -49,6 +51,57 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class PipeSinkSubtaskManagerTest {
+
+  @Test
+  public void testRegisterDoesNotReplaceExistingEventCommitter() throws Exception {
+    PipeDataNodeAgent.task();
+
+    final String pipeName = "repeat_register_" + System.nanoTime();
+    final long creationTime = System.nanoTime();
+    final int regionId = -1;
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(
+        PipeSinkConstant.CONNECTOR_KEY, BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName());
+    attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY, "1");
+    final PipeParameters parameters = new PipeParameters(attributes);
+    final PipeSinkSubtaskManager manager = PipeSinkSubtaskManager.instance();
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    final String attributeSortedString =
+        PipeSinkSubtaskManager.generateAttributeSortedString(parameters, regionId);
+    int registrationCount = 0;
+    try {
+      manager.register(
+          PipeSinkSubtaskExecutor::new,
+          parameters,
+          new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, regionId));
+      registrationCount++;
+      final CommitterKey committerKey =
+          commitManager.getCommitterKey(pipeName, creationTime, regionId);
+      final Object originalCommitter = getEventCommitter(commitManager, committerKey);
+
+      manager.register(
+          PipeSinkSubtaskExecutor::new,
+          parameters,
+          new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, regionId));
+      registrationCount++;
+
+      Assert.assertNotNull(originalCommitter);
+      Assert.assertSame(originalCommitter, getEventCommitter(commitManager, committerKey));
+    } finally {
+      for (int registrationIndex = 0; registrationIndex < registrationCount; registrationIndex++) {
+        manager.deregister(pipeName, creationTime, regionId, attributeSortedString);
+      }
+    }
+  }
+
+  private Object getEventCommitter(
+      final PipeEventCommitManager commitManager, final CommitterKey committerKey)
+      throws ReflectiveOperationException {
+    final Field eventCommitterMapField =
+        PipeEventCommitManager.class.getDeclaredField("eventCommitterMap");
+    eventCommitterMapField.setAccessible(true);
+    return ((Map<?, ?>) eventCommitterMapField.get(commitManager)).get(committerKey);
+  }
 
   @Test
   public void testSubtasksAreSharedOnlyWithinSamePipe() {

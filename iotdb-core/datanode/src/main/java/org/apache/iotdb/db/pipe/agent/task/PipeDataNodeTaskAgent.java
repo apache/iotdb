@@ -217,12 +217,17 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (pipeMetaListFromCoordinator.isEmpty()) {
       return Collections.emptyList();
     }
-    if (!tryWriteLockWithTimeOutInMs(
-        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+    final long timeoutInMs =
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3;
+    final long startTimeInNanos = System.nanoTime();
+    if (!tryWriteLockWithTimeOutInMs(timeoutInMs)) {
       return null;
     }
+    boolean writeLockHeld = true;
     try {
-      if (hasPipeLifecycleOperationsInProgress()) {
+      if (!tryWaitForPipeLifecycleOperationsAndReacquireWriteLock(
+          startTimeInNanos, TimeUnit.MILLISECONDS.toNanos(timeoutInMs))) {
+        writeLockHeld = false;
         return null;
       }
       // Reconciliation and alter-progress reuse need one complete view under the same write lock.
@@ -253,7 +258,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
       return handlePipeMetaChangesInternal(fullPipeMetaList);
     } finally {
-      releaseWriteLock();
+      if (writeLockHeld) {
+        releaseWriteLock();
+      }
     }
   }
 
