@@ -1739,8 +1739,15 @@ public class LTTBTableFunction implements TableFunction {
           continue;
         }
         WindowState lookahead = window.nextFinite[i];
-        if (lookahead == null
-            || (hasLastEligible[i] && containsPosition(lookahead, lastEligiblePositions[i]))) {
+        if (lookahead == null) {
+          return false;
+        }
+        // Moving a finite L out of a multi-point average can change C. If L is the only
+        // finite point, it is both the current average and the final fallback.
+        if (hasLastEligible[i]
+            && containsPosition(lookahead, lastEligiblePositions[i])
+            && Double.isFinite(lastEligibleValues[i])
+            && lookahead.buffers[i].onlyFiniteIndex == NOT_SELECTED) {
           return false;
         }
       }
@@ -1932,15 +1939,22 @@ public class LTTBTableFunction implements TableFunction {
           nextWindowStartInitialized = true;
         }
 
-        while (!windowsExhausted && nextWindowStart <= time) {
-          long windowEnd;
-          try {
-            windowEnd = Math.addExact(nextWindowStart, size);
-          } catch (ArithmeticException e) {
-            throw windowBoundaryOverflow();
+        if (!windowsExhausted && nextWindowStart <= time) {
+          if (time > Long.MAX_VALUE - size) {
+            // Check the latest aligned end even when this row has no values.
+            long lastStart = time - (time - nextWindowStart) % slide;
+            if (lastStart > Long.MAX_VALUE - size) {
+              throw windowBoundaryOverflow();
+            }
           }
+          // A later eligible row opens any still-relevant windows on the same grid.
+          if (!hasParticipantValue(input)) {
+            return;
+          }
+        }
+        while (!windowsExhausted && nextWindowStart <= time) {
           activeWindows.addLast(
-              new TimeWindowState(newWindowBuffers(), nextWindowStart, windowEnd));
+              new TimeWindowState(newWindowBuffers(), nextWindowStart, nextWindowStart + size));
           // An unrepresentable next start means there are no more windows, but the current
           // window can still be valid and must collect this and subsequent input rows.
           if (nextWindowStart > Long.MAX_VALUE - slide) {
@@ -1952,6 +1966,15 @@ public class LTTBTableFunction implements TableFunction {
       }
 
       collectIntoWindows(time, input, time);
+    }
+
+    private boolean hasParticipantValue(Record input) {
+      for (ParticipantColumn column : participantColumns) {
+        if (!column.isNull(input)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     /** First aligned start whose window ends strictly after the current timestamp. */

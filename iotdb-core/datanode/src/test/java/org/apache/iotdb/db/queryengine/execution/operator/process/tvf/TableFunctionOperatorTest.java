@@ -25,6 +25,8 @@ import org.apache.iotdb.calc.execution.operator.process.function.TableFunctionOp
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.LTTBTableFunction;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
@@ -65,6 +68,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.AdditionalAnswers.delegatesTo;
@@ -586,6 +590,72 @@ public class TableFunctionOperatorTest {
   }
 
   @Test
+  public void testLttbDuplicateTimestampsAcrossInputBlocks() throws Exception {
+    SemanticException duplicate =
+        assertThrows(SemanticException.class, () -> readLttbPartitionsAcrossBlocks(1));
+    assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), duplicate.getErrorCode());
+    assertEquals(
+        String.format(
+            CommonMessages
+                .EXCEPTION_LTTB_DOES_NOT_SUPPORT_DUPLICATE_TIMESTAMPS_BUT_TIMESTAMP_ARG_APPEARS_MORE_THAN_ONCE_IN_THE_SAME_PARTITION_7713FEDD,
+            7L),
+        duplicate.getMessage());
+    assertEquals(Arrays.asList(1, 2), readLttbPartitionsAcrossBlocks(2));
+  }
+
+  private List<Integer> readLttbPartitionsAcrossBlocks(int secondPartition) throws Exception {
+    List<TSDataType> input =
+        Arrays.asList(TSDataType.TIMESTAMP, TSDataType.INT32, TSDataType.INT32);
+    TsBlockBuilder rows = new TsBlockBuilder(input);
+    for (int partition : new int[] {1, secondPartition}) {
+      rows.getColumnBuilder(0).writeLong(7L);
+      rows.getColumnBuilder(1).writeInt(partition);
+      rows.getColumnBuilder(2).writeInt(42);
+      rows.declarePosition();
+    }
+    TsBlock data = rows.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 2));
+    TableFunctionProcessorProvider lttb =
+        new LTTBTableFunction()
+            .getProcessorProvider(
+                new MapTableFunctionHandle.Builder()
+                    .addProperty(LTTBTableFunction.MODE_PROPERTY, "TARGET_COUNT")
+                    .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "INT32")
+                    .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "INT32")
+                    .addProperty(LTTBTableFunction.N_PARAMETER_NAME, 3L)
+                    .build());
+    List<Integer> partitions = new ArrayList<>();
+    try (TableFunctionOperator operator =
+        new TableFunctionOperator(
+            createOperatorContext("lttb_duplicate_across_blocks"),
+            lttb,
+            0L,
+            childWithBlocks(Arrays.asList(data.getRegion(0, 1), data.getRegion(1, 1)).iterator()),
+            input,
+            Arrays.asList(
+                TSDataType.INT64, TSDataType.INT32, TSDataType.TIMESTAMP, TSDataType.INT32),
+            4,
+            Arrays.asList(0, 1, 2),
+            Collections.emptyList(),
+            false,
+            Collections.singletonList(1),
+            false,
+            mock(IoTDBLocal.class))) {
+      while (!operator.isFinished()) {
+        operator.isBlocked();
+        TsBlock block = operator.next();
+        if (block != null) {
+          for (int i = 0; i < block.getPositionCount(); i++) {
+            partitions.add(block.getColumn(1).getInt(i));
+            assertEquals(7L, block.getColumn(2).getLong(i));
+            assertEquals(42, block.getColumn(3).getInt(i));
+          }
+        }
+      }
+    }
+    return partitions;
+  }
+
+  @Test
   public void testLttbWindowBatchesDuringInputAndAtPartitionEnd() throws Exception {
     OperatorContext context = createOperatorContext("lttb_window_batches");
     List<TSDataType> input =
@@ -600,11 +670,7 @@ public class TableFunctionOperatorTest {
     TsBlock data = rows.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 18));
     Iterator<TsBlock> blocks =
         Arrays.asList(data.getRegion(0, 14), data.getRegion(14, 4)).iterator();
-    Operator child = mock(Operator.class);
-    when(child.isBlocked()).thenAnswer(call -> Operator.NOT_BLOCKED);
-    when(child.isFinished()).thenAnswer(call -> !blocks.hasNext());
-    when(child.hasNextWithTimer()).thenAnswer(call -> blocks.hasNext());
-    when(child.nextWithTimer()).thenAnswer(call -> blocks.next());
+    Operator child = childWithBlocks(blocks);
     TableFunctionProcessorProvider provider =
         new LTTBTableFunction()
             .getProcessorProvider(
@@ -847,6 +913,15 @@ public class TableFunctionOperatorTest {
 
   private Operator constructLongChildOperator(OperatorContext operatorContext, long[] values) {
     return constructLongChildOperator(operatorContext, values, new AtomicBoolean());
+  }
+
+  private Operator childWithBlocks(Iterator<TsBlock> blocks) throws Exception {
+    Operator child = mock(Operator.class);
+    when(child.isBlocked()).thenAnswer(call -> Operator.NOT_BLOCKED);
+    when(child.isFinished()).thenAnswer(call -> !blocks.hasNext());
+    when(child.hasNextWithTimer()).thenAnswer(call -> blocks.hasNext());
+    when(child.nextWithTimer()).thenAnswer(call -> blocks.next());
+    return child;
   }
 
   private OperatorContext createOperatorContext(String queryName) {

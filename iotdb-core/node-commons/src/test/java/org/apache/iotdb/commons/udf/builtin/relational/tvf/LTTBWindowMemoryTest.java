@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
@@ -27,6 +29,7 @@ import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
@@ -40,6 +43,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
@@ -68,13 +72,62 @@ public class LTTBWindowMemoryTest {
   }
 
   @Test
-  public void testTimeWindowCreationIsBoundedEvenForNullInput() {
+  public void testAllNullRowSkipsTimeWindowAllocation() {
+    TableFunctionDataProcessor processor = processor(true, 1_000_000, 1, Type.DOUBLE);
+    List<ColumnBuilder> builders = builders(true);
+    try {
+      processor.process(record(0, (Number) null), builders, null);
+      processor.finish(builders, null);
+      assertEquals(0, builders.get(0).getPositionCount());
+    } finally {
+      processor.beforeDestroy();
+    }
+  }
+
+  @Test
+  public void testNullRowsPreserveTimeWindowAlignmentAndTimestampChecks() {
+    TableFunctionDataProcessor processor = processor(true, 4, 2, Type.DOUBLE, Type.DOUBLE);
+    List<ColumnBuilder> builders = new ArrayList<>(builders(true));
+    builders.add(new LongColumnBuilder(null, 16));
+    builders.add(new DoubleColumnBuilder(null, 16));
+    try {
+      processor.process(record(0, null, null), builders, null);
+      processor.process(record(2, null, 5.0), builders, null);
+      processor.process(record(9, null, null), builders, null);
+      processor.process(record(10, null, 7.0), builders, null);
+      processor.finish(builders, null);
+      assertEquals(2, builders.get(0).getPositionCount());
+      assertEquals(0, builders.get(0).build().getLong(0));
+      assertEquals(10, builders.get(0).build().getLong(1));
+      assertEquals(2, builders.get(4).build().getLong(0));
+      assertEquals(10, builders.get(4).build().getLong(1));
+    } finally {
+      processor.beforeDestroy();
+    }
+
+    TableFunctionDataProcessor duplicates = processor(true, 4, 2, Type.DOUBLE);
+    try {
+      duplicates.process(record(0, (Number) null), builders, null);
+      SemanticException error =
+          assertThrows(
+              SemanticException.class, () -> duplicates.process(record(0, 1.0), builders, null));
+      assertEquals(
+          String.format(
+              CommonMessages
+                  .EXCEPTION_LTTB_DOES_NOT_SUPPORT_DUPLICATE_TIMESTAMPS_BUT_TIMESTAMP_ARG_APPEARS_MORE_THAN_ONCE_IN_THE_SAME_PARTITION_7713FEDD,
+              0),
+          error.getMessage());
+    } finally {
+      duplicates.beforeDestroy();
+    }
+  }
+
+  @Test
+  public void testTimeWindowCreationIsBoundedForEligibleInput() {
     TableFunctionDataProcessor processor = processor(true, 1_000_000, 1, Type.DOUBLE);
     try {
-      // One row belongs to a million overlapping time windows. Initial buffer allocation
-      // must be charged even when the input column contains no eligible points.
       assertMemoryLimit(
-          () -> processor.process(record(0, (Number) null), Collections.emptyList(), null),
+          () -> processor.process(record(0, 1.0), Collections.emptyList(), null),
           LTTBTableFunction.DEFAULT_MAX_BUFFER_BYTES);
     } finally {
       processor.beforeDestroy();
@@ -296,6 +349,82 @@ public class LTTBWindowMemoryTest {
   }
 
   @Test
+  public void testSparseSingletonLookaheadReleasesDenseWindows() {
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    long previousBudget = config.getLttbBufferSize();
+    try {
+      config.setLttbBufferSize(32 * 1024);
+      for (boolean timeWindow : new boolean[] {false, true}) {
+        TableFunctionDataProcessor processor =
+            processor(timeWindow, 3, 3, Type.DOUBLE, Type.DOUBLE);
+        List<ColumnBuilder> builders = new ArrayList<>(builders(timeWindow));
+        builders.add(new LongColumnBuilder(null, 16));
+        builders.add(new DoubleColumnBuilder(null, 16));
+        try {
+          Double[] sparse = {0.0, 0.0, 9.0, 0.0};
+          for (int t = 0; t < 120; t++) {
+            processor.process(
+                record(t, t < sparse.length ? sparse[t] : null, (double) t), builders, null);
+          }
+          processor.finish(builders, null);
+          int firstTime = timeWindow ? 2 : 1;
+          Column sparseTimes = builders.get(firstTime).build();
+          Column sparseValues = builders.get(firstTime + 1).build();
+          Column denseTimes = builders.get(firstTime + 2).build();
+          assertEquals(denseTimes.getPositionCount(), sparseTimes.getPositionCount());
+          assertEquals(42, denseTimes.getPositionCount());
+          int[] expectedSparse = {0, 2, 3};
+          for (int i = 0; i < expectedSparse.length; i++) {
+            int t = expectedSparse[i];
+            assertEquals(t, sparseTimes.getLong(i));
+            assertEquals(sparse[t], sparseValues.getDouble(i), 0.0);
+          }
+          for (int i = expectedSparse.length; i < denseTimes.getPositionCount(); i++) {
+            assertTrue(sparseTimes.isNull(i));
+            assertTrue(sparseValues.isNull(i));
+          }
+          // All areas in the dense column tie. Each bucket keeps its earliest candidate.
+          assertEquals(0L, denseTimes.getLong(0));
+          assertEquals(1L, denseTimes.getLong(1));
+          for (int i = 2; i <= 40; i++) {
+            assertEquals(3L * (i - 1), denseTimes.getLong(i));
+          }
+          assertEquals(119L, denseTimes.getLong(41));
+        } finally {
+          processor.beforeDestroy();
+        }
+      }
+    } finally {
+      config.setLttbBufferSize(previousBudget);
+    }
+  }
+
+  @Test
+  public void testMultiPointLookaheadWaitsForTheFinalEndpoint() {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 3, 3, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(timeWindow);
+      try {
+        Double[] values = {0.0, 0.0, 5.0, 0.0, 20.0, null, null};
+        for (int t = 0; t < values.length; t++) {
+          processor.process(record(t, values[t]), builders, null);
+        }
+        assertEquals(0, builders.get(0).getPositionCount());
+        processor.finish(builders, null);
+        Column times = builders.get(timeWindow ? 2 : 1).build();
+        // Using t3 alone as C selects t2. Averaging t3 and the final endpoint t4 selects t1.
+        long[] expected = {0, 2, 3, 4};
+        assertEquals(expected.length, times.getPositionCount());
+        for (int i = 0; i < expected.length; i++) {
+          assertEquals(expected[i], times.getLong(i));
+        }
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
   public void testSparseColumnsReleaseTheirFirstWindowWhenEmitted() throws Exception {
     for (boolean timeWindow : new boolean[] {false, true}) {
       TableFunctionDataProcessor processor = processor(timeWindow, 1, 1, Type.DOUBLE, Type.DOUBLE);
@@ -337,9 +466,13 @@ public class LTTBWindowMemoryTest {
         processor.process(record(902, (Number) null), builders, null);
         processor.processInput(record(903, 0.0), builders, null);
         assertEquals(0, builders.get(0).getPositionCount());
-        for (int row = 1; row <= 302; row++) {
-          assertEquals(row == 302, processor.drainOutput(builders, () -> true));
-          assertEquals(row, builders.get(0).getPositionCount());
+        boolean drained = false;
+        while (!drained) {
+          int previousRows = builders.get(0).getPositionCount();
+          drained = processor.drainOutput(builders, () -> true);
+          int added = builders.get(0).getPositionCount() - previousRows;
+          // A final call may only consume the pending input after the last output block filled.
+          assertTrue(added == 1 || (drained && added == 0));
         }
         ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
         // C lies on the line through t=0 and t=2, so t=1 wins once its lookahead closes.

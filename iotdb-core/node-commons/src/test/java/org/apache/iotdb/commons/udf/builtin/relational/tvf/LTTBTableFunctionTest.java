@@ -316,25 +316,6 @@ public class LTTBTableFunctionTest {
     }
   }
 
-  /** The duplicate check must survive the block boundary: the state outlives one block's rows. */
-  @Test
-  public void testTimestampUniquenessSpansInputBlocks() {
-    LTTBTableFunction.TimestampUniquenessChecker checker =
-        new LTTBTableFunction.TimestampUniquenessChecker();
-    checker.check(7L); // last row of the first input block
-    try {
-      checker.check(7L); // first row of the second input block
-      fail();
-    } catch (SemanticException e) {
-      assertEquals(
-          String.format(
-              CommonMessages
-                  .EXCEPTION_LTTB_DOES_NOT_SUPPORT_DUPLICATE_TIMESTAMPS_BUT_TIMESTAMP_ARG_APPEARS_MORE_THAN_ONCE_IN_THE_SAME_PARTITION_7713FEDD,
-              7L),
-          e.getMessage());
-    }
-  }
-
   private static Map<String, Argument> targetCountArguments(long n) {
     Map<String, Argument> arguments = new HashMap<>();
     arguments.put(
