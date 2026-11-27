@@ -2216,8 +2216,18 @@ public class ConsensusPrefetchingQueue {
           return PrefetchRoundResult.rescheduleNow();
         }
         if (entry.tablets.isEmpty()) {
-          if (!commitEmptyWriterEntry(lingerBatch, entry, expectedSeekGeneration)) {
-            return PrefetchRoundResult.rescheduleNow();
+          if (lingerBatch.isEmpty()) {
+            // No linger batch to merge into: keep the existing immediate empty commit path.
+            if (!commitEmptyWriterEntry(lingerBatch, entry, expectedSeekGeneration)) {
+              return PrefetchRoundResult.rescheduleNow();
+            }
+          } else {
+            // A filtered-empty WAL entry must not flush the linger batch. Append it as a
+            // zero-payload entry: its search index, physical time and local seq are committed
+            // together with the batch's tablets, while its absence of tablets means it is not
+            // exposed to the consumer as a message. canAppendWriterEntry above has already
+            // checked the writer/projection and batch limits for this entry.
+            lingerBatch.append(entry, 0L, false);
           }
         } else {
           lingerBatch.append(entry, entry.estimatedBytes, true);
@@ -3938,10 +3948,15 @@ public class ConsensusPrefetchingQueue {
       final long maxBatchBytes) {
     final boolean wouldExceedEntryLimit =
         maxEntries != Integer.MAX_VALUE && batchState.entryCount >= maxEntries;
+    final boolean entryIsEmpty = entry.getTablets().isEmpty();
     final boolean wouldExceedTabletLimit =
-        !batchState.isEmpty() && batchState.tablets.size() + entry.getTablets().size() > maxTablets;
+        !batchState.isEmpty()
+            && (batchState.tablets.size() + entry.getTablets().size() > maxTablets
+                || (entryIsEmpty && batchState.tablets.size() >= maxTablets));
     final boolean wouldExceedByteLimit =
-        !batchState.isEmpty() && batchState.estimatedBytes + entryEstimatedBytes > maxBatchBytes;
+        !batchState.isEmpty()
+            && (batchState.estimatedBytes + entryEstimatedBytes > maxBatchBytes
+                || (entryIsEmpty && batchState.estimatedBytes >= maxBatchBytes));
     // Keep all consensus subscription modes on a single-writer commit/delivery shape so
     // SubscriptionCommitContext and RegionProgress remain per-writer.
     final boolean writerChanged =
@@ -4032,8 +4047,16 @@ public class ConsensusPrefetchingQueue {
       }
 
       if (writerHead.getTablets().isEmpty()) {
-        if (!commitEmptyWriterEntry(batchState, writerHead, expectedSeekGeneration)) {
-          return false;
+        if (batchState.isEmpty()
+            || !canAppendWriterEntry(
+                batchState, writerHead, 0L, maxEntries, maxTablets, maxBatchBytes)) {
+          if (!commitEmptyWriterEntry(batchState, writerHead, expectedSeekGeneration)) {
+            return false;
+          }
+        } else {
+          // Same treatment as the ordered-replay path: a filtered-empty entry can ride along
+          // with the current linger batch and contribute progress without a tablet payload.
+          batchState.append(writerHead, 0L, false);
         }
         removeHeadAction.accept(frontier.writerNodeId, writerHead);
         hasConsumedEntrySinceRefresh = true;
@@ -5841,7 +5864,7 @@ public class ConsensusPrefetchingQueue {
         + inFlightEvents.size()
         + pendingEntries.size()
         + getRealtimeBufferedEntryCount()
-        + lingerBatch.getEntryCount();
+        + lingerBatch.getReplayEntryCount();
   }
 
   public long getLastPollTimeMs() {
@@ -6257,7 +6280,7 @@ public class ConsensusPrefetchingQueue {
         (long) prefetchingQueue.size()
             + inFlightEvents.size()
             + getRealtimeBufferedEntryCount()
-            + lingerBatch.getEntryCount();
+            + lingerBatch.getReplayEntryCount();
     final long unmaterializedLag = Math.max((long) pendingEntries.size(), getRawWalGap());
     return materializedLag + unmaterializedLag;
   }
@@ -6403,6 +6426,7 @@ public class ConsensusPrefetchingQueue {
     private int writerNodeId;
     private long lastLocalSeq;
     private volatile int entryCount;
+    private volatile int replayEntryCount;
 
     private DeliveryBatchState() {
       reset();
@@ -6414,6 +6438,10 @@ public class ConsensusPrefetchingQueue {
 
     private int getEntryCount() {
       return entryCount;
+    }
+
+    private int getReplayEntryCount() {
+      return replayEntryCount;
     }
 
     private void append(
@@ -6433,19 +6461,34 @@ public class ConsensusPrefetchingQueue {
         }
         endSearchIndex = entry.getSearchIndex();
       }
-      tablets.addAll(entry.getTablets());
-      entries.add(entry);
-      DeliveryBatchRecord.writeDelta(replayPositions, entry.getSearchIndex() - previousSearchIndex);
-      DeliveryBatchRecord.writeDelta(
-          replayPositions, entry.getPhysicalTime() - previousPhysicalTime);
-      DeliveryBatchRecord.writeDelta(replayPositions, entry.getLocalSeq() - previousLocalSeq);
-      previousSearchIndex = entry.getSearchIndex();
-      previousPhysicalTime = entry.getPhysicalTime();
-      previousLocalSeq = entry.getLocalSeq();
-      minimumSearchIndex = Math.min(minimumSearchIndex, entry.getSearchIndex());
-      hasNonLocalEntry |= entry.getSearchIndex() < 0;
-      replayEligible &=
-          entry.getPhysicalTime() >= 0 && entry.getLocalSeq() >= 0 && entry.getWriterNodeId() >= 0;
+      if (!entry.getTablets().isEmpty()) {
+        tablets.addAll(entry.getTablets());
+        DeliveryBatchRecord.writeDelta(
+            replayPositions, entry.getSearchIndex() - previousSearchIndex);
+        DeliveryBatchRecord.writeDelta(
+            replayPositions, entry.getPhysicalTime() - previousPhysicalTime);
+        DeliveryBatchRecord.writeDelta(replayPositions, entry.getLocalSeq() - previousLocalSeq);
+        previousSearchIndex = entry.getSearchIndex();
+        previousPhysicalTime = entry.getPhysicalTime();
+        previousLocalSeq = entry.getLocalSeq();
+        minimumSearchIndex = Math.min(minimumSearchIndex, entry.getSearchIndex());
+        hasNonLocalEntry |= entry.getSearchIndex() < 0;
+        replayEligible &=
+            entry.getPhysicalTime() >= 0
+                && entry.getLocalSeq() >= 0
+                && entry.getWriterNodeId() >= 0;
+        replayEntryCount++;
+      }
+      // Collapse consecutive trailing filtered-empty entries in place so long empty runs do not
+      // grow entries unboundedly while still preserving the latest empty progress boundary if a
+      // runtime single-to-multi-writer transition returns lingering entries to the merge.
+      if (entry.getTablets().isEmpty()
+          && !entries.isEmpty()
+          && entries.get(entries.size() - 1).getTablets().isEmpty()) {
+        entries.set(entries.size() - 1, entry);
+      } else {
+        entries.add(entry);
+      }
       estimatedBytes += entryEstimatedBytes;
       physicalTime = entry.getPhysicalTime();
       lastLocalSeq = entry.getLocalSeq();
@@ -6455,12 +6498,12 @@ public class ConsensusPrefetchingQueue {
 
     private DeliveryBatchRecord createDeliveryRecord(
         final ConsensusLogToTabletConverter converter) {
-      if (!replayEligible || entryCount == 0) {
+      if (!replayEligible || replayEntryCount == 0) {
         return null;
       }
       return new DeliveryBatchRecord(
           replayPositions.toByteArray(),
-          entryCount,
+          replayEntryCount,
           hasNonLocalEntry ? Long.MIN_VALUE : minimumSearchIndex,
           tablets.size(),
           estimatedBytes,
@@ -6483,6 +6526,7 @@ public class ConsensusPrefetchingQueue {
       endSearchIndex = -1L;
       estimatedBytes = 0L;
       firstTabletTimeMs = 0L;
+      replayEntryCount = 0;
       physicalTime = 0L;
       lastLocalSeq = -1L;
       writerNodeId = -1;

@@ -52,11 +52,19 @@ public class TagFilterMatcher {
 
   private static final TagFilterMatcher MATCH_NONE =
       new TagFilterMatcher(
-          null, Collections.emptyList(), Collections.emptyMap(), State.MATCH_NONE, null, false);
+          null,
+          Collections.emptyList(),
+          Collections.emptyMap(),
+          Collections.emptyMap(),
+          State.MATCH_NONE,
+          null,
+          false);
 
   private final Expression expression;
   private final List<Identifier> referencedFields;
   private final Map<Expression, Pattern> compiledPatterns;
+  private final Map<Expression, Set<String>> compiledInSets;
+  private final TagFilterEvaluator evaluator;
   private final State state;
   private final Throwable failure;
   private final Map<TableKey, TableBinding> tableBindings;
@@ -73,6 +81,7 @@ public class TagFilterMatcher {
       final Expression expression,
       final List<Identifier> referencedFields,
       final Map<Expression, Pattern> compiledPatterns,
+      final Map<Expression, Set<String>> compiledInSets,
       final State state,
       final Throwable failure,
       final boolean bindingEnforced) {
@@ -80,6 +89,7 @@ public class TagFilterMatcher {
         expression,
         referencedFields,
         compiledPatterns,
+        compiledInSets,
         state,
         failure,
         Collections.emptyMap(),
@@ -90,6 +100,7 @@ public class TagFilterMatcher {
       final Expression expression,
       final List<Identifier> referencedFields,
       final Map<Expression, Pattern> compiledPatterns,
+      final Map<Expression, Set<String>> compiledInSets,
       final State state,
       final Throwable failure,
       final Map<TableKey, TableBinding> tableBindings,
@@ -97,6 +108,11 @@ public class TagFilterMatcher {
     this.expression = expression;
     this.referencedFields = referencedFields;
     this.compiledPatterns = compiledPatterns;
+    this.compiledInSets = compiledInSets;
+    this.evaluator =
+        Objects.nonNull(expression)
+            ? new TagFilterEvaluator(compiledPatterns, compiledInSets)
+            : null;
     this.state = state;
     this.failure = failure;
     this.tableBindings = tableBindings;
@@ -105,7 +121,13 @@ public class TagFilterMatcher {
 
   private static final TagFilterMatcher MATCH_ALL =
       new TagFilterMatcher(
-          null, Collections.emptyList(), Collections.emptyMap(), State.MATCH_ALL, null, false);
+          null,
+          Collections.emptyList(),
+          Collections.emptyMap(),
+          Collections.emptyMap(),
+          State.MATCH_ALL,
+          null,
+          false);
 
   public static TagFilterMatcher matchAll() {
     return MATCH_ALL;
@@ -119,6 +141,7 @@ public class TagFilterMatcher {
     return new TagFilterMatcher(
         null,
         Collections.emptyList(),
+        Collections.emptyMap(),
         Collections.emptyMap(),
         State.FAILURE,
         Objects.nonNull(failure) ? failure : new IllegalStateException(),
@@ -148,6 +171,7 @@ public class TagFilterMatcher {
         expression,
         validation.getReferencedFields(),
         validation.getCompiledPatterns(),
+        validation.getCompiledInSets(),
         State.ACTIVE,
         null,
         false);
@@ -268,6 +292,7 @@ public class TagFilterMatcher {
         expression,
         referencedFields,
         compiledPatterns,
+        compiledInSets,
         state,
         failure,
         Objects.nonNull(bindings)
@@ -338,8 +363,7 @@ public class TagFilterMatcher {
   boolean matches(final TagFilterEvaluator.ValueProvider valueProvider) {
     throwIfFailure();
     return !isMatchNone()
-        && (Objects.isNull(expression)
-            || TagFilterEvaluator.evaluate(expression, valueProvider, compiledPatterns));
+        && (Objects.isNull(evaluator) || evaluator.matches(expression, valueProvider));
   }
 
   static final class TableKey {

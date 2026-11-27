@@ -1581,9 +1581,12 @@ public class ConsensusPrefetchingQueueTest {
   @Test
   public void testFilteredEmptyEntryDoesNotAdvanceAcrossUncommittedData() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
     final File systemDir = temporaryFolder.newFolder("system-with-data-before-empty");
     ConsensusPrefetchingQueue queue = null;
     try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(60_000);
       final DataRegionId regionId = new DataRegionId(1);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
@@ -1633,6 +1636,16 @@ public class ConsensusPrefetchingQueueTest {
       queue.drivePrefetchOnce();
 
       final WriterId writerId = new WriterId(regionId.toString(), 7);
+      assertEquals(0, queue.getPrefetchedEventCount());
+      assertFalse(
+          commitManager
+              .getCommittedRegionProgress("consumerGroup", "topic", regionId)
+              .getWriterPositions()
+              .containsKey(writerId));
+
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
+      queue.drivePrefetchOnce();
+
       assertEquals(1, queue.getPrefetchedEventCount());
       assertEquals(3L, queue.getCurrentReadSearchIndex());
       assertFalse(
@@ -1654,6 +1667,9 @@ public class ConsensusPrefetchingQueueTest {
       if (queue != null) {
         queue.close();
       }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
@@ -2588,9 +2604,12 @@ public class ConsensusPrefetchingQueueTest {
   @Test
   public void testTabletMemoryReleasedAfterAck() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
     final File systemDir = temporaryFolder.newFolder("system-memory-release");
     ConsensusPrefetchingQueue queue = null;
     try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
       final DataRegionId regionId = new DataRegionId(1);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
@@ -2650,6 +2669,9 @@ public class ConsensusPrefetchingQueueTest {
       if (queue != null) {
         queue.close();
       }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
@@ -2658,6 +2680,8 @@ public class ConsensusPrefetchingQueueTest {
   public void testAckRetentionRefreshDoesNotBlockEventRecycling() throws Exception {
     for (final boolean silent : new boolean[] {false, true}) {
       final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+      final int originalBatchMaxDelay =
+          CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
       final File systemDir = temporaryFolder.newFolder("ack-retention-system-" + silent);
       final File walDirectory = temporaryFolder.newFolder("ack-retention-wal-" + silent);
       final int originalRecycleInterval =
@@ -2670,6 +2694,7 @@ public class ConsensusPrefetchingQueueTest {
       final ExecutorService executor = Executors.newFixedThreadPool(2);
       ConsensusPrefetchingQueue queue = null;
       try {
+        CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
         IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
         final File firstWal =
             new File(
@@ -2785,6 +2810,9 @@ public class ConsensusPrefetchingQueueTest {
         CommonDescriptor.getInstance()
             .getConfig()
             .setSubscriptionRecycleUncommittedEventIntervalMs(originalRecycleInterval);
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
         IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
       }
     }
@@ -2793,9 +2821,12 @@ public class ConsensusPrefetchingQueueTest {
   @Test
   public void testLateAckDoesNotWaitForPrefetchReadLock() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
     final File systemDir = temporaryFolder.newFolder("late-ack-read-lock");
     ConsensusPrefetchingQueue queue = null;
     try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
       final DataRegionId regionId = new DataRegionId(1);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
@@ -2887,6 +2918,9 @@ public class ConsensusPrefetchingQueueTest {
       if (queue != null) {
         queue.close();
       }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
@@ -3522,9 +3556,12 @@ public class ConsensusPrefetchingQueueTest {
             .getSubscriptionRecycleUncommittedEventIntervalMs();
     final long originalWatermarkInterval =
         CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusWatermarkIntervalMs();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
     final File systemDir = temporaryFolder.newFolder("system-topic-recycle-interval");
     ConsensusPrefetchingQueue queue = null;
     try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
       CommonDescriptor.getInstance()
           .getConfig()
           .setSubscriptionRecycleUncommittedEventIntervalMs(600000);
@@ -3665,6 +3702,9 @@ public class ConsensusPrefetchingQueueTest {
       CommonDescriptor.getInstance()
           .getConfig()
           .setSubscriptionConsensusWatermarkIntervalMs(originalWatermarkInterval);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
@@ -3676,9 +3716,12 @@ public class ConsensusPrefetchingQueueTest {
         CommonDescriptor.getInstance()
             .getConfig()
             .getSubscriptionRecycleUncommittedEventIntervalMs();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
     final File systemDir = temporaryFolder.newFolder("system-late-ack-memory-release");
     ConsensusPrefetchingQueue queue = null;
     try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
       CommonDescriptor.getInstance()
           .getConfig()
           .setSubscriptionRecycleUncommittedEventIntervalMs(1);
@@ -3743,6 +3786,9 @@ public class ConsensusPrefetchingQueueTest {
       CommonDescriptor.getInstance()
           .getConfig()
           .setSubscriptionRecycleUncommittedEventIntervalMs(originalRecycleInterval);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
@@ -3754,9 +3800,12 @@ public class ConsensusPrefetchingQueueTest {
         CommonDescriptor.getInstance()
             .getConfig()
             .getSubscriptionRecycleUncommittedEventIntervalMs();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
     final File systemDir = temporaryFolder.newFolder("system-late-ack-new-owner");
     ConsensusPrefetchingQueue queue = null;
     try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
       CommonDescriptor.getInstance()
           .getConfig()
           .setSubscriptionRecycleUncommittedEventIntervalMs(1);
@@ -3829,6 +3878,9 @@ public class ConsensusPrefetchingQueueTest {
       CommonDescriptor.getInstance()
           .getConfig()
           .setSubscriptionRecycleUncommittedEventIntervalMs(originalRecycleInterval);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
@@ -3836,9 +3888,12 @@ public class ConsensusPrefetchingQueueTest {
   @Test
   public void testRequeueDoesNotIncrementNackCount() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
     final File systemDir = temporaryFolder.newFolder("system-requeue-without-nack");
     ConsensusPrefetchingQueue queue = null;
     try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
       final DataRegionId regionId = new DataRegionId(1);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
@@ -3892,6 +3947,9 @@ public class ConsensusPrefetchingQueueTest {
       if (queue != null) {
         queue.close();
       }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
@@ -4073,9 +4131,12 @@ public class ConsensusPrefetchingQueueTest {
   @Test
   public void testDeactivationReleasesMaterializedTabletMemory() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
     final File systemDir = temporaryFolder.newFolder("system-deactivation-memory-release");
     ConsensusPrefetchingQueue queue = null;
     try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
       final DataRegionId regionId = new DataRegionId(1);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
@@ -4134,6 +4195,9 @@ public class ConsensusPrefetchingQueueTest {
       if (queue != null) {
         queue.close();
       }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
