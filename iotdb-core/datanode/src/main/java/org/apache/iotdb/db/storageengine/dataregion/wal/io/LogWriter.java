@@ -31,6 +31,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 /**
@@ -64,12 +68,35 @@ public abstract class LogWriter implements ILogWriter {
 
   protected LogWriter(File logFile, WALFileVersion version) throws IOException {
     this.logFile = logFile;
-    this.logChannel =
-        FileChannel.open(
-            logFile.toPath(),
-            StandardOpenOption.CREATE,
-            StandardOpenOption.WRITE,
-            StandardOpenOption.APPEND);
+    Path path = logFile.toPath();
+    FileChannel channel;
+    boolean created;
+    while (true) {
+      try {
+        channel =
+            FileChannel.open(
+                path,
+                StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.APPEND);
+        created = true;
+        break;
+      } catch (FileAlreadyExistsException e) {
+        try {
+          channel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+          created = false;
+          break;
+        } catch (NoSuchFileException missing) {
+          // Preserve CREATE's behavior when a symlink points to a missing file. Resolve its
+          // target so a failed initialization can remove that file and leave the link intact.
+          if (Files.isSymbolicLink(path)) {
+            path = path.resolveSibling(Files.readSymbolicLink(path));
+          }
+          // The existing file may also have been removed after the exclusive open failed.
+        }
+      }
+    }
+    this.logChannel = channel;
     try {
       if (version == WALFileVersion.EXTENDED) {
         fileContext = WALFormats.create(logFile, logChannel);
@@ -82,18 +109,28 @@ public abstract class LogWriter implements ILogWriter {
       }
       dataStartOffset = logChannel.position();
     } catch (IOException | RuntimeException | Error e) {
-      // A full disk can fail initialization after open() succeeds. Release the orphan channel
-      // before the owner retries creating the successor.
+      // Release the channel and format resources before removing a failed successor.
       try {
         logChannel.close();
-      } catch (IOException closeException) {
-        e.addSuppressed(closeException);
+      } catch (IOException | RuntimeException | Error closeException) {
+        if (e != closeException) {
+          e.addSuppressed(closeException);
+        }
       }
       if (fileContext != null) {
         try {
           fileContext.close();
         } catch (RuntimeException | Error closeException) {
-          e.addSuppressed(closeException);
+          if (e != closeException) {
+            e.addSuppressed(closeException);
+          }
+        }
+      }
+      if (created) {
+        try {
+          Files.deleteIfExists(path);
+        } catch (IOException | RuntimeException | Error deleteException) {
+          e.addSuppressed(deleteException);
         }
       }
       throw e;
@@ -189,7 +226,7 @@ public abstract class LogWriter implements ILogWriter {
 
   @Override
   public long size() {
-    return logFile.length();
+    return getLogFile().length();
   }
 
   public long originalSize() {

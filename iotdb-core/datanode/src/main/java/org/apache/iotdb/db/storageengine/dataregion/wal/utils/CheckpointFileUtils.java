@@ -22,6 +22,10 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.regex.Matcher;
@@ -32,11 +36,20 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_FILE_PREFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_VERSION_ID;
 
 public class CheckpointFileUtils {
+  private static final String CANDIDATE_SUFFIX = ".tmp";
+  private static final String CHECKPOINT_NAME =
+      Pattern.quote(WAL_FILE_PREFIX)
+          + "(?<"
+          + WAL_VERSION_ID
+          + ">\\d+)"
+          + Pattern.quote(WAL_CHECKPOINT_FILE_SUFFIX);
+
   // versionId is a self-incremented id number, helping to maintain the order of checkpoint files
-  public static final Pattern CHECKPOINT_FILE_NAME_PATTERN =
-      Pattern.compile(
-          String.format(
-              "%s(?<%s>\\d+)\\%s$", WAL_FILE_PREFIX, WAL_VERSION_ID, WAL_CHECKPOINT_FILE_SUFFIX));
+  public static final Pattern CHECKPOINT_FILE_NAME_PATTERN = Pattern.compile(CHECKPOINT_NAME + "$");
+
+  // Files.createTempFile inserts an unsigned decimal number between the prefix and suffix.
+  private static final Pattern CANDIDATE_NAME_PATTERN =
+      Pattern.compile(CHECKPOINT_NAME + "\\d+" + Pattern.quote(CANDIDATE_SUFFIX));
 
   /** Return true when this file is .checkpoint file. */
   public static boolean checkpointFilenameFilter(File dir, String name) {
@@ -46,6 +59,18 @@ public class CheckpointFileUtils {
   /** List all .checkpoint files in the directory. */
   public static File[] listAllCheckpointFiles(File dir) {
     return dir.listFiles(CheckpointFileUtils::checkpointFilenameFilter);
+  }
+
+  public static File[] listCheckpointCandidates(File dir) {
+    return dir.listFiles(
+        file ->
+            CANDIDATE_NAME_PATTERN.matcher(file.getName()).matches()
+                && Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS));
+  }
+
+  public static File createCheckpointCandidate(File target) throws IOException {
+    Path parent = target.toPath().toAbsolutePath().getParent();
+    return Files.createTempFile(parent, target.getName(), CANDIDATE_SUFFIX).toFile();
   }
 
   /** Parse version id from filename. */

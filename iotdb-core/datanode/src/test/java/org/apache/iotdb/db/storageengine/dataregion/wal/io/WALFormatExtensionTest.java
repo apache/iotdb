@@ -58,6 +58,7 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -130,7 +131,7 @@ public class WALFormatExtensionTest {
       assertTrue(
           result.getClass().getMethod("getFailures").invoke(result).toString(),
           (boolean) result.getClass().getMethod("wasSuccessful").invoke(result));
-      assertEquals(16, result.getClass().getMethod("getRunCount").invoke(result));
+      assertEquals(20, result.getClass().getMethod("getRunCount").invoke(result));
     } finally {
       Thread.currentThread().setContextClassLoader(previous);
     }
@@ -146,7 +147,9 @@ public class WALFormatExtensionTest {
       provider = mock(WALFormatProvider.class);
       context = mock(WALFileContext.class);
       when(provider.isEnabled()).thenReturn(true);
-      when(provider.create(any(), any())).thenReturn(context);
+      doAnswer(invocation -> writeHeader(invocation.getArgument(1)))
+          .when(provider)
+          .create(any(), any());
       when(provider.open(any(), any())).thenReturn(context);
       StubProvider.delegate = provider;
     }
@@ -158,18 +161,98 @@ public class WALFormatExtensionTest {
 
     @Test
     public void testInitializationFailureClosesCallerChannels() throws Exception {
-      File file = folder.newFile();
+      File file = extensionFile();
+      byte[] original = Files.readAllBytes(file.toPath());
       WALFormatException failure = WALFormatException.unsupported();
-      when(provider.create(any(), any())).thenThrow(failure);
+      doThrow(failure).when(provider).create(any(), any());
       assertSame(failure, assertThrows(IOException.class, () -> new WALWriter(file)));
-      ArgumentCaptor<FileChannel> created = ArgumentCaptor.forClass(FileChannel.class);
-      verify(provider).create(eq(file), created.capture());
-      assertFalse(created.getValue().isOpen());
+      assertCreateChannelClosed(file);
+      assertArrayEquals(original, Files.readAllBytes(file.toPath()));
       when(provider.open(any(), any())).thenThrow(failure);
       assertSame(failure, assertThrows(IOException.class, () -> new WALInputStream(file)));
       ArgumentCaptor<FileChannel> opened = ArgumentCaptor.forClass(FileChannel.class);
       verify(provider).open(eq(file), opened.capture());
       assertFalse(opened.getValue().isOpen());
+    }
+
+    @Test
+    public void testFailedInitializationRemovesNewEmptyFile() throws Exception {
+      File file = new File(folder.getRoot(), "empty.wal");
+      IOException failure = new IOException("injected failure before writing the WAL header");
+      doThrow(failure).when(provider).create(any(), any());
+
+      assertSame(failure, assertThrows(IOException.class, () -> new WALWriter(file)));
+      assertCreateChannelClosed(file);
+      assertFalse(file.exists());
+    }
+
+    @Test
+    public void testFailedInitializationKeepsPreexistingEmptyFile() throws Exception {
+      File file = folder.newFile();
+      IOException failure = new IOException("injected failure before writing the WAL header");
+      doThrow(failure).when(provider).create(any(), any());
+
+      assertSame(failure, assertThrows(IOException.class, () -> new WALWriter(file)));
+      assertCreateChannelClosed(file);
+      assertArrayEquals(new byte[0], Files.readAllBytes(file.toPath()));
+    }
+
+    @Test
+    public void testFailedInitializationRemovesNewPartialFile() throws Exception {
+      File file = new File(folder.getRoot(), "partial.wal");
+      IOException failure = new IOException("injected failure during the WAL header write");
+      doAnswer(
+              invocation -> {
+                FileChannel channel = invocation.getArgument(1);
+                ByteBuffer prefix = ByteBuffer.wrap(StubProvider.MAGIC, 0, 2);
+                while (prefix.hasRemaining()) {
+                  channel.write(prefix);
+                }
+                throw failure;
+              })
+          .doAnswer(invocation -> writeHeader(invocation.getArgument(1)))
+          .when(provider)
+          .create(any(), any());
+
+      assertSame(failure, assertThrows(IOException.class, () -> new WALWriter(file)));
+      assertCreateChannelClosed(file);
+      assertFalse(file.exists());
+      try (WALWriter ignored = new WALWriter(file)) {
+        assertEquals(WALFileVersion.EXTENDED, WALFileVersion.getVersion(file));
+      }
+    }
+
+    @Test
+    public void testInitializationFailureSuppressesContextCloseFailure() throws Exception {
+      File file = new File(folder.getRoot(), "close.wal");
+      IllegalStateException closeFailure = new IllegalStateException("injected close failure");
+      doAnswer(
+              invocation -> {
+                FileChannel channel = invocation.getArgument(1);
+                channel.close();
+                return context;
+              })
+          .when(provider)
+          .create(any(), any());
+      doThrow(closeFailure).when(context).close();
+
+      IOException failure = assertThrows(ClosedChannelException.class, () -> new WALWriter(file));
+      assertArrayEquals(new Throwable[] {closeFailure}, failure.getSuppressed());
+      assertFalse(file.exists());
+    }
+
+    private void assertCreateChannelClosed(File file) throws IOException {
+      ArgumentCaptor<FileChannel> channel = ArgumentCaptor.forClass(FileChannel.class);
+      verify(provider).create(eq(file), channel.capture());
+      assertFalse(channel.getValue().isOpen());
+    }
+
+    private WALFileContext writeHeader(FileChannel channel) throws IOException {
+      ByteBuffer magic = ByteBuffer.wrap(StubProvider.MAGIC);
+      while (magic.hasRemaining()) {
+        channel.write(magic);
+      }
+      return context;
     }
 
     @Test
@@ -611,10 +694,6 @@ public class WALFormatExtensionTest {
 
     @Override
     public WALFileContext create(File file, FileChannel channel) throws IOException {
-      ByteBuffer magic = ByteBuffer.wrap(MAGIC);
-      while (magic.hasRemaining()) {
-        channel.write(magic);
-      }
       return implementation().create(file, channel);
     }
 
