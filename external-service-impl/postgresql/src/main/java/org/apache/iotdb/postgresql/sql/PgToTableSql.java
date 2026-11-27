@@ -20,6 +20,7 @@
 package org.apache.iotdb.postgresql.sql;
 
 import org.apache.iotdb.postgresql.catalog.StaticCatalog;
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.protocol.PgException;
 import org.apache.iotdb.postgresql.protocol.SqlState;
 
@@ -347,7 +348,8 @@ public final class PgToTableSql {
       writer.write((Select) statement);
       return new Translation(writer.builder.toString(), writer.parameters);
     } catch (UnsupportedConstructException e) {
-      LOGGER.debug("Refused PostgreSQL statement ({}): {}", e.construct(), sql);
+      LOGGER.debug(
+          PostgreSqlMessages.LOG_REFUSED_POSTGRESQL_STATEMENT_ARG_ARG_602B9945, e.construct(), sql);
       throw new PgException(SqlState.FEATURE_NOT_SUPPORTED, e.getMessage());
     } catch (Refusal e) {
       throw new PgException(e.sqlState, e.getMessage());
@@ -395,7 +397,8 @@ public final class PgToTableSql {
   }
 
   /** A statement PostgreSQL itself would refuse with this SQLSTATE (unknown type, ...). */
-  private static final class Refusal extends RuntimeException {
+  /** A statement refused with its own SQLSTATE (not a missing translation). */
+  static final class Refusal extends RuntimeException {
     private static final long serialVersionUID = 1L;
     private final String sqlState;
 
@@ -856,23 +859,50 @@ public final class PgToTableSql {
 
     @Override
     public <S> StringBuilder visit(LikeExpression like, S context) {
+      boolean ilike;
       switch (like.getLikeKeyWord()) {
         case LIKE:
-          return super.visit(like, context);
+          ilike = false;
+          break;
         case ILIKE:
-          builder.append("lower(");
-          like.getLeftExpression().accept(this, context);
-          builder.append(like.isNot() ? ") NOT LIKE lower(" : ") LIKE lower(");
-          like.getRightExpression().accept(this, context);
-          builder.append(')');
-          if (like.getEscape() != null) {
-            builder.append(" ESCAPE ");
-            like.getEscape().accept(this, context);
-          }
-          return builder;
+          ilike = true;
+          break;
         default:
           throw new UnsupportedConstructException(like.getLikeKeyWord().name());
       }
+      if (like.isUseBinary()) {
+        throw new UnsupportedConstructException("LIKE BINARY");
+      }
+      String keyword = like.isNot() ? " NOT LIKE " : " LIKE ";
+      if (ilike) {
+        builder.append("lower(");
+        like.getLeftExpression().accept(this, context);
+        builder.append(')').append(keyword).append("lower(");
+        like.getRightExpression().accept(this, context);
+        builder.append(')');
+      } else {
+        like.getLeftExpression().accept(this, context);
+        builder.append(keyword);
+        like.getRightExpression().accept(this, context);
+      }
+      appendLikeEscape(like.getEscape(), context);
+      return builder;
+    }
+
+    /**
+     * PostgreSQL's LIKE uses backslash as the escape character unless ESCAPE says otherwise, and
+     * {@code ESCAPE ''} switches escaping off; the engine has no default escape character.
+     */
+    private <S> void appendLikeEscape(Expression escape, S context) {
+      if (escape == null) {
+        builder.append(" ESCAPE '\\'");
+        return;
+      }
+      if (escape instanceof StringValue && ((StringValue) escape).getValue().isEmpty()) {
+        return; // no escape character
+      }
+      builder.append(" ESCAPE ");
+      escape.accept(this, context);
     }
 
     /**

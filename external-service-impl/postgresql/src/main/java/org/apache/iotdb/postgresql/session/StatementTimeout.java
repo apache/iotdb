@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.postgresql.session;
 
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
+
 import java.time.Duration;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -48,7 +50,10 @@ public final class StatementTimeout {
     Matcher m = VALUE.matcher(value.trim());
     if (!m.matches()) {
       throw new IllegalArgumentException(
-          "invalid value for parameter \"statement_timeout\": \"" + value + "\"");
+          String.format(
+              PostgreSqlMessages
+                  .EXCEPTION_INVALID_VALUE_FOR_PARAMETER_STATEMENT_TIMEOUT_ARG_30718625,
+              value));
     }
     double amount = Double.parseDouble(m.group(1));
     String unit = m.group(2) == null ? "ms" : m.group(2).toLowerCase(Locale.ROOT);

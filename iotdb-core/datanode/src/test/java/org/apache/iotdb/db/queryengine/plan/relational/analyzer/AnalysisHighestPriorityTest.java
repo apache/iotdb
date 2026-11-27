@@ -29,7 +29,11 @@ import java.util.Collections;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/** Queries reading only information_schema run with the highest priority (memory fallback). */
+/**
+ * Queries of a session that sends many catalog queries (SessionInfo.isMetadataQueriesFirst) that
+ * read only information_schema run with the highest priority (memory fallback); other clients keep
+ * the rule for information_schema.queries only.
+ */
 public class AnalysisHighestPriorityTest {
 
   private static final QualifiedObjectName TABLES =
@@ -39,8 +43,11 @@ public class AnalysisHighestPriorityTest {
   private static final QualifiedObjectName QUERIES =
       new QualifiedObjectName(InformationSchema.INFORMATION_DATABASE, InformationSchema.QUERIES);
 
+  /** The analysis of a query from a session that sends metadata queries first. */
   private static Analysis analysis() {
-    return new Analysis(null, Collections.emptyMap());
+    Analysis analysis = new Analysis(null, Collections.emptyMap());
+    analysis.setMetadataQueriesFirst(true);
+    return analysis;
   }
 
   @Test
@@ -76,6 +83,16 @@ public class AnalysisHighestPriorityTest {
   public void queriesTableKeepsItsUpstreamRuleEvenWhenMixed() {
     Analysis analysis = analysis();
     analysis.markNonInformationSchemaTableRead();
+    analysis.updateNeedSetHighestPriority(QUERIES);
+    assertTrue(analysis.needSetHighestPriority());
+  }
+
+  @Test
+  public void otherClientsKeepTheQueriesTableRule() {
+    Analysis analysis = new Analysis(null, Collections.emptyMap());
+    analysis.updateNeedSetHighestPriority(TABLES);
+    analysis.updateNeedSetHighestPriority(COLUMNS);
+    assertFalse(analysis.needSetHighestPriority());
     analysis.updateNeedSetHighestPriority(QUERIES);
     assertTrue(analysis.needSetHighestPriority());
   }

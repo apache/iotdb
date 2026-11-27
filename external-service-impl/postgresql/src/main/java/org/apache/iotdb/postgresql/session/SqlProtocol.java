@@ -21,9 +21,11 @@ package org.apache.iotdb.postgresql.session;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.postgresql.execution.ResultCursor;
 import org.apache.iotdb.postgresql.execution.RunningQuery;
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.protocol.BackendMessages;
 import org.apache.iotdb.postgresql.protocol.FrontendMessage;
 import org.apache.iotdb.postgresql.protocol.PgException;
@@ -87,7 +89,15 @@ public final class SqlProtocol implements QueryProtocol {
       this.translation = translation;
       this.parameterTypes = types;
       this.cursor = cursor;
+      this.untypedAsText = new boolean[types.length];
     }
+
+    /**
+     * Untyped parameters (OID 0) that planned only as text: PostgreSQL types them from their
+     * context, here a value that looks like a number is tried as one first (see {@link
+     * #start(Portal)}), and what worked is kept for later executions of the statement.
+     */
+    final boolean[] untypedAsText;
   }
 
   /** A SQL cursor (DECLARE): a running query fetched by name. */
@@ -108,15 +118,36 @@ public final class SqlProtocol implements QueryProtocol {
   /** A bound statement (Bind), possibly with a running query. */
   private static final class Portal {
     final Prepared statement;
-    final List<Literal> parameters;
+
+    /** The values by parameter number - 1. */
+    Literal[] values;
+
+    /** The text of each untyped parameter, {@code null} for typed ones and NULL. */
+    final String[] untypedText;
+
+    /** The values in the order the translation uses them. */
+    List<Literal> parameters;
+
     final short[] resultFormats;
     ResultCursor cursor;
     boolean finished;
 
-    Portal(Prepared statement, List<Literal> parameters, short[] resultFormats) {
+    Portal(Prepared statement, Literal[] values, String[] untypedText, short[] resultFormats) {
       this.statement = statement;
-      this.parameters = parameters;
+      this.values = values;
+      this.untypedText = untypedText;
+      this.parameters = ordered(statement, values);
       this.resultFormats = resultFormats;
+    }
+
+    static List<Literal> ordered(Prepared statement, Literal[] values) {
+      List<Literal> ordered = new ArrayList<>();
+      if (statement.translation != null) {
+        for (int n : statement.translation.parameterOrder()) {
+          ordered.add(values[n - 1]);
+        }
+      }
+      return ordered;
     }
   }
 
@@ -144,7 +175,10 @@ public final class SqlProtocol implements QueryProtocol {
     ByteBuf out = channel.alloc().buffer();
     if (!session.session().isLogin()) {
       // the session was ended from outside
-      LOGGER.info("PostgreSQL session of {} was ended; closing the connection", session.user());
+      LOGGER.info(
+          PostgreSqlMessages
+              .LOG_POSTGRESQL_SESSION_OF_ARG_WAS_ENDED_CLOSING_THE_CONNECTION_85AD9B1D,
+          session.user());
       closePortals();
       closeCursors();
       BackendMessages.errorResponse(
@@ -158,6 +192,7 @@ public final class SqlProtocol implements QueryProtocol {
     try {
       char type = message.type();
       if (skipUntilSync && type != 'S' && type != 'Q') {
+        out.release();
         return;
       }
       switch (type) {
@@ -206,11 +241,22 @@ public final class SqlProtocol implements QueryProtocol {
         skipUntilSync = true;
       }
     } catch (ResultCursor.WriteTimeoutException e) {
+      closePortals();
+      if (e.clientGone()) {
+        // the connection is closed already; the query's resources are released above
+        LOGGER.debug(
+            PostgreSqlMessages
+                .LOG_POSTGRESQL_CLIENT_ARG_DISCONNECTED_WHILE_RESULTS_WERE_SENT_F0C48BEA,
+            session.user());
+        busy = false;
+        out.release();
+        return;
+      }
       LOGGER.info(
-          "PostgreSQL client {} stopped reading results for {}; closing the connection",
+          PostgreSqlMessages
+              .LOG_POSTGRESQL_CLIENT_ARG_STOPPED_READING_RESULTS_FOR_ARG_CLOSING_THE_CONNECTION_0A30373B,
           session.user(),
           writeTimeout);
-      closePortals();
       out.clear();
       BackendMessages.errorResponse(
           out,
@@ -222,7 +268,11 @@ public final class SqlProtocol implements QueryProtocol {
       return;
     } catch (RuntimeException | LinkageError e) {
       // never leave the client waiting: an unexpected failure is reported like any other error
-      LOGGER.warn("PostgreSQL message '{}' of {} failed", message.type(), session.user(), e);
+      LOGGER.warn(
+          PostgreSqlMessages.LOG_POSTGRESQL_MESSAGE_ARG_OF_ARG_FAILED_EB758E37,
+          message.type(),
+          session.user(),
+          e);
       closePortals();
       out.clear();
       fail(new PgException(SqlState.INTERNAL_ERROR, "internal error: " + e), out);
@@ -272,7 +322,7 @@ public final class SqlProtocol implements QueryProtocol {
               "current transaction is aborted, commands ignored until end of transaction block");
         }
         Prepared prepared = prepare(statement, new int[0]);
-        Portal portal = new Portal(prepared, Collections.emptyList(), new short[0]);
+        Portal portal = new Portal(prepared, new Literal[0], new String[0], new short[0]);
         try {
           run(portal, channel, out, 0, true);
         } finally {
@@ -377,6 +427,7 @@ public final class SqlProtocol implements QueryProtocol {
     }
     ParameterDecoder decoder = new ParameterDecoder(session.zone(), precision);
     Literal[] values = new Literal[count];
+    String[] untypedText = new String[count];
     for (int i = 0; i < count; i++) {
       int length = message.readInt32();
       byte[] value = message.readBytes(length);
@@ -384,21 +435,24 @@ public final class SqlProtocol implements QueryProtocol {
           parameterFormats.length == 0
               ? 0
               : parameterFormats.length == 1 ? parameterFormats[0] : parameterFormats[i];
-      values[i] = decoder.decode(statement.parameterTypes[i], format == 1, value);
+      int oid = statement.parameterTypes[i];
+      if (value != null && (oid == 0 || oid == PgType.UNKNOWN.oid())) {
+        // an untyped value is its text, in either format
+        untypedText[i] = new String(value, StandardCharsets.UTF_8);
+        if (statement.untypedAsText[i]) {
+          values[i] = new StringLiteral(untypedText[i]);
+          continue;
+        }
+      }
+      values[i] = decoder.decode(oid, format == 1, value);
     }
     short[] resultFormats = readFormats(message);
-    List<Literal> ordered = new ArrayList<>();
-    if (statement.translation != null) {
-      for (int n : statement.translation.parameterOrder()) {
-        ordered.add(values[n - 1]);
-      }
-    }
     if (!portalName.isEmpty() && portals.containsKey(portalName)) {
       throw new PgException(
           SqlState.DUPLICATE_CURSOR, "portal \"" + portalName + "\" already exists");
     }
     closePortal(portalName);
-    portals.put(portalName, new Portal(statement, ordered, resultFormats));
+    portals.put(portalName, new Portal(statement, values, untypedText, resultFormats));
     BackendMessages.bindComplete(out);
   }
 
@@ -675,13 +729,73 @@ public final class SqlProtocol implements QueryProtocol {
       return;
     }
     cancelRequested = false;
-    RunningQuery query = startQuery(portal.statement.translation, portal.parameters);
+    RunningQuery query = startPortalQuery(portal);
     try {
       portal.cursor = new ResultCursor(query, portal.resultFormats, encoder());
     } catch (PgException e) {
       query.close();
       throw e;
     }
+  }
+
+  private RunningQuery startPortalQuery(Portal portal) throws PgException {
+    try {
+      return startQuery(portal.statement.translation, portal.parameters);
+    } catch (PgException e) {
+      return startWithUntypedAsText(portal, e);
+    }
+  }
+
+  /**
+   * PostgreSQL types an untyped parameter from its context ({@code device = $1} makes it text);
+   * here a value that looks like a number or a timestamp is tried as one first. When that does not
+   * plan (a semantic error, e.g. STRING compared with INT64), each such parameter is tried as text
+   * alone, then all of them together; the first that plans is kept for the statement.
+   */
+  private RunningQuery startWithUntypedAsText(Portal portal, PgException failure)
+      throws PgException {
+    if (!SqlState.SYNTAX_OR_ACCESS_RULE.equals(failure.sqlState())) {
+      throw failure;
+    }
+    List<Integer> candidates = new ArrayList<>();
+    for (int i = 0; i < portal.values.length; i++) {
+      if (portal.untypedText[i] != null && !(portal.values[i] instanceof StringLiteral)) {
+        candidates.add(i);
+      }
+    }
+    if (candidates.isEmpty()) {
+      throw failure;
+    }
+    List<List<Integer>> attempts = new ArrayList<>();
+    if (candidates.size() > 1) {
+      for (int i : candidates) {
+        attempts.add(Collections.singletonList(i));
+      }
+    }
+    attempts.add(candidates);
+    for (List<Integer> asText : attempts) {
+      Literal[] values = portal.values.clone();
+      for (int i : asText) {
+        values[i] = new StringLiteral(portal.untypedText[i]);
+      }
+      List<Literal> ordered = Portal.ordered(portal.statement, values);
+      RunningQuery query;
+      try {
+        query = startQuery(portal.statement.translation, ordered);
+      } catch (PgException e) {
+        if (!SqlState.SYNTAX_OR_ACCESS_RULE.equals(e.sqlState())) {
+          throw e;
+        }
+        continue;
+      }
+      portal.values = values;
+      portal.parameters = ordered;
+      for (int i : asText) {
+        portal.statement.untypedAsText[i] = true;
+      }
+      return query;
+    }
+    throw failure;
   }
 
   private RunningQuery startQuery(Translation translation, List<Literal> parameters)
@@ -779,7 +893,7 @@ public final class SqlProtocol implements QueryProtocol {
           SqlState.DUPLICATE_CURSOR, "cursor \"" + command.name() + "\" already exists");
     }
     cancelRequested = false;
-    RunningQuery query = startQuery(portal.statement.translation, portal.parameters);
+    RunningQuery query = startPortalQuery(portal);
     ResultCursor rows;
     try {
       rows = new ResultCursor(query, new short[0], encoder());

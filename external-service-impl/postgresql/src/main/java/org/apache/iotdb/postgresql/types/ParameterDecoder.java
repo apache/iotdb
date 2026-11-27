@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.protocol.PgException;
 import org.apache.iotdb.postgresql.protocol.SqlState;
 
@@ -197,7 +198,10 @@ public final class ParameterDecoder {
       case 705:
         return text(oid == 0 || oid == 705 ? 0 : 25, new String(value, StandardCharsets.UTF_8));
       default:
-        throw new IllegalArgumentException("binary format of type " + oid + " is not supported");
+        throw new IllegalArgumentException(
+            String.format(
+                PostgreSqlMessages.EXCEPTION_BINARY_FORMAT_OF_TYPE_ARG_IS_NOT_SUPPORTED_116397E1,
+                oid));
     }
   }
 
@@ -235,13 +239,15 @@ public final class ParameterDecoder {
       case "0":
         return false;
       default:
-        throw new IllegalArgumentException("not a boolean: " + text);
+        throw new IllegalArgumentException(
+            String.format(PostgreSqlMessages.EXCEPTION_NOT_A_BOOLEAN_ARG_BDDA84BC, text));
     }
   }
 
   private static byte[] byteaText(String text) {
     if (!text.startsWith("\\x")) {
-      throw new IllegalArgumentException("only the hex format of bytea is supported");
+      throw new IllegalArgumentException(
+          PostgreSqlMessages.EXCEPTION_ONLY_THE_HEX_FORMAT_OF_BYTEA_IS_SUPPORTED_86198CC1);
     }
     String hex = text.substring(2);
     byte[] bytes = new byte[hex.length() / 2];

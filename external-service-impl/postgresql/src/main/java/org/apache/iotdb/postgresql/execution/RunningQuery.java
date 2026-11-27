@@ -113,7 +113,8 @@ public final class RunningQuery implements AutoCloseable {
                   parser,
                   client,
                   queryId,
-                  sessions.getSessionInfo(client),
+                  // catalog queries of BI tools run first (and despite a full operator pool)
+                  sessions.getSessionInfo(client).setMetadataQueriesFirst(true),
                   sql,
                   LocalExecutionPlanner.getInstance().metadata,
                   org.apache.iotdb.postgresql.session.StatementTimeout.engineTimeoutMillis(

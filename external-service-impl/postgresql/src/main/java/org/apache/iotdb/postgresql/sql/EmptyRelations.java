@@ -20,6 +20,7 @@
 package org.apache.iotdb.postgresql.sql;
 
 import org.apache.iotdb.postgresql.catalog.PgCatalogTables;
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.BooleanValue;
@@ -180,7 +181,8 @@ final class EmptyRelations {
           return true;
         }
       } catch (IllegalAccessException e) {
-        throw new IllegalStateException("cannot inspect " + field, e);
+        throw new IllegalStateException(
+            String.format(PostgreSqlMessages.EXCEPTION_CANNOT_INSPECT_ARG_A8699317, field), e);
       }
     }
     return false;
@@ -368,7 +370,8 @@ final class EmptyRelations {
       try {
         walk(field.get(node));
       } catch (IllegalAccessException e) {
-        throw new IllegalStateException("cannot inspect " + field, e);
+        throw new IllegalStateException(
+            String.format(PostgreSqlMessages.EXCEPTION_CANNOT_INSPECT_ARG_A8699317, field), e);
       }
     }
   }

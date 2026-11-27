@@ -365,7 +365,22 @@ public class ExternalServiceManagementService {
                 checkState(
                     serviceInstance != null, INSTANCE_NULL_ERROR_MSG, serviceInfo.getServiceName());
                 serviceInfo.setServiceInstance(serviceInstance);
-                runWithServiceClassLoader(serviceInfo, serviceInstance::start);
+                if (serviceInfo.getServiceType() != ServiceInfo.ServiceType.BUILTIN) {
+                  runWithServiceClassLoader(serviceInfo, serviceInstance::start);
+                  return;
+                }
+                // a built-in service that cannot start (port in use, invalid settings) is logged
+                // and stays stopped; it does not stop the DataNode from starting
+                try {
+                  runWithServiceClassLoader(serviceInfo, serviceInstance::start);
+                } catch (RuntimeException e) {
+                  LOGGER.error(
+                      DataNodeMiscMessages
+                          .LOG_BUILT_IN_EXTERNAL_SERVICE_ARG_FAILED_TO_START_AND_STAYS_STOPPED_BB4B2EEA,
+                      serviceInfo.getServiceName(),
+                      e);
+                  serviceInfo.setState(STOPPED);
+                }
               }
             });
   }

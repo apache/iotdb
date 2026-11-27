@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.postgresql.execution;
 
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.protocol.BackendMessages;
 import org.apache.iotdb.postgresql.protocol.PgException;
 import org.apache.iotdb.postgresql.protocol.SqlState;
@@ -43,12 +44,27 @@ import java.util.Optional;
  */
 public final class ResultCursor implements AutoCloseable {
 
-  /** A client that stopped reading for longer than the write timeout. */
+  /**
+   * A client that stopped reading for longer than the write timeout, or that disconnected while
+   * rows were still being sent ({@link #clientGone()}).
+   */
   public static final class WriteTimeoutException extends Exception {
     private static final long serialVersionUID = 1L;
 
+    private final boolean clientGone;
+
     WriteTimeoutException() {
-      super("client stopped reading", null, false, false);
+      this(false);
+    }
+
+    WriteTimeoutException(boolean clientGone) {
+      super(clientGone ? "client disconnected" : "client stopped reading", null, false, false);
+      this.clientGone = clientGone;
+    }
+
+    /** True if the connection is closed: nothing can be sent any more. */
+    public boolean clientGone() {
+      return clientGone;
     }
   }
 
@@ -156,7 +172,8 @@ public final class ResultCursor implements AutoCloseable {
     try {
       return advance(null, null, maxRows, null);
     } catch (WriteTimeoutException e) {
-      throw new IllegalStateException("nothing is written while skipping", e);
+      throw new IllegalStateException(
+          PostgreSqlMessages.EXCEPTION_NOTHING_IS_WRITTEN_WHILE_SKIPPING_5DE21CBD, e);
     }
   }
 
@@ -165,6 +182,10 @@ public final class ResultCursor implements AutoCloseable {
       throws PgException, WriteTimeoutException {
     long sent = 0;
     while (maxRows == 0 || sent < maxRows) {
+      if (channel != null && !channel.isActive()) {
+        // the client disconnected: stop reading the result instead of encoding it for nobody
+        throw new WriteTimeoutException(true);
+      }
       if (block == null || position >= block.getPositionCount()) {
         Optional<TsBlock> next = query.next();
         if (!next.isPresent()) {
@@ -214,6 +235,10 @@ public final class ResultCursor implements AutoCloseable {
     if (out.readableBytes() == 0) {
       return;
     }
+    if (!channel.isActive()) {
+      out.clear();
+      throw new WriteTimeoutException(true);
+    }
     // a copy: the caller keeps using its buffer while Netty writes this one
     channel.writeAndFlush(out.copy());
     out.clear();
@@ -226,7 +251,7 @@ public final class ResultCursor implements AutoCloseable {
     long pause = 1;
     while (!channel.isWritable() && channel.isActive()) {
       if (System.nanoTime() > deadline) {
-        throw new WriteTimeoutException();
+        throw new WriteTimeoutException(false);
       }
       try {
         Thread.sleep(pause);
@@ -235,6 +260,9 @@ public final class ResultCursor implements AutoCloseable {
         return;
       }
       pause = Math.min(pause * 2, 50);
+    }
+    if (!channel.isActive()) {
+      throw new WriteTimeoutException(true);
     }
   }
 

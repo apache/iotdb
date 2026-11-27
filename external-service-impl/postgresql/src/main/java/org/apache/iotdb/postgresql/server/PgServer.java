@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.postgresql.server;
 
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.protocol.PgFrameDecoder;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -90,7 +91,9 @@ public final class PgServer {
       stop();
       throw e;
     }
-    LOGGER.info("PostgreSQL endpoint listening on {}", channel.localAddress());
+    LOGGER.info(
+        PostgreSqlMessages.LOG_POSTGRESQL_ENDPOINT_LISTENING_ON_ARG_9DBA69A9,
+        channel.localAddress());
   }
 
   /** The bound address (with the actual port when port 0 was configured). */
@@ -98,17 +101,22 @@ public final class PgServer {
     return channel == null ? null : (InetSocketAddress) channel.localAddress();
   }
 
+  /**
+   * Closes the endpoint and every open connection, and waits until the event loops have ended, so
+   * that each connection's release is queued before the caller shuts the worker pool down.
+   */
   public void stop() {
     if (channel != null) {
       channel.close().syncUninterruptibly();
       channel = null;
     }
     if (boss != null) {
-      boss.shutdownGracefully(0, 2, TimeUnit.SECONDS);
+      boss.shutdownGracefully(0, 2, TimeUnit.SECONDS).syncUninterruptibly();
       boss = null;
     }
     if (workers != null) {
-      workers.shutdownGracefully(0, 2, TimeUnit.SECONDS);
+      // closes the client connections (channelInactive) before the loops end
+      workers.shutdownGracefully(0, 2, TimeUnit.SECONDS).syncUninterruptibly();
       workers = null;
     }
   }

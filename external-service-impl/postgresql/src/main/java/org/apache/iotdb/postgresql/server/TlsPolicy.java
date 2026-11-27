@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.postgresql.server;
 
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
+
 import javax.net.ssl.SSLEngine;
 
 import java.util.ArrayList;
@@ -58,7 +60,10 @@ final class TlsPolicy {
     String[] suites = supported(CIPHER_SUITES, engine.getSupportedCipherSuites());
     if (protocols.length == 0 || suites.length == 0) {
       throw new IllegalStateException(
-          "The JVM supports none of the allowed TLS protocols " + PROTOCOLS + " or cipher suites");
+          String.format(
+              PostgreSqlMessages
+                  .EXCEPTION_THE_JVM_SUPPORTS_NONE_OF_THE_ALLOWED_TLS_PROTOCOLS_ARG_OR_CIPHER_SUITES_833995C7,
+              PROTOCOLS));
     }
     engine.setEnabledProtocols(protocols);
     engine.setEnabledCipherSuites(suites);

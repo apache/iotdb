@@ -302,6 +302,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     if (dataStore == null) {
       return null;
     }
+    // the CTE's own tables were read by a separate query, so this one does not read only
+    // information_schema
+    analysis.markNonInformationSchemaTableRead();
 
     List<Symbol> cteSymbols =
         dataStore.getTableSchema().getColumns().stream()

@@ -22,6 +22,7 @@ package org.apache.iotdb.postgresql.server;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * Runs one connection's tasks one after another on a shared pool, so blocking work (logins,
@@ -46,7 +47,13 @@ final class SerialExecutor implements Executor {
       }
       running = true;
     }
-    pool.execute(this::drain);
+    try {
+      pool.execute(this::drain);
+    } catch (RejectedExecutionException e) {
+      // the service is stopping and its pool is shut down: run the remaining tasks (the
+      // connection's release) here, so that sessions and queries are still cleaned up
+      drain();
+    }
   }
 
   private void drain() {

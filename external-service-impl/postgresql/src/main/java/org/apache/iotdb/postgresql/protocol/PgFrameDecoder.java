@@ -43,6 +43,15 @@ public final class PgFrameDecoder extends ByteToMessageDecoder {
     this.maxMessageSize = maxMessageSize;
   }
 
+  /**
+   * True if bytes after the message just decoded are already buffered. After an SSLRequest these
+   * arrived before the TLS handshake, unencrypted (CVE-2021-23214), and must not be read as if they
+   * had come through TLS.
+   */
+  public boolean hasBufferedData() {
+    return actualReadableBytes() > 0;
+  }
+
   /** Switches to typed messages once the StartupMessage has been read. */
   public void startupComplete() {
     startup = false;

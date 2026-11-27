@@ -135,6 +135,23 @@ public class StartupTest {
   }
 
   @Test
+  public void plaintextSentWithTheSslRequestIsRefused() throws Exception {
+    // CVE-2021-23214 class: a StartupMessage in the same read as the SSLRequest arrived before the
+    // handshake and must not count as encrypted
+    EmbeddedChannel ch = channel("10.0.0.1", SSLContext.getDefault());
+    ByteBuf both = Unpooled.buffer();
+    both.writeBytes(packet(FrontendMessage.SSL_REQUEST)).writeBytes(startup(0));
+    ch.writeInbound(both);
+    ByteBuf answer = written(ch);
+    assertEquals("ErrorResponse, no S", 'E', answer.getByte(0));
+    assertTrue(
+        answer.toString(StandardCharsets.UTF_8).contains("unencrypted data after SSL request"));
+    assertTrue(answer.toString(StandardCharsets.US_ASCII).contains("08P01"));
+    assertEquals("no TLS handler", null, ch.pipeline().get(SslHandler.class));
+    assertFalse(ch.isOpen());
+  }
+
+  @Test
   public void gssEncryptionIsDeclined() {
     EmbeddedChannel ch = loopback();
     ch.writeInbound(packet(FrontendMessage.GSSENC_REQUEST));

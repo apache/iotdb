@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.postgresql.session;
 
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.protocol.PgException;
 import org.apache.iotdb.postgresql.protocol.SqlState;
 
@@ -270,6 +271,15 @@ public final class SessionCommands {
               SqlState.FEATURE_NOT_SUPPORTED, "only bytea_output hex is supported");
         }
         break;
+      case "standard_conforming_strings":
+        // the translator always reads '...' as a standard string; drivers that see "off" would
+        // escape backslashes in the literals they build themselves
+        if (!value.equalsIgnoreCase("on")) {
+          throw new PgException(
+              SqlState.FEATURE_NOT_SUPPORTED, "only standard_conforming_strings on is supported");
+        }
+        value = "on";
+        break;
       case "intervalstyle":
         if (!value.equalsIgnoreCase("postgres")) {
           throw new PgException(
@@ -284,12 +294,11 @@ public final class SessionCommands {
         break;
       case "timezone":
         try {
-          ZoneId zone =
-              value.equalsIgnoreCase("LOCAL") || value.equalsIgnoreCase("DEFAULT")
-                  ? ZoneId.systemDefault()
-                  : ZoneId.of(value);
+          boolean local = value.equalsIgnoreCase("LOCAL") || value.equalsIgnoreCase("DEFAULT");
+          ZoneId zone = local ? ZoneId.systemDefault() : PgTimeZones.parse(value);
           session.setZone(zone);
-          value = zone.getId();
+          // reported as given, like PostgreSQL: drivers read POSIX names with their own sign rule
+          value = local ? zone.getId() : value;
         } catch (DateTimeException e) {
           throw new PgException(
               SqlState.INVALID_PARAMETER_VALUE,
@@ -308,12 +317,13 @@ public final class SessionCommands {
       case "extra_float_digits":
       case "lock_timeout":
       case "client_min_messages":
-      case "standard_conforming_strings":
       case "ssl_renegotiation_limit":
         // kept; the query layer reads the ones it honours
         break;
       default:
-        LOGGER.debug("Unknown PostgreSQL parameter {} accepted and ignored", name);
+        LOGGER.debug(
+            PostgreSqlMessages.LOG_UNKNOWN_POSTGRESQL_PARAMETER_ARG_ACCEPTED_AND_IGNORED_C2408108,
+            name);
     }
     session.setParameter(name, value);
     Map<String, String> status = Collections.emptyMap();
@@ -329,7 +339,10 @@ public final class SessionCommands {
       case "server_version_num":
         return "140000";
       case "timezone":
-        return session.zone().getId();
+        {
+          String given = session.parameter("timezone");
+          return given != null ? given : session.zone().getId();
+        }
       case "transaction_isolation":
       case "default_transaction_isolation":
         return "read committed";

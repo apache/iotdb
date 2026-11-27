@@ -44,6 +44,7 @@ public final class SqlState {
   public static final String DUPLICATE_PREPARED_STATEMENT = "42P05";
   public static final String INVALID_SQL_STATEMENT_NAME = "26000";
   public static final String INVALID_TEXT_REPRESENTATION = "22P02";
+  public static final String CHARACTER_NOT_IN_REPERTOIRE = "22021";
   public static final String SYNTAX_OR_ACCESS_RULE = "42000";
   public static final String NUMERIC_VALUE_OUT_OF_RANGE = "22003";
   public static final String DIVISION_BY_ZERO = "22012";

@@ -16,4 +16,4 @@
 -- specific language governing permissions and limitations
 -- under the License.
 --
-SELECT "column_name", "ordinal_position", "is_nullable", CASE WHEN ("data_type" LIKE '%unsigned%') THEN CASE WHEN "data_type" IS NULL OR ' unsigned' IS NULL THEN CAST(NULL AS STRING) ELSE concat("data_type", ' unsigned') END ELSE "data_type" END AS "data_type" FROM information_schema."pg_is_columns" WHERE "table_schema" = 'refdb' AND "table_name" = 'sensors' ORDER BY "table_schema" NULLS LAST, "table_name" NULLS LAST, "ordinal_position" NULLS LAST
+SELECT "column_name", "ordinal_position", "is_nullable", CASE WHEN ("data_type" LIKE '%unsigned%' ESCAPE '\') THEN CASE WHEN "data_type" IS NULL OR ' unsigned' IS NULL THEN CAST(NULL AS STRING) ELSE concat("data_type", ' unsigned') END ELSE "data_type" END AS "data_type" FROM information_schema."pg_is_columns" WHERE "table_schema" = 'refdb' AND "table_name" = 'sensors' ORDER BY "table_schema" NULLS LAST, "table_name" NULLS LAST, "ordinal_position" NULLS LAST

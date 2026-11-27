@@ -93,6 +93,13 @@ public class IoTDBPostgreSqlClientsIT {
                 i % 28 + 1,
                 START + i));
       }
+      // ids that look like numbers, and one with an underscore (review of apache/iotdb#19350)
+      // in a database of their own, so that the metadata test still sees only plant.sensors
+      session.executeNonQueryStatement("CREATE DATABASE lab");
+      session.executeNonQueryStatement("CREATE TABLE lab.ids (device STRING TAG, v INT64 FIELD)");
+      session.executeNonQueryStatement(
+          "INSERT INTO lab.ids (time, device, v) VALUES (1, '1001', 7), (2, '0012', 8),"
+              + " (3, 'd_1', 9), (4, 'dx1', 10)");
     }
   }
 
@@ -102,7 +109,12 @@ public class IoTDBPostgreSqlClientsIT {
   }
 
   private static Connection connect(String mode) throws SQLException {
+    return connect(mode, new Properties());
+  }
+
+  private static Connection connect(String mode, Properties extra) throws SQLException {
     Properties props = new Properties();
+    props.putAll(extra);
     props.setProperty("user", SessionConfig.DEFAULT_USER);
     props.setProperty("password", SessionConfig.DEFAULT_PASSWORD);
     props.setProperty("sslmode", "disable");
@@ -213,6 +225,75 @@ public class IoTDBPostgreSqlClientsIT {
       } catch (SQLException e) {
         assertEquals("25006", e.getSQLState());
       }
+    }
+  }
+
+  @Test
+  public void untypedStringParametersTakeTheirTypeFromTheContext() throws Exception {
+    // stringtype=unspecified: pgJDBC sends setString values untyped, as psycopg 3 does
+    Properties untyped = new Properties();
+    untyped.setProperty("stringtype", "unspecified");
+    try (Connection c = connect("extended", untyped);
+        PreparedStatement p =
+            c.prepareStatement("SELECT v FROM lab.ids WHERE device = ? AND v >= ?")) {
+      for (int round = 0; round < 6; round++) {
+        p.setString(1, round % 2 == 0 ? "1001" : "0012");
+        p.setString(2, "5"); // compared with INT64: stays a number
+        try (ResultSet rs = p.executeQuery()) {
+          assertTrue("round " + round, rs.next());
+          assertEquals(round % 2 == 0 ? 7L : 8L, rs.getLong(1));
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void likeUsesBackslashAsItsEscapeCharacter() throws Exception {
+    try (Connection c = connect("extended");
+        Statement s = c.createStatement();
+        ResultSet rs =
+            s.executeQuery("SELECT device FROM lab.ids WHERE device LIKE 'd\\_1' ORDER BY time")) {
+      assertTrue(rs.next());
+      assertEquals("d_1", rs.getString(1));
+      assertFalse("_ is escaped, dx1 does not match", rs.next());
+    }
+  }
+
+  @Test
+  public void escapedBytesAreUtf8() throws Exception {
+    try (Connection c = connect("simple");
+        Statement s = c.createStatement();
+        ResultSet rs = s.executeQuery("SELECT E'\\xC3\\xA9'")) {
+      assertTrue(rs.next());
+      assertEquals("\u00e9", rs.getString(1));
+    }
+  }
+
+  @Test
+  public void closedConnectionsAreNoLongerListed() throws Exception {
+    long before = connections();
+    try (Connection c = connect("extended");
+        Statement s = c.createStatement();
+        ResultSet rs = s.executeQuery("SELECT count(*) FROM plant.sensors")) {
+      assertTrue(rs.next());
+      assertEquals(before + 1, connections());
+    }
+    // the release runs on the connection's worker after the socket is closed
+    long deadline = System.currentTimeMillis() + 10_000;
+    long now = connections();
+    while (now != before && System.currentTimeMillis() < deadline) {
+      Thread.sleep(100);
+      now = connections();
+    }
+    assertEquals("the closed connection is gone", before, now);
+  }
+
+  private static long connections() throws Exception {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
+        org.apache.iotdb.isession.SessionDataSet rows =
+            session.executeQueryStatement("SELECT count(*) FROM information_schema.connections")) {
+      return rows.next().getFields().get(0).getLongV();
     }
   }
 }

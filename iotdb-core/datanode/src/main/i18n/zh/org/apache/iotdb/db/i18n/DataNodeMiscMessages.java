@@ -1962,4 +1962,7 @@ public final class DataNodeMiscMessages {
   public static final String
       EXCEPTION_THE_FIRST_RESPONSE_OF_A_FRAGMENTED_FAST_LAST_RESULT_MUST_NOT_BE_COMPLETE_DEF121D5 =
           "分片的 Fast LAST 结果的首个响应不能是完整的";
+
+  public static final String LOG_BUILT_IN_EXTERNAL_SERVICE_ARG_FAILED_TO_START_AND_STAYS_STOPPED_BB4B2EEA =
+      "内置外部服务 {} 启动失败，保持停止状态";
 }

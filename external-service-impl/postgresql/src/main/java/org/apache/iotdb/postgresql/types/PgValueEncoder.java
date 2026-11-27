@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.postgresql.types;
 
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
+
 import org.apache.tsfile.block.column.Column;
 
 import java.math.BigDecimal;
@@ -81,7 +83,8 @@ public final class PgValueEncoder {
       case TIMESTAMPTZ:
         return ascii(timestamptzText(precision.toEpochMicros(column.getLong(position)), zone));
       default:
-        throw new IllegalArgumentException("No text format for " + type);
+        throw new IllegalArgumentException(
+            String.format(PostgreSqlMessages.EXCEPTION_NO_TEXT_FORMAT_FOR_ARG_F368DE42, type));
     }
   }
 
@@ -111,7 +114,8 @@ public final class PgValueEncoder {
             .putLong(precision.toEpochMicros(column.getLong(position)) - PG_EPOCH_MICROS)
             .array();
       default:
-        throw new IllegalArgumentException("No binary format for " + type);
+        throw new IllegalArgumentException(
+            String.format(PostgreSqlMessages.EXCEPTION_NO_BINARY_FORMAT_FOR_ARG_62465CF6, type));
     }
   }
 

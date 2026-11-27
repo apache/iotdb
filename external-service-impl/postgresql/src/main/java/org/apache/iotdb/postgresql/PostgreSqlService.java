@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
+import org.apache.iotdb.postgresql.catalog.PgCatalogExtension;
 import org.apache.iotdb.postgresql.config.PostgreSqlServiceConfig;
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.server.PgServer;
 import org.apache.iotdb.postgresql.server.PgServerContext;
 import org.apache.iotdb.postgresql.session.SqlProtocol;
@@ -46,6 +48,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -59,28 +62,28 @@ public class PostgreSqlService implements IExternalService {
   /** The reported server version: 14, so that clients take their standard paths. */
   static final String SERVER_VERSION = "14.0 (IoTDB " + IoTDBConstant.VERSION + ")";
 
+  /** How long a stop waits for the open connections' queries and sessions to be released. */
+  private static final long RELEASE_WAIT_SECONDS = 10;
+
   private PgServerContext context;
   private PgServer server;
   private ExecutorService workers;
 
   @Override
   public synchronized void start() {
+    // the core decides at DataNode start whether to start the service
+    // (enable_postgresql_service); an explicit START SERVICE starts it in any case
     PostgreSqlServiceConfig config = PostgreSqlServiceConfig.from(loadProperties());
-    if (!config.enabled()) {
-      LOGGER.debug(
-          "PostgreSQL endpoint is switched off ({}=false)", PostgreSqlServiceConfig.ENABLED);
-      return;
-    }
     if (!config.problems().isEmpty()) {
-      fail("invalid settings: " + config.problems());
-      return;
+      throw fail(
+          String.format(
+              PostgreSqlMessages.EXCEPTION_INVALID_SETTINGS_ARG_4D6B78F5, config.problems()));
     }
     SSLContext sslContext;
     try {
       sslContext = sslContext(config);
     } catch (IllegalStateException e) {
-      fail(e.getMessage());
-      return;
+      throw fail(e.getMessage());
     }
     TimestampPrecision precision =
         TimestampPrecision.of(
@@ -98,20 +101,23 @@ public class PostgreSqlService implements IExternalService {
     server = new PgServer(context);
     try {
       server.start();
+      PgCatalogExtension.setListed(true);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      fail("interrupted while opening " + config.address() + ":" + config.port());
+      throw fail(
+          String.format(
+              PostgreSqlMessages.EXCEPTION_INTERRUPTED_WHILE_OPENING_ARG_ARG_F80AAF97,
+              config.address(),
+              config.port()));
     } catch (Exception e) {
       // also checked exceptions Netty rethrows undeclared (BindException: port in use)
-      fail(
-          "cannot open "
-              + config.address()
-              + ":"
-              + config.port()
-              + " ("
-              + PostgreSqlServiceConfig.PORT
-              + "): "
-              + e.getMessage());
+      throw fail(
+          String.format(
+              PostgreSqlMessages.EXCEPTION_CANNOT_OPEN_ARG_ARG_ARG_ARG_63428D45,
+              config.address(),
+              config.port(),
+              PostgreSqlServiceConfig.PORT,
+              e.getMessage()));
     }
   }
 
@@ -126,28 +132,42 @@ public class PostgreSqlService implements IExternalService {
     if (!configured) {
       if (!config.isLoopback()) {
         throw new IllegalStateException(
-            PostgreSqlServiceConfig.ADDRESS
-                + "="
-                + config.address()
-                + " is not a loopback address and needs TLS, but no key store is configured"
-                + " (key_store_path)");
+            String.format(
+                PostgreSqlMessages
+                    .EXCEPTION_ARG_ARG_IS_NOT_A_LOOPBACK_ADDRESS_AND_NEEDS_TLS_BUT_NO_KEY_STORE_IS_CONFIGURED_KEY_STORE_PATH_723B55BF,
+                PostgreSqlServiceConfig.ADDRESS,
+                config.address()));
       }
       return null;
     }
     if (!Files.isReadable(Paths.get(keyStore))) {
-      throw new IllegalStateException("the key store " + keyStore + " is not readable");
+      throw new IllegalStateException(
+          String.format(
+              PostgreSqlMessages.EXCEPTION_THE_KEY_STORE_ARG_IS_NOT_READABLE_A4A4A28C, keyStore));
     }
     try {
       return RpcSslUtils.createSSLContext(keyStore, common.getKeyStorePwd(), null, null);
     } catch (Exception e) {
       throw new IllegalStateException(
-          "the key store " + keyStore + " cannot be used: " + e.getMessage(), e);
+          String.format(
+              PostgreSqlMessages.EXCEPTION_THE_KEY_STORE_ARG_CANNOT_BE_USED_ARG_5908F0BB,
+              keyStore,
+              e.getMessage()),
+          e);
     }
   }
 
-  private void fail(String message) {
-    LOGGER.error("PostgreSQL endpoint not started: {}", message);
+  /**
+   * Logs a failed start and returns the exception {@link #start()} throws, so that the service does
+   * not count as running (START SERVICE reports the error; at DataNode start the core logs it and
+   * keeps the service stopped).
+   */
+  private IllegalStateException fail(String message) {
+    LOGGER.error(PostgreSqlMessages.LOG_POSTGRESQL_ENDPOINT_NOT_STARTED_ARG_626B180C, message);
     stopServer();
+    return new IllegalStateException(
+        String.format(
+            PostgreSqlMessages.EXCEPTION_POSTGRESQL_ENDPOINT_NOT_STARTED_ARG_A5563154, message));
   }
 
   @Override
@@ -156,12 +176,23 @@ public class PostgreSqlService implements IExternalService {
   }
 
   private void stopServer() {
+    PgCatalogExtension.setListed(false);
     if (server != null) {
       server.stop();
       server = null;
     }
     if (workers != null) {
-      workers.shutdownNow();
+      // the connections' releases are queued now (server.stop() waited for the event loops);
+      // let them finish, then stop what is left
+      workers.shutdown();
+      try {
+        if (!workers.awaitTermination(RELEASE_WAIT_SECONDS, TimeUnit.SECONDS)) {
+          workers.shutdownNow();
+        }
+      } catch (InterruptedException e) {
+        workers.shutdownNow();
+        Thread.currentThread().interrupt();
+      }
       workers = null;
     }
     context = null;
@@ -179,7 +210,10 @@ public class PostgreSqlService implements IExternalService {
     try (InputStream in = url.openStream()) {
       properties.load(in);
     } catch (IOException e) {
-      LOGGER.error("PostgreSQL endpoint: cannot read {}: {}", url, e.toString());
+      LOGGER.error(
+          PostgreSqlMessages.LOG_POSTGRESQL_ENDPOINT_CANNOT_READ_ARG_ARG_B4423CA2,
+          url,
+          e.toString());
     }
     for (String name : properties.stringPropertyNames()) {
       if (name.startsWith(PostgreSqlServiceConfig.PREFIX)

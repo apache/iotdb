@@ -2013,4 +2013,7 @@ public final class DataNodeMiscMessages {
   public static final String
       EXCEPTION_THE_FIRST_RESPONSE_OF_A_FRAGMENTED_FAST_LAST_RESULT_MUST_NOT_BE_COMPLETE_DEF121D5 =
           "The first response of a fragmented Fast LAST result must not be complete";
+
+  public static final String LOG_BUILT_IN_EXTERNAL_SERVICE_ARG_FAILED_TO_START_AND_STAYS_STOPPED_BB4B2EEA =
+      "Built-in external service {} failed to start and stays stopped";
 }

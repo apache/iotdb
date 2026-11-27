@@ -25,6 +25,7 @@ import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.ExternalServiceClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.protocol.BackendMessages;
 import org.apache.iotdb.postgresql.protocol.FrontendMessage;
 import org.apache.iotdb.postgresql.protocol.PgException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.postgresql.protocol.PgFrameDecoder;
 import org.apache.iotdb.postgresql.protocol.SqlState;
 import org.apache.iotdb.postgresql.session.CancelRegistry;
 import org.apache.iotdb.postgresql.session.PgSession;
+import org.apache.iotdb.postgresql.session.PgTimeZones;
 import org.apache.iotdb.postgresql.session.QueryProtocol;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -80,7 +82,7 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
   private final Map<String, String> startupParameters = new LinkedHashMap<>();
   private ExternalServiceClientSession dbSession;
   private CancelRegistry.Key key;
-  private QueryProtocol protocol;
+  private volatile QueryProtocol protocol;
   private ScheduledFuture<?> startupTimeout;
 
   PgConnectionHandler(PgServerContext context, PgFrameDecoder decoder) {
@@ -117,6 +119,11 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
     if (startupTimeout != null) {
       startupTimeout.cancel(false);
     }
+    QueryProtocol running = protocol;
+    if (running != null) {
+      // stop a running query now; release() waits behind it on the serial executor
+      running.cancel();
+    }
     serial.execute(this::release);
     ctx.fireChannelInactive();
   }
@@ -131,6 +138,8 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
     if (dbSession != null) {
       SessionManager.getInstance()
           .closeSession(dbSession, Coordinator.getInstance()::cleanupQueryExecution);
+      // no longer listed in SHOW SESSIONS / information_schema.connections
+      SessionManager.getInstance().removeExternalServiceSession(dbSession);
     }
   }
 
@@ -195,6 +204,12 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
       BackendMessages.sslResponse(answer, false);
       ctx.writeAndFlush(answer);
       return;
+    }
+    if (decoder.hasBufferedData()) {
+      // sent before the handshake, so not encrypted, perhaps injected (as PostgreSQL since
+      // CVE-2021-23214); the client must wait for the answer to its SSLRequest
+      throw PgException.fatal(
+          SqlState.PROTOCOL_VIOLATION, "received unencrypted data after SSL request");
     }
     SSLEngine engine = context.sslContext.createSSLEngine();
     engine.setUseClientMode(false);
@@ -295,7 +310,7 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
       }
       loggedIn(ctx, ctx.alloc().buffer());
     } catch (RuntimeException e) {
-      LOGGER.warn("PostgreSQL login failed", e);
+      LOGGER.warn(PostgreSqlMessages.LOG_POSTGRESQL_LOGIN_FAILED_7130B38D, e);
       fail(ctx, PgException.fatal(SqlState.CONNECTION_FAILURE, "login failed"));
     }
   }
@@ -324,7 +339,8 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
     reported.put("client_encoding", "UTF8");
     reported.put("DateStyle", "ISO, MDY");
     reported.put("IntervalStyle", "postgres");
-    reported.put("TimeZone", session.zone().getId());
+    // as the client sent it (a POSIX name keeps its sign convention), or the server's zone
+    reported.put("TimeZone", zoneName());
     reported.put("integer_datetimes", "on");
     reported.put("standard_conforming_strings", "on");
     reported.put("is_superuser", "off");
@@ -336,6 +352,7 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
           session.setParameter(name.toLowerCase(Locale.ROOT), value);
         });
     session.markStartup();
+    SessionManager.getInstance().registerExternalServiceSession(dbSession);
     protocol = context.protocols.apply(session);
     key = context.cancels.register(protocol::cancel);
     session.setProcessId(key.processId());
@@ -352,12 +369,27 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
     String zone = startupParameters.get("timezone");
     if (zone != null) {
       try {
-        return ZoneId.of(zone.replace("'", "").trim());
+        return PgTimeZones.parse(zone.replace("'", ""));
       } catch (DateTimeException e) {
         // fall back to the server's zone
       }
     }
     return ZoneId.systemDefault();
+  }
+
+  /** The TimeZone reported at startup: the client's own value if it is valid. */
+  private String zoneName() {
+    String zone = startupParameters.get("timezone");
+    if (zone != null) {
+      String given = zone.replace("'", "").trim();
+      try {
+        PgTimeZones.parse(given);
+        return given;
+      } catch (DateTimeException e) {
+        // fall back to the server's zone
+      }
+    }
+    return ZoneId.systemDefault().getId();
   }
 
   // ---------------------------------------------------------------------------- errors
@@ -384,7 +416,10 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
     if (root instanceof PgException) {
       fail(ctx, (PgException) root);
     } else {
-      LOGGER.debug("PostgreSQL connection {} failed", ctx.channel().remoteAddress(), cause);
+      LOGGER.debug(
+          PostgreSqlMessages.LOG_POSTGRESQL_CONNECTION_ARG_FAILED_C649F2E0,
+          ctx.channel().remoteAddress(),
+          cause);
       ctx.close();
     }
   }

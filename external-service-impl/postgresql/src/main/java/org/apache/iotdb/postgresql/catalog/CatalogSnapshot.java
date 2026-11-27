@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.postgresql.i18n.PostgreSqlMessages;
 import org.apache.iotdb.postgresql.types.PgType;
 
 import org.slf4j.Logger;
@@ -208,8 +209,8 @@ public final class CatalogSnapshot {
       if (RESERVED.contains(database.getKey())) {
         if (WARNED.compareAndSet(false, true)) {
           LOGGER.warn(
-              "The database {} is hidden from PostgreSQL clients: its name is a reserved"
-                  + " PostgreSQL schema",
+              PostgreSqlMessages
+                  .LOG_THE_DATABASE_ARG_IS_HIDDEN_FROM_POSTGRESQL_CLIENTS_ITS_NAME_IS_A_RESERVED_POSTGRESQL_SCHEMA_B92A6ECA,
               database.getKey());
         }
         continue;

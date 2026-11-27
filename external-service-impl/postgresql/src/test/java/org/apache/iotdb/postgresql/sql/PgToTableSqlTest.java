@@ -122,6 +122,16 @@ public class PgToTableSqlTest {
   }
 
   @Test
+  public void escapedBytesAreDecodedAsUtf8() throws Exception {
+    // PostgreSQL (UTF8 server encoding): E'\xC3\xA9' is one character
+    assertEquals("SELECT '\u00e9'", sql("SELECT E'\\xC3\\xA9'"));
+    assertEquals("SELECT 'a\u00e9b'", sql("SELECT E'a\\303\\251b'"));
+    assertEquals("SELECT 'xg'", sql("SELECT E'\\xg'"));
+    refused("SELECT E'\\xC3'", "22021", "invalid byte sequence");
+    refused("SELECT E'\\000'", "22021", "0x00");
+  }
+
+  @Test
   public void sessionFunctionsBecomeConstants() throws Exception {
     assertEquals(
         "SELECT 'PostgreSQL 14.0 (IoTDB)', 'plant', 'iotdb', 42, 'alice', TRUE",
@@ -131,9 +141,28 @@ public class PgToTableSqlTest {
   }
 
   @Test
+  public void likeKeepsPostgreSqlsBackslashEscape() throws Exception {
+    // PostgreSQL: 'd_1' LIKE 'd\_1' is true; the engine has no default escape character
+    assertEquals(
+        "SELECT * FROM \"plant\".\"sensors\" WHERE \"device\" LIKE 'd\\_1' ESCAPE '\\'",
+        sql("SELECT * FROM sensors WHERE device LIKE 'd\\_1'"));
+    assertEquals(
+        "SELECT * FROM \"plant\".\"sensors\" WHERE \"device\" NOT LIKE 'd#_1' ESCAPE '#'",
+        sql("SELECT * FROM sensors WHERE device NOT LIKE 'd#_1' ESCAPE '#'"));
+    assertEquals(
+        "ESCAPE '' switches escaping off",
+        "SELECT * FROM \"plant\".\"sensors\" WHERE \"device\" LIKE 'd\\_1'",
+        sql("SELECT * FROM sensors WHERE device LIKE 'd\\_1' ESCAPE ''"));
+    assertEquals(
+        "SELECT * FROM \"plant\".\"sensors\" WHERE lower(\"device\") NOT LIKE lower('d\\_1')"
+            + " ESCAPE '\\'",
+        sql("SELECT * FROM sensors WHERE device NOT ILIKE 'd\\_1'"));
+  }
+
+  @Test
   public void limitsOrderingAndIlike() throws Exception {
     assertEquals(
-        "SELECT * FROM \"plant\".\"sensors\" WHERE lower(\"device\") LIKE lower('a%')"
+        "SELECT * FROM \"plant\".\"sensors\" WHERE lower(\"device\") LIKE lower('a%') ESCAPE '\\'"
             + " ORDER BY \"time\" DESC NULLS FIRST, \"device\" NULLS LAST LIMIT 5",
         sql(
             "SELECT * FROM sensors WHERE device ILIKE 'a%' ORDER BY time DESC, device"

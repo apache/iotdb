@@ -89,6 +89,7 @@ public class Analyzer {
     Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
     analysis.setInternalRpcSession(context.isInternalRpcSession());
     analysis.setSqlParser(statementAnalyzerFactory.getSqlParser());
+    analysis.setMetadataQueriesFirst(session.isMetadataQueriesFirst());
     // Register CTE passed by parent query.
     context
         .getCteQueries()

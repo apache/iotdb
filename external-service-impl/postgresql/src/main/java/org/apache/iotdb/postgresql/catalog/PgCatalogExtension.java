@@ -35,6 +35,22 @@ import java.util.function.BiConsumer;
  */
 public final class PgCatalogExtension implements InformationSchema.InformationSchemaExtension {
 
+  /**
+   * Whether the catalog tables appear in information_schema listings: only while the endpoint runs,
+   * so that installations without the PostgreSQL service see the information_schema they know.
+   */
+  private static volatile boolean listed;
+
+  /** Called by the service when its endpoint starts and stops. */
+  public static void setListed(boolean listed) {
+    PgCatalogExtension.listed = listed;
+  }
+
+  @Override
+  public boolean isListed(String tableName) {
+    return listed || !PgCatalogTables.contains(tableName);
+  }
+
   @Override
   public void registerAdditionalInformationSchemaTables(BiConsumer<String, TsTable> register) {
     for (Map.Entry<String, List<PgCatalogTables.Column>> table :

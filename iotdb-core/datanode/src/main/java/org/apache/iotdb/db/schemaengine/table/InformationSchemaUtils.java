@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -115,7 +116,10 @@ public class InformationSchemaUtils {
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (final String schemaTable :
-        getSchemaTables().keySet().stream().sorted().collect(Collectors.toList())) {
+        getSchemaTables().keySet().stream()
+            .filter(InformationSchema::isListed)
+            .sorted()
+            .collect(Collectors.toList())) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(schemaTable, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));

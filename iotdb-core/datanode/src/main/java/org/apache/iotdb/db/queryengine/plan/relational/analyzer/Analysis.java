@@ -125,9 +125,14 @@ public class Analysis implements IAnalysis {
   @Nullable private Statement root;
   private boolean needSetHighestPriority;
 
-  // A query that reads only information_schema tables (catalog queries of BI tools join up to
-  // seven of them) gets the highest priority too: its memory estimate (one sort buffer per sort of
-  // every join) is far above what its tiny inputs need and would refuse it at small memory budgets.
+  // A query of a session whose client sends many catalog queries (SessionInfo
+  // .isMetadataQueriesFirst, set by the PostgreSQL service for BI tools, which join up to seven
+  // information_schema tables) that reads only information_schema tables gets the highest priority
+  // too: its memory estimate (one sort buffer per sort of every join) is far above what its tiny
+  // inputs need and would refuse it at small memory budgets. Other clients keep the rule that only
+  // information_schema.queries gets it.
+  private boolean metadataQueriesFirst;
+
   private boolean readsInformationSchema;
 
   private boolean readsOtherTables;
@@ -1014,14 +1019,23 @@ public class Analysis implements IAnalysis {
     isQuery = query;
   }
 
-  /** Called for every scanned table outside information_schema. */
+  /**
+   * Called for every scanned table outside information_schema, and for every materialized CTE (its
+   * source tables were read by a separate query and are not seen here).
+   */
   public void markNonInformationSchemaTableRead() {
     readsOtherTables = true;
   }
 
+  /** Whether information_schema-only queries of this session get the highest priority. */
+  public void setMetadataQueriesFirst(boolean metadataQueriesFirst) {
+    this.metadataQueriesFirst = metadataQueriesFirst;
+  }
+
   @Override
   public boolean needSetHighestPriority() {
-    return needSetHighestPriority || (readsInformationSchema && !readsOtherTables);
+    return needSetHighestPriority
+        || (metadataQueriesFirst && readsInformationSchema && !readsOtherTables);
   }
 
   @Override
