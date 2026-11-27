@@ -124,9 +124,21 @@ public class TableDeviceCacheEntry {
                   .update(deviceSchemaInfo.getMeasurementSchemaInfoList())
           : 0;
     } else {
-      return deviceSchema.compareAndSet(
-              null, new TreeDeviceTemplateSchema(database, deviceSchemaInfo.getTemplateId()))
-          ? TreeDeviceTemplateSchema.INSTANCE_SIZE
+      // A last-cache declaration from a fragment of a remotely coordinated query may have created
+      // a normal schema for this template device first; the fetched template schema supersedes it.
+      final TreeDeviceTemplateSchema templateSchema =
+          new TreeDeviceTemplateSchema(database, deviceSchemaInfo.getTemplateId());
+      final IDeviceSchema previous =
+          deviceSchema.getAndUpdate(
+              schema ->
+                  Objects.isNull(schema) || schema instanceof TreeDeviceNormalSchema
+                      ? templateSchema
+                      : schema);
+      if (Objects.isNull(previous)) {
+        return TreeDeviceTemplateSchema.INSTANCE_SIZE;
+      }
+      return previous instanceof TreeDeviceNormalSchema
+          ? TreeDeviceTemplateSchema.INSTANCE_SIZE - previous.estimateSize()
           : 0;
     }
   }
