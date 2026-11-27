@@ -2070,6 +2070,7 @@ public class ProcedureManager {
     subscriptionCoordinator.lockTopicAlteration(req.getTopicName(), isTableModel);
     boolean isOwnerLeaseRenewalBlocked = false;
     try {
+      subscriptionCoordinator.validateTopicAttributesBeforeAlter(req);
       isOwnerLeaseRenewalBlocked =
           subscriptionCoordinator.blockOwnerLeaseRenewalIfOwnerTransfer(req);
       // Owner transfers wait for the previous owner's lease to drain (lease duration + one

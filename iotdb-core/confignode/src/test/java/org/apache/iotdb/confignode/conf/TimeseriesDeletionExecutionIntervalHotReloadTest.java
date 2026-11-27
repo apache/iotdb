@@ -34,7 +34,6 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThrows;
 
 public class TimeseriesDeletionExecutionIntervalHotReloadTest {
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -75,8 +74,7 @@ public class TimeseriesDeletionExecutionIntervalHotReloadTest {
       final int updatedQueueCapacity = conf.getTimeseriesDeletionQueueCapacity() + 1;
       final TrimProperties invalidProperties = new TrimProperties();
       invalidProperties.setProperty("timeseries_deletion_queue_capacity", "0");
-      assertThrows(
-          IllegalArgumentException.class, () -> descriptor.loadHotModifiedProps(invalidProperties));
+      descriptor.loadHotModifiedProps(invalidProperties);
       assertEquals(originalQueueCapacity, conf.getTimeseriesDeletionQueueCapacity());
 
       final TrimProperties properties = new TrimProperties();

@@ -20,6 +20,33 @@
 package org.apache.iotdb.commons.i18n;
 
 public final class ConfigMessages {
+  public static final String EXCEPTION_EXPECTED_A_SUPPORTED_TIMESTAMP_OR_NOW_0B41AA33 =
+      "需要支持的时间戳或 now";
+  public static final String EXCEPTION_EXPECTED_TYPE_ARG_3252306A =
+      "需要 %s 类型";
+  public static final String EXCEPTION_EXPECTED_A_NON_NEGATIVE_NUMBER_C0569CF9 =
+      "需要非负数";
+  public static final String EXCEPTION_EXPECTED_A_POSITIVE_NUMBER_74E1B6E0 =
+      "需要正数";
+  public static final String EXCEPTION_EXPECTED_1_UNLIMITED_OR_A_VALUE_SATISFYING_THIS_CONSTRAINT_ARG_93049C28 =
+      "需要 -1（不限制）或满足以下约束的值：%s";
+  public static final String EXCEPTION_EXPECTED_A_NUMBER_IN_ARG_55110FC5 =
+      "需要 %s 范围内的数值";
+  public static final String EXCEPTION_EXPECTED_ONE_OF_ARG_7E3B0009 =
+      "需要 [%s] 中的一个值";
+  public static final String EXCEPTION_EXPECTED_A_DIRECTORY_PATH_F0A68B41 =
+      "需要目录路径";
+  public static final String EXCEPTION_EXPECTED_A_LIST_OF_DIRECTORY_PATHS_02244CF5 =
+      "需要目录路径列表";
+  public static final String LOG_INVALID_ARG_PARAMETER_ARG_ARG_AC2A7B4C =
+      "{} 配置项 {} 无效：{}";
+  public static final String LOG_IGNORING_UNKNOWN_ARG_PARAMETER_ARG_B7F5AAD6 =
+      "忽略未知的 {} 配置项 {}";
+  public static final String EXCEPTION_INVALID_ARG_PARAMETER_ARG_ARG_4EAB34E6 =
+      "%s 配置项 %s 无效：%s";
+  public static final String EXCEPTION_EXPECTED_A_COLON_SEPARATED_LIST_OF_NON_NEGATIVE_WEIGHTS_WITH_A_POSITIVE_SUM_48DA2BDC =
+      "需要冒号分隔的非负权重列表且总和为正";
+
 
   // ===================== Generic config-set-to pattern =====================
   public static final String CONFIG_SET_TO = "{} 已设置为 {}。";

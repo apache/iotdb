@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.config.PipeParameterDefinitions;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -243,11 +244,16 @@ public class PipeDataNodePluginAgent {
       final Map<String, String> processorAttributes,
       final Map<String, String> sinkAttributes)
       throws Exception {
-    dataRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
+    final Map<String, String> validatedSource =
+        PipeParameterDefinitions.validateSource(sourceAttributes);
+    final Map<String, String> validatedProcessor =
+        PipeParameterDefinitions.validateProcessor(processorAttributes);
+    final Map<String, String> validatedSink = PipeParameterDefinitions.validateSink(sinkAttributes);
+    dataRegionAgent.validate(pipeName, validatedSource, validatedProcessor, validatedSink);
 
     if (SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
-        new PipeParameters(sinkAttributes))) {
-      schemaRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
+        new PipeParameters(validatedSink))) {
+      schemaRegionAgent.validate(pipeName, validatedSource, validatedProcessor, validatedSink);
     }
   }
 

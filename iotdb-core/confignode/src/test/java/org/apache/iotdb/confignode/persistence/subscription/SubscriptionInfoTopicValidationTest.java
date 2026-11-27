@@ -286,15 +286,18 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectUnknownAttributeOnIncrementalTopic() {
+  public void testIgnoreUnknownAttributeOnIncrementalTopic() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put("unknown-attribute", "value");
 
-    assertCreateRejected(
-        subscriptionInfo,
-        attributes,
-        "mode=incremental does not support topic attributes [unknown-attribute]");
+    final TCreateTopicReq request =
+        new TCreateTopicReq("incremental_topic").setTopicAttributes(attributes);
+    Assert.assertTrue(subscriptionInfo.validateBeforeCreatingTopic(request));
+    Assert.assertFalse(request.getTopicAttributes().containsKey("unknown-attribute"));
+    Assert.assertEquals(
+        TopicConstant.MODE_INCREMENTAL_VALUE,
+        request.getTopicAttributes().get(TopicConstant.MODE_KEY));
   }
 
   @Test
@@ -371,7 +374,7 @@ public class SubscriptionInfoTopicValidationTest {
     final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "0");
 
-    assertCreateRejected(subscriptionInfo, attributes, "expected -1 or a positive long value");
+    assertCreateRejected(subscriptionInfo, attributes, "expected -1 (unlimited)");
   }
 
   @Test
@@ -380,7 +383,7 @@ public class SubscriptionInfoTopicValidationTest {
     final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_MS_KEY, "1h");
 
-    assertCreateRejected(subscriptionInfo, attributes, "expected a long value");
+    assertCreateRejected(subscriptionInfo, attributes, "expected type long");
   }
 
   @Test
@@ -443,7 +446,7 @@ public class SubscriptionInfoTopicValidationTest {
         }) {
       final Map<String, String> attributes = newInitialTableTopicAttributes();
       attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, value);
-      assertCreateRejected(subscriptionInfo, attributes, "expected a long value in milliseconds");
+      assertCreateRejected(subscriptionInfo, attributes, "expected type long");
     }
   }
 
@@ -475,7 +478,7 @@ public class SubscriptionInfoTopicValidationTest {
       subscriptionInfo.validateBeforeAlteringTopic(new TopicMeta("table_topic", 1L, attributes));
       Assert.fail("Expected an invalid recycle interval to be rejected");
     } catch (final SubscriptionException e) {
-      Assert.assertTrue(e.getMessage().contains("expected a long value in milliseconds"));
+      Assert.assertTrue(e.getMessage().contains("expected type long"));
     }
   }
 
@@ -530,7 +533,7 @@ public class SubscriptionInfoTopicValidationTest {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(TopicConstant.MODE_KEY, "wal");
 
-    assertCreateRejected(subscriptionInfo, attributes, "unsupported mode");
+    assertCreateRejected(subscriptionInfo, attributes, "parameter mode:");
   }
 
   @Test
@@ -768,7 +771,7 @@ public class SubscriptionInfoTopicValidationTest {
       final Map<String, String> attributes = newIncrementalTableTopicAttributes();
       attributes.put(TopicConstant.MODE_KEY, mode);
       attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "yes");
-      assertCreateRejected(subscriptionInfo, attributes, "expected true or false");
+      assertCreateRejected(subscriptionInfo, attributes, "expected type boolean");
     }
   }
 

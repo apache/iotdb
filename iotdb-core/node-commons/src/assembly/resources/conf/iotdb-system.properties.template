@@ -143,6 +143,13 @@ schema_replication_factor=1
 # Datatype: string
 schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
 
+# Parse and validate config_node_consensus_protocol_class and schema_region_consensus_protocol_class
+# as startup-critical settings when true. Both accept SimpleConsensus and RatisConsensus class names.
+# false: warn and use the built-in default for an invalid value; true: warn and fail startup.
+# Type: boolean (true or false). Default: false.
+# effectiveMode: restart
+strict_config_validation=false
+
 # Default number of data replicas
 # effectiveMode: first_start
 # Datatype: int
@@ -666,8 +673,9 @@ idle_timeout_in_seconds=50000
 # All parameters in Partition configuration is unmodifiable after ConfigNode starts for the first time.
 # And these parameters should be consistent within the ConfigNodeGroup.
 # Number of SeriesPartitionSlots per Database
+# Must be greater than 0.
 # effectiveMode: first_start
-# Datatype: Integer
+# Datatype: int
 series_slot_num=1000
 
 # SeriesPartitionSlot executor class
@@ -795,6 +803,7 @@ enable_auto_leader_balance_for_ratis_consensus=true
 time_partition_origin=0
 
 # Time partition interval in milliseconds, and partitioning data inside each data region, default is equal to one week
+# Must be greater than 0.
 # effectiveMode: first_start
 # Datatype: long
 time_partition_interval=604800000
@@ -1381,7 +1390,8 @@ query_sample_throughput_bytes_per_sec=160
 # Notice: It is not recommended to change it too small, as it will affect the read and write performance of the system.
 # effectiveMode: restart
 # Unit: ms
-# Datatype: int
+# Must be greater than 0.
+# Datatype: long
 ttl_check_interval=7200000
 
 # The maximum expiring time of device which has a ttl. Default is 1 month.

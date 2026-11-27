@@ -47,7 +47,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
@@ -55,6 +54,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
+
+import static org.apache.iotdb.commons.conf.ConfigValidation.BOOLEAN;
+import static org.apache.iotdb.commons.conf.ConfigValidation.DECIMAL_INT;
+import static org.apache.iotdb.commons.conf.ConfigValidation.INT;
+import static org.apache.iotdb.commons.conf.ConfigValidation.LONG;
+import static org.apache.iotdb.commons.conf.ConfigValidation.STRING;
+import static org.apache.iotdb.commons.conf.ConfigValidation.database;
+import static org.apache.iotdb.commons.conf.ConfigValidation.databaseAlias;
+import static org.apache.iotdb.commons.conf.ConfigValidation.directory;
+import static org.apache.iotdb.commons.conf.ConfigValidation.enumType;
+import static org.apache.iotdb.commons.conf.ConfigValidation.nonNegative;
+import static org.apache.iotdb.commons.conf.ConfigValidation.oneOf;
+import static org.apache.iotdb.commons.conf.ConfigValidation.positive;
+import static org.apache.iotdb.commons.conf.ConfigValidation.startupCritical;
+import static org.apache.iotdb.commons.conf.ConfigValidation.unrestricted;
 
 public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
@@ -132,7 +146,7 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
-    TrimProperties trimProperties = new TrimProperties();
+    TrimProperties trimProperties = new TrimProperties(true);
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
@@ -153,6 +167,7 @@ public class ConfigNodeDescriptor {
             .getMetricConfig()
             .updateRpcInstance(NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
       }
+      ConfigurationFileUtils.warnUnknownConfigurationKeys(trimProperties);
     } else {
       LOGGER.warn(
           ConfigNodeMessages.COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN,
@@ -190,8 +205,7 @@ public class ConfigNodeDescriptor {
     }
 
     conf.setSeriesSlotNum(
-        Integer.parseInt(
-            properties.getProperty("series_slot_num", String.valueOf(conf.getSeriesSlotNum()))));
+        database(properties, "series_slot_num", conf.getSeriesSlotNum(), INT, positive()));
 
     conf.setSeriesPartitionExecutorClass(
         properties.getProperty(
@@ -201,19 +215,32 @@ public class ConfigNodeDescriptor {
         properties.getProperty(
             "data_partition_allocation_strategy", conf.getDataPartitionAllocationStrategy()));
 
+    final boolean strictConfigValidation =
+        database(properties, "strict_config_validation", false, BOOLEAN, unrestricted());
     conf.setConfigNodeConsensusProtocolClass(
-        properties.getProperty(
-            "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
-
+        startupCritical(
+            properties,
+            "config_node_consensus_protocol_class",
+            conf.getConfigNodeConsensusProtocolClass(),
+            STRING,
+            oneOf(false, ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
+            strictConfigValidation));
     conf.setSchemaRegionConsensusProtocolClass(
-        properties.getProperty(
+        startupCritical(
+            properties,
             "schema_region_consensus_protocol_class",
-            conf.getSchemaRegionConsensusProtocolClass()));
+            conf.getSchemaRegionConsensusProtocolClass(),
+            STRING,
+            oneOf(false, ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
+            strictConfigValidation));
 
     conf.setSchemaReplicationFactor(
-        Integer.parseInt(
-            properties.getProperty(
-                "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))));
+        database(
+            properties,
+            "schema_replication_factor",
+            conf.getSchemaReplicationFactor(),
+            INT,
+            positive()));
 
     final String dataRegionConsensusProtocolClass =
         properties.getProperty(
@@ -237,9 +264,12 @@ public class ConfigNodeDescriptor {
         properties.getProperty("iot_consensus_v2_mode", conf.getIotConsensusV2Mode()));
 
     conf.setDataReplicationFactor(
-        Integer.parseInt(
-            properties.getProperty(
-                "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
+        database(
+            properties,
+            "data_replication_factor",
+            conf.getDataReplicationFactor(),
+            INT,
+            positive()));
 
     loadRegionGroupExtensionConfig(properties);
 
@@ -290,14 +320,16 @@ public class ConfigNodeDescriptor {
 
     conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()));
 
-    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
+    conf.setPipeDir(database(properties, "pipe_lib_dir", conf.getPipeDir(), STRING, directory()));
 
     conf.setPipeReceiverFileDir(
-        Optional.ofNullable(properties.getProperty("cn_pipe_receiver_file_dir"))
-            .orElse(
-                properties.getProperty(
-                    "pipe_receiver_file_dir",
-                    conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver")));
+        databaseAlias(
+            properties,
+            "cn_pipe_receiver_file_dir",
+            "pipe_receiver_file_dir",
+            conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver",
+            STRING,
+            directory(true)));
 
     conf.setHeartbeatIntervalInMs(loadHeartbeatIntervalInMs(properties));
     conf.setFailureDetectorHeartbeatIntervalInMs(conf.getHeartbeatIntervalInMs());
@@ -419,25 +451,34 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
 
     conf.setEnableSyncSchemaDeletion(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_sync_schema_deletion", String.valueOf(conf.isEnableSyncSchemaDeletion()))));
+        database(
+            properties,
+            "enable_sync_schema_deletion",
+            conf.isEnableSyncSchemaDeletion(),
+            BOOLEAN,
+            unrestricted()));
 
     conf.setTimeseriesDeletionQueueCapacity(
-        Integer.parseInt(
-            properties.getProperty(
-                "timeseries_deletion_queue_capacity",
-                String.valueOf(conf.getTimeseriesDeletionQueueCapacity()))));
+        database(
+            properties,
+            "timeseries_deletion_queue_capacity",
+            conf.getTimeseriesDeletionQueueCapacity(),
+            INT,
+            positive()));
     conf.setTimeseriesDeletionExecutionIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "timeseries_deletion_execution_interval_ms",
-                String.valueOf(conf.getTimeseriesDeletionExecutionIntervalMs()))));
+        database(
+            properties,
+            "timeseries_deletion_execution_interval_ms",
+            conf.getTimeseriesDeletionExecutionIntervalMs(),
+            LONG,
+            unrestricted()));
     conf.setTimeseriesDeletionMaxConcurrentTasks(
-        Integer.parseInt(
-            properties.getProperty(
-                "timeseries_deletion_max_concurrent_tasks",
-                String.valueOf(conf.getTimeseriesDeletionMaxConcurrentTasks()))));
+        database(
+            properties,
+            "timeseries_deletion_max_concurrent_tasks",
+            conf.getTimeseriesDeletionMaxConcurrentTasks(),
+            INT,
+            positive()));
 
     conf.setLoadStatisticsPublisherThreadCount(
         Integer.parseInt(
@@ -860,50 +901,47 @@ public class ConfigNodeDescriptor {
 
   private void loadRegionGroupExtensionConfig(TrimProperties properties) throws IOException {
     RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
-        RegionGroupExtensionPolicy.parse(
-            properties.getProperty(
-                "schema_region_group_extension_policy",
-                conf.getSchemaRegionGroupExtensionPolicy().getPolicy()));
+        database(
+            properties,
+            "schema_region_group_extension_policy",
+            conf.getSchemaRegionGroupExtensionPolicy(),
+            enumType(RegionGroupExtensionPolicy.class),
+            unrestricted());
     int defaultSchemaRegionGroupNumPerDatabase =
-        Integer.parseInt(
-            properties.getProperty(
-                "default_schema_region_group_num_per_database",
-                String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase())));
+        database(
+            properties,
+            "default_schema_region_group_num_per_database",
+            conf.getDefaultSchemaRegionGroupNumPerDatabase(),
+            INT,
+            positive());
     int schemaRegionPerDataNode =
-        parseIntegerCompatibleValue(
-            properties, "schema_region_per_data_node", conf.getSchemaRegionPerDataNode());
+        database(
+            properties,
+            "schema_region_per_data_node",
+            conf.getSchemaRegionPerDataNode(),
+            DECIMAL_INT,
+            positive());
     RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-        RegionGroupExtensionPolicy.parse(
-            properties.getProperty(
-                "data_region_group_extension_policy",
-                conf.getDataRegionGroupExtensionPolicy().getPolicy()));
+        database(
+            properties,
+            "data_region_group_extension_policy",
+            conf.getDataRegionGroupExtensionPolicy(),
+            enumType(RegionGroupExtensionPolicy.class),
+            unrestricted());
     int defaultDataRegionGroupNumPerDatabase =
-        Integer.parseInt(
-            properties.getProperty(
-                "default_data_region_group_num_per_database",
-                String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase())));
+        database(
+            properties,
+            "default_data_region_group_num_per_database",
+            conf.getDefaultDataRegionGroupNumPerDatabase(),
+            INT,
+            positive());
     int dataRegionPerDataNode =
-        parseIntegerCompatibleValue(
-            properties, "data_region_per_data_node", conf.getDataRegionPerDataNode());
-
-    if (defaultSchemaRegionGroupNumPerDatabase <= 0) {
-      throw new IOException(
-          ConfigNodeMessages
-              .EXCEPTION_DEFAULT_SCHEMA_REGION_GROUP_NUM_PER_DATABASE_SHOULD_BE_POSITIVE_C8F77774);
-    }
-    if (schemaRegionPerDataNode <= 0) {
-      throw new IOException(
-          ConfigNodeMessages.EXCEPTION_SCHEMA_REGION_PER_DATA_NODE_SHOULD_BE_POSITIVE_CDEB9FC1);
-    }
-    if (defaultDataRegionGroupNumPerDatabase <= 0) {
-      throw new IOException(
-          ConfigNodeMessages
-              .EXCEPTION_DEFAULT_DATA_REGION_GROUP_NUM_PER_DATABASE_SHOULD_BE_POSITIVE_8E68B5A0);
-    }
-    if (dataRegionPerDataNode < 0) {
-      throw new IOException(
-          ConfigNodeMessages.EXCEPTION_DATA_REGION_PER_DATA_NODE_SHOULD_BE_NON_NEGATIVE_D2960368);
-    }
+        database(
+            properties,
+            "data_region_per_data_node",
+            conf.getDataRegionPerDataNode(),
+            DECIMAL_INT,
+            nonNegative());
 
     conf.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
     conf.setDefaultSchemaRegionGroupNumPerDatabase(defaultSchemaRegionGroupNumPerDatabase);
@@ -911,21 +949,6 @@ public class ConfigNodeDescriptor {
     conf.setDataRegionGroupExtensionPolicy(dataRegionGroupExtensionPolicy);
     conf.setDefaultDataRegionGroupNumPerDatabase(defaultDataRegionGroupNumPerDatabase);
     conf.setDataRegionPerDataNode(dataRegionPerDataNode);
-  }
-
-  private int parseIntegerCompatibleValue(
-      TrimProperties properties, String propertyName, int defaultValue) throws IOException {
-    String propertyValue = properties.getProperty(propertyName, String.valueOf(defaultValue));
-    try {
-      return new BigDecimal(propertyValue).stripTrailingZeros().intValueExact();
-    } catch (ArithmeticException | NumberFormatException e) {
-      throw new IOException(
-          String.format(
-              ConfigNodeMessages.EXCEPTION_ARG_SHOULD_BE_AN_INTEGER_BUT_WAS_ARG_56B5D91B,
-              propertyName,
-              propertyValue),
-          e);
-    }
   }
 
   private String loadReadConsistencyLevel(TrimProperties properties) throws IOException {
@@ -1010,16 +1033,19 @@ public class ConfigNodeDescriptor {
               + ".");
     }
     long timeseriesDeletionExecutionIntervalMs =
-        Long.parseLong(
-            properties.getProperty(
-                "timeseries_deletion_execution_interval_ms",
-                String.valueOf(conf.getTimeseriesDeletionExecutionIntervalMs())));
-    int timeseriesDeletionQueueCapacity =
-        Integer.parseInt(
-            properties.getProperty(
-                "timeseries_deletion_queue_capacity",
-                String.valueOf(conf.getTimeseriesDeletionQueueCapacity())));
-    conf.setTimeseriesDeletionQueueCapacity(timeseriesDeletionQueueCapacity);
+        database(
+            properties,
+            "timeseries_deletion_execution_interval_ms",
+            conf.getTimeseriesDeletionExecutionIntervalMs(),
+            LONG,
+            unrestricted());
+    conf.setTimeseriesDeletionQueueCapacity(
+        database(
+            properties,
+            "timeseries_deletion_queue_capacity",
+            conf.getTimeseriesDeletionQueueCapacity(),
+            INT,
+            positive()));
     conf.setProcedureCompletedCleanInterval(procedureCompletedCleanInterval);
     conf.setProcedureCompletedEvictTTL(procedureCompletedEvictTTL);
     conf.setTimeseriesDeletionExecutionIntervalMs(timeseriesDeletionExecutionIntervalMs);

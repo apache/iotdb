@@ -103,4 +103,65 @@ public class RegionGroupExtensionPolicyConfigTest {
       }
     }
   }
+
+  @Test
+  public void testInvalidDataRegionConfigurationFallsBackToDefaults() throws Exception {
+    ConfigNodeConfig defaults = new ConfigNodeConfig();
+    ConfigNodeConfig config =
+        createDescriptor(
+                "data_replication_factor=invalid\n"
+                    + "data_region_group_extension_policy=UNKNOWN\n"
+                    + "default_data_region_group_num_per_database=0\n"
+                    + "data_region_per_data_node=-1\n")
+            .getConf();
+
+    assertEquals(defaults.getDataReplicationFactor(), config.getDataReplicationFactor());
+    assertEquals(
+        defaults.getDataRegionGroupExtensionPolicy(), config.getDataRegionGroupExtensionPolicy());
+    assertEquals(
+        defaults.getDefaultDataRegionGroupNumPerDatabase(),
+        config.getDefaultDataRegionGroupNumPerDatabase());
+    assertEquals(defaults.getDataRegionPerDataNode(), config.getDataRegionPerDataNode());
+  }
+
+  @Test
+  public void testValidDataRegionConfigurationKeepsBoundaryAndDecimalValues() throws Exception {
+    ConfigNodeConfig zeroConfig =
+        createDescriptor(
+                "data_replication_factor=3\n"
+                    + "data_region_group_extension_policy=CUSTOM\n"
+                    + "default_data_region_group_num_per_database=1\n"
+                    + "data_region_per_data_node=0\n")
+            .getConf();
+    assertEquals(3, zeroConfig.getDataReplicationFactor());
+    assertEquals(RegionGroupExtensionPolicy.CUSTOM, zeroConfig.getDataRegionGroupExtensionPolicy());
+    assertEquals(1, zeroConfig.getDefaultDataRegionGroupNumPerDatabase());
+    assertEquals(0, zeroConfig.getDataRegionPerDataNode());
+
+    ConfigNodeConfig decimalConfig = createDescriptor("data_region_per_data_node=1.0\n").getConf();
+    assertEquals(1, decimalConfig.getDataRegionPerDataNode());
+  }
+
+  private ConfigNodeDescriptor createDescriptor(final String additionalProperties)
+      throws Exception {
+    String originalConf = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF);
+    File confDir = temporaryFolder.newFolder();
+    Files.writeString(
+        confDir.toPath().resolve(CommonConfig.SYSTEM_CONFIG_NAME),
+        "cn_seed_config_node=127.0.0.1:10710\n" + additionalProperties,
+        StandardCharsets.UTF_8);
+    System.setProperty(ConfigNodeConstant.CONFIGNODE_CONF, confDir.getAbsolutePath());
+    try {
+      Constructor<ConfigNodeDescriptor> constructor =
+          ConfigNodeDescriptor.class.getDeclaredConstructor();
+      constructor.setAccessible(true);
+      return constructor.newInstance();
+    } finally {
+      if (originalConf == null) {
+        System.clearProperty(ConfigNodeConstant.CONFIGNODE_CONF);
+      } else {
+        System.setProperty(ConfigNodeConstant.CONFIGNODE_CONF, originalConf);
+      }
+    }
+  }
 }

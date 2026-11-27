@@ -31,6 +31,15 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+
+import static org.apache.iotdb.commons.conf.ConfigValidation.DOUBLE;
+import static org.apache.iotdb.commons.conf.ConfigValidation.STRING;
+import static org.apache.iotdb.commons.conf.ConfigValidation.databaseAlias;
+import static org.apache.iotdb.commons.conf.ConfigValidation.databaseText;
+import static org.apache.iotdb.commons.conf.ConfigValidation.range;
+import static org.apache.iotdb.commons.conf.ConfigValidation.weights;
+
 public class DataNodeMemoryConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeMemoryConfig.class);
 
@@ -322,29 +331,20 @@ public class DataNodeMemoryConfig {
   private void initSchemaMemoryAllocate(
       MemoryManager schemaEngineMemoryManager, TrimProperties properties) {
     long schemaMemoryTotal = schemaEngineMemoryManager.getTotalMemorySizeInBytes();
-    int[] schemaMemoryProportion = new int[] {5, 4, 1};
     String schemaMemoryPortionInput =
-        properties.getProperty(
+        databaseAlias(
+            properties,
             "schema_memory_proportion",
-            properties.getProperty("schema_memory_allocate_proportion"));
-    if (schemaMemoryPortionInput != null) {
-      String[] proportions = schemaMemoryPortionInput.split(":");
-      int loadedProportionSum = 0;
-      for (String proportion : proportions) {
-        loadedProportionSum += Integer.parseInt(proportion.trim());
-      }
-
-      if (loadedProportionSum != 0) {
-        for (int i = 0; i < schemaMemoryProportion.length; i++) {
-          schemaMemoryProportion[i] = Integer.parseInt(proportions[i].trim());
-        }
-      }
-    }
-
-    int proportionSum = 0;
-    for (int proportion : schemaMemoryProportion) {
-      proportionSum += proportion;
-    }
+            "schema_memory_allocate_proportion",
+            "5:4:1",
+            STRING,
+            weights(3));
+    int[] schemaMemoryProportion =
+        Arrays.stream(schemaMemoryPortionInput.split(":"))
+            .map(String::trim)
+            .mapToInt(Integer::parseInt)
+            .toArray();
+    long proportionSum = Arrays.stream(schemaMemoryProportion).asLongStream().sum();
 
     schemaRegionMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
@@ -371,16 +371,26 @@ public class DataNodeMemoryConfig {
   private void initStorageEngineAllocate(
       MemoryManager storageEngineMemoryManager, TrimProperties properties) {
     final double rejectProportion =
-        Double.parseDouble(
-            properties.getProperty("reject_proportion", Double.toString(getRejectProportion())));
+        databaseText(
+            properties,
+            "reject_proportion",
+            Double.toString(getRejectProportion()),
+            DOUBLE,
+            range(0.0, true, 1.0, true));
     final double walBufferQueueProportion =
-        Double.parseDouble(
-            properties.getProperty(
-                "wal_buffer_queue_proportion", Double.toString(getWalBufferQueueProportion())));
+        databaseText(
+            properties,
+            "wal_buffer_queue_proportion",
+            Double.toString(getWalBufferQueueProportion()),
+            DOUBLE,
+            range(0.0, true, 1.0, true));
     final double devicePathCacheProportion =
-        Double.parseDouble(
-            properties.getProperty(
-                "device_path_cache_proportion", Double.toString(getDevicePathCacheProportion())));
+        databaseText(
+            properties,
+            "device_path_cache_proportion",
+            Double.toString(getDevicePathCacheProportion()),
+            DOUBLE,
+            range(0.0, true, 1.0, true));
 
     if (rejectProportion + walBufferQueueProportion + devicePathCacheProportion >= 1) {
       LOGGER.warn(
@@ -393,10 +403,12 @@ public class DataNodeMemoryConfig {
     }
 
     setBufferedArraysMemoryProportion(
-        Double.parseDouble(
-            properties.getProperty(
-                "buffered_arrays_memory_proportion",
-                Double.toString(getBufferedArraysMemoryProportion()))));
+        databaseText(
+            properties,
+            "buffered_arrays_memory_proportion",
+            Double.toString(getBufferedArraysMemoryProportion()),
+            DOUBLE,
+            range(0.0, true, 1.0, true)));
 
     long storageMemoryTotal = storageEngineMemoryManager.getTotalMemorySizeInBytes();
     int[] storageProportions =
