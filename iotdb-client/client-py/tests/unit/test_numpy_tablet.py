@@ -62,6 +62,96 @@ def test_numpy_tablet_serialization():
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
 
 
+def test_numpy_tablet_preserves_blob_bytes():
+    blobs = [b"A\x00\x00", b"\x00\x00", b"", b"A\x00B", b"A"]
+    timestamps = list(range(len(blobs)))
+    types = [TSDataType.BLOB]
+    tablet = NumpyTablet(
+        "root.sg.d", ["s"], types, [np.array(blobs, dtype=object)], np.array(timestamps)
+    )
+    expected = Tablet("root.sg.d", ["s"], types, [[b] for b in blobs], timestamps)
+    assert tablet.get_binary_values() == expected.get_binary_values()
+
+
+def test_numpy_tablet_fixed_width_blob_padding():
+    column = np.array([b"A", b"XYZ"], dtype="S4")
+    types = [TSDataType.BLOB]
+    tablet = NumpyTablet("root.sg.d", ["s"], types, [column], np.array([1, 2]))
+    expected = Tablet("root.sg.d", ["s"], types, [[b"A"], [b"XYZ"]], [1, 2])
+    assert tablet.get_binary_values() == expected.get_binary_values()
+
+
+def test_numpy_tablet_blob_dtype_zero_initialization():
+    column = np.zeros(2, dtype=TSDataType.BLOB.np_dtype())
+    tablet = NumpyTablet(
+        "root.sg.d", ["s"], [TSDataType.BLOB], [column], np.array([1, 2])
+    )
+    assert tablet.get_binary_values() == bytes(8)
+
+
+def test_numpy_tablet_single_field_blob_records():
+    records = np.array(
+        [(1, b"ab"), (2, b"cd")], dtype=[("id", "i4"), ("payload", "S4")]
+    )
+    column = records[["payload"]]
+    types = [TSDataType.BLOB]
+    tablet = NumpyTablet("root.sg.d", ["s"], types, [column], np.array([1, 2]))
+    expected = Tablet("root.sg.d", ["s"], types, [[b"ab"], [b"cd"]], [1, 2])
+    assert tablet.get_binary_values() == expected.get_binary_values()
+
+
+@pytest.mark.parametrize("cast_with_helper", [False, True])
+@pytest.mark.parametrize(
+    "column, expected",
+    [
+        (np.array([0.1], dtype=np.float32), b"0.1"),
+        (
+            np.array(["2024-01-01"], dtype="datetime64[ns]"),
+            b"2024-01-01T00:00:00.000000000",
+        ),
+    ],
+)
+def test_numpy_tablet_blob_native_dtype_conversion(column, expected, cast_with_helper):
+    types = [TSDataType.BLOB]
+    if cast_with_helper:
+        column = column.astype(TSDataType.BLOB.np_dtype())
+    tablet = NumpyTablet("root.sg.d", ["s"], types, [column], np.array([1]))
+    assert tablet.get_binary_values() == len(expected).to_bytes(4, "big") + expected
+
+
+@pytest.mark.parametrize("buffer_type", [bytearray, memoryview])
+def test_numpy_tablet_blob_buffers(buffer_type):
+    blobs = [b"A", b"\xff\x00", b""]
+    column = np.empty(len(blobs), dtype=object)
+    for i, blob in enumerate(blobs):
+        column[i] = buffer_type(blob)
+    timestamps = list(range(len(blobs)))
+    types = [TSDataType.BLOB]
+    tablet = NumpyTablet("root.sg.d", ["s"], types, [column], np.array(timestamps))
+    expected = Tablet("root.sg.d", ["s"], types, [[b] for b in blobs], timestamps)
+    assert tablet.get_binary_values() == expected.get_binary_values()
+
+
+def test_numpy_tablet_blob_rejects_nested_sequence():
+    column = np.array([b"A", [65]], dtype=object)
+    with pytest.raises(ValueError):
+        NumpyTablet(
+            "root.sg.d", ["s"], [TSDataType.BLOB], [column], np.array([1, 2])
+        ).get_binary_values()
+
+
+def test_numpy_tablet_blob_scalar_conversion_with_bitmap():
+    column = np.array([None, 123], dtype=object)
+    nulls = BitMap(2)
+    nulls.mark(0)
+    tablet = NumpyTablet(
+        "root.sg.d", ["s"], [TSDataType.BLOB], [column], np.array([1, 2]), [nulls]
+    )
+    assert tablet.get_binary_values() == bytes.fromhex(
+        "00000004 4e6f6e65 00000003 313233 01 01"
+    )
+
+
 def test_numpy_tablet_with_none_serialization():
 
     measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
