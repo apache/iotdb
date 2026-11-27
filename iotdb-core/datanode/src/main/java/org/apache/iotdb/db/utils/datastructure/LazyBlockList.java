@@ -210,10 +210,14 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
    */
   private Object[] ensureCapacity(int minLength) {
     if (blocks == null) {
-      blocks = new Object[initialCapacity > 0 ? initialCapacity : Math.min(minLength, 1)];
+      // Compute the final length first and allocate once: no temporary array, no copy on the first
+      // write even when it lands far beyond the configured capacity.
+      int startCapacity = initialCapacity > 0 ? initialCapacity : 1;
+      blocks = new Object[grownTo(startCapacity, minLength)];
+      return blocks;
     }
     if (blocks.length < minLength) {
-      blocks = Arrays.copyOf(blocks, grownTo(blocks.length, minLength));
+      blocks = Arrays.copyOf(blocks, grownCapacity(blocks.length, minLength));
     }
     return blocks;
   }
