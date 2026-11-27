@@ -19,15 +19,22 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.async;
 
+import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
+import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeRealtimePriorityBlockingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -42,6 +49,16 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.SocketException;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.awaitility.Awaitility.await;
 
 public class IoTDBDataRegionAsyncSinkTest {
 
@@ -49,6 +66,154 @@ public class IoTDBDataRegionAsyncSinkTest {
 
     private UnbatchedIoTDBDataRegionAsyncSink() {
       isTabletBatchModeEnabled = false;
+    }
+  }
+
+  @Test
+  public void testUnsupportedTsFileReleasesStartupReservation() throws Exception {
+    final AtomicInteger counter = new AtomicInteger(0);
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    queue.setOfferTsFileCounter(counter);
+    queue.enableTsFileStartupReservation();
+
+    final TsFileInsertionEvent event = Mockito.mock(TsFileInsertionEvent.class);
+    Assert.assertTrue(queue.offer(event));
+    Assert.assertSame(event, queue.directPoll());
+    Assert.assertEquals(1, counter.get());
+
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    sink.setTransferTsFileCounter(counter);
+    sink.setTransferTsFileStartupReservationQueue(queue);
+    final PipeTransferBatchReqBuilder tabletBatchBuilder =
+        Mockito.mock(PipeTransferBatchReqBuilder.class);
+    Mockito.when(tabletBatchBuilder.isEmpty()).thenReturn(true);
+    final Field tabletBatchBuilderField =
+        IoTDBDataRegionAsyncSink.class.getDeclaredField("tabletBatchBuilder");
+    tabletBatchBuilderField.setAccessible(true);
+    tabletBatchBuilderField.set(sink, tabletBatchBuilder);
+    sink.transfer(event);
+
+    Assert.assertEquals(0, counter.get());
+  }
+
+  @Test
+  public void testTsFileStartupWakesBackpressuredQueueBeforeTransferCompletes() throws Exception {
+    assertTsFileStartupWakesBackpressuredQueue(false, false);
+  }
+
+  @Test
+  public void testRejectedTsFileStartupWakesBackpressuredQueue() throws Exception {
+    assertTsFileStartupWakesBackpressuredQueue(true, false);
+  }
+
+  @Test
+  public void testPreReservedTsFileStartupDoesNotIncrementCounterAgain() throws Exception {
+    assertTsFileStartupWakesBackpressuredQueue(false, true);
+  }
+
+  private void assertTsFileStartupWakesBackpressuredQueue(
+      final boolean rejectStartup, final boolean startupCountReserved) throws Exception {
+    final long previousBlockingTimeMs =
+        PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+    final int initialCounter =
+        PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize() - 1;
+    final AtomicInteger counter =
+        new AtomicInteger(initialCounter + (startupCountReserved ? 1 : 0));
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    sink.setTransferTsFileCounter(counter);
+    // Also cover the default realtime-first queue with compaction disabled.
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    queue.setOfferTsFileCounter(counter);
+    final Event event = Mockito.mock(PipeTsFileInsertionEvent.class);
+    Assert.assertTrue(queue.offer(event));
+
+    final CountDownLatch startupEntered = new CountDownLatch(1);
+    final CountDownLatch allowStartup = new CountDownLatch(1);
+    final ExecutorService startupExecutor =
+        rejectStartup ? Mockito.mock(ExecutorService.class) : Executors.newSingleThreadExecutor();
+    final ExecutorService submittingExecutor = Executors.newSingleThreadExecutor();
+    final IoTDBDataNodeAsyncClientManager clientManager =
+        Mockito.mock(IoTDBDataNodeAsyncClientManager.class);
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    final PipeTransferTsFileHandler handler = Mockito.mock(PipeTransferTsFileHandler.class);
+    Mockito.when(clientManager.getExecutor()).thenReturn(startupExecutor);
+    if (rejectStartup) {
+      Mockito.doAnswer(
+              invocation -> {
+                startupEntered.countDown();
+                Assert.assertTrue(allowStartup.await(5, TimeUnit.SECONDS));
+                throw new RejectedExecutionException("startup rejected");
+              })
+          .when(startupExecutor)
+          .execute(Mockito.any(Runnable.class));
+    } else {
+      Mockito.when(clientManager.borrowClient())
+          .thenAnswer(
+              invocation -> {
+                startupEntered.countDown();
+                Assert.assertTrue(allowStartup.await(5, TimeUnit.SECONDS));
+                return client;
+              });
+    }
+    final Field clientManagerField =
+        IoTDBDataRegionAsyncSink.class.getDeclaredField("transferTsFileClientManager");
+    clientManagerField.setAccessible(true);
+    clientManagerField.set(sink, clientManager);
+    final Method transfer =
+        startupCountReserved
+            ? IoTDBDataRegionAsyncSink.class.getDeclaredMethod(
+                "transfer", PipeTransferTsFileHandler.class, boolean.class)
+            : IoTDBDataRegionAsyncSink.class.getDeclaredMethod(
+                "transfer", PipeTransferTsFileHandler.class);
+    transfer.setAccessible(true);
+    final FutureTask<Event> poll = new FutureTask<>(queue::waitedPoll);
+    final Thread pollingThread = new Thread(poll);
+    try {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(10_000);
+      final Future<?> submission =
+          submittingExecutor.submit(
+              () -> {
+                if (startupCountReserved) {
+                  transfer.invoke(sink, handler, true);
+                } else {
+                  transfer.invoke(sink, handler);
+                }
+                return null;
+              });
+      Assert.assertTrue(startupEntered.await(5, TimeUnit.SECONDS));
+      Assert.assertEquals(initialCounter + 1, counter.get());
+      pollingThread.start();
+      await()
+          .atMost(5, TimeUnit.SECONDS)
+          .until(() -> pollingThread.getState() == Thread.State.TIMED_WAITING);
+
+      allowStartup.countDown();
+      Assert.assertSame(event, poll.get(1, TimeUnit.SECONDS));
+      submission.get(1, TimeUnit.SECONDS);
+      Assert.assertEquals(initialCounter, counter.get());
+      if (rejectStartup) {
+        Mockito.verify(handler).onError(Mockito.any(RejectedExecutionException.class));
+      } else {
+        Mockito.verify(handler).transfer(clientManager, client);
+        // No completion callback has run: capacity tracks startup, not the file's lifecycle.
+        Mockito.verify(handler, Mockito.never()).onComplete(Mockito.any());
+      }
+    } finally {
+      allowStartup.countDown();
+      pollingThread.interrupt();
+      pollingThread.join(5_000);
+      startupExecutor.shutdownNow();
+      submittingExecutor.shutdownNow();
+      if (!rejectStartup) {
+        startupExecutor.awaitTermination(5, TimeUnit.SECONDS);
+      }
+      submittingExecutor.awaitTermination(5, TimeUnit.SECONDS);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(previousBlockingTimeMs);
     }
   }
 

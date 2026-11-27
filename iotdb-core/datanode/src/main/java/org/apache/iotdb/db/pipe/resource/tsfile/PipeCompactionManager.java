@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.stream.Collectors;
 
 public class PipeCompactionManager {
 
@@ -52,6 +53,16 @@ public class PipeCompactionManager {
       final List<TsFileResource> seqFileResources,
       final List<TsFileResource> unseqFileResources,
       final List<TsFileResource> targetFileResources) {
+    // Compaction keeps unused or empty targets in its log, but they have no file to pin.
+    final List<TsFileResource> survivingTargetFileResources =
+        targetFileResources.stream()
+            .filter(resource -> !resource.isDeleted())
+            .collect(Collectors.toList());
+    if (survivingTargetFileResources.isEmpty()) {
+      // Keep the source events so their delivery can still advance the pipe's progress.
+      return;
+    }
+
     final Set<TsFileResource> sourceFileResources = new HashSet<>(seqFileResources);
     sourceFileResources.addAll(unseqFileResources);
 
@@ -61,7 +72,7 @@ public class PipeCompactionManager {
         final PipeRealtimePriorityBlockingQueue realtimePriorityBlockingQueue =
             (PipeRealtimePriorityBlockingQueue) pendingQueue;
         realtimePriorityBlockingQueue.replace(
-            dataRegionId, sourceFileResources, targetFileResources);
+            dataRegionId, sourceFileResources, survivingTargetFileResources);
       }
     }
   }

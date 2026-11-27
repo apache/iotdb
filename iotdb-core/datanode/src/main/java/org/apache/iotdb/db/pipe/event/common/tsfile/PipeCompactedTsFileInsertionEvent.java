@@ -110,6 +110,17 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         .anyMatch(PipeTsFileInsertionEvent::isGeneratedByHistoricalExtractor);
   }
 
+  @Override
+  protected boolean isTsFileAlreadyInPipeDir() {
+    // Keep historical progress semantics while pinning the compacted storage target.
+    return false;
+  }
+
+  @Override
+  protected boolean shouldCheckModFileExistence() {
+    return true;
+  }
+
   private static boolean bindIsTimeParsed(Set<PipeTsFileInsertionEvent> originalEvents) {
     return originalEvents.stream().noneMatch(EnrichedEvent::shouldParseTime);
   }
