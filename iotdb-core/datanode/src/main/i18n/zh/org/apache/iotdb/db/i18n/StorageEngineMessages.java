@@ -60,6 +60,9 @@ public final class StorageEngineMessages {
     public static final String IS_NOT_SUPPORTED =
       " 不受支持";
 
+  public static final String
+      EXCEPTION_QUERY_FALLBACK_POINT_COUNT_MISMATCH_FOR_DEVICE_ARG_MEASUREMENT_ARG_EXPECTED_ARG_POINTS_BUT_RECOVERED_ARG_POINTS_0BEC4004 =
+          "设备 %s 的测量值 %s 查询回退点数不匹配：预期 %d 个点，但恢复了 %d 个点。";
   public static final String EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3 =
       "加载 TsFile 时迭代 tablet 失败。";
   public static final String EXCEPTION_USAGE_WALPRINTTOOL_FILE_11D2FB79 = "用法：WALPrintTool <file>";
@@ -653,8 +656,6 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_CREATE_TSFILE_DIR_AFTER_RETRIES = "重试后仍无法创建 TsFile 目录";
   public static final String FAILED_TO_CREATE_DIR_AFTER_RETRIES = "重试后仍无法创建目录";
   public static final String TSFILE_NAME_FORMAT_INCORRECT = "TsFile 文件名格式不正确: ";
-  public static final String WRONG_TIME_INDEX_TYPE_LOG = "错误的 timeIndex 类型 {}";
-  public static final String WRONG_TIME_INDEX_TYPE = "错误的 timeIndex 类型 ";
   public static final String ERROR_RECORD_FILE_TIME_INDEX_CACHE = "记录 FileTimeIndexCache 时遇到错误: {}";
   public static final String ERROR_RECORD_FILE_TIME_INDEX_CACHE_NO_DETAIL = "记录 FileTimeIndexCache 时遇到错误";
   public static final String ERROR_COMPACT_FILE_TIME_INDEX_CACHE = "压缩 FileTimeIndexCache 时遇到错误: {}";

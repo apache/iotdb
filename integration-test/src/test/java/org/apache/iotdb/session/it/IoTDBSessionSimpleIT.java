@@ -29,7 +29,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -813,22 +812,24 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({ClusterIT.class})
-  public void deleteNonExistTimeSeriesTest() {
+  public void deleteNonExistTimeSeriesTest() throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertRecord(
           "root.sg1.d1", 0, Arrays.asList("t1", "t2", "t3"), Arrays.asList("123", "333", "444"));
-      try {
-        session.deleteTimeseries(
-            Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
-      } catch (BatchExecutionException e) {
-        assertTrue(e.getMessage().contains("Path [root.sg1.d1.t6] does not exist;"));
-      }
+      // A mixed request succeeds when at least one timeseries matches.
+      session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
+      TestUtils.waitForTimeSeriesDeletion(
+          EnvFactory.getEnv(), "DELETE TIMESERIES root.sg1.d1.t6, root.sg1.d1.t2, root.sg1.d1.t3");
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
       assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
       assertFalse(session.checkTimeseriesExists("root.sg1.d1.t3"));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+
+      StatementExecutionException exception =
+          assertThrows(
+              StatementExecutionException.class, () -> session.deleteTimeseries("root.sg1.d1.t6"));
+      assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), exception.getStatusCode());
+      assertTrue(exception.getMessage().contains("root.sg1.d1.t6"));
+      assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     }
   }
 

@@ -88,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.MaterializedResultExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementHelper;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
@@ -253,6 +254,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 import static org.apache.iotdb.db.utils.QueryDataSetUtils.convertTsBlockByFetchSize;
 import static org.apache.iotdb.rpc.RpcUtils.TIME_PRECISION;
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_WAS_KILLED;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
@@ -274,6 +276,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
   private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
+  private static final String ENABLE_RESULT_CHUNKING_KEY = "enable_result_chunking";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -303,24 +306,146 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @FunctionalInterface
   public interface SelectResult {
 
-    boolean apply(TSExecuteStatementResp resp, IQueryExecution queryExecution, int fetchSize)
+    boolean apply(
+        TSExecuteStatementResp resp,
+        IQueryExecution queryExecution,
+        int fetchSize,
+        int maxPayloadSize)
         throws IoTDBException, IOException;
   }
 
   private static final SelectResult SELECT_RESULT =
-      (resp, queryExecution, fetchSize) -> {
-        Pair<List<ByteBuffer>, Boolean> pair =
-            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
-        resp.setQueryResult(pair.left);
-        return pair.right;
-      };
+      (resp, queryExecution, fetchSize, maxPayloadSize) ->
+          fillQueryResult(resp, fetchResultChunk(queryExecution, fetchSize, 0, maxPayloadSize));
 
   private static final SelectResult OLD_SELECT_RESULT =
-      (resp, queryExecution, fetchSize) -> {
+      (resp, queryExecution, fetchSize, maxPayloadSize) -> {
         Pair<TSQueryDataSet, Boolean> pair = convertTsBlockByFetchSize(queryExecution, fetchSize);
         resp.setQueryDataSet(pair.left);
         return pair.right;
       };
+
+  /**
+   * Fetches one response-worth of query results. Fragmentation is disabled when {@code
+   * maxPayloadSize} is not positive, i.e. the client cannot assemble fragments.
+   */
+  private static QueryDataSetUtils.ResultChunk fetchResultChunk(
+      IQueryExecution queryExecution, int fetchSize, int requestOffset, int maxPayloadSize)
+      throws IoTDBException {
+    if (maxPayloadSize > 0) {
+      return QueryDataSetUtils.convertQueryResultByFetchSize(
+          queryExecution, fetchSize, requestOffset, maxPayloadSize);
+    }
+    Pair<List<ByteBuffer>, Boolean> pair =
+        QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
+    return QueryDataSetUtils.ResultChunk.complete(pair.left, pair.right);
+  }
+
+  private static boolean fillQueryResult(
+      TSExecuteStatementResp resp, QueryDataSetUtils.ResultChunk chunk) {
+    resp.setQueryResult(chunk.getQueryResult());
+    if (chunk.hasNextOffset()) {
+      resp.setOffset(chunk.getNextOffset());
+      if (chunk.hasTotalLength()) {
+        resp.setTotalLength(chunk.getTotalLength());
+      }
+    }
+    return chunk.isFinished();
+  }
+
+  private static boolean fillQueryResult(
+      TSFetchResultsResp resp, QueryDataSetUtils.ResultChunk chunk) {
+    resp.setQueryResult(chunk.getQueryResult());
+    if (chunk.hasNextOffset()) {
+      resp.setOffset(chunk.getNextOffset());
+      if (chunk.hasTotalLength()) {
+        resp.setTotalLength(chunk.getTotalLength());
+      }
+    }
+    return chunk.isFinished();
+  }
+
+  /**
+   * The last element being a fragment means the block just starts, so it is charged by {@code
+   * totalLength}: its tails sent by the following responses are not charged again.
+   */
+  private static long chargedResultBytes(TSExecuteStatementResp resp) {
+    List<ByteBuffer> blocks = resp.getQueryResult();
+    if (blocks == null) {
+      return 0L;
+    }
+    long size = 0L;
+    for (int i = 0, last = blocks.size() - 1; i <= last; i++) {
+      if (resp.isSetOffset() && i == last) {
+        size += resp.isSetTotalLength() ? resp.getTotalLength() : 0L;
+      } else {
+        size += blocks.get(i).remaining();
+      }
+    }
+    return size;
+  }
+
+  /**
+   * Returns the maximum payload size of one response carrying query results, or 0 if the session's
+   * client cannot assemble fragmented results. The payload bound is shared with the MPP data
+   * exchange RPC response, see mpp_data_exchange_max_payload_size_in_bytes.
+   */
+  private static int getMaxResultPayloadSize(IClientSession clientSession) {
+    return clientSession.isEnableResultChunking()
+        ? config.getMppDataExchangeMaxPayloadSizeInBytes()
+        : 0;
+  }
+
+  private static boolean canFitInOneResponse(ByteBuffer cachedResult, int maxPayloadSize) {
+    return cachedResult == null
+        || maxPayloadSize <= 0
+        || cachedResult.remaining() <= maxPayloadSize;
+  }
+
+  /**
+   * Transfers an oversized materialized result in fragments; the registered execution lets {@code
+   * fetchResultsV2} continue from the pending fragment.
+   *
+   * @param maxPayloadSize the bound read once by the caller, so that the decision to fragment and
+   *     the transfer use the same hot-reloadable value
+   */
+  private TSExecuteStatementResp respondWithFragmentedResult(
+      long queryId,
+      ByteBuffer cachedResult,
+      int fetchSize,
+      long timeout,
+      int maxPayloadSize,
+      String sql,
+      IClientSession clientSession)
+      throws IoTDBException, IOException {
+    MaterializedResultExecution execution =
+        new MaterializedResultExecution(
+            COORDINATOR.createQueryId(),
+            cachedResult,
+            DatasetHeaderFactory.getLastQueryHeader(),
+            StatementType.FAST_LAST_QUERY.name(),
+            sql,
+            timeout,
+            clientSession.getUsername(),
+            clientSession.getClientAddress());
+    COORDINATOR.registerQueryExecution(queryId, execution);
+    try {
+      TSExecuteStatementResp resp =
+          createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
+      boolean finished = SELECT_RESULT.apply(resp, execution, fetchSize, maxPayloadSize);
+      // the cached result exceeds the payload bound, so the first response is always a fragment
+      checkState(
+          !finished,
+          DataNodeMiscMessages
+              .EXCEPTION_THE_FIRST_RESPONSE_OF_A_FRAGMENTED_FAST_LAST_RESULT_MUST_NOT_BE_COMPLETE_DEF121D5);
+      resp.setMoreData(true);
+      return resp;
+    } catch (Throwable t) {
+      COORDINATOR.cleanupQueryExecution(queryId);
+      throw t;
+    }
+  }
 
   public ClientRPCServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -495,10 +620,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           statementType = statementType == null ? StatementType.QUERY : statementType;
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, request.getFetchSize());
+          finished =
+              setResult.apply(
+                  resp,
+                  queryExecution,
+                  request.getFetchSize(),
+                  getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
           if (quota != null) {
-            quota.addReadResult(resp.getQueryResult());
+            quota.addReadResult(chargedResultBytes(resp));
           }
           // Should return SUCCESS_MESSAGE for insert into query
           if (queryExecution.getQueryType() == QueryType.READ_WRITE) {
@@ -586,6 +716,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Throwable t) {
     COORDINATOR.cleanupQueryExecution(queryId, req, t);
     clientSession.removeQueryId(statementId, queryId);
+  }
+
+  /** Runs a query to its end and discards its result. */
+  private static void consumeResult(IQueryExecution queryExecution) throws IoTDBException {
+    if (queryExecution == null) {
+      // only queries are registered, any other statement has already been executed
+      return;
+    }
+    while (queryExecution.hasNextResult()) {
+      if (!queryExecution.getBatchResult().isPresent()) {
+        break;
+      }
+    }
   }
 
   /** Adapter that wraps TSExecuteStatementReq to implement NativeStatementRequest. */
@@ -768,9 +911,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          finished =
+              setResult.apply(
+                  resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -864,9 +1009,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          finished =
+              setResult.apply(
+                  resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -962,9 +1109,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          finished =
+              setResult.apply(
+                  resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -1229,14 +1378,24 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
       }
 
+      ByteBuffer cachedResult = builder.isEmpty() ? null : serde.serialize(builder.build());
+      int maxPayloadSize = getMaxResultPayloadSize(clientSession);
+      if (!canFitInOneResponse(cachedResult, maxPayloadSize)) {
+        return respondWithFragmentedResult(
+            queryId,
+            cachedResult,
+            req.isSetFetchSize() ? req.getFetchSize() : -1,
+            req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
+            maxPayloadSize,
+            String.format("SELECT LAST %s.**", String.join(".", req.getPrefixes())),
+            clientSession);
+      }
+
       final TSExecuteStatementResp resp =
           createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
-      if (builder.isEmpty()) {
-        resp.setQueryResult(Collections.emptyList());
-      } else {
-        resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
-      }
+      resp.setQueryResult(
+          cachedResult == null ? Collections.emptyList() : Collections.singletonList(cachedResult));
 
       resp.setMoreData(false);
 
@@ -1406,14 +1565,25 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
         // cache hit
         if (allCached) {
+          ByteBuffer cachedResult = builder.isEmpty() ? null : serde.serialize(builder.build());
+          int maxPayloadSize = getMaxResultPayloadSize(clientSession);
+          if (!canFitInOneResponse(cachedResult, maxPayloadSize)) {
+            return respondWithFragmentedResult(
+                queryId,
+                cachedResult,
+                req.isSetFetchSize() ? req.getFetchSize() : -1,
+                req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
+                maxPayloadSize,
+                String.format("SELECT LAST %s", String.join(", ", convert(req).getPaths())),
+                clientSession);
+          }
           TSExecuteStatementResp resp =
               createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
           resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
-          if (builder.isEmpty()) {
-            resp.setQueryResult(Collections.emptyList());
-          } else {
-            resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
-          }
+          resp.setQueryResult(
+              cachedResult == null
+                  ? Collections.emptyList()
+                  : Collections.singletonList(cachedResult));
           finished = true;
           resp.setMoreData(false);
           sampleForCacheHitFastLastDataQueryForOneDevice(req);
@@ -1455,9 +1625,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   regionReplicaSets.get(regionReplicaSets.size() - 1).dataNodeLocations.get(0),
                   clientSession.isInternalRpcSession()));
           resp.setStatus(tsstatus);
-          finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
+          finished =
+              SELECT_RESULT.apply(
+                  resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -1570,14 +1742,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       statementType = queryExecution.getStatementType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
-        Pair<List<ByteBuffer>, Boolean> pair =
-            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
-        List<ByteBuffer> result = pair.left;
-        finished = pair.right;
-        boolean hasResultSet = !result.isEmpty();
-        resp.setHasResultSet(hasResultSet);
+        // decide by the session capability, so a continuation without offset fails the offset
+        // check instead of silently dropping the tail of a pending fragment
+        QueryDataSetUtils.ResultChunk chunk =
+            fetchResultChunk(
+                queryExecution,
+                req.fetchSize,
+                req.isSetOffset() ? req.getOffset() : 0,
+                getMaxResultPayloadSize(clientSession));
+        finished = fillQueryResult(resp, chunk);
+        resp.setHasResultSet(!chunk.getQueryResult().isEmpty());
         resp.setIsAlign(true);
-        resp.setQueryResult(result);
         resp.setMoreData(!finished);
         return resp;
       }
@@ -1634,6 +1809,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
       }
       clientSession.setEnableAutoCreateSchema(parseEnableAutoCreateSchema(req));
+      clientSession.setEnableResultChunking(parseEnableResultChunking(req));
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     Map<String, String> configuration = new HashMap<>();
@@ -1706,6 +1882,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return configuration == null
         || !configuration.containsKey(ENABLE_AUTO_CREATE_SCHEMA_KEY)
         || Boolean.parseBoolean(configuration.get(ENABLE_AUTO_CREATE_SCHEMA_KEY));
+  }
+
+  private boolean parseEnableResultChunking(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration != null
+        && Boolean.parseBoolean(configuration.get(ENABLE_RESULT_CHUNKING_KEY));
   }
 
   @Override
@@ -1797,7 +1979,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executePreparedStatement(TSExecutePreparedReq req) {
-    return executeStatementInternal(new TSExecutePreparedReqAdapter(req), setResultForPrepared);
+    // Use V2 format (queryResult) to match IoTDBTablePreparedStatement client
+    return executeStatementInternal(new TSExecutePreparedReqAdapter(req), SELECT_RESULT);
   }
 
   @Override
@@ -1817,15 +2000,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           TSStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
-
-  private final SelectResult setResultForPrepared =
-      (resp, queryExecution, fetchSize) -> {
-        // Use V2 format (queryResult) to match IoTDBTablePreparedStatement client
-        Pair<List<ByteBuffer>, Boolean> pair =
-            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
-        resp.setQueryResult(pair.left);
-        return pair.right;
-      };
 
   // ========================= End PreparedStatement RPC Methods =========================
 
@@ -2190,8 +2364,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long t2 = System.nanoTime();
         String type = null;
         OperationQuota quota = null;
+        Long queryId = null;
+        Throwable t = null;
         try {
-          long queryId;
           ExecutionResult result;
           if (clientSession.getSqlDialect() == SqlDialect.TREE) {
             Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
@@ -2314,9 +2489,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
               && result.status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
             isAllSuccessful = false;
+          } else if (queryId != null) {
+            // A batch returns no result set, so nobody fetches the result of a statement that is a
+            // query. Without a consumer such a statement is not run to its end, which matters for
+            // the ones that write, such as SELECT INTO.
+            consumeResult(COORDINATOR.getQueryExecution(queryId));
           }
           results.add(result.status);
         } catch (Exception e) {
+          t = e;
           LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
           TSStatus status =
               onQueryException(
@@ -2324,6 +2505,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           isAllSuccessful = false;
           results.add(status);
         } finally {
+          if (queryId != null) {
+            // Nobody can fetch or close the query of this statement once the batch has returned.
+            COORDINATOR.cleanupQueryExecution(queryId, req, t);
+          }
           CommonUtils.addStatementExecutionLatency(
               OperationType.EXECUTE_STATEMENT, type, System.nanoTime() - t2);
           if (quota != null) {
@@ -3226,6 +3411,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Statement statement, TSQueryTemplateReq req, TSQueryTemplateResp resp) {
     long startTime = System.nanoTime();
     OperationQuota quota = null;
+    Long queryId = null;
+    Throwable t = null;
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       // permission check
@@ -3245,7 +3432,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
 
-      long queryId = SESSION_MANAGER.requestQueryId();
+      queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult executionResult =
           COORDINATOR.executeForTreeModel(
@@ -3292,10 +3479,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return resp;
       }
     } catch (Exception e) {
+      t = e;
       resp.setStatus(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
       return null;
     } finally {
+      if (queryId != null) {
+        // The whole result is part of the response, so nobody can fetch or close the query later.
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
       CommonUtils.addStatementExecutionLatency(
           OperationType.EXECUTE_STATEMENT,
           statement.getType().name(),

@@ -30,7 +30,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.junit.*;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
@@ -181,7 +181,7 @@ public class IoTDBAuthIT {
         }
       }
       for (String path : timeseries) {
-        statement.execute("DELETE TIMESERIES " + path);
+        TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES " + path);
       }
 
       unsetDeviceTemplatePaths(statement, "t1");

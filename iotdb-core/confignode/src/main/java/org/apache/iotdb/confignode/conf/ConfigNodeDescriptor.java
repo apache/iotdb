@@ -418,6 +418,27 @@ public class ConfigNodeDescriptor {
                 "procedure_core_worker_thread_count",
                 String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
 
+    conf.setEnableSyncSchemaDeletion(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_sync_schema_deletion", String.valueOf(conf.isEnableSyncSchemaDeletion()))));
+
+    conf.setTimeseriesDeletionQueueCapacity(
+        Integer.parseInt(
+            properties.getProperty(
+                "timeseries_deletion_queue_capacity",
+                String.valueOf(conf.getTimeseriesDeletionQueueCapacity()))));
+    conf.setTimeseriesDeletionExecutionIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "timeseries_deletion_execution_interval_ms",
+                String.valueOf(conf.getTimeseriesDeletionExecutionIntervalMs()))));
+    conf.setTimeseriesDeletionMaxConcurrentTasks(
+        Integer.parseInt(
+            properties.getProperty(
+                "timeseries_deletion_max_concurrent_tasks",
+                String.valueOf(conf.getTimeseriesDeletionMaxConcurrentTasks()))));
+
     conf.setLoadStatisticsPublisherThreadCount(
         Integer.parseInt(
             properties.getProperty(
@@ -988,8 +1009,20 @@ public class ConfigNodeDescriptor {
               + procedureCompletedEvictTTL
               + ".");
     }
+    long timeseriesDeletionExecutionIntervalMs =
+        Long.parseLong(
+            properties.getProperty(
+                "timeseries_deletion_execution_interval_ms",
+                String.valueOf(conf.getTimeseriesDeletionExecutionIntervalMs())));
+    int timeseriesDeletionQueueCapacity =
+        Integer.parseInt(
+            properties.getProperty(
+                "timeseries_deletion_queue_capacity",
+                String.valueOf(conf.getTimeseriesDeletionQueueCapacity())));
+    conf.setTimeseriesDeletionQueueCapacity(timeseriesDeletionQueueCapacity);
     conf.setProcedureCompletedCleanInterval(procedureCompletedCleanInterval);
     conf.setProcedureCompletedEvictTTL(procedureCompletedEvictTTL);
+    conf.setTimeseriesDeletionExecutionIntervalMs(timeseriesDeletionExecutionIntervalMs);
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {

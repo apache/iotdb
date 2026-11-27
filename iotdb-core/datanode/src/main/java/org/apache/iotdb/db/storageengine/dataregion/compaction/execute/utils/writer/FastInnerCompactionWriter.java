@@ -178,8 +178,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       throws IOException, PageException {
     PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
     List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
-    ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
-    List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
 
     checkPreviousTimestamp(timePageHeader.getStartTime(), subTaskId);
     boolean isUnsealedPageOverThreshold =
@@ -192,12 +190,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     }
 
     flushAlignedPageToChunkWriter(
-        (AlignedChunkWriterImpl) chunkWriters[subTaskId],
-        compressedTimePageData,
-        timePageHeader,
-        compressedValuePageDatas,
-        valuePageHeaders,
-        subTaskId);
+        (AlignedChunkWriterImpl) chunkWriters[subTaskId], alignedPageElement, subTaskId);
 
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
 
@@ -213,9 +206,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       AbstractCompactionFlushController flushController)
       throws PageException, IOException {
     PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
-    List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
-    ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
-    List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
 
     checkPreviousTimestamp(timePageHeader.getStartTime(), subTaskId);
     if (flushController.shouldSealChunkWriter()) {
@@ -230,12 +220,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     }
 
     flushAlignedPageToChunkWriter(
-        (AlignedChunkWriterImpl) chunkWriters[subTaskId],
-        compressedTimePageData,
-        timePageHeader,
-        compressedValuePageDatas,
-        valuePageHeaders,
-        subTaskId);
+        (AlignedChunkWriterImpl) chunkWriters[subTaskId], alignedPageElement, subTaskId);
 
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
 

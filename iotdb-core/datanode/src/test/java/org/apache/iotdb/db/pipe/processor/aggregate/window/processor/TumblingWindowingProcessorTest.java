@@ -43,6 +43,37 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 public class TumblingWindowingProcessorTest {
 
   @Test
+  public void testWindowUsesHalfOpenTimeRange() throws Exception {
+    final TumblingWindowingProcessor processor = createProcessor(0, 1);
+    final long interval = TimestampPrecisionUtils.convertToCurrPrecision(1, TimeUnit.SECONDS);
+    final TimeSeriesWindow window = new TimeSeriesWindow(processor, null);
+    window.setTimestamp(0);
+
+    final Pair<WindowState, WindowOutput> beforeEnd =
+        processor.updateAndMaySetWindowState(window, interval - 1);
+    final Pair<WindowState, WindowOutput> atEnd =
+        processor.updateAndMaySetWindowState(window, interval);
+
+    Assert.assertEquals(WindowState.COMPUTE, beforeEnd.getLeft());
+    Assert.assertNull(beforeEnd.getRight());
+    Assert.assertEquals(WindowState.EMIT_AND_PURGE_WITHOUT_COMPUTE, atEnd.getLeft());
+    Assert.assertEquals(0L, atEnd.getRight().getTimestamp());
+    Assert.assertEquals(interval, atEnd.getRight().getProgressTime());
+  }
+
+  @Test
+  public void testNegativeTimestampAlignsFromNegativeBoundary() throws Exception {
+    final long interval = TimestampPrecisionUtils.convertToCurrPrecision(1, TimeUnit.SECONDS);
+    final long boundary = -(interval + interval / 2);
+    final long timestamp = -(interval * 2 / 5);
+    final TumblingWindowingProcessor processor = createProcessor(boundary, 1);
+    final List<TimeSeriesWindow> windows = new ArrayList<>();
+
+    Assert.assertEquals(1, processor.mayAddWindow(windows, timestamp).size());
+    Assert.assertEquals(boundary + interval, windows.get(0).getTimestamp());
+  }
+
+  @Test
   public void testMayAddWindowAlignsExtremeRangeWithoutOverflow() throws Exception {
     final TumblingWindowingProcessor processor = createProcessor(Long.MIN_VALUE, 1);
     final long interval = TimestampPrecisionUtils.convertToCurrPrecision(1, TimeUnit.SECONDS);

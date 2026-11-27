@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.TypeConversionSemanticCase;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,6 +42,12 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTreeModelShar
 
   private static final String DEVICE = "root.pipe_type_conversion.d";
   private static final String ALIGNED_DEVICE = "root.pipe_type_conversion.aligned_d";
+  private static final String HISTORY_DEVICE_PREFIX = "root.pipe_type_conversion.history";
+  private static final String HISTORY_ALIGNED_ALL_CONFLICT_DEVICE =
+      HISTORY_DEVICE_PREFIX + ".d_all_conflict";
+  private static final String HISTORY_ALIGNED_ONE_CONFLICT_DEVICE =
+      HISTORY_DEVICE_PREFIX + ".d_one_conflict";
+  private static final String HISTORY_NON_ALIGNED_DEVICE = HISTORY_DEVICE_PREFIX + ".na";
   private static final List<TypeConversionSemanticCase> ALIGNED_STREAM_CASES =
       getCases(
           "bool_to_int32",
@@ -53,6 +60,8 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTreeModelShar
           "int32_to_boolean",
           "int32_to_timestamp",
           "int32_to_date");
+  private static final List<TypeConversionSemanticCase> ALIGNED_HISTORY_CASES =
+      getBooleanIncompatibleCases();
 
   @Override
   protected void setupConfig() {
@@ -66,7 +75,8 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTreeModelShar
         .getConfig()
         .getCommonConfig()
         .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1);
+        .setSchemaReplicationFactor(1)
+        .setAutoCreateSchemaEnabled(false);
   }
 
   @Override
@@ -108,6 +118,81 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTreeModelShar
         createExpectedHeader(ALIGNED_DEVICE, ALIGNED_STREAM_CASES),
         new HashSet<>(createExpectedRows(ALIGNED_STREAM_CASES)),
         60);
+  }
+
+  @Test
+  public void testHistoryPipeReceiverTypeConversionForAlignedAllConflicts() {
+    createAlignedTimeseries(
+        senderEnv, HISTORY_ALIGNED_ALL_CONFLICT_DEVICE, ALIGNED_HISTORY_CASES, true);
+    createAlignedTimeseries(
+        receiverEnv, HISTORY_ALIGNED_ALL_CONFLICT_DEVICE, ALIGNED_HISTORY_CASES, false);
+    createAlignedTimeseries(
+        senderEnv, HISTORY_ALIGNED_ONE_CONFLICT_DEVICE, ALIGNED_HISTORY_CASES, true);
+    createAlignedTimeseriesWithOneConflict(receiverEnv, HISTORY_ALIGNED_ONE_CONFLICT_DEVICE);
+    createTimeseries(senderEnv, HISTORY_NON_ALIGNED_DEVICE, ALIGNED_HISTORY_CASES, true);
+    createTimeseries(receiverEnv, HISTORY_NON_ALIGNED_DEVICE, ALIGNED_HISTORY_CASES, false);
+
+    final List<String> insertStatements = new ArrayList<>();
+    insertStatements.addAll(
+        createInsertStatements(HISTORY_ALIGNED_ALL_CONFLICT_DEVICE, ALIGNED_HISTORY_CASES, true));
+    insertStatements.addAll(
+        createInsertStatements(HISTORY_ALIGNED_ONE_CONFLICT_DEVICE, ALIGNED_HISTORY_CASES, true));
+    insertStatements.addAll(
+        createInsertStatements(HISTORY_NON_ALIGNED_DEVICE, ALIGNED_HISTORY_CASES, false));
+    TestUtils.executeNonQueries(senderEnv, insertStatements, null);
+    createHistoryOnlyTsFilePipe();
+
+    final HashSet<String> expectedRows = new HashSet<>(createExpectedRows(ALIGNED_HISTORY_CASES));
+    final HashSet<String> oneConflictExpectedRows =
+        new HashSet<>(createExpectedRowsForOneConflict(ALIGNED_HISTORY_CASES));
+    for (final String device :
+        List.of(
+            HISTORY_ALIGNED_ONE_CONFLICT_DEVICE,
+            HISTORY_NON_ALIGNED_DEVICE,
+            HISTORY_ALIGNED_ALL_CONFLICT_DEVICE)) {
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          createQuerySql(device, ALIGNED_HISTORY_CASES),
+          createExpectedHeader(device, ALIGNED_HISTORY_CASES),
+          device.equals(HISTORY_ALIGNED_ONE_CONFLICT_DEVICE)
+              ? oneConflictExpectedRows
+              : expectedRows,
+          60);
+    }
+  }
+
+  private static void createAlignedTimeseriesWithOneConflict(
+      final BaseEnv env, final String device) {
+    final List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < ALIGNED_HISTORY_CASES.size(); i++) {
+      measurements.add(
+          String.format(
+              "%s %s encoding=PLAIN",
+              ALIGNED_HISTORY_CASES.get(i).measurement,
+              i == 0
+                  ? ALIGNED_HISTORY_CASES.get(i).targetType
+                  : ALIGNED_HISTORY_CASES.get(i).sourceType));
+    }
+    TestUtils.executeNonQuery(
+        env,
+        String.format("create aligned timeseries %s(%s)", device, String.join(",", measurements)),
+        null);
+  }
+
+  private void createHistoryOnlyTsFilePipe() {
+    TestUtils.executeNonQuery(
+        senderEnv,
+        String.format(
+            "create pipe aligned_history_type_conversion"
+                + " with source ('source'='iotdb-source','source.path'='%s.**',"
+                + "'source.inclusion'='data.insert','source.capture.tree'='true',"
+                + "'source.capture.table'='false','source.history.enable'='true',"
+                + "'source.realtime.enable'='false')"
+                + " with processor ('processor'='do-nothing-processor')"
+                + " with sink ('sink'='iotdb-thrift-sink','sink.node-urls'='%s')",
+            HISTORY_DEVICE_PREFIX,
+            receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()),
+        null);
   }
 
   private static void createTimeseries(
@@ -235,10 +320,41 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTreeModelShar
     return rows;
   }
 
+  private static List<String> createExpectedRowsForOneConflict(
+      final List<TypeConversionSemanticCase> conversionCases) {
+    final List<String> rows = new ArrayList<>();
+    for (int row = 0; row < TypeConversionSemanticCase.ROW_COUNT; row++) {
+      final List<String> values = new ArrayList<>();
+      values.add(Integer.toString(row + 1));
+      for (int measurementIndex = 0;
+          measurementIndex < conversionCases.size();
+          measurementIndex++) {
+        final TypeConversionSemanticCase conversionCase = conversionCases.get(measurementIndex);
+        values.add(
+            measurementIndex == 0
+                ? conversionCase.expectedValues[row]
+                : conversionCase.sourceSqlValues[row]);
+      }
+      rows.add(String.join(Character.toString(','), values) + Character.toString(','));
+    }
+    return rows;
+  }
+
   private static List<TypeConversionSemanticCase> getCases(final String... measurements) {
     final List<TypeConversionSemanticCase> cases = new ArrayList<>();
     for (final String measurement : measurements) {
       cases.add(getCase(measurement));
+    }
+    return cases;
+  }
+
+  private static List<TypeConversionSemanticCase> getBooleanIncompatibleCases() {
+    final List<TypeConversionSemanticCase> cases = new ArrayList<>();
+    for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+      if (conversionCase.sourceType == TSDataType.BOOLEAN
+          && !conversionCase.targetType.isCompatible(conversionCase.sourceType)) {
+        cases.add(conversionCase);
+      }
     }
     return cases;
   }

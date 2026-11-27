@@ -30,7 +30,7 @@ import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,6 +145,12 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         MetricLevel.IMPORTANT,
         queue,
         ConsensusPrefetchingQueue::getActiveStatus,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_ACTIVE_WRITER_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getActiveWriterCount,
         key.getTags());
     metricService.createAutoGauge(
         Metric.SUBSCRIPTION_CONSENSUS_INITIALIZED.toString(),
@@ -373,6 +379,10 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_WATERMARK.toString(), key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_ACTIVE.toString(), key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_ACTIVE_WRITER_COUNT.toString(),
+        key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_INITIALIZED.toString(), key.getTags());
     metricService.remove(

@@ -91,12 +91,12 @@ import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.rpc.RpcUtils;
 
-import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.OaIdl;
 import com.sun.jna.platform.win32.OleAuto;
 import com.sun.jna.platform.win32.Variant;
 import com.sun.jna.platform.win32.WTypes;
 import com.sun.jna.platform.win32.WinDef;
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -108,6 +108,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
@@ -3957,6 +3958,34 @@ public class TypeServices {
                   };
             };
 
+    public static final TypeService<FieldTabletValueWriter> PIPE_FIELD_TABLET_VALUE_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (field, column, index) -> ((boolean[]) column)[index] = field.getBoolV();
+              case INT32 -> (field, column, index) -> ((int[]) column)[index] = field.getIntV();
+              case INT64, TIMESTAMP ->
+                  (field, column, index) -> ((long[]) column)[index] = field.getLongV();
+              case FLOAT -> (field, column, index) -> ((float[]) column)[index] = field.getFloatV();
+              case DOUBLE ->
+                  (field, column, index) -> ((double[]) column)[index] = field.getDoubleV();
+              case DATE ->
+                  (field, column, index) -> {
+                    if (column instanceof LocalDate[] dates) {
+                      dates[index] = field.getDateV();
+                    } else {
+                      type.addValue(index, type.getValue(field), column);
+                    }
+                  };
+              case TEXT, STRING, BLOB ->
+                  (field, column, index) -> {
+                    final Binary value = field.getBinaryV();
+                    ((Binary[]) column)[index] = value == null ? Binary.EMPTY_VALUE : value;
+                  };
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  (field, column, index) -> type.addValue(index, type.getValue(field), column);
+            };
+
     public static final TypeService<TsPrimitiveTabletValueWriter>
         PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE =
             type ->
@@ -4141,6 +4170,7 @@ public class TypeServices {
       // internal TsFile types, so the generic service check cannot be applied to it.
       PIPE_ROW_OBJECT_GETTER_SERVICE.check();
       AGGREGATE_ROW_VALUE_UPDATER_SERVICE.check();
+      PIPE_FIELD_TABLET_VALUE_WRITER_SERVICE.check();
       PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
       PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE.check();
       PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
@@ -4289,6 +4319,11 @@ public class TypeServices {
   @FunctionalInterface
   public interface TsPrimitiveTabletValueWriter {
     void write(TsPrimitiveType value, Object column, int index);
+  }
+
+  @FunctionalInterface
+  public interface FieldTabletValueWriter {
+    void write(Field field, Object column, int index);
   }
 
   @FunctionalInterface

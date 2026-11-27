@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import com.google.common.util.concurrent.RateLimiter;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -192,16 +192,6 @@ public interface ITimeIndex {
    * @return max end time
    */
   long getMaxEndTime();
-
-  /**
-   * compare the priority of two ITimeIndex
-   *
-   * @param timeIndex another timeIndex
-   * @return value is less than 0 if the priority of this timeIndex is higher than the argument,
-   *     value is equal to 0 if the priority of this timeIndex is equal to the argument, value is
-   *     larger than 0 if the priority of this timeIndex is less than the argument
-   */
-  int compareDegradePriority(ITimeIndex timeIndex);
 
   /**
    * Whether this TsFile definitely not contains this device, if ture, it must not contain this

@@ -25,8 +25,8 @@ import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.math.BigInteger;
 
-import static com.google.common.math.LongMath.saturatedAdd;
 import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class TimePartitionUtils {
 

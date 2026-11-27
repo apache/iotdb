@@ -30,6 +30,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
+import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -41,16 +42,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class LoadTsFile extends Statement {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LoadTsFile.class);
-
-  private static final long FILE_INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(File.class);
 
   private String filePath;
 
@@ -389,14 +387,6 @@ public class LoadTsFile extends Statement {
     size += RamUsageEstimator.sizeOf(filePath);
     size += RamUsageEstimator.sizeOf(database);
     size += RamUsageEstimator.sizeOfMap(loadAttributes);
-    if (tsFiles != null) {
-      size += RamUsageEstimator.shallowSizeOf(tsFiles);
-      for (File file : tsFiles) {
-        if (file != null) {
-          size += FILE_INSTANCE_SIZE;
-        }
-      }
-    }
     if (resources != null) {
       size += RamUsageEstimator.shallowSizeOf(resources);
       for (TsFileResource resource : resources) {
@@ -405,8 +395,25 @@ public class LoadTsFile extends Statement {
         }
       }
     }
+    size += estimateUnsharedTsFilesSize();
     size += AstMemoryEstimationHelper.getEstimatedSizeOfLongList(writePointCountList);
     size += RamUsageEstimator.shallowSizeOf(isTableModel);
+    return size;
+  }
+
+  private long estimateUnsharedTsFilesSize() {
+    if (tsFiles == null) {
+      return 0;
+    }
+    long size = RamUsageEstimator.shallowSizeOf(tsFiles);
+    for (int i = 0; i < tsFiles.size(); i++) {
+      File file = tsFiles.get(i);
+      // Analysis appends one resource (possibly null) for each processed file, in order.
+      TsFileResource resource = resources != null && i < resources.size() ? resources.get(i) : null;
+      if (resource == null || resource.getTsFile() != file) {
+        size += MemUtils.getFileRamBytes(file);
+      }
+    }
     return size;
   }
 }

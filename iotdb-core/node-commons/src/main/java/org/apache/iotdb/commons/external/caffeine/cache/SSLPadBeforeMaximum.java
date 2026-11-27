@@ -17,18 +17,49 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.wal.exception;
+package org.apache.iotdb.commons.external.caffeine.cache;
 
-public class MemTablePinException extends WALException {
-  public MemTablePinException(Throwable cause) {
-    super(cause);
-  }
+/**
+ * <em>WARNING: GENERATED CODE</em>
+ *
+ * <p>Pads the maximums and weighted sizes of its subclasses from the fields of its super classes.
+ *
+ * @author ben.manes@gmail.com (Ben Manes)
+ */
+@SuppressWarnings("all")
+abstract class SSLPadBeforeMaximum<K, V> extends SSLEvictionPolicy<K, V> {
+  long p120;
 
-  public MemTablePinException(String message) {
-    super(message);
-  }
+  long p121;
 
-  public MemTablePinException(String message, Throwable cause) {
-    super(message, cause);
+  long p122;
+
+  long p123;
+
+  long p124;
+
+  long p125;
+
+  long p126;
+
+  long p127;
+
+  long p128;
+
+  long p129;
+
+  long p130;
+
+  long p131;
+
+  long p132;
+
+  long p133;
+
+  long p134;
+
+  SSLPadBeforeMaximum(
+      Caffeine<K, V> builder, CacheLoader<? super K, V> cacheLoader, boolean async) {
+    super(builder, cacheLoader, async);
   }
 }

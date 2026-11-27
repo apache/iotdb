@@ -273,12 +273,13 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
+import org.apache.iotdb.rpc.subscription.config.TopicProperty;
 
-import com.google.common.collect.ImmutableList;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.TimeDuration;
 
@@ -304,7 +305,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.Long.parseLong;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -344,6 +344,7 @@ import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseString
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
@@ -1205,9 +1206,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       List<RelationalSqlParser.TopicAttributeClauseContext> contexts) {
     final Map<String, String> tppicMap = new HashMap<>();
     for (RelationalSqlParser.TopicAttributeClauseContext context : contexts) {
-      tppicMap.put(
-          ((StringLiteral) visit(context.topicKey)).getValue(),
-          ((StringLiteral) visit(context.topicValue)).getValue());
+      final String key =
+          TopicProperty.canonicalizeKey(((StringLiteral) visit(context.topicKey)).getValue());
+      if (tppicMap.containsKey(key)) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578,
+                key));
+      }
+      tppicMap.put(key, ((StringLiteral) visit(context.topicValue)).getValue());
     }
     return tppicMap;
   }
@@ -3340,13 +3348,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       try {
-        long duration =
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false);
-        time =
-            "+".equals(ctx.getChild(i).getText())
-                ? Math.addExact(time, duration)
-                : Math.subtractExact(time, duration);
+        // apply "- duration" backwards from time, so that natural months are counted correctly
+        long offset =
+            DataNodeDateTimeUtils.convertDateExpressionOffset(
+                time, ctx.getChild(i + 1).getText(), "-".equals(ctx.getChild(i).getText()));
+        time = Math.addExact(time, offset);
       } catch (ArithmeticException e) {
         throw new SemanticException(
             String.format(
@@ -3699,6 +3705,39 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             monthDuration, nonMonthDuration, (Expression) visit(ctx.valueExpression()), origin);
     return new FunctionCall(
         getLocation(ctx), QualifiedName.of(DATE_BIN.getFunctionName()), arguments);
+  }
+
+  @Override
+  public Node visitIntegralCall(RelationalSqlParser.IntegralCallContext ctx) {
+    TimeDuration timeUnit =
+        DataNodeDateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+    if (timeUnit.monthDuration != 0 || timeUnit.nonMonthDuration <= 0) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages
+                  .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_LITERAL_OR_INTEGER_498530E4,
+              "integral"));
+    }
+
+    // normalize the bare duration to ticks of the current timestamp precision, so that the call
+    // is identical to the one produced by the string form integral(x, '1s')
+    List<Expression> arguments = new ArrayList<>();
+    arguments.add((Expression) visit(ctx.expression(0)));
+    arguments.add(
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeUnit.nonMonthDuration)));
+    if (ctx.expression().size() > 1) {
+      arguments.add((Expression) visit(ctx.expression(1)));
+    }
+    // DISTINCT and OVER are parsed by this dedicated alternative too, so they must be carried
+    // into the node exactly as visitFunctionCall does for the generic call form
+    return new FunctionCall(
+        getLocation(ctx),
+        QualifiedName.of("integral"),
+        visitIfPresent(ctx.over(), Window.class),
+        Optional.empty(),
+        isDistinct(ctx.setQuantifier()),
+        arguments);
   }
 
   private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
-import com.google.common.io.BaseEncoding;
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;

@@ -26,9 +26,9 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.utils.SetThreadName;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +42,6 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.ABORTED;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.CANCELLED;
@@ -53,6 +50,9 @@ import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanc
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.FLUSHING;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.RUNNING;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.TERMINAL_INSTANCE_STATES;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
 
 @ThreadSafe
 public class FragmentInstanceStateMachine {

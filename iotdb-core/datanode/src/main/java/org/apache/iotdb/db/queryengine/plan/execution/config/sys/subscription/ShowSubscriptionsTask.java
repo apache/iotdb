@@ -31,8 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
@@ -140,6 +140,12 @@ public class ShowSubscriptionsTask implements IConfigTask {
           20,
           progressInfo.isSetReadyOnDns()
               ? progressInfo.getReadyOnDns().toString()
+              : Collections.emptyList().toString());
+      writeText(
+          builder,
+          21,
+          progressInfo.isSetQueuesBoundOnDns()
+              ? progressInfo.getQueuesBoundOnDns().toString()
               : Collections.emptyList().toString());
       builder.declarePosition();
     }

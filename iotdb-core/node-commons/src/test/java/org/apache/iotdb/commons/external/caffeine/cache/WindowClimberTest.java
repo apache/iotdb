@@ -1,0 +1,4286 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.external.caffeine.cache;
+
+import org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.DensityClimber;
+import org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Walk;
+
+import org.junit.Test;
+
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Anchor.RETEST_SETTLE;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Anchor.VETO_RETURN_BUDGET;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Anchor.VETO_STREAK;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.AuditClock.AUDIT_WAIT_FIRST;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.AuditClock.AUDIT_WAIT_INITIAL;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.AuditClock.AUDIT_WAIT_MAX;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.DensityClimber.DENSITY_GAIN;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.DensityClimber.DENSITY_THRESHOLD;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.DensityClimber.RETREAT_COVER;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Ladder.PROBE_BACKOFF_INITIAL;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Ladder.PROBE_BACKOFF_MAX;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Ladder.PROBE_COMMITMENT_DEEP;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Ladder.PROBE_CRASH_ESCALATION;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.RESTART_THRESHOLD;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Rates.DEVIATION_SEED;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Reading.DENSITY_EPSILON;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Reading.MAX_STEP_FRACTION;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Reading.WINDOW_FLOOR_FRACTION;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Step.STEP_DECAY_RATE;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Step.STEP_PERCENT;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Walk.AUDIT_COMMITMENT;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Walk.AUDIT_CONFIRM_STREAK;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Walk.AUDIT_CRASH_PERSISTENCE;
+import static org.apache.iotdb.commons.external.caffeine.cache.WindowClimber.Walk.PROBE_WALK_BUDGET;
+import static org.apache.iotdb.commons.external.caffeine.cache.testing.TruthAssert.assertThat;
+
+/**
+ * The white-box tests for the window climber's tiers and probe machine. The cache applies the
+ * returned {@code adjustment} by transferring entries between the regions, so these drive {@link
+ * WindowClimber#determineAdjustment} directly with the caller's evolving window size; {@code
+ * BoundedLocalCacheTest}'s adapt tests cover the transfer plumbing.
+ *
+ * @author ben.manes@gmail.com (Ben Manes)
+ */
+public final class WindowClimberTest {
+  private static final long MAXIMUM = 8192;
+  private static final double STRIDE = STEP_PERCENT * MAXIMUM;
+  private static final double FLOOR = WINDOW_FLOOR_FRACTION * MAXIMUM;
+
+  /* --------------- Seeding --------------- */
+
+  @Test
+  public void resized_seedsByTier() {
+    var climber = new WindowClimber();
+    climber.resized(512);
+    assertThat(climber.tier.step.size).isEqualTo(STEP_PERCENT * 512);
+
+    climber.resized(MAXIMUM);
+    var density = (DensityClimber) climber.tier;
+    assertThat(climber.tier.step.size).isEqualTo(-STRIDE);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+    // every (re)size re-arms the cold-start calibration audit
+    assertThat(density.auditClock.waitSamples).isEqualTo(AUDIT_WAIT_FIRST);
+  }
+
+  @Test
+  public void resized_resetsProbeState() {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    injectWalk(
+                density,
+                /* isAudit= */ false,
+                /* down= */ false,
+                /* baseWindow= */ 1024,
+                /* baseHitRate= */ 0.5,
+                /* baseSmoothedRate= */ 0.5)
+            .samples =
+        5;
+    density.refractoryLeft = 5;
+    climber.carryOver(100);
+
+    climber.resized(MAXIMUM);
+    var resetDensity = (DensityClimber) climber.tier;
+    assertThat(resetDensity.walk).isNull();
+    assertThat(climber.adjustment()).isEqualTo(0);
+    assertThat(resetDensity.refractoryLeft).isEqualTo(0);
+    assertThat(resetDensity.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void resized_clearsTheSample() {
+    // a resize discards the partial sample: counts earned under the old geometry must not seed
+    // the first decision under the new one
+    var climber = makeClimber();
+    climber.recordHit(/* inWindow= */ true, /* inProbation= */ false);
+    climber.recordHit(/* inWindow= */ false, /* inProbation= */ true);
+    climber.recordMiss();
+    climber.sample.previousHitRate = 0.5;
+
+    climber.resized(MAXIMUM);
+    assertThat(climber.sample.hits).isEqualTo(0);
+    assertThat(climber.sample.misses).isEqualTo(0);
+    assertThat(climber.sample.windowHits).isEqualTo(0);
+    assertThat(climber.sample.probationHits).isEqualTo(0);
+    assertThat(climber.sample.previousHitRate).isEqualTo(0.0);
+  }
+
+  @Test
+  public void discardSample_keepsTheCrossSampleRate() {
+    // a sample gathered below half occupancy says nothing about the split, so the first decision
+    // after the gap compares against the rate from before it rather than against zero
+    var climber = makeClimber();
+    climber.sample.previousHitRate = 0.6;
+    climber.sample.hits += 8192;
+    climber.sample.misses += 8192;
+
+    climber.discardSample(MAXIMUM, /* sketchSampleSize= */ 16_384);
+    assertThat(climber.sample.hits).isEqualTo(0);
+    assertThat(climber.sample.misses).isEqualTo(0);
+    assertThat(climber.sample.previousHitRate).isEqualTo(0.6);
+  }
+
+  /* --------------- Sampling --------------- */
+
+  @Test
+  public void samplePeriod_tierBoundary_isTheDensityThreshold() {
+    // At the threshold the reactive climber runs on the sketch's period; one entry above it the
+    // density climber runs on min(4·maximum, sketch). A 16,400-request feed sits between the
+    // two periods, so it decides above the boundary and holds at it. The tier gate, exact.
+    var reactive = new WindowClimber();
+    reactive.resized(DENSITY_THRESHOLD);
+    reactive.sample.hits += 8192;
+    reactive.sample.misses += 8208;
+    reactive.determineAdjustment(
+        DENSITY_THRESHOLD,
+        /* windowMaximum= */ 41,
+        protectedMax(DENSITY_THRESHOLD, 41),
+        /* sketchSampleSize= */ 16_488);
+    assertThat(reactive.adjustment()).isEqualTo(0);
+    assertThat(reactive.sample.hits).isEqualTo(8192);
+
+    var density = new WindowClimber();
+    density.resized(DENSITY_THRESHOLD + 1);
+    density.sample.hits += 5000;
+    density.sample.misses += 5000;
+    density.determineAdjustment(
+        DENSITY_THRESHOLD + 1,
+        /* windowMaximum= */ 41,
+        protectedMax(DENSITY_THRESHOLD + 1, 41),
+        /* sketchSampleSize= */ 16_488);
+    assertThat(density.adjustment()).isEqualTo(0);
+
+    density.sample.hits += 3192;
+    density.sample.misses += 3208;
+    density.determineAdjustment(
+        DENSITY_THRESHOLD + 1,
+        /* windowMaximum= */ 41,
+        protectedMax(DENSITY_THRESHOLD + 1, 41),
+        /* sketchSampleSize= */ 16_488);
+    assertThat(density.adjustment()).isNotEqualTo(0);
+    assertThat(density.sample.hits).isEqualTo(0);
+  }
+
+  @Test
+  public void samplePeriod_largeTier_completesExactlyAtFourMaxima() {
+    // the density period is 4·maximum when the sketch's sample is larger: one request short
+    // holds the carry-over, the exact count decides
+    var climber = makeClimber();
+    climber.sample.hits += 16_384;
+    climber.sample.misses += 16_383;
+    climber.determineAdjustment(
+        MAXIMUM,
+        /* windowMaximum= */ 2000,
+        protectedMax(MAXIMUM, 2000),
+        /* sketchSampleSize= */ 100_000);
+    assertThat(climber.adjustment()).isEqualTo(0);
+    assertThat(climber.sample.hits).isEqualTo(16_384);
+
+    climber.sample.misses += 1;
+    climber.determineAdjustment(
+        MAXIMUM,
+        /* windowMaximum= */ 2000,
+        protectedMax(MAXIMUM, 2000),
+        /* sketchSampleSize= */ 100_000);
+    assertThat(climber.adjustment()).isNotEqualTo(0);
+    assertThat(climber.sample.hits).isEqualTo(0);
+  }
+
+  @Test
+  public void samplePeriod_hugeMaximum_staysQuiescent() {
+    // 4·maximum overflows near Long.MAX_VALUE; the guard saturates it rather than letting a
+    // negative period close every sample, so the sketch's sample size bounds the period and the
+    // climber idles
+    long maximum = Long.MAX_VALUE - 100;
+    var climber = new WindowClimber();
+    climber.resized(maximum);
+    climber.sample.hits += 500_000;
+    climber.sample.misses += 500_000;
+    climber.determineAdjustment(
+        maximum,
+        /* windowMaximum= */ maximum / 100,
+        /* mainProtectedMaximum= */ maximum / 2,
+        /* sketchSampleSize= */ Integer.MAX_VALUE);
+    assertThat(climber.adjustment()).isEqualTo(0);
+    assertThat(climber.sample.hits).isEqualTo(500_000);
+  }
+
+  @Test
+  public void samplePeriod_smallTier_stretchesAsTheStepDecays() {
+    // the slow-adapt tier trades cadence for information: the period grows by the step's decay
+    // from its initial magnitude, capped at the ratio limit (a zeroed step on a zero-capacity
+    // cache degenerates to ratio one rather than poisoning the arithmetic)
+    var climber = new WindowClimber();
+    climber.resized(512);
+    climber.sample.hits += 500;
+    climber.sample.misses += 500;
+    climber.determineAdjustment(
+        512, /* windowMaximum= */ 5, protectedMax(512, 5), /* sketchSampleSize= */ 1000);
+    assertThat(climber.sample.hits).isEqualTo(0);
+
+    climber.tier.step.size = 8.0;
+    climber.sample.hits += 2000;
+    climber.sample.misses += 1999;
+    climber.determineAdjustment(
+        512, /* windowMaximum= */ 5, protectedMax(512, 5), /* sketchSampleSize= */ 1000);
+    assertThat(climber.sample.hits).isEqualTo(2000);
+
+    climber.sample.misses += 1;
+    climber.determineAdjustment(
+        512, /* windowMaximum= */ 5, protectedMax(512, 5), /* sketchSampleSize= */ 1000);
+    assertThat(climber.sample.hits).isEqualTo(0);
+
+    var empty = new WindowClimber();
+    empty.resized(0);
+    empty.tier.step.size = 0.0;
+    empty.sample.misses += 1000;
+    empty.determineAdjustment(
+        0, /* windowMaximum= */ 0, /* mainProtectedMaximum= */ 0, /* sketchSampleSize= */ 1000);
+    assertThat(empty.sample.misses).isEqualTo(0);
+  }
+
+  @Test
+  public void stepDecayRate_boundary_isTheSlowAdaptThreshold() {
+    // 512 decays at the slow rate, 513 at the standard rate. The small-cache tuning's edge
+    var slow = new WindowClimber();
+    slow.resized(512);
+    double slowSeed = slow.tier.step.size;
+    reactiveSampleAt(slow, 512, /* hits= */ 500, /* misses= */ 501);
+    reactiveSampleAt(slow, 512, /* hits= */ 505, /* misses= */ 496);
+    assertThat(slow.tier.step.size).isWithin(1.0e-9).of(0.995 * slowSeed);
+
+    var stock = new WindowClimber();
+    stock.resized(513);
+    double stockSeed = stock.tier.step.size;
+    reactiveSampleAt(stock, 513, /* hits= */ 500, /* misses= */ 501);
+    reactiveSampleAt(stock, 513, /* hits= */ 505, /* misses= */ 496);
+    assertThat(stock.tier.step.size).isWithin(1.0e-9).of(STEP_DECAY_RATE * stockSeed);
+  }
+
+  @Test
+  public void reactiveStep_flatSampleKeepsDirection_exactRestartReseeds() {
+    // a hit rate change of exactly zero keeps the bold driver's direction, and a change of
+    // exactly the restart threshold re-anneals the decayed step to its full magnitude
+    var climber = new WindowClimber();
+    climber.resized(2048);
+    double seed = climber.tier.step.size;
+    reactiveSampleAt(climber, 2048, /* hits= */ 500, /* misses= */ 501);
+    reactiveSampleAt(climber, 2048, /* hits= */ 500, /* misses= */ 501);
+    assertThat(climber.adjustment()).isEqualTo((long) seed);
+    assertThat(climber.tier.step.size).isWithin(1.0e-9).of(STEP_DECAY_RATE * seed);
+
+    reactiveSampleAt(climber, 2048, /* hits= */ 560, /* misses= */ 441);
+    assertThat(climber.adjustment()).isEqualTo((long) (STEP_DECAY_RATE * seed));
+    assertThat(climber.tier.step.size).isEqualTo(seed);
+  }
+
+  /** Completes one full reactive-tier sample at the given maximum (sketch period 1001). */
+  private static void reactiveSampleAt(WindowClimber climber, long maximum, int hits, int misses) {
+    for (int i = 0; i < hits; i++) {
+      climber.recordHit(/* inWindow= */ false, /* inProbation= */ false);
+    }
+    for (int i = 0; i < misses; i++) {
+      climber.recordMiss();
+    }
+    climber.determineAdjustment(
+        maximum, /* windowMaximum= */ 20, protectedMax(maximum, 20), /* sketchSampleSize= */ 1001);
+  }
+
+  /* --------------- Arming --------------- */
+
+  @Test
+  public void armProbe_windowBlind_probesUp() {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 1024,
+            /* windowHits= */ 0,
+            /* mainHits= */ 500,
+            /* misses= */ 500);
+
+    var walk = walkOf(density);
+    assertThat(walk.down).isFalse();
+    assertThat(adjustment).isEqualTo((long) STRIDE);
+    assertThat(walk.baseWindow).isEqualTo(1024);
+    assertThat(walk.baseHitRate).isEqualTo(0.5);
+    assertThat(walk.samples).isEqualTo(1);
+  }
+
+  @Test
+  public void armProbe_mainBlind_neverProbes() {
+    // a starved main beside a large window arms nothing, since the equilibrium audit owns that
+    // terrain; the sample falls through to the steering law with main priced at its floor
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 7000,
+            /* windowHits= */ 500,
+            /* mainHits= */ 0,
+            /* misses= */ 500);
+
+    double windowDensity = 500 / 7000.0;
+    double mainFloor = (0.125 * 4) / (MAXIMUM - 7000.0);
+    assertThat(density.walk).isNull();
+    assertThat(adjustment)
+        .isEqualTo((long) (Math.log(windowDensity / mainFloor) * DENSITY_GAIN * MAXIMUM));
+  }
+
+  @Test
+  public void armProbe_deadSample_probesAwayFromNearerBound() {
+    var wide = makeClimber();
+    var wideDensity = (DensityClimber) wide.tier;
+    long down =
+        sample(
+            wide,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 0,
+            /* mainHits= */ 0,
+            /* misses= */ 1000);
+    assertThat(walkOf(wideDensity).down).isTrue();
+    assertThat(down).isEqualTo((long) -STRIDE);
+
+    var narrow = makeClimber();
+    var narrowDensity = (DensityClimber) narrow.tier;
+    long up =
+        sample(
+            narrow,
+            /* windowMax= */ 3000,
+            /* windowHits= */ 0,
+            /* mainHits= */ 0,
+            /* misses= */ 1000);
+    assertThat(walkOf(narrowDensity).down).isFalse();
+    assertThat(up).isEqualTo((long) STRIDE);
+  }
+
+  @Test
+  public void armProbe_starvedLargeRegion_doesNotProbe() {
+    // a scan-filled main earning nothing is visible to density; probing would shrink the one
+    // region that is working
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 4000,
+            /* windowHits= */ 1000,
+            /* mainHits= */ 0,
+            /* misses= */ 0);
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isGreaterThan(0);
+
+    var other = makeClimber();
+    var otherDensity = (DensityClimber) other.tier;
+    long shrink =
+        sample(
+            other,
+            /* windowMax= */ 3000,
+            /* windowHits= */ 0,
+            /* mainHits= */ 1000,
+            /* misses= */ 0);
+    assertThat(otherDensity.walk).isNull();
+    assertThat(shrink).isLessThan(0);
+  }
+
+  @Test
+  public void armProbe_refractory_ticksAndHolds() {
+    // a refractory sample was just classified as one the density signal cannot be trusted on, so
+    // the climber holds; falling through to a steering step was the dead-phase rider's delivery
+    // vehicle (a handful of window hits in a blank sample authorized the maximum step)
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.refractoryLeft = 3;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 1024,
+            /* windowHits= */ 0,
+            /* mainHits= */ 500,
+            /* misses= */ 500);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.refractoryLeft).isEqualTo(2);
+    assertThat(adjustment).isEqualTo(0);
+  }
+
+  @Test
+  public void armProbe_refractory_liftsABelowFloorWindow() {
+    // the refractory hold still honors the below-floor lift: on a workload whose every sample
+    // is blind, a bare hold wedges the initial 1% window under the signal-capable floor for
+    // the life of the run
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.refractoryLeft = 3;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 82,
+            /* windowHits= */ 0,
+            /* mainHits= */ 500,
+            /* misses= */ 500);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.refractoryLeft).isEqualTo(2);
+    assertThat(adjustment).isEqualTo((long) (FLOOR - 82));
+  }
+
+  @Test
+  public void armProbe_refractory_dueClockAuditsRatherThanHolding() {
+    // the hold commands nothing and is spent only on blind samples, so a corner that never clears
+    // serves its whole backoff standing still while the clock says the position is due to be
+    // re-tested. armProbe_refractory_ticksAndHolds and _liftsABelowFloorWindow are the not-due
+    // half, where it still holds and still lifts
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.refractoryLeft = 3;
+    density.auditClock.stillSamples = AUDIT_WAIT_FIRST;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 1024,
+            /* windowHits= */ 0,
+            /* mainHits= */ 500,
+            /* misses= */ 500);
+
+    assertThat(walkOf(density).isAudit).isTrue();
+    assertThat(density.refractoryLeft).isEqualTo(3);
+    assertThat(adjustment).isEqualTo((long) -STRIDE);
+  }
+
+  @Test
+  public void undoProbe_auditRetreat_leavesTheStarvationRefractoryAlone() {
+    // the refractory is the starvation machine's backoff, armed by its own endings; an audit that
+    // preempted a hold and crashed hands the corner back with the hold where it was, not re-armed
+    // to the whole rung, which deferred the corner's next probe for an audit that was not the
+    // probe's doing (a starvation walk's undo still arms it, as the walkStep_ tests pin)
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.refractoryLeft = 3;
+    density.auditClock.stillSamples = AUDIT_WAIT_FIRST;
+    sample(
+        climber,
+        /* windowMax= */ 1024,
+        /* windowHits= */ 0,
+        /* mainHits= */ 500,
+        /* misses= */ 500);
+    assertThat(walkOf(density).isAudit).isTrue();
+
+    long undo =
+        sample(
+            climber,
+            /* windowMax= */ 512,
+            /* windowHits= */ 0,
+            /* mainHits= */ 300,
+            /* misses= */ 700);
+    assertThat(density.walk).isNull();
+    assertThat(undo).isEqualTo(1024 - 512);
+    assertThat(density.refractoryLeft).isEqualTo(3);
+    assertThat(density.auditClock.waitSamples).isEqualTo(PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void armProbe_refractory_dueClockBelowTheFloor_stillClearsIt() {
+    // pre-empting the hold must not cost the below-floor lift the hold would have made: the
+    // window sits under the floor, so the audit is refused a downward direction and its entry
+    // stride carries it clear
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.refractoryLeft = 3;
+    density.auditClock.stillSamples = AUDIT_WAIT_FIRST;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 82,
+            /* windowHits= */ 0,
+            /* mainHits= */ 500,
+            /* misses= */ 500);
+
+    assertThat(walkOf(density).isAudit).isTrue();
+    assertThat(82 + adjustment).isAtLeast((long) FLOOR);
+  }
+
+  @Test
+  public void densityStep_starvedOpposingRegion_boundsTheStep() {
+    // a blank main is imputed a density of an eighth of the starvation bar spread over its
+    // capacity (the strongest claim the sample can honestly make) rather than the epsilon's
+    // ~20 nat balloon,
+    // so a handful of window hits cannot authorize the maximum step
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2049,
+            /* windowHits= */ 40,
+            /* mainHits= */ 0,
+            /* misses= */ 960);
+
+    double windowDensity = 40 / 2049.0;
+    double mainFloor = (0.125 * 4) / (MAXIMUM - 2049);
+    assertThat(density.walk).isNull();
+    assertThat(adjustment)
+        .isEqualTo((long) (Math.log(windowDensity / mainFloor) * DENSITY_GAIN * MAXIMUM));
+    assertThat(adjustment).isLessThan((long) (MAX_STEP_FRACTION * MAXIMUM));
+  }
+
+  @Test
+  public void densityStep_commonModeScaling_cancels() {
+    // The steering signal's central property: a workload phase that scales both regions'
+    // earnings together (the cross-sample hit rate weather) cancels in the density ratio, so
+    // two samples with the same split quality at different traffic intensities command the
+    // same step. This is what the reactive climber's cross-sample comparison lacks.
+    var quiet = makeClimber();
+    long small =
+        sample(
+            quiet,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 100,
+            /* mainHits= */ 300,
+            /* misses= */ 600);
+
+    var loud = makeClimber();
+    long large =
+        sample(
+            loud,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 400,
+            /* mainHits= */ 1200,
+            /* misses= */ 2400);
+
+    assertThat(small)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 100, /* mainHits= */ 300));
+    assertThat(small).isNotEqualTo(0);
+    assertThat(large).isEqualTo(small);
+  }
+
+  @Test
+  public void densityStep_starvedInteriorWindow_steersInsteadOfProbing() {
+    // a starved region that is not small is not blind: the position is mid-range, the other
+    // region is measurable, and the floored steering error walks the window down without the
+    // probe machinery (probes are reserved for the corners where nobody can see)
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 3000,
+            /* windowHits= */ 0,
+            /* mainHits= */ 600,
+            /* misses= */ 400);
+
+    double windowFloor = (0.125 * 4) / 3000;
+    double mainDensity = 600 / (double) (MAXIMUM - 3000);
+    assertThat(density.walk).isNull();
+    assertThat(adjustment)
+        .isEqualTo((long) (Math.log(windowFloor / mainDensity) * DENSITY_GAIN * MAXIMUM));
+  }
+
+  @Test
+  public void densityStep_floorCrossingShrink_clampsAtTheFloor() {
+    // a sighted shrink command that would cross the floor is clamped to land exactly on it
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 200,
+            /* windowHits= */ 4,
+            /* mainHits= */ 900,
+            /* misses= */ 96);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo((long) (FLOOR - 200));
+  }
+
+  @Test
+  public void blindCorner_positionBoundaries_windowQuarterPointOnly() {
+    // a starved window is blind only while it holds at most a quarter of the cache, exact at the
+    // edge; a starved main is never blind at any window, since the equilibrium audit owns that
+    // terrain and the probe it once armed there confirmed onto positions main could not price
+    var atEdge = makeClimber();
+    var atEdgeDensity = (DensityClimber) atEdge.tier;
+    sample(
+        atEdge, /* windowMax= */ 2048, /* windowHits= */ 0, /* mainHits= */ 600, /* misses= */ 400);
+    assertThat(atEdgeDensity.walk).isNotNull();
+
+    var pastEdge = makeClimber();
+    var pastEdgeDensity = (DensityClimber) pastEdge.tier;
+    sample(
+        pastEdge,
+        /* windowMax= */ 2049,
+        /* windowHits= */ 0,
+        /* mainHits= */ 600,
+        /* misses= */ 400);
+    assertThat(pastEdgeDensity.walk).isNull();
+
+    var mainAtCorner = makeClimber();
+    var mainAtCornerDensity = (DensityClimber) mainAtCorner.tier;
+    sample(
+        mainAtCorner,
+        /* windowMax= */ 6144,
+        /* windowHits= */ 600,
+        /* mainHits= */ 0,
+        /* misses= */ 400);
+    assertThat(mainAtCornerDensity.walk).isNull();
+
+    var mainPastCorner = makeClimber();
+    var mainPastCornerDensity = (DensityClimber) mainPastCorner.tier;
+    sample(
+        mainPastCorner,
+        /* windowMax= */ 6600,
+        /* windowHits= */ 600,
+        /* mainHits= */ 0,
+        /* misses= */ 400);
+    assertThat(mainPastCornerDensity.walk).isNull();
+  }
+
+  @Test
+  public void armProbe_deadSampleDirection_splitsAtTheMidpoint() {
+    // a dead sample probes away from the nearer bound, deciding at exactly half the capacity
+    var down = makeClimber();
+    var downDensity = (DensityClimber) down.tier;
+    sample(down, /* windowMax= */ 4096, /* windowHits= */ 0, /* mainHits= */ 0, /* misses= */ 1000);
+    assertThat(walkOf(downDensity).down).isTrue();
+
+    var up = makeClimber();
+    var upDensity = (DensityClimber) up.tier;
+    sample(up, /* windowMax= */ 4095, /* windowHits= */ 0, /* mainHits= */ 0, /* misses= */ 1000);
+    assertThat(walkOf(upDensity).down).isFalse();
+  }
+
+  @Test
+  public void densityStep_balancedShares_holdsFirm() {
+    // At the proportional balance point the error is ~zero and the window rests. Flat terrain
+    // costs nothing because convergence and holding still are the same mechanism (the reactive
+    // climber's restart rule keeps it moving on the same terrain, at a measured 10.5pp cost)
+    for (long windowMax : new long[] {1000, 2000, 4000, 6000}) {
+      var climber = makeClimber();
+      var density = (DensityClimber) climber.tier;
+      long adjustment = steadySample(climber, windowMax, /* hitRate= */ 0.8);
+      assertThat(density.walk).isNull();
+      assertThat(Math.abs(adjustment)).isAtMost(2);
+    }
+  }
+
+  @Test
+  public void densityStep_extremeImbalance_saturatesAtMaximumStep() {
+    // a sighted region beside a blank one still saturates the step cap: the steering floor
+    // prices "earned nothing" low, not infinitely low, and the cap bounds the displacement
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 164,
+            /* windowHits= */ 1000,
+            /* mainHits= */ 0,
+            /* misses= */ 0);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo((long) (MAX_STEP_FRACTION * MAXIMUM));
+  }
+
+  @Test
+  public void starvationBar_knifeEdge_probesOnlyBelowTheBar() {
+    // The whisper family's exact mechanism: window earnings at the starvation bar are "sighted"
+    // (no blind corner, no probe, since the equilibrium audit owns that case), while one hit fewer
+    // is starved and arms the probe machinery. The bar's floor is 4 for these short samples.
+    var sighted = makeClimber();
+    var sightedDensity = (DensityClimber) sighted.tier;
+    long held =
+        sample(
+            sighted,
+            /* windowMax= */ 164,
+            /* windowHits= */ 4,
+            /* mainHits= */ 800,
+            /* misses= */ 196);
+    assertThat(sightedDensity.walk).isNull();
+    assertThat(held).isAtMost(0);
+
+    var starved = makeClimber();
+    var starvedDensity = (DensityClimber) starved.tier;
+    long probed =
+        sample(
+            starved,
+            /* windowMax= */ 164,
+            /* windowHits= */ 3,
+            /* mainHits= */ 800,
+            /* misses= */ 197);
+    assertThat(walkOf(starvedDensity).down).isFalse();
+    assertThat(probed).isEqualTo((long) STRIDE);
+  }
+
+  /* --------------- Guard rail and audits --------------- */
+
+  @Test
+  public void guardRail_sustainedShortfall_vetoesBackToAnchor() {
+    // the anchor forms at a steady, well-earning position; when the density arm walks away and
+    // the smoothed rate settles measurably below the anchor's claim, the veto returns there and
+    // parks. The climber refuses to remain somewhere worse than a place it has already been
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    assertThat(density.anchor.window).isEqualTo(2000);
+    assertThat(density.anchor.rate).isWithin(1.0e-6).of(0.70);
+
+    long windowMax = 4000;
+    boolean vetoed = false;
+    for (int i = 0; i < 40; i++) {
+      long adjustment = steadySample(climber, windowMax, /* hitRate= */ 0.68);
+      if (density.anchor.returning || density.anchor.held) {
+        vetoed = true;
+        assertThat(adjustment).isAtMost(0);
+        windowMax += adjustment;
+      }
+      if (density.anchor.held && !density.anchor.returning) {
+        break;
+      }
+    }
+    assertThat(vetoed).isTrue();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.isAt(windowMax, WindowClimber.Reading.stableBand(MAXIMUM))).isTrue();
+
+    long held = steadySample(climber, windowMax, /* hitRate= */ 0.68);
+    assertThat(held).isEqualTo(0);
+  }
+
+  @Test
+  public void guardRail_onAnchor_rateClaimTracksReality() {
+    // standing on the anchor re-syncs its claim to the live measurement, so a workload whose
+    // rate genuinely fell does not leave a stale claim that vetoes forever
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    for (int i = 0; i < 40; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.66);
+    }
+    assertThat(density.anchor.window).isEqualTo(2000);
+    assertThat(density.anchor.rate).isWithin(0.005).of(0.66);
+    assertThat(density.anchor.held).isFalse();
+  }
+
+  @Test
+  public void guardRail_crashScaleShift_nearAnchor_standsDown() {
+    // a crash-scale swing at the anchor's own position is a claim tested and found wrong: the
+    // guard discards it and re-learns rather than dragging the window to a stale reference
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.55);
+    assertThat(density.anchor.isPlanted()).isFalse();
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.anchor.shortfallStreak).isEqualTo(0);
+  }
+
+  @Test
+  public void guardRail_crashScaleShift_nearAnchor_reseedsTheGoalMetric() {
+    // the swing that discards a claim also invalidates the reference the claim was measured
+    // against: an EMA smoothed across the shift is mostly the regime that just ended, and the
+    // next sample re-plants the anchor from it, so the layer would carry a claim the workload
+    // can no longer produce and no walk could clear at any position
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.20);
+    assertThat(density.anchor.isPlanted()).isFalse();
+    assertThat(density.rates.smoothed).isWithin(1.0e-6).of(0.20);
+    assertThat(density.rates.deviation).isWithin(1.0e-6).of(DEVIATION_SEED);
+
+    // the re-plant on the next sample claims the new regime's rate, not a blend of both
+    steadySample(climber, /* windowMax= */ 5000, /* hitRate= */ 0.20);
+    assertThat(density.anchor.window).isEqualTo(5000);
+    assertThat(density.anchor.rate).isWithin(0.01).of(0.20);
+  }
+
+  @Test
+  public void guardRail_crashScaleShift_farFromAnchor_keepsAnchor() {
+    // a crash far from the anchor is not evidence against it. That shape is typically the
+    // controller's own retreat crossing a band edge, exactly what the veto exists to catch, so
+    // neither the claim nor the reference it was measured against is thrown away
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    steadySample(climber, /* windowMax= */ 5000, /* hitRate= */ 0.55);
+    assertThat(density.anchor.window).isEqualTo(2000);
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.anchor.shortfallStreak).isEqualTo(0);
+    assertThat(density.rates.smoothed).isWithin(1.0e-6).of(0.67);
+  }
+
+  @Test
+  public void auditClock_rateSwings_doNotResetStillness() {
+    // stillness is a property of the position, not the rate: a periodic crash-scale swing at a
+    // motionless window must not hold the audit clock below its arming wait forever
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    boolean armed = false;
+    for (int i = 0; i < (2 * AUDIT_WAIT_INITIAL); i++) {
+      double hitRate = ((i % 2) == 0) ? 0.70 : 0.60;
+      steadySample(climber, /* windowMax= */ 2000, hitRate);
+      if (density.walk != null) {
+        armed = true;
+        break;
+      }
+    }
+    assertThat(armed).isTrue();
+    assertThat(walkOf(density).isAudit).isTrue();
+  }
+
+  @Test
+  public void auditClock_firstSampleAfterAResize_isStillWhereverItRests() {
+    // nothing may move the window before the first sample closes, so that sample is a stillness
+    // observation wherever the resize left it; the unrecorded position is not a place to compare
+    // against, and comparing it makes the calibration audit's schedule depend on the geometry
+    var atSplit = makeClimber();
+    var atSplitDensity = (DensityClimber) atSplit.tier;
+    steadySample(atSplit, /* windowMax= */ 82, /* hitRate= */ 0.70);
+    assertThat(atSplitDensity.auditClock.stillSamples).isEqualTo(1);
+
+    var elsewhere = makeClimber();
+    var elsewhereDensity = (DensityClimber) elsewhere.tier;
+    steadySample(elsewhere, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    assertThat(elsewhereDensity.auditClock.stillSamples).isEqualTo(1);
+  }
+
+  @Test
+  public void auditClock_overflow_remainsDue() {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    var clock = density.auditClock;
+    long band = WindowClimber.Reading.stableBand(MAXIMUM);
+    clock.tick(/* windowMax= */ 2000, band);
+
+    // Accelerate to the boundary; stationary samples must leave the audit due without wrapping.
+    clock.stillSamples = Integer.MAX_VALUE - 1;
+    assertThat(clock.isDue()).isTrue();
+    clock.tick(/* windowMax= */ 2000, band);
+    assertThat(clock.stillSamples).isEqualTo(Integer.MAX_VALUE);
+
+    clock.tick(/* windowMax= */ 2000, band);
+    assertThat(clock.stillSamples).isEqualTo(Integer.MAX_VALUE);
+    assertThat(clock.isDue()).isTrue();
+
+    clock.tick(/* windowMax= */ 4000, band);
+    assertThat(clock.stillSamples).isEqualTo(Integer.MAX_VALUE - 1);
+    assertThat(clock.isDue()).isTrue();
+  }
+
+  @Test
+  public void guardRail_noAnchorSeedWhileProbing() {
+    // a probe's transient window paired with an EMA earned elsewhere is a phantom claim; the
+    // seed waits until the walk resolves
+    var climber = probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    density.anchor.window = -1;
+    density.rates.smoothed = 0.5;
+    // the watched region stays under the adjudication bar, so the walk continues
+    long walking =
+        sample(
+            climber,
+            /* windowMax= */ 3000,
+            /* windowHits= */ 5,
+            /* mainHits= */ 515,
+            /* misses= */ 480);
+    assertThat(walking).isNotEqualTo(0);
+    assertThat(density.walk).isNotNull();
+    assertThat(density.anchor.window).isEqualTo(-1);
+  }
+
+  @Test
+  public void audit_freshPark_shieldLastsItsWholeSchedule() {
+    // The shield's LENGTH, not merely its existence. A confirm parks for one initial audit wait,
+    // and the park must survive crash-scale weather for exactly that many samples: a shorter
+    // shield releases a validated position into the first squall, and one that never ages holds
+    // a position the workload has left. The sibling test spends the shield by hand, which pins
+    // only that it covers more than one sample.
+    var climber = armAudit(/* windowMax= */ 2000);
+    var density = (DensityClimber) climber.tier;
+    long walked = 2000 + climber.adjustment();
+    for (int i = 0; (density.walk != null) && (i < PROBE_WALK_BUDGET); i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 0.74);
+    }
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.freshLeft).isEqualTo(AUDIT_WAIT_INITIAL);
+
+    // alternating crash-scale swings would stand the anchor down on every sample but for the
+    // shield, so the release lands on the sample that spends its last count
+    int releasedAt = -1;
+    for (int i = 1; i <= (2 * AUDIT_WAIT_INITIAL); i++) {
+      steadySample(climber, walked, /* hitRate= */ ((i % 2) == 0) ? 0.80 : 0.74);
+      if (!density.anchor.held) {
+        releasedAt = i;
+        break;
+      }
+    }
+    assertThat(releasedAt).isEqualTo(AUDIT_WAIT_INITIAL);
+    assertThat(density.anchor.freshLeft).isEqualTo(0);
+  }
+
+  @Test
+  public void auditClock_restart_makesTheNextAuditWaitOutTheStillnessAgain() {
+    // Arming an audit restarts the stillness run. Asserting the wait variable does not pin that:
+    // a long-still position carries its whole run into the walk, so an audit that ends quickly
+    // would be due again immediately and the position is re-tested continuously rather than on
+    // a schedule. Driven at the standard wait, where the run is long enough for the residue to
+    // show; the cold-start wait is too short to tell the two apart.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    int armedAt = -1;
+    for (int i = 1; i <= (4 * AUDIT_WAIT_INITIAL); i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+      if (density.walk != null) {
+        armedAt = i;
+        break;
+      }
+    }
+    assertThat(armedAt).isAtLeast(AUDIT_WAIT_INITIAL);
+    // the arm restarts the run and this sample's own tick is the first of the new one
+    assertThat(density.auditClock.stillSamples).isEqualTo(1);
+
+    // a crash-scale drop ends the walk on its first sample, so almost none of the run is spent
+    steadySample(climber, /* windowMax= */ 2000 + climber.adjustment(), /* hitRate= */ 0.40);
+    assertThat(density.walk).isNull();
+
+    // the next audit waits out a fresh run rather than inheriting the one the arm consumed
+    int rearmedAt = -1;
+    for (int i = 1; i <= (4 * AUDIT_WAIT_INITIAL); i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.40);
+      if (density.walk != null) {
+        rearmedAt = i;
+        break;
+      }
+    }
+    assertThat(rearmedAt).isAtLeast(PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void audit_armsAtQuietEquilibrium_andBacksOffOnFailure() {
+    // a sighted equilibrium is re-tested by the probe machinery: the FIRST audit is the
+    // cold-start calibration probe and arms after a short stillness wait (a sighted false
+    // equilibrium otherwise pins for the full initial wait that a short trace mostly spends
+    // motionless); an unconfirmed audit then retries on the ladder's cadence and doubles its
+    // own clock so a settled workload is re-examined ever more rarely
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    int armedAt = -1;
+    for (int i = 0; i < 80; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+      if (density.walk != null) {
+        armedAt = i;
+        break;
+      }
+    }
+    assertThat(armedAt).isAtLeast(AUDIT_WAIT_FIRST - 1);
+    assertThat(armedAt).isLessThan(AUDIT_WAIT_INITIAL - 1);
+    var walk = walkOf(density);
+    assertThat(walk.isAudit).isTrue();
+    assertThat(walk.down).isTrue();
+    assertThat(climber.adjustment()).isEqualTo((long) -STRIDE);
+
+    // The audit is adjudicated by the goal metric, not density: it walks its whole budget while
+    // the smoothed rate fails to clear the anchor's margin, then undoes in full with the retry
+    // paced by the deepening ladder.
+    long walked = 2000 + climber.adjustment();
+    for (int i = 0; i < (2 * PROBE_WALK_BUDGET); i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 0.70);
+      if ((density.walk == null) && (density.undoRemaining == 0)) {
+        break;
+      }
+    }
+    assertThat(density.walk).isNull();
+    assertThat(walked).isEqualTo(2000);
+    assertThat(density.auditClock.waitSamples).isEqualTo(density.audit.rung);
+    assertThat(density.auditClock.waitSamples).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void audit_sustainedImprovement_confirmsAndParks() {
+    // an audit that finds a sustained improvement (a streak of raw samples above the frozen
+    // reference) keeps the position and parks there: density disagreed with the position by
+    // construction, so steering would walk the paid-for escape home; the audit clock owns
+    // re-exploration from the parked equilibrium
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < AUDIT_WAIT_INITIAL + 2; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+      if (density.walk != null) {
+        break;
+      }
+    }
+    assertThat(walkOf(density).isAudit).isTrue();
+    density.anchor.held = true;
+
+    long walked = 2000 + climber.adjustment();
+    for (int i = 0; i < PROBE_WALK_BUDGET; i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 0.74);
+      if (density.walk == null) {
+        break;
+      }
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(walked).isNotEqualTo(2000);
+    assertThat(density.auditClock.waitSamples).isEqualTo(AUDIT_WAIT_INITIAL);
+    assertThat(density.starvation.rung).isEqualTo(1);
+
+    // the goal-validated position is the guard rail's anchor at once and the park holds it
+    assertThat(density.anchor.window).isEqualTo(walked);
+    assertThat(density.anchor.rate).isWithin(1.0e-9).of(density.rates.smoothed);
+    long held = steadySample(climber, walked, /* hitRate= */ 0.74);
+    assertThat(held).isEqualTo(0);
+  }
+
+  @Test
+  public void audit_confirmSample_takesNoSteeringStep() {
+    // the confirm's own sample must not fall through to a density step: density disagrees with
+    // the validated position by construction, so a parting step would displace the park off the
+    // position the walk just paid for, leaving the anchor defending a claim the window does not
+    // occupy; the same walk under a skewed region split pins the confirm sample's return at zero
+    var climber = armAudit(/* windowMax= */ 2000);
+    var density = (DensityClimber) climber.tier;
+    long walked = 2000 + climber.adjustment();
+    long confirmStep = -1;
+    for (int i = 0; (density.walk != null) && (i < (2 * PROBE_WALK_BUDGET)); i++) {
+      confirmStep =
+          sample(climber, walked, /* windowHits= */ 600, /* mainHits= */ 140, /* misses= */ 260);
+      walked += confirmStep;
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(confirmStep).isEqualTo(0);
+    assertThat(density.anchor.window).isEqualTo(walked);
+  }
+
+  @Test
+  public void probeEnding_starvationConfirm_doesNotPark() {
+    // a density-agreed confirm needs no park: steering agrees with the position it validated,
+    // so the climber stays live (cheap re-probing is load-bearing on phase alternation); nor
+    // does it touch the audit clock, which is the audit layer's own state
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 5,
+            /* mainHits= */ 900,
+            /* misses= */ 95);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.anchor.freshLeft).isEqualTo(0);
+    assertThat(density.auditClock.waitSamples).isEqualTo(AUDIT_WAIT_FIRST);
+    assertThat(adjustment)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 5, /* mainHits= */ 900));
+  }
+
+  @Test
+  public void probeEnding_starvationConfirm_leavesTheAuditClock() {
+    // A starvation confirm once reset the audit clock to the standard wait, silently spending
+    // the cold-start calibration schedule before the first audit ever ran, and 32 quiet
+    // samples is a run long enough for ordinary burstiness to keep breaking, which switched
+    // the audit layer off permanently (the position jam's easy regime). The schedule survives
+    // the confirm and the calibration audit still arms early from the validated landing.
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var density = (DensityClimber) climber.tier;
+    sample(
+        climber, /* windowMax= */ 2000, /* windowHits= */ 5, /* mainHits= */ 900, /* misses= */ 95);
+    assertThat(density.walk).isNull();
+    assertThat(density.auditClock.waitSamples).isEqualTo(AUDIT_WAIT_FIRST);
+
+    int armedAt = -1;
+    for (int i = 0; i < AUDIT_WAIT_INITIAL; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+      if (density.walk != null) {
+        armedAt = i;
+        break;
+      }
+    }
+    assertThat(armedAt).isAtLeast(AUDIT_WAIT_FIRST - 1);
+    assertThat(armedAt).isLessThan(AUDIT_WAIT_INITIAL - 1);
+    assertThat(walkOf(density).isAudit).isTrue();
+
+    // a deep post-failure schedule survives the confirm unchanged as well
+    var deep = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var deepDensity = (DensityClimber) deep.tier;
+    deepDensity.auditClock.waitSamples = AUDIT_WAIT_MAX;
+    sample(deep, /* windowMax= */ 2000, /* windowHits= */ 5, /* mainHits= */ 900, /* misses= */ 95);
+    assertThat(deepDensity.walk).isNull();
+    assertThat(deepDensity.auditClock.waitSamples).isEqualTo(AUDIT_WAIT_MAX);
+  }
+
+  @Test
+  public void probeEnding_starvationConfirm_leavesTheAuditLadder() {
+    // The audit's rung and crash evidence are its own ledger: a starvation confirm resets the
+    // starvation ladder so re-probing turns cheap, but must not shallow the deep stride and
+    // commitment that a searched equilibrium's next re-test earned.
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var density = (DensityClimber) climber.tier;
+    density.audit.rung = PROBE_BACKOFF_MAX;
+    density.audit.crashStreak = 1;
+    sample(
+        climber, /* windowMax= */ 2000, /* windowHits= */ 5, /* mainHits= */ 900, /* misses= */ 95);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(density.audit.crashStreak).isEqualTo(1);
+    assertThat(density.audit.rung).isEqualTo(PROBE_BACKOFF_MAX);
+  }
+
+  @Test
+  public void audit_interruptedImprovement_failsTheWalk() {
+    // the confirm is a consecutive-sample streak on RAW rates, not a level test on the smoothed
+    // rate: a periodic dip below the reference resets it, so scattered above-reference samples
+    // whose average clears the bar cannot confirm (the smoothed form confirmed exactly this
+    // shape, which is how workload weather bought false confirms)
+    var climber = armAudit(/* windowMax= */ 2000);
+    var density = (DensityClimber) climber.tier;
+    double[] cycle = {0.74, 0.74, 0.74, 0.703};
+    long walked = 2000 + climber.adjustment();
+    for (int i = 0; (density.walk != null) && (i < (2 * PROBE_WALK_BUDGET)); i++) {
+      walked += steadySample(climber, walked, cycle[i % cycle.length]);
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.audit.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void audit_walkThatNeverBeatsItsStart_cannotConfirm() {
+    // the confirm's reference is the smoothed rate frozen at arm, and it can be colder than the
+    // walk, most sharply for the cold-start calibration audit, where the smoothing still carries
+    // the rate the cache earned while filling. A streak against that reference completes on the
+    // warm-up ramp alone, so the confirm also requires the walk to have out-earned the sample it
+    // started from at least once: here every walk sample clears the reference by a wide margin
+    // yet none beats the arming rate, and the walk fails.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < AUDIT_WAIT_INITIAL + 2; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+      if (density.walk != null) {
+        break;
+      }
+    }
+    assertThat(walkOf(density).isAudit).isTrue();
+    assertThat(rebaseReference(climber, 0.40).baseHitRate).isEqualTo(0.70);
+
+    long walked = 2000 + climber.adjustment();
+    for (int i = 0; (density.walk != null) && (i < (2 * PROBE_WALK_BUDGET)); i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 0.69);
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.audit.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void audit_walkThatMatchesASaturatedStart_stillConfirms() {
+    // the gate is inclusive and takes no margin: an arming sample that saturated makes any
+    // strictly-greater bar unsatisfiable, which would silently disable every later confirm
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < AUDIT_WAIT_INITIAL + 2; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 1.0);
+      if (density.walk != null) {
+        break;
+      }
+    }
+    assertThat(walkOf(density).isAudit).isTrue();
+    assertThat(rebaseReference(climber, 0.40).baseHitRate).isEqualTo(1.0);
+
+    long walked = 2000 + climber.adjustment();
+    for (int i = 0; (density.walk != null) && (i < PROBE_WALK_BUDGET); i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 1.0);
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+  }
+
+  @Test
+  public void audit_freshPark_ridesOutCrashWeather() {
+    // a just-confirmed park survives crash-scale rate swings for one initial audit wait: on a
+    // workload whose per-sample scatter reaches the restart threshold, the stand-down would
+    // otherwise release the validated position within a few samples and density re-balloons;
+    // after the shield lapses, the stand-down releases as before
+    var climber = armAudit(/* windowMax= */ 2000);
+    var density = (DensityClimber) climber.tier;
+    long walked = 2000 + climber.adjustment();
+    for (int i = 0; (density.walk != null) && (i < PROBE_WALK_BUDGET); i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 0.74);
+    }
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(walked);
+
+    long held = steadySample(climber, walked, /* hitRate= */ 0.80);
+    assertThat(held).isEqualTo(0);
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(walked);
+
+    density.anchor.freshLeft = 0;
+    steadySample(climber, walked, /* hitRate= */ 0.74);
+    // released: the park no longer holds (the discarded anchor re-seeds at the freed position
+    // in the same sample, so the release is observable through the hold alone), and the shield
+    // dies with it
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.anchor.freshLeft).isEqualTo(0);
+  }
+
+  @Test
+  public void guardRail_vetoPark_isNotCrashShielded() {
+    // the fresh-park shield belongs to audit confirms alone: a guard-rail veto's park earned no
+    // validation walk, so it carries no shield (a starvation confirm between audits must not
+    // leave a stale shield for the veto to inherit; the shield lives and dies with the park). A
+    // crash-scale swing on the landing sample is the return's own and waits for the retest,
+    // which then releases the park one sample later
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    for (int i = 0; i < VETO_STREAK; i++) {
+      steadySample(climber, /* windowMax= */ 1500, /* hitRate= */ 0.66);
+    }
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.freshLeft).isEqualTo(0);
+
+    steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.60);
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+
+    steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.60);
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.anchor.isPlanted()).isFalse();
+    assertThat(density.rates.isUnseeded()).isTrue();
+  }
+
+  @Test
+  public void audit_confirmUsesReferenceFrozenAtArm() {
+    // a mid-walk move of the smoothed rate, or a re-plant of the anchor, must not move the bar the
+    // audit is judged against; the reference freezes when the probe arms
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < AUDIT_WAIT_INITIAL + 2; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+      if (density.walk != null) {
+        break;
+      }
+    }
+    assertThat(walkOf(density).isAudit).isTrue();
+    density.rates.smoothed = 0.99;
+    density.anchor.rate = 0.99;
+
+    long walked = 2000 + climber.adjustment();
+    boolean confirmed = false;
+    for (int i = 0; i < PROBE_WALK_BUDGET; i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 0.74);
+      if (density.walk == null) {
+        confirmed = (density.starvation.rung == 1);
+        break;
+      }
+    }
+    assertThat(confirmed).isTrue();
+  }
+
+  @Test
+  public void audit_afterARegimeShift_confirmsAgainstTheNewRegime() {
+    // the stale-claim defect end to end: with the reference smoothed across a crash-scale shift,
+    // the re-planted claim keeps most of the old regime's rate, and since the claim only re-syncs
+    // while the window stands on it, one steering step away freezes it. Every later audit then
+    // fails at every position, escalating the ladder until the layer stops trying
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.20);
+
+    boolean armed = false;
+    for (int i = 0; i < (2 * AUDIT_WAIT_INITIAL); i++) {
+      steadySample(climber, /* windowMax= */ 5000, /* hitRate= */ 0.20);
+      if (density.walk != null) {
+        armed = true;
+        break;
+      }
+    }
+    assertThat(armed).isTrue();
+    assertThat(walkOf(density).isAudit).isTrue();
+    assertThat(walkOf(density).baseSmoothedRate).isLessThan(0.25);
+
+    // a position the new regime can actually hold clears the bar and is kept
+    long walked = 5000 + climber.adjustment();
+    for (int i = 0; i < PROBE_WALK_BUDGET; i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 0.24);
+      if (density.walk == null) {
+        break;
+      }
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(walked);
+  }
+
+  @Test
+  public void audit_afterAnAwayShift_confirmsAgainstTheNewRegime() {
+    // the stale claim's away-anchor case end to end: the window rests off the anchor when the
+    // regime shifts, so the swing does not test the claim and the guard keeps it, as it must for
+    // the terrain's own collapses at a still window that the rail then recovers from. Measured
+    // against that claim, an audit that walked to a far better position would fail at budget; the
+    // walk is measured against the rate it left instead, and confirms on the new regime
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    for (int i = 0; i < 4; i++) {
+      steadySample(climber, /* windowMax= */ 5000, /* hitRate= */ 0.70);
+    }
+    steadySample(climber, /* windowMax= */ 5000, /* hitRate= */ 0.20);
+    assertThat(density.anchor.window).isEqualTo(2000);
+    assertThat(density.anchor.rate).isWithin(0.01).of(0.70);
+
+    // the clock is not due at the shift, as on the witness, so the smoothing has re-learned the
+    // regime by the time the audit arms
+    density.auditClock.restart();
+    boolean armed = false;
+    for (int i = 0; i < (2 * AUDIT_WAIT_INITIAL); i++) {
+      steadySample(climber, /* windowMax= */ 5000, /* hitRate= */ 0.20);
+      if (density.walk != null) {
+        armed = true;
+        break;
+      }
+    }
+    assertThat(armed).isTrue();
+    assertThat(walkOf(density).isAudit).isTrue();
+    assertThat(density.anchor.rate).isWithin(0.01).of(0.70);
+    assertThat(walkOf(density).baseSmoothedRate).isLessThan(0.25);
+
+    // a position the new regime can actually hold clears the bar and is kept
+    long walked = 5000 + climber.adjustment();
+    for (int i = 0; i < PROBE_WALK_BUDGET; i++) {
+      walked += steadySample(climber, walked, /* hitRate= */ 0.24);
+      if (density.walk == null) {
+        break;
+      }
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(walked);
+  }
+
+  @Test
+  public void audit_retryAfterConfirm_flooredAtInitialBackoff() {
+    // a confirm resets the starvation ladder to 1, but the audit clock is paced by the audit
+    // layer's own rung, which never sinks below the initial refractory. A confirm-cheapened
+    // starvation ladder cannot leak a 1-2 sample retry cadence into the audit schedule
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.starvation.rung = 1;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ true,
+            /* down= */ true,
+            /* baseWindow= */ 2000,
+            /* baseHitRate= */ 0.70,
+            /* baseSmoothedRate= */ 0.99);
+    walk.samples = PROBE_WALK_BUDGET;
+    density.rates.smoothed = 0.70;
+    climber.sample.previousHitRate = 0.70;
+    steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.70);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(density.audit.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(density.auditClock.waitSamples).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void audit_directionByPosition_needsRoomToStride() {
+    // an audit explores toward the farther rail and refuses a direction with less than one
+    // stride of room: a walk sent into a nearer wall clamps on its entry stride, stands still
+    // for the rest of its budget, and the information-free expiry is priced as a failed
+    // experiment, doubling both the refractory ladder and the audit clock
+    var low = armAudit(/* windowMax= */ 300);
+    var lowDensity = (DensityClimber) low.tier;
+    assertThat(walkOf(lowDensity).down).isFalse();
+    assertThat(low.adjustment()).isEqualTo((long) STRIDE);
+
+    var atTwiceTheFloor = armAudit(/* windowMax= */ 327);
+    var atTwiceTheFloorDensity = (DensityClimber) atTwiceTheFloor.tier;
+    assertThat(walkOf(atTwiceTheFloorDensity).down).isFalse();
+
+    var interior = armAudit(/* windowMax= */ 328);
+    var interiorDensity = (DensityClimber) interior.tier;
+    assertThat(walkOf(interiorDensity).down).isFalse();
+
+    var lastWithoutRoom = armAudit(/* windowMax= */ (long) (FLOOR + STRIDE));
+    var lastWithoutRoomDensity = (DensityClimber) lastWithoutRoom.tier;
+    assertThat(walkOf(lastWithoutRoomDensity).down).isFalse();
+
+    var firstWithRoom = armAudit(/* windowMax= */ (long) (FLOOR + STRIDE) + 1);
+    var firstWithRoomDensity = (DensityClimber) firstWithRoom.tier;
+    assertThat(walkOf(firstWithRoomDensity).down).isTrue();
+
+    var high = armAudit(/* windowMax= */ 6500);
+    var highDensity = (DensityClimber) high.tier;
+    assertThat(walkOf(highDensity).down).isTrue();
+    assertThat(high.adjustment()).isEqualTo((long) -STRIDE);
+  }
+
+  @Test
+  public void audit_direction_roomIsMeasuredAgainstTheRungsOwnStride() {
+    // the refusal and the walk must price the same move: at the deepest rung a walk strides four
+    // times the flat magnitude, so a position with room for the flat stride but not the scaled one
+    // has to be refused. Admitting it clamps the entry stride at the floor, and the walk then
+    // stands still for its whole budget before an information-free expiry doubles the audit clock
+    @SuppressWarnings("Varifier")
+    long windowMax = (long) (FLOOR + (3 * STRIDE));
+
+    var deep = armAuditAtRung(windowMax, PROBE_BACKOFF_MAX);
+    var deepDensity = (DensityClimber) deep.tier;
+    assertThat(walkOf(deepDensity).down).isFalse();
+
+    var shallow = armAuditAtRung(windowMax, PROBE_BACKOFF_INITIAL);
+    var shallowDensity = (DensityClimber) shallow.tier;
+    assertThat(walkOf(shallowDensity).down).isTrue();
+    assertThat(shallow.adjustment()).isEqualTo((long) -STRIDE);
+  }
+
+  @Test
+  public void audit_direction_roomRefusalOverridesAlternation() {
+    // near a rail, alternation would point every other audit into the wall; the refusal
+    // re-flips it so each audit walks the only informative direction
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    int audits = 0;
+    for (int i = 0; (i < 300) && (audits < 2); i++) {
+      steadySample(climber, /* windowMax= */ 500, /* hitRate= */ 0.70);
+      var walk = density.walk;
+      if ((walk != null) && (walk.samples == 1)) {
+        audits++;
+        assertThat(walk.isAudit).isTrue();
+        assertThat(walk.down).isFalse();
+      }
+    }
+    assertThat(audits).isEqualTo(2);
+  }
+
+  @Test
+  public void audit_streakBoundary_confirmsAtExactlyFourConsecutive() {
+    // pins AUDIT_CONFIRM_STREAK's exact boundary: an interrupted opening resets the run, four
+    // consecutive above-reference samples then complete it, and the confirm fires on that
+    // fourth sample, not one earlier and needing no fifth
+    var climber = armAudit(/* windowMax= */ 2000);
+    var density = (DensityClimber) climber.tier;
+    double[] rates = {0.703, 0.74, 0.74, 0.74, 0.74};
+    long walked = 2000 + climber.adjustment();
+    for (int i = 0; i < rates.length; i++) {
+      walked += steadySample(climber, walked, rates[i]);
+      if (i < (rates.length - 1)) {
+        assertThat(density.walk).isNotNull();
+      }
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+  }
+
+  @Test
+  public void audit_direction_ceilingSideRoomRefusal() {
+    // the mirror of the floor-side refusal: at an interior position within one stride of the
+    // ceiling guard, alternation's up-turn is refused back downward, so every audit walks the
+    // only informative direction
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    int audits = 0;
+    for (int i = 0; (i < 300) && (audits < 2); i++) {
+      steadySample(climber, /* windowMax= */ 5800, /* hitRate= */ 0.70);
+      var walk = density.walk;
+      if ((walk != null) && (walk.samples == 1)) {
+        audits++;
+        assertThat(walk.isAudit).isTrue();
+        assertThat(walk.down).isTrue();
+      }
+    }
+    assertThat(audits).isEqualTo(2);
+  }
+
+  @Test
+  public void audit_ceilingDirection_isSticky() {
+    // a ceiling-adjacent equilibrium is forced downward on every audit. It never alternates,
+    // since the wall above it has nothing to test (the caller pins the position, a rail)
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    int audits = 0;
+    for (int i = 0; (i < 150) && (audits < 2); i++) {
+      steadySample(climber, /* windowMax= */ 6500, /* hitRate= */ 0.70);
+      var walk = density.walk;
+      if ((walk != null) && (walk.samples == 1)) {
+        audits++;
+        assertThat(walk.isAudit).isTrue();
+        assertThat(walk.down).isTrue();
+      }
+    }
+    assertThat(audits).isEqualTo(2);
+  }
+
+  @Test
+  public void auditClock_stillnessToleratesTheOrbit() {
+    // held equilibria orbit rather than rest, since the transfer geometry and per-sample noise keep
+    // the window moving a little, so stillness is a band: an orbit within it accumulates
+    // toward the audit, while a wander beyond it on every sample starves the clock
+    var orbiting = makeClimber();
+    var orbitingDensity = (DensityClimber) orbiting.tier;
+    boolean armed = false;
+    for (int i = 0; i < (2 * AUDIT_WAIT_INITIAL); i++) {
+      long windowMax = ((i % 2) == 0) ? 2000 : 2163;
+      steadySample(orbiting, windowMax, /* hitRate= */ 0.70);
+      if (orbitingDensity.walk != null) {
+        armed = true;
+        break;
+      }
+    }
+    assertThat(armed).isTrue();
+
+    var wandering = makeClimber();
+    var wanderingDensity = (DensityClimber) wandering.tier;
+    for (int i = 0; i < (2 * AUDIT_WAIT_INITIAL); i++) {
+      long windowMax = ((i % 2) == 0) ? 2000 : 2164;
+      steadySample(wandering, windowMax, /* hitRate= */ 0.70);
+    }
+    assertThat(wanderingDensity.walk).isNull();
+  }
+
+  @Test
+  public void auditClock_periodicSuperBandMotion_decaysInsteadOfResetting() {
+    // the position jam: a workload that moves the window past the band once per wait held a
+    // hard-reset clock at zero forever, so the equilibrium was never re-tested. A moving
+    // sample must decay the run instead, letting mostly-still stretches accumulate while the
+    // every-sample wander above still starves the clock
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    boolean armed = false;
+    for (int i = 0; i < (3 * AUDIT_WAIT_INITIAL); i++) {
+      long windowMax = (((i / 8) % 2) == 0) ? 2000 : 2400;
+      steadySample(climber, windowMax, /* hitRate= */ 0.70);
+      if (density.walk != null) {
+        armed = true;
+        break;
+      }
+    }
+    assertThat(armed).isTrue();
+    assertThat(walkOf(density).isAudit).isTrue();
+  }
+
+  @Test
+  public void auditClock_halfMotionAlternation_neverAccumulates() {
+    // the decay's analytic boundary: motion on half the samples is net-zero drift, so the
+    // clock must never accumulate to an arm. The periodic-motion pin above sits on the
+    // accumulating side of this line, the every-sample wander beyond it (a steeper decay
+    // would move the boundary and un-jam nothing, since partial-motion cadences are not
+    // realizable by steering; only this net-zero arithmetic keeps the two pins honest)
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    for (int i = 0; i < (8 * AUDIT_WAIT_INITIAL); i++) {
+      long windowMax = (((i / 2) % 2) == 0) ? 2000 : 2400;
+      steadySample(climber, windowMax, /* hitRate= */ 0.70);
+      assertThat(density.walk).isNull();
+    }
+  }
+
+  @Test
+  public void audit_interiorDirection_alternatesAcrossAudits() {
+    // interior equilibria are searched in both directions across successive audits, so a false
+    // equilibrium whose escape lies opposite the first walk is still found
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long windowMax = 2000;
+    boolean firstDown = false;
+    int audits = 0;
+    for (int i = 0; (i < 200) && (audits < 2); i++) {
+      var walk = density.walk;
+      if ((walk != null) && walk.isAudit && (walk.samples == 1)) {
+        audits++;
+        if (audits == 1) {
+          firstDown = walk.down;
+        } else {
+          assertThat(walk.down).isEqualTo(!firstDown);
+        }
+      }
+      long adjustment = steadySample(climber, windowMax, /* hitRate= */ 0.70);
+      windowMax = Math.max(164, windowMax + adjustment);
+      if ((density.walk == null) && (density.undoRemaining == 0) && !density.anchor.returning) {
+        windowMax = 2000;
+      }
+    }
+    assertThat(audits).isEqualTo(2);
+  }
+
+  @Test
+  public void audit_parksFirstAudit_followsTheConfirmedWalk() {
+    // A confirm ends a walk on evidence of improvement rather than its exhaustion, so the ground
+    // beyond it is the unexplored side: the park's first audit continues that direction, where the
+    // alternation would send it back through the ground the walk just covered
+    var climber =
+        confirmedAuditPark(/* windowMax= */ 5000, /* baseRate= */ 0.70, /* walkedRate= */ 0.74);
+    var density = (DensityClimber) climber.tier;
+    assertThat(density.anchor.window).isLessThan(5000L);
+    armNextAudit(climber, density.anchor.window, /* hitRate= */ 0.74);
+    assertThat(walkOf(density).down).isTrue();
+
+    // and the audit after that alternates
+    var settled =
+        confirmedAuditPark(/* windowMax= */ 5000, /* baseRate= */ 0.70, /* walkedRate= */ 0.74);
+    var settledDensity = (DensityClimber) settled.tier;
+    long parked = settledDensity.anchor.window;
+    armNextAudit(settled, parked, /* hitRate= */ 0.74);
+    for (int i = 0; (i < PROBE_WALK_BUDGET) && (settledDensity.walk != null); i++) {
+      steadySample(settled, parked, /* hitRate= */ 0.74);
+    }
+    assertThat(settledDensity.walk).isNull();
+    settledDensity.refractoryLeft = 0;
+    settledDensity.undoRemaining = 0;
+    armNextAudit(settled, parked, /* hitRate= */ 0.74);
+    assertThat(walkOf(settledDensity).down).isFalse();
+  }
+
+  @Test
+  public void audit_parksFirstAudit_alternatesWhenTheClaimMoved() {
+    // a smoothed rate that moved by a restart threshold while the window stood still says the
+    // workload moved, and the walk's direction says nothing about the terrain (the trend-misconfirm
+    // family): the alternation stands. So does a park that was stood down before its first audit
+    var trended =
+        confirmedAuditPark(/* windowMax= */ 5000, /* baseRate= */ 0.70, /* walkedRate= */ 0.74);
+    var trendedDensity = (DensityClimber) trended.tier;
+    armNextAudit(
+        trended, trendedDensity.anchor.window, /* hitRate= */ 0.74 + RESTART_THRESHOLD + 0.01);
+    assertThat(walkOf(trendedDensity).down).isFalse();
+
+    var released =
+        confirmedAuditPark(/* windowMax= */ 5000, /* baseRate= */ 0.70, /* walkedRate= */ 0.74);
+    var releasedDensity = (DensityClimber) released.tier;
+    long parked = releasedDensity.anchor.window;
+    releasedDensity.anchor.release();
+    armNextAudit(released, parked, /* hitRate= */ 0.74);
+    assertThat(walkOf(releasedDensity).down).isFalse();
+  }
+
+  @Test
+  public void audit_commitmentDepth_blocksAnImmediateConfirm() {
+    // the verdict needs samples along the walk before it says anything, so an audit may not
+    // confirm before its committed depth even when every stride clears the frozen reference
+    // from the first sample onward
+    var climber = armAudit(/* windowMax= */ 2000);
+    var density = (DensityClimber) climber.tier;
+    long walked = 2000 + climber.adjustment();
+    for (int depth = 1; depth <= AUDIT_COMMITMENT; depth++) {
+      long adjustment = steadySample(climber, walked, /* hitRate= */ 0.78);
+      walked = Math.max(164, walked + adjustment);
+      if (depth < AUDIT_COMMITMENT) {
+        assertThat(density.walk).isNotNull();
+      }
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.starvation.rung).isEqualTo(1);
+  }
+
+  @Test
+  public void audit_confirm_parksAtTheWalksBestSample() {
+    // the streak needs four samples above the reference and the walk strides on through all four,
+    // so a crest crossed on the way is behind the window by the time the verdict comes in. The
+    // confirm is for the position the walk earned most at, and the window returns there: on
+    // crestpast the calibration audit crosses the optimum on its first stride and confirms four
+    // strides past it, and the position it parks on is what it then defends and re-tests
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    injectWalk(
+        density,
+        /* isAudit= */ true,
+        /* down= */ false,
+        /* baseWindow= */ 2000,
+        /* baseHitRate= */ 0.70,
+        /* baseSmoothedRate= */ 0.40);
+    density.rates.smoothed = 0.70;
+    climber.sample.previousHitRate = 0.70;
+    climber.tier.step.size = STRIDE;
+
+    double[] rates = {0.80, 0.78, 0.77, 0.76, 0.755, 0.75};
+    long confirmStep = 0;
+    for (int i = 0; i < rates.length; i++) {
+      confirmStep = steadySample(climber, /* windowMax= */ 2200 + (200 * i), rates[i]);
+    }
+
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(2200);
+    // the confirm's own sample commands the return rather than standing where the streak ended,
+    // and a return within one step arrives on that sample
+    assertThat(confirmStep).isEqualTo(2200 - 3200);
+    assertThat(density.anchor.returning).isFalse();
+  }
+
+  @Test
+  public void audit_confirm_skipsANegativeBestSample() {
+    // a transient negative policy weight can report the window below zero, and a streak sample
+    // taken there can carry the walk's best rate. The verdict must not send the window to that
+    // position, so the audit parks where its streak completed
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < (AUDIT_WAIT_INITIAL + 2); i++) {
+      steadySample(climber, /* windowMax= */ 4096, /* hitRate= */ 0.50);
+      if (density.walk != null) {
+        break;
+      }
+    }
+    assertThat(walkOf(density).isAudit).isTrue();
+
+    sample(
+        climber,
+        /* windowMax= */ -100,
+        /* windowHits= */ 0,
+        /* mainHits= */ 600,
+        /* misses= */ 400);
+    for (int i = 0; (i < PROBE_WALK_BUDGET) && (density.walk != null); i++) {
+      steadySample(climber, /* windowMax= */ 3000, /* hitRate= */ 0.58);
+    }
+
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(3000);
+  }
+
+  @Test
+  public void audit_confirm_onAnImprovingWalk_parksWhereItStopped() {
+    // a walk still improving when its streak completes has its best sample last, so the verdict is
+    // the position it stands on, and a walk over a flat plateau has a best sample by noise alone,
+    // which the verdict's margin refuses: both park where the walk ended and command no return
+    double[][] walks = {
+      {0.72, 0.73, 0.74, 0.75, 0.76, 0.80}, {0.75, 0.755, 0.75, 0.752, 0.75, 0.753}
+    };
+    for (double[] rates : walks) {
+      var climber = makeClimber();
+      var density = (DensityClimber) climber.tier;
+      injectWalk(
+          density,
+          /* isAudit= */ true,
+          /* down= */ false,
+          /* baseWindow= */ 2000,
+          /* baseHitRate= */ 0.70,
+          /* baseSmoothedRate= */ 0.40);
+      density.rates.smoothed = 0.70;
+      climber.sample.previousHitRate = 0.70;
+      climber.tier.step.size = STRIDE;
+
+      long confirmStep = 0;
+      for (int i = 0; i < rates.length; i++) {
+        confirmStep = steadySample(climber, /* windowMax= */ 2200 + (200L * i), rates[i]);
+      }
+
+      assertThat(density.walk).isNull();
+      assertThat(density.anchor.window).isEqualTo(3200);
+      assertThat(density.anchor.returning).isFalse();
+      assertThat(confirmStep).isEqualTo(0);
+    }
+  }
+
+  @Test
+  public void audit_retreatLandingAtThePark_keepsTheAnchor() {
+    // the retreat that ends a park's audit restores the rate the walk had spent, and that
+    // recovery is a crash-scale move at the anchor's own position, where a workload shift
+    // discards the claim. It is the machine's own move, so the park survives its own re-test
+    var climber = armAudit(/* windowMax= */ 2000);
+    var density = (DensityClimber) climber.tier;
+    density.anchor.held = true;
+    density.anchor.freshLeft = 0;
+    density.anchor.plant(2000, /* claimed= */ 0.70);
+    long walked = 2000 + climber.adjustment();
+
+    long undo = steadySample(climber, walked, /* hitRate= */ 0.50);
+    assertThat(density.walk).isNull();
+    assertThat(undo).isEqualTo(2000 - walked);
+    assertThat(density.retreatLeft).isEqualTo(RETREAT_COVER);
+
+    // the landing sample: the rate returns to what the park earns, a crash-scale step up
+    long held = steadySample(climber, 2000, /* hitRate= */ 0.70);
+    assertThat(held).isEqualTo(0);
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(2000);
+    assertThat(density.retreatLeft).isEqualTo(RETREAT_COVER - 1);
+
+    // and the cover runs out with it: the next crash-scale move is the workload's again
+    steadySample(climber, 2000, /* hitRate= */ 0.70);
+    assertThat(density.retreatLeft).isEqualTo(0);
+    steadySample(climber, 2000, /* hitRate= */ 0.30);
+    assertThat(density.anchor.isPlanted()).isFalse();
+  }
+
+  @Test
+  public void audit_deepestRungFailure_doublesTheWaitToItsCap() {
+    // failures below the deepest rung retry on the ladder's cadence (the escalating search);
+    // only a failure at the deepest rung (a genuinely searched equilibrium) doubles the
+    // audit clock, so a settled workload is re-tested ever more rarely, up to the cap
+    int[] expected = {2 * PROBE_BACKOFF_MAX, 4 * PROBE_BACKOFF_MAX, AUDIT_WAIT_MAX, AUDIT_WAIT_MAX};
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = PROBE_BACKOFF_MAX;
+    for (int expectedWait : expected) {
+      var walk =
+          injectWalk(
+              density,
+              /* isAudit= */ true,
+              /* down= */ true,
+              /* baseWindow= */ 2000,
+              /* baseHitRate= */ 0.70,
+              /* baseSmoothedRate= */ 0.99);
+      walk.samples = PROBE_WALK_BUDGET;
+      density.rates.smoothed = 0.70;
+      climber.sample.previousHitRate = 0.70;
+      density.audit.rung = PROBE_BACKOFF_MAX;
+      steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.70);
+
+      assertThat(density.walk).isNull();
+      assertThat(density.auditClock.waitSamples).isEqualTo(expectedWait);
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+  }
+
+  @Test
+  public void audit_deepestRungCrash_retriesOnTheLadderCadence() {
+    // a lone crash is priced as a workload shift, not a searched failure, so an audit ending in
+    // one keeps the ladder's cadence even at the deepest rung. Doubling the clock there would
+    // defer the very re-exploration the shift calls for; a first crash aborts on its first
+    // below-bar sample (tolerance is the escalated response, not the default)
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = 4 * PROBE_BACKOFF_MAX;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ true,
+            /* down= */ true,
+            /* baseWindow= */ 2000,
+            /* baseHitRate= */ 0.70,
+            /* baseSmoothedRate= */ 0.99);
+    walk.samples = PROBE_WALK_BUDGET - 10;
+    density.rates.smoothed = 0.70;
+    climber.sample.previousHitRate = 0.70;
+    density.audit.rung = PROBE_BACKOFF_MAX;
+    steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.60);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.audit.crashStreak).isEqualTo(1);
+    assertThat(density.audit.rung).isEqualTo(PROBE_BACKOFF_MAX);
+    assertThat(density.auditClock.waitSamples).isEqualTo(PROBE_BACKOFF_MAX);
+  }
+
+  @Test
+  public void audit_deepestRungEscalatedCrash_keepsTheLadderCadence() {
+    // A cycle of crashes escalates the audit's own rung like a completed failure, but the crash
+    // never takes the failure's clock doubling. Even escalated, a crash is priced as a
+    // workload shift, and deferring the retry beyond the ladder's cadence let three exogenous
+    // pulses ratchet the clock to a 128-sample stand-down at the window floor. The prior crash
+    // also arms tolerance: the retry of a crashing equilibrium rides out two below-bar samples
+    // and aborts on the third.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = PROBE_BACKOFF_MAX;
+    density.audit.crashStreak = 1;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ true,
+            /* down= */ true,
+            /* baseWindow= */ 2000,
+            /* baseHitRate= */ 0.70,
+            /* baseSmoothedRate= */ 0.99);
+    walk.samples = PROBE_WALK_BUDGET - 10;
+    density.rates.smoothed = 0.70;
+    climber.sample.previousHitRate = 0.70;
+    density.starvation.rung = PROBE_BACKOFF_INITIAL;
+    density.audit.rung = PROBE_BACKOFF_MAX;
+    steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.60);
+    assertThat(density.walk).isNotNull();
+    steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.60);
+    assertThat(density.walk).isNotNull();
+    steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.60);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.audit.crashStreak).isEqualTo(2);
+    assertThat(density.audit.rung).isEqualTo(PROBE_BACKOFF_MAX);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+    assertThat(density.auditClock.waitSamples).isEqualTo(PROBE_BACKOFF_MAX);
+  }
+
+  @Test
+  public void audit_loneCrashTrain_neverDefersBeyondTheLadder() {
+    // The pulse train: three separate audits, each killed by an exogenous rate pulse,
+    // with nothing but quiet steering between them. The crash streak pairs across the train
+    // and deepens the audit rung to its cap, but the wait never takes the failure's doubling
+    // (the shared-ladder form ratcheted to a 128-sample stand-down at the window floor) and
+    // the starvation ladder never moves.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    int[] expectedRung = {PROBE_BACKOFF_INITIAL, 2 * PROBE_BACKOFF_INITIAL, PROBE_BACKOFF_MAX};
+    for (int crash = 0; crash < 3; crash++) {
+      var walk =
+          injectWalk(
+              density,
+              /* isAudit= */ true,
+              /* down= */ true,
+              /* baseWindow= */ 2000,
+              /* baseHitRate= */ 0.70,
+              /* baseSmoothedRate= */ 0.99);
+      walk.samples = PROBE_WALK_BUDGET - 10;
+      density.rates.smoothed = 0.70;
+      climber.sample.previousHitRate = 0.70;
+      int samples = (crash == 0) ? 1 : AUDIT_CRASH_PERSISTENCE;
+      for (int i = 0; i < samples; i++) {
+        steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.60);
+      }
+      assertThat(density.walk).isNull();
+      assertThat(density.audit.crashStreak).isEqualTo(Math.min(crash + 1, PROBE_CRASH_ESCALATION));
+      assertThat(density.audit.rung).isEqualTo(expectedRung[crash]);
+      assertThat(density.auditClock.waitSamples).isAtMost(PROBE_BACKOFF_MAX);
+      assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+    }
+  }
+
+  @Test
+  public void audit_toleratedDip_holdsTheWalkDirection() {
+    // while the persistence counter is adjudicating a dip, the walk neither crashes nor
+    // reverses: the same unbelieved evidence must not drive a reversal through the base into
+    // a completed, rung-doubling failure. That conversion re-created the very cost the
+    // tolerance removes
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.audit.crashStreak = 1;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ true,
+            /* down= */ true,
+            /* baseWindow= */ 2000,
+            /* baseHitRate= */ 0.70,
+            /* baseSmoothedRate= */ 0.99);
+    walk.samples = PROBE_WALK_BUDGET - 10;
+    density.rates.smoothed = 0.70;
+    climber.sample.previousHitRate = 0.70;
+    climber.tier.step.size = -STRIDE;
+    long step = steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.55);
+
+    assertThat(density.walk).isSameInstanceAs(walk);
+    assertThat(walk.belowBarStreak).isEqualTo(1);
+    assertThat(step).isLessThan(0L);
+  }
+
+  @Test
+  public void audit_lowBaseRate_crashAbortsOnAProportionalDrop() {
+    // the abort is a level test against the rate frozen at the arm, so a threshold wider than that
+    // rate cannot be satisfied at all and only the budget bounds a walk doing real damage
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    injectWalk(
+        density,
+        /* isAudit= */ true,
+        /* down= */ false,
+        /* baseWindow= */ 1024,
+        /* baseHitRate= */ 0.04,
+        /* baseSmoothedRate= */ 0.0);
+    climber.sample.previousHitRate = 0.04;
+
+    // 0.033 falls past 0.04 - (AUDIT_BAR_FRACTION * 0.04) but not past the negative 0.04 - 5pp
+    sample(
+        climber,
+        /* windowMax= */ 2048,
+        /* windowHits= */ 20,
+        /* mainHits= */ 13,
+        /* misses= */ 967);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.audit.crashStreak).isEqualTo(1);
+  }
+
+  @Test
+  public void audit_highBaseRate_crashBarStaysAbsolute() {
+    // the proportional floor takes over only where the threshold outruns the rate; a walk whose
+    // own rate exceeds it keeps the 5pp depth the pricing graveyard is written against
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    injectWalk(
+        density,
+        /* isAudit= */ true,
+        /* down= */ false,
+        /* baseWindow= */ 1024,
+        /* baseHitRate= */ 0.60,
+        /* baseSmoothedRate= */ 0.0);
+    climber.sample.previousHitRate = 0.60;
+
+    // 0.53 falls past the absolute 5pp but not past the proportional 9pp, so it discriminates:
+    // a bar that took the fraction unconditionally would let this walk continue
+    sample(
+        climber,
+        /* windowMax= */ 2048,
+        /* windowHits= */ 280,
+        /* mainHits= */ 250,
+        /* misses= */ 470);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.audit.crashStreak).isEqualTo(1);
+  }
+
+  @Test
+  public void audit_noisyLowRate_crashBarStaysOnTheFrozenRate() {
+    // the noise term belongs to the reversal alone. Taking it here too would widen the level test
+    // on exactly the workloads every dead pricing candidate widened it on, so a drop past the
+    // fraction of the arming rate aborts however scattered the workload is
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    injectWalk(
+        density,
+        /* isAudit= */ true,
+        /* down= */ false,
+        /* baseWindow= */ 1024,
+        /* baseHitRate= */ 0.04,
+        /* baseSmoothedRate= */ 0.0);
+    density.rates.smoothed = 0.04;
+    density.rates.deviation = 0.05;
+    climber.sample.previousHitRate = 0.04;
+
+    // 0.033 falls past 0.04 - (AUDIT_BAR_FRACTION * 0.04) but not past the reversal's noise-priced
+    // bar, so a crash abort sharing the reversal's pricing would let this walk continue
+    sample(
+        climber,
+        /* windowMax= */ 2048,
+        /* windowHits= */ 20,
+        /* mainHits= */ 13,
+        /* misses= */ 967);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.audit.crashStreak).isEqualTo(1);
+  }
+
+  @Test
+  public void audit_walkThroughValley_confirmsPastTheDip() {
+    // the moat shape end-to-end: on the retry of a crashing equilibrium, two below-bar samples
+    // are tolerated in the committed direction, the far bank resets the persistence counter,
+    // and the walk survives to confirm. Under the one-sample abort the far bank was
+    // unreachable at any rung, because the abort fired before the walk could cross
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.audit.crashStreak = 1;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ true,
+            /* down= */ false,
+            /* baseWindow= */ 2000,
+            /* baseHitRate= */ 0.70,
+            /* baseSmoothedRate= */ 0.40);
+    density.rates.smoothed = 0.70;
+    climber.sample.previousHitRate = 0.70;
+    climber.tier.step.size = STRIDE;
+    steadySample(climber, /* windowMax= */ 2200, /* hitRate= */ 0.55);
+    assertThat(density.walk).isSameInstanceAs(walk);
+    steadySample(climber, /* windowMax= */ 2400, /* hitRate= */ 0.56);
+    assertThat(density.walk).isSameInstanceAs(walk);
+    assertThat(walk.belowBarStreak).isEqualTo(2);
+    steadySample(climber, /* windowMax= */ 2600, /* hitRate= */ 0.80);
+    assertThat(walk.belowBarStreak).isEqualTo(0);
+    for (int i = 0; (density.walk != null) && (i < PROBE_WALK_BUDGET); i++) {
+      steadySample(climber, /* windowMax= */ 2800, /* hitRate= */ 0.80);
+    }
+
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.audit.crashStreak).isEqualTo(0);
+    assertThat(density.auditClock.waitSamples).isEqualTo(AUDIT_WAIT_INITIAL);
+  }
+
+  @Test
+  public void audit_budgetExpiry_leavesTheStarvationLedger() {
+    // an audit's own endings clear its own crash streak; forgiving the starvation machine's
+    // would let an unrelated audit reset the escalation a blind corner had earned
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.starvation.crashStreak = 1;
+    density.audit.crashStreak = 1;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ true,
+            /* down= */ true,
+            /* baseWindow= */ 2000,
+            /* baseHitRate= */ 0.70,
+            /* baseSmoothedRate= */ 0.99);
+    walk.samples = PROBE_WALK_BUDGET;
+    density.rates.smoothed = 0.70;
+    climber.sample.previousHitRate = 0.70;
+    steadySample(climber, /* windowMax= */ 1800, /* hitRate= */ 0.70);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.audit.crashStreak).isEqualTo(0);
+    assertThat(density.starvation.crashStreak).isEqualTo(1);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void walkStep_reversalThroughBase_leavesTheOtherLayersLedger() {
+    // A reversal through the walk's own start is a completed failure, and it retires only the
+    // owning layer's crash streak. Clearing both disarms the other layer's crash responses,
+    // for audits, AUDIT_CRASH_PERSISTENCE arms at a streak of one, so a starvation probe
+    // reversing between two audit crashes would restore the one-sample abort the moat and the
+    // pulse train need it not to have.
+    for (boolean audit : new boolean[] {false, true}) {
+      var climber = makeClimber();
+      var density = (DensityClimber) climber.tier;
+      density.starvation.crashStreak = 1;
+      density.audit.crashStreak = 1;
+      var walk =
+          injectWalk(
+              density,
+              audit,
+              /* down= */ false,
+              /* baseWindow= */ 2000,
+              /* baseHitRate= */ 0.70,
+              /* baseSmoothedRate= */ 0.99);
+      walk.samples = 1;
+      density.rates.smoothed = 0.70;
+      density.rates.deviation = 0.001;
+      climber.sample.previousHitRate = 0.70;
+      climber.tier.step.size = -STRIDE;
+      sample(
+          climber,
+          /* windowMax= */ 2000,
+          /* windowHits= */ 10,
+          /* mainHits= */ 690,
+          /* misses= */ 300);
+
+      assertThat(density.walk).isNull();
+      assertThat(density.audit.crashStreak).isEqualTo(audit ? 0 : 1);
+      assertThat(density.starvation.crashStreak).isEqualTo(audit ? 1 : 0);
+    }
+  }
+
+  @Test
+  public void walkStep_floorBasedWalk_endsAtBudgetWithAFullUndo() {
+    // A walk based at the density tier's resting position cannot end through its own base: the
+    // machine rests at the truncated integer one entry below the 2% floor, a reversal's raw
+    // landing there is the base itself, which the strict crossing test refuses, and the floor
+    // clamp then commits one entry above the base. The budget bound and the full undo are the
+    // invariant this pins; weakening either leaves such a walk unbounded.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ true,
+            /* down= */ false,
+            /* baseWindow= */ (long) FLOOR,
+            /* baseHitRate= */ 0.06,
+            /* baseSmoothedRate= */ 0.99);
+    walk.samples = 1;
+    density.rates.smoothed = 0.06;
+    density.rates.deviation = 0.001;
+    climber.sample.previousHitRate = 0.06;
+    climber.tier.step.size = STRIDE;
+
+    // improving samples keep the bold driver's heading, a worsening one reverses it
+    steadySample(climber, /* windowMax= */ 675, /* hitRate= */ 0.70);
+    assertThat(density.walk).isSameInstanceAs(walk);
+    steadySample(climber, /* windowMax= */ 1187, /* hitRate= */ 0.40);
+    assertThat(density.walk).isSameInstanceAs(walk);
+
+    // the reversal proposes the base exactly; the walk survives and rests one entry above it
+    long landing = steadySample(climber, /* windowMax= */ 675, /* hitRate= */ 0.60);
+    assertThat(density.walk).isSameInstanceAs(walk);
+    assertThat(landing).isEqualTo(-511);
+
+    steadySample(climber, /* windowMax= */ 164, /* hitRate= */ 0.055);
+    assertThat(density.walk).isSameInstanceAs(walk);
+
+    walk.samples = PROBE_WALK_BUDGET;
+    long undo = steadySample(climber, /* windowMax= */ 676, /* hitRate= */ 0.70);
+    assertThat(undo).isEqualTo(((long) FLOOR) - 676);
+    assertThat(density.walk).isNull();
+    assertThat(density.undoRemaining).isEqualTo(0);
+    assertThat(density.audit.crashStreak).isEqualTo(0);
+    assertThat(density.audit.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(density.anchor.held).isFalse();
+  }
+
+  @Test
+  public void anchor_ratchetsToClearlyBetterPosition_andReleasesPark() {
+    // The memory follows the goal metric upward: standing elsewhere with the smoothed rate a
+    // full margin above the anchor's claim moves the anchor here, and a parked climber whose
+    // workload found somewhere better is released rather than dragged back. The ratchet is
+    // deliberately unhurried: the rate step that signals the improvement also inflates the
+    // deviation estimate, so the margin widens before it clears. A fresh step-change is
+    // indistinguishable from noise onset until the smoothing settles.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    assertThat(density.anchor.window).isEqualTo(2000);
+    density.anchor.held = true;
+    // an audit reaching this position first would plant and park it by its own confirm, which the
+    // ratchet is not observable through, so the clock is held back for the length of the scenario
+    density.auditClock.stillSamples = 0;
+
+    long parked = steadySample(climber, /* windowMax= */ 4000, /* hitRate= */ 0.74);
+    assertThat(parked).isEqualTo(0);
+    assertThat(density.anchor.held).isTrue();
+
+    int ratchetedAt = -1;
+    for (int i = 2; i <= 20; i++) {
+      steadySample(climber, /* windowMax= */ 4000, /* hitRate= */ 0.74);
+      if (density.anchor.window == 4000) {
+        ratchetedAt = i;
+        break;
+      }
+    }
+    assertThat(ratchetedAt).isGreaterThan(2);
+    assertThat(ratchetedAt).isAtMost(20);
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.anchor.rate).isWithin(1.0e-9).of(density.rates.smoothed);
+  }
+
+  @Test
+  public void anchor_midUndoDrain_doesNotPlantAtTheRetreatingWindow() {
+    // A capped retreat drains across later samples with the walk already ended and no return in
+    // flight, so the window passes through the positions the probe was charged for rejecting. An
+    // unplanted anchor waits for the retreat to land rather than claiming one of them; the drain
+    // is read before the sample's stride, so the sample that empties the ledger is still transit.
+    var climber = failingDownProbe();
+    var density = (DensityClimber) climber.tier;
+    sample(
+        climber,
+        /* windowMax= */ 2000,
+        /* windowHits= */ 200,
+        /* mainHits= */ 500,
+        /* misses= */ 300);
+    assertThat(density.walk).isNull();
+    assertThat(density.undoRemaining).isGreaterThan(0);
+
+    steadySample(climber, /* windowMax= */ 4457, /* hitRate= */ 0.70);
+    assertThat(density.undoRemaining).isGreaterThan(0);
+    assertThat(density.anchor.isPlanted()).isFalse();
+
+    steadySample(climber, /* windowMax= */ 6914, /* hitRate= */ 0.70);
+    assertThat(density.undoRemaining).isEqualTo(0);
+    assertThat(density.anchor.isPlanted()).isFalse();
+
+    // the retreat has landed, so the position is the cache's own and may be claimed
+    steadySample(climber, /* windowMax= */ 7000, /* hitRate= */ 0.70);
+    assertThat(density.anchor.window).isEqualTo(7000);
+    assertThat(density.anchor.rate).isWithin(1.0e-9).of(0.70);
+  }
+
+  @Test
+  public void anchor_midUndoDrain_doesNotRatchetOffTheProbeBase() {
+    // The ratchet reads the same transit. A parked anchor at the probe's base, holding a claim the
+    // smoothed rate now clears by a full margin, would otherwise move to wherever the retreat
+    // happened to be and drop its park, leaving the guard rail defending a rejected position.
+    var climber = failingDownProbe();
+    var density = (DensityClimber) climber.tier;
+    density.anchor.plant(/* windowMax= */ 7000, /* claimed= */ 0.40);
+    density.anchor.park(AUDIT_WAIT_INITIAL);
+    sample(
+        climber,
+        /* windowMax= */ 2000,
+        /* windowHits= */ 200,
+        /* mainHits= */ 500,
+        /* misses= */ 300);
+
+    steadySample(climber, /* windowMax= */ 4457, /* hitRate= */ 0.70);
+    assertThat(density.anchor.window).isEqualTo(7000);
+    assertThat(density.anchor.rate).isEqualTo(0.40);
+    assertThat(density.anchor.held).isTrue();
+
+    // the re-sync is the half that does not wait: once the retreat is back inside the anchor's
+    // band the stale claim decays into the live measurement, drain still in flight or not
+    steadySample(climber, /* windowMax= */ 6914, /* hitRate= */ 0.70);
+    assertThat(density.undoRemaining).isEqualTo(0);
+    assertThat(density.anchor.window).isEqualTo(7000);
+    assertThat(density.anchor.rate).isWithin(1.0e-9).of(0.70);
+
+    long parked = steadySample(climber, /* windowMax= */ 7000, /* hitRate= */ 0.70);
+    assertThat(parked).isEqualTo(0);
+    assertThat(density.anchor.window).isEqualTo(7000);
+    assertThat(density.anchor.held).isTrue();
+  }
+
+  @Test
+  public void guardRail_marginTracksNoise_silentWhileWideThenVetoes() {
+    // The shortfall margin is cleared of the workload's own hit-rate noise: while the deviation
+    // estimate is wide the rail stays silent on a gap it cannot distinguish from weather, and
+    // as quiet samples tighten the estimate the same gap becomes actionable. The mechanism
+    // that keeps noisy-texture traces from being steered by wrong vetoes. The anchor here is
+    // one capped stride away, so the return completes within a single sample and the park
+    // (the anchor holding) is the observable outcome.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.anchor.window = 2000;
+    density.anchor.rate = 0.70;
+    density.rates.smoothed = 0.66;
+    climber.sample.previousHitRate = 0.66;
+    density.rates.deviation = 0.05;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+
+    int vetoedAt = -1;
+    for (int i = 1; i <= 12; i++) {
+      steadySample(climber, /* windowMax= */ 4000, /* hitRate= */ 0.66);
+      if (density.anchor.held) {
+        vetoedAt = i;
+        break;
+      }
+    }
+    assertThat(vetoedAt).isGreaterThan(5);
+    assertThat(vetoedAt).isAtMost(12);
+    assertThat(density.anchor.returning).isFalse();
+    assertThat(climber.adjustment()).isEqualTo(2000 - 4000);
+  }
+
+  @Test
+  public void guardRail_vetoReturnBudget_settlesWhereItStands() {
+    // a return whose strides the cache cannot realize (a rail: commands issued, transfers
+    // starved) settles at its budget rather than striding forever; the park then holds the
+    // reached position and the audit clock owns further exploration
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+
+    int strides = 0;
+    for (int i = 0; i < 20; i++) {
+      long adjustment = steadySample(climber, /* windowMax= */ 7500, /* hitRate= */ 0.66);
+      if (adjustment == -(long) (MAX_STEP_FRACTION * MAXIMUM)) {
+        strides++;
+      }
+      if (density.anchor.held && !density.anchor.returning) {
+        break;
+      }
+    }
+    assertThat(strides).isEqualTo(VETO_RETURN_BUDGET);
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.returning).isFalse();
+
+    long held = steadySample(climber, /* windowMax= */ 7500, /* hitRate= */ 0.66);
+    assertThat(held).isEqualTo(0);
+  }
+
+  @Test
+  public void guardRail_returnArrival_falsifiesAStaleClaim() {
+    // arriving proves nothing about the claim that sent the window here: the arrival's own drop
+    // can fall under the crash-scale threshold while the claim is still a past regime's. The
+    // position is settled and then judged against the claim frozen when the return committed,
+    // and one that cannot earn it is stood down exactly as a crash-scale swing would have
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    for (int i = 0; i < VETO_STREAK; i++) {
+      steadySample(climber, /* windowMax= */ 1500, /* hitRate= */ 0.66);
+    }
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.returning).isFalse();
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+
+    for (int i = 0; i < RETEST_SETTLE - 1; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.66);
+      assertThat(density.anchor.isPlanted()).isTrue();
+    }
+    // the on-anchor re-sync has decayed the live claim into the shortfall being tested, which is
+    // why the frozen one is the judge
+    assertThat(density.anchor.rate).isWithin(0.005).of(0.66);
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+
+    steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.66);
+    assertThat(density.anchor.isPlanted()).isFalse();
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.rates.isUnseeded()).isTrue();
+  }
+
+  @Test
+  public void guardRail_returnArrival_keepsAClaimThePositionEarns() {
+    // the retest is a test, not a discard: a rate that recovers on the way home leaves the
+    // window at a position that does earn the claim, and the park stands
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    for (int i = 0; i < VETO_STREAK; i++) {
+      steadySample(climber, /* windowMax= */ 7500, /* hitRate= */ 0.66);
+    }
+    assertThat(density.anchor.returning).isTrue();
+
+    // strides home under a recovery no single sample announces as a workload change
+    long windowMax = 7500;
+    double hitRate = 0.66;
+    for (int i = 0; i < 20; i++) {
+      hitRate = Math.min(0.76, hitRate + 0.02);
+      windowMax += steadySample(climber, windowMax, hitRate);
+      if (!density.anchor.returning) {
+        break;
+      }
+    }
+    assertThat(density.anchor.returning).isFalse();
+    assertThat(density.anchor.isAt(windowMax, WindowClimber.Reading.stableBand(MAXIMUM))).isTrue();
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+
+    for (int i = 0; i < RETEST_SETTLE; i++) {
+      assertThat(steadySample(climber, windowMax, hitRate)).isEqualTo(0);
+    }
+    assertThat(density.anchor.retestClaim).isEqualTo(-1);
+    assertThat(density.anchor.isPlanted()).isTrue();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.rates.isUnseeded()).isFalse();
+  }
+
+  @Test
+  public void guardRail_retestDue_waitsForTheReturnToEnd() {
+    // the router asks only once a return has ended, but a return still under way has no retest
+    // due, and asking from off the anchor must not cancel the retest that the arrival owes
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    for (int i = 0; i < VETO_STREAK; i++) {
+      steadySample(climber, /* windowMax= */ 7500, /* hitRate= */ 0.66);
+    }
+    assertThat(density.anchor.returning).isTrue();
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+    int settleLeft = density.anchor.settleLeft;
+
+    var reading =
+        new WindowClimber.Reading(
+            climber.sample,
+            MAXIMUM,
+            /* windowMax= */ 7500,
+            protectedMax(MAXIMUM, /* windowMax= */ 7500));
+    assertThat(density.anchor.isRetestDue(reading)).isFalse();
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+    assertThat(density.anchor.settleLeft).isEqualTo(settleLeft);
+  }
+
+  @Test
+  public void guardRail_returnLanding_isJudgedByTheRetest() {
+    // the landing sample's recovery is the return's own, not a workload change: the claim the
+    // return set out for survives to the retest, which keeps a position that earns it
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    for (int i = 0; i < VETO_STREAK; i++) {
+      steadySample(climber, /* windowMax= */ 1500, /* hitRate= */ 0.66);
+    }
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.returning).isFalse();
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+
+    steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.80);
+    assertThat(density.anchor.isPlanted()).isTrue();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+    assertThat(density.rates.isUnseeded()).isFalse();
+
+    for (int i = 0; i < RETEST_SETTLE - 1; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.80);
+    }
+    assertThat(density.anchor.retestClaim).isEqualTo(-1);
+    assertThat(density.anchor.isPlanted()).isTrue();
+    assertThat(density.anchor.held).isTrue();
+  }
+
+  @Test
+  public void guardRail_returnShortOfTheAnchor_hasNothingToRetest() {
+    // a return that spends its budget without arriving never reached the position its claim
+    // describes, so there is no claim to judge and the reached position keeps its park
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    for (int i = 0; i < 20; i++) {
+      steadySample(climber, /* windowMax= */ 7500, /* hitRate= */ 0.66);
+      if (density.anchor.held && !density.anchor.returning) {
+        break;
+      }
+    }
+    assertThat(density.anchor.returning).isFalse();
+    assertThat(density.anchor.isAt(7500, WindowClimber.Reading.stableBand(MAXIMUM))).isFalse();
+
+    for (int i = 0; i <= RETEST_SETTLE; i++) {
+      steadySample(climber, /* windowMax= */ 7500, /* hitRate= */ 0.66);
+    }
+    assertThat(density.anchor.isPlanted()).isTrue();
+    assertThat(density.anchor.window).isEqualTo(2000);
+    assertThat(density.anchor.retestClaim).isEqualTo(-1);
+  }
+
+  @Test
+  public void guardRail_crashScaleShift_releasesTheParkAndReturn() {
+    // a crash-scale swing announces a workload change: any park or in-progress return is
+    // released so the climber re-engages with the new regime rather than defending a stale one
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < 30; i++) {
+      steadySample(climber, /* windowMax= */ 2000, /* hitRate= */ 0.70);
+    }
+    density.anchor.held = true;
+    density.anchor.returning = true;
+    density.anchor.returnLeft = 5;
+
+    steadySample(climber, /* windowMax= */ 5000, /* hitRate= */ 0.55);
+    assertThat(density.anchor.held).isFalse();
+    assertThat(density.anchor.returning).isFalse();
+    assertThat(density.anchor.window).isEqualTo(2000);
+  }
+
+  @Test
+  public void guardRail_vetoReturn_shiftMidReturn_abandonsTheRetest() {
+    // a crash-scale swing mid-return interrupts the return, and the retest goes with it, since
+    // the frozen claim is judged where the return lands and an interrupted return does not land.
+    // A claim left pending survives the stand-down, and a same-sample re-plant puts the window
+    // back on the anchor, where the stale claim would judge the new position against a past
+    // regime's rate
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_INITIAL;
+    density.anchor.window = 7000; // too far to reach in one stride, so the return is in flight
+    for (int i = 0; i < VETO_STREAK; i++) {
+      steadySample(climber, /* windowMax= */ 1500, /* hitRate= */ 0.66);
+    }
+    assertThat(density.anchor.returning).isTrue();
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+
+    // mid-return the workload recovers and then jumps crash-scale, far from the anchor; the
+    // recovery is seeded directly (an EMA pair only reaches it after a long plateau)
+    density.rates.smoothed = 0.75;
+    density.rates.deviation = 0.001;
+    climber.sample.previousHitRate = 0.75;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 3957,
+            /* windowHits= */ 5,
+            /* mainHits= */ 805,
+            /* misses= */ 190);
+
+    assertThat(density.anchor.retestClaim).isEqualTo(-1); // the interrupted retest is abandoned
+    assertThat(density.anchor.settleLeft).isEqualTo(0);
+    assertThat(density.anchor.returning).isFalse();
+    assertThat(density.anchor.window).isEqualTo(3957); // the swing re-planted at its position
+    assertThat(density.anchor.rate).isWithin(1.0e-6).of(0.762);
+    assertThat(adjustment).isNotEqualTo(0); // the sample steered rather than settled the retest
+  }
+
+  @Test
+  public void guardRail_vetoReturn_budgetOut_thenAnchorMoves_abandonsTheRetest() {
+    // the same stale claim without any crash-scale swing: a return that spends its budget short
+    // of the anchor leaves the retest pending, and a rate that recovered while it strode moves
+    // the anchor onto the window on the very next sample. The window is now "at" an anchor the
+    // return never reached, so the claim frozen for the old position judges the new one
+    var climber = seededShortfall();
+    var density = (DensityClimber) climber.tier;
+    density.auditClock.waitSamples = AUDIT_WAIT_MAX;
+    for (int i = 0; i < 20; i++) {
+      steadySample(climber, /* windowMax= */ 7500, /* hitRate= */ 0.66);
+      if (density.anchor.held && !density.anchor.returning) {
+        break;
+      }
+    }
+    assertThat(density.anchor.returning).isFalse(); // the budget ran out short of the anchor
+    assertThat(density.anchor.window).isEqualTo(2000);
+    assertThat(density.anchor.retestClaim).isWithin(1.0e-6).of(0.70);
+
+    // the workload recovered while the return strode; seeded directly, as an EMA pair reaches it
+    // only over a long plateau. No single sample moves a crash-scale step, so nothing stands down
+    density.rates.smoothed = 0.76;
+    density.rates.deviation = 0.001;
+    climber.sample.previousHitRate = 0.76;
+    steadySample(climber, /* windowMax= */ 7500, /* hitRate= */ 0.76);
+
+    assertThat(density.anchor.window).isEqualTo(7500); // the anchor followed the better position
+    assertThat(density.anchor.retestClaim).isEqualTo(-1);
+    assertThat(density.anchor.settleLeft).isEqualTo(0);
+  }
+
+  @Test
+  public void guardRail_blindCorner_outranksTheVeto() {
+    // a starved sample cannot honestly adjudicate a shortfall: blindness routes to the probe
+    // machinery before the veto may fire, while an identically-placed sighted sample vetoes
+    // (and, with the anchor one stride away, completes its return and parks within the call)
+    var vetoed = seededShortfall();
+    var vetoedDensity = (DensityClimber) vetoed.tier;
+    var probed = seededShortfall();
+    var probedDensity = (DensityClimber) probed.tier;
+    for (int i = 0; i < 3; i++) {
+      steadySample(vetoed, /* windowMax= */ 1500, /* hitRate= */ 0.66);
+      steadySample(probed, /* windowMax= */ 1500, /* hitRate= */ 0.66);
+    }
+    assertThat(vetoedDensity.anchor.held).isFalse();
+    assertThat(probedDensity.anchor.held).isFalse();
+
+    steadySample(vetoed, /* windowMax= */ 1500, /* hitRate= */ 0.66);
+    assertThat(vetoedDensity.anchor.held).isTrue();
+    assertThat(vetoed.adjustment()).isEqualTo(2000 - 1500);
+
+    long adjustment =
+        sample(
+            probed,
+            /* windowMax= */ 1500,
+            /* windowHits= */ 0,
+            /* mainHits= */ 660,
+            /* misses= */ 340);
+    assertThat(probedDensity.walk).isNotNull();
+    assertThat(probedDensity.anchor.held).isFalse();
+    assertThat(adjustment).isEqualTo((long) STRIDE);
+  }
+
+  /**
+   * A climber whose anchor claims 0.70 at 2000 while the live smoothed rate runs 0.66, with the
+   * deviation estimate settled so the margin floor binds (the cold-start seed would otherwise hold
+   * the margin wide for several samples, the behavior pinned by the margin test).
+   */
+  private static WindowClimber seededShortfall() {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.anchor.window = 2000;
+    density.anchor.rate = 0.70;
+    density.rates.smoothed = 0.66;
+    climber.sample.previousHitRate = 0.66;
+    density.rates.deviation = 0.0;
+    return climber;
+  }
+
+  /** Runs steady samples at the position until the audit arms, asserting it does. */
+  private static WindowClimber armAudit(long windowMax) {
+    return armAuditAtRung(windowMax, PROBE_BACKOFF_INITIAL);
+  }
+
+  /** Arms an audit at a position with the audit ladder already deepened to the given rung. */
+  private static WindowClimber armAuditAtRung(long windowMax, int rung) {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.audit.rung = rung;
+    boolean armed = false;
+    for (int i = 0; i < (2 * AUDIT_WAIT_INITIAL); i++) {
+      steadySample(climber, windowMax, /* hitRate= */ 0.70);
+      if (density.walk != null) {
+        armed = true;
+        break;
+      }
+    }
+    assertThat(armed).isTrue();
+    assertThat(walkOf(density).isAudit).isTrue();
+    return climber;
+  }
+
+  @Test
+  public void audit_sightedFalseEquilibrium_armsWithoutStarvation() {
+    // The whisper scenario end to end at the unit level: a thin above-bar trickle keeps the
+    // window "sighted" at the floor, steering's clamp holds it there, no starvation is ever
+    // declared, and the positional stillness clock arms an upward audit anyway. This is the
+    // coverage the starvation triggers cannot provide.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    int armedAt = -1;
+    for (int i = 0; i < (2 * AUDIT_WAIT_INITIAL); i++) {
+      long adjustment =
+          sample(
+              climber,
+              /* windowMax= */ 164,
+              /* windowHits= */ 5,
+              /* mainHits= */ 595,
+              /* misses= */ 400);
+      if (density.walk != null) {
+        armedAt = i;
+        assertThat(walkOf(density).isAudit).isTrue();
+        break;
+      }
+      assertThat(adjustment).isEqualTo(0);
+    }
+    assertThat(armedAt).isAtLeast(AUDIT_WAIT_FIRST - 1);
+    assertThat(walkOf(density).down).isFalse();
+    assertThat(climber.adjustment()).isEqualTo((long) STRIDE);
+  }
+
+  /**
+   * Completes a thousand-request sample at the given hit rate whose region split is proportional to
+   * capacity, so the steering error is ~zero and the position reads as a quiet equilibrium.
+   */
+  private static long steadySample(WindowClimber climber, long windowMax, double hitRate) {
+    long hits = Math.round(1000 * hitRate);
+    long windowHits = (hits * windowMax) / MAXIMUM;
+    return sample(
+        climber, windowMax, (int) windowHits, (int) (hits - windowHits), (int) (1000 - hits));
+  }
+
+  /* --------------- The walk --------------- */
+
+  @Test
+  public void walkStep_strideScalesByRung() {
+    long[][] expected = {{16, 1}, {32, 2}, {64, 4}};
+    for (long[] rungAndScale : expected) {
+      var climber = makeClimber();
+      var density = (DensityClimber) climber.tier;
+      density.starvation.rung = (int) rungAndScale[0];
+      long adjustment =
+          sample(
+              climber,
+              /* windowMax= */ 1024,
+              /* windowHits= */ 0,
+              /* mainHits= */ 500,
+              /* misses= */ 500);
+      assertThat(adjustment).isEqualTo(rungAndScale[1] * (long) STRIDE);
+    }
+  }
+
+  @Test
+  public void walkStep_continuation_decaysWhileQuiet() {
+    var climber = probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 1536,
+            /* windowHits= */ 5,
+            /* mainHits= */ 495,
+            /* misses= */ 500);
+
+    assertThat(density.walk).isNotNull();
+    assertThat(adjustment).isEqualTo((long) (STEP_DECAY_RATE * STRIDE));
+  }
+
+  @Test
+  public void walkStep_crashScaleSampleDrop_reverses() {
+    // a drop past the walk-interior bar (at the cold-start deviation seed the priced bar sits
+    // at its 15pp cap) reverses the bold driver, while remaining above the probe's own base so
+    // the crash veto does not fire
+    var climber = probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    climber.sample.previousHitRate = 0.6;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2048,
+            /* windowHits= */ 5,
+            /* mainHits= */ 435,
+            /* misses= */ 560);
+
+    assertThat(density.walk).isNotNull();
+    assertThat(adjustment).isEqualTo((long) -STRIDE);
+  }
+
+  @Test
+  public void walkStep_reversalThroughBase_failsAndDoubles() {
+    var climber = probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    climber.sample.previousHitRate = 0.6;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 1280,
+            /* windowHits= */ 5,
+            /* mainHits= */ 435,
+            /* misses= */ 560);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo(1024 - 1280);
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(density.refractoryLeft).isEqualTo(density.starvation.rung);
+  }
+
+  @Test
+  public void walkStep_reversalThroughBase_failsDownward() {
+    // the mirror of the up-probe reversal: a down walk whose bar-scale reversal would cross
+    // back up through its own start finishes as a completed, failed experiment
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    climber.sample.previousHitRate = 0.6;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 6900,
+            /* windowHits= */ 435,
+            /* mainHits= */ 5,
+            /* misses= */ 560);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo(7000 - 6900);
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void walkStep_floorClamp_landsOnFloor() {
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 400,
+            /* windowHits= */ 495,
+            /* mainHits= */ 5,
+            /* misses= */ 500);
+
+    assertThat(density.walk).isNotNull();
+    assertThat(adjustment).isEqualTo((long) (FLOOR - 400));
+    assertThat(climber.tier.step.size).isEqualTo(FLOOR - 400);
+  }
+
+  @Test
+  public void walkStep_floorBlocked_restartHoldsDirection() {
+    // regression: at the floor the clamp yields a zero step whose sign must stay negative, else
+    // a restart-scale improving sample strides upward off positive zero during a down walk
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    long landing =
+        sample(
+            climber,
+            /* windowMax= */ 163,
+            /* windowHits= */ 495,
+            /* mainHits= */ 5,
+            /* misses= */ 500);
+    assertThat(landing).isEqualTo(0);
+    assertThat(climber.tier.step.size).isEqualTo(-0.0);
+
+    long jitter =
+        sample(
+            climber,
+            /* windowMax= */ 163,
+            /* windowHits= */ 555,
+            /* mainHits= */ 5,
+            /* misses= */ 440);
+    assertThat(jitter).isEqualTo(0);
+    assertThat(density.walk).isNotNull();
+    assertThat(climber.tier.step.size).isEqualTo(-0.0);
+  }
+
+  @Test
+  public void walkStep_floorBlocked_crashScaleDropWalksBackOut() {
+    // an intended bold-driver reversal: the floor position is hurting, so walk out of it (the
+    // elevated sample keeps the follow-on drop bar-scale against it yet above the base veto)
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    long landing =
+        sample(
+            climber,
+            /* windowMax= */ 163,
+            /* windowHits= */ 555,
+            /* mainHits= */ 5,
+            /* misses= */ 440);
+    assertThat(landing).isEqualTo(0);
+
+    long reversal =
+        sample(
+            climber,
+            /* windowMax= */ 163,
+            /* windowHits= */ 395,
+            /* mainHits= */ 5,
+            /* misses= */ 600);
+    assertThat(density.walk).isNotNull();
+    assertThat(reversal).isEqualTo((long) STRIDE);
+  }
+
+  /* --------------- Endings --------------- */
+
+  @Test
+  public void probeEnding_crash_undoesWithoutDoubling() {
+    // at the cold-start deviation seed the probe's priced bar sits at its 15pp cap, so the
+    // collapse must clear that to abort
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 340,
+            /* mainHits= */ 0,
+            /* misses= */ 660);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo(7000 - 5000);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+    assertThat(density.refractoryLeft).isEqualTo(PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void probeEnding_subBarDrop_doesNotCrashAStarvationProbe() {
+    // the walk-interior bar is priced by the workload's own deviation (seeded wide at cold
+    // start, capped at three restart thresholds): a 10pp drop is weather, not a collapse, and
+    // the walk continues, while the same drop crash-aborts an audit, whose bar stays absolute
+    // (audit_deepestRungCrash_retriesOnTheLadderCadence pins that side)
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 400,
+            /* mainHits= */ 0,
+            /* misses= */ 600);
+
+    assertThat(density.walk).isNotNull();
+    assertThat(adjustment).isEqualTo((long) (STEP_DECAY_RATE * -STRIDE));
+  }
+
+  @Test
+  public void probeEnding_probeBarFloorsAtTheRestartThreshold() {
+    // once the measured deviation is small the pricing floors at the absolute threshold, so a
+    // 6pp drop on a quiet workload still crash-aborts a starvation probe
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    density.rates.smoothed = 0.5;
+    density.rates.deviation = 0.001;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 440,
+            /* mainHits= */ 0,
+            /* misses= */ 560);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo(7000 - 5000);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void probeEnding_starvationCrash_leavesTheAuditLadder() {
+    // the inverse separation: a starvation probe's crash counts on its own ledger and
+    // escalates only its own machine. The audit rung, streak, and clock never move
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    density.rates.smoothed = 0.5;
+    density.rates.deviation = 0.001;
+    sample(
+        climber,
+        /* windowMax= */ 5000,
+        /* windowHits= */ 440,
+        /* mainHits= */ 0,
+        /* misses= */ 560);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.crashStreak).isEqualTo(1);
+    assertThat(density.audit.crashStreak).isEqualTo(0);
+    assertThat(density.audit.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+    assertThat(density.auditClock.waitSamples).isEqualTo(AUDIT_WAIT_FIRST);
+  }
+
+  @Test
+  public void probeEnding_probeBarCapsAtThreeRestarts() {
+    // the cap is the abort's damage ceiling: on a workload so scattered that three deviations
+    // read ~34pp, a 16pp collapse must still crash the walk. Uncapped pricing let walks roam
+    // the all-blind families at a measured cost
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    density.rates.smoothed = 0.5;
+    density.rates.deviation = 0.10;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 340,
+            /* mainHits= */ 0,
+            /* misses= */ 660);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo(7000 - 5000);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void probeEnding_probeBarTracksTheLiveDeviation_notTheArmingValue() {
+    // The starvation bar prices against the deviation as it stands NOW, not a value frozen when
+    // the probe armed, and that is load-bearing rather than an oversight: on a dosed workload the
+    // deviation at arm is a pre-dose value, so a frozen bar sits below the weather and the walk
+    // crash-aborts inside the very dose the pricing exists to survive (measured 2026-08-02,
+    // mixnoise_a10 60.7 -> 56.0 and crashnoise_a12 63.6 -> 62.2, both deterministic). The live
+    // reading and PROBE_BAR_CAP are a matched pair. The feedback lifts the bar while the walk is
+    // exposed, the cap bounds where that would run away. Here the same 9pp drop crashes the walk
+    // at the arming deviation and is tolerated once the deviation has risen under it.
+    for (boolean weatherRose : new boolean[] {false, true}) {
+      var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+      var density = (DensityClimber) climber.tier;
+      density.rates.smoothed = 0.5;
+      density.rates.deviation = weatherRose ? 0.06 : 0.001;
+      sample(
+          climber,
+          /* windowMax= */ 5000,
+          /* windowHits= */ 410,
+          /* mainHits= */ 0,
+          /* misses= */ 590);
+
+      assertThat(density.walk != null).isEqualTo(weatherRose);
+    }
+  }
+
+  @Test
+  public void audit_walkStep_reversalStaysAbsolute() {
+    // an audit's bold driver reverses on the absolute 5pp, not the probes' priced bar: the
+    // same 7pp drop that a starvation probe walks through (the deviation prices its bar to
+    // the cap) turns an audit's walk around. The audit-side pricing was studied to a fresh
+    // holdout and rejected, so this asymmetry is load-bearing
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ true,
+            /* down= */ false,
+            /* baseWindow= */ 1024,
+            /* baseHitRate= */ 0.60,
+            /* baseSmoothedRate= */ 0.99);
+    walk.samples = PROBE_WALK_BUDGET - 10;
+    climber.tier.step.size = STRIDE;
+    density.rates.smoothed = 0.70;
+    climber.sample.previousHitRate = 0.70;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2560,
+            /* windowHits= */ 5,
+            /* mainHits= */ 625,
+            /* misses= */ 370);
+
+    assertThat(density.walk).isNotNull();
+    assertThat(adjustment).isEqualTo((long) -STRIDE);
+  }
+
+  @Test
+  public void audit_walkStep_reversalIsPricedAboveTheNoise() {
+    // the reversal is a first-difference test, so it is priced against the larger of the rate
+    // frozen at the arm and the workload's scatter. The same 1pp drop turns the walk around on a
+    // quiet workload and is no evidence at all on a noisy one, where a rate-only price sits at a
+    // fifth of the per-sample noise and a reversal back through the base is charged as a completed
+    // failure
+    for (boolean noisy : new boolean[] {false, true}) {
+      var climber = makeClimber();
+      var density = (DensityClimber) climber.tier;
+      var walk =
+          injectWalk(
+              density,
+              /* isAudit= */ true,
+              /* down= */ false,
+              /* baseWindow= */ 1024,
+              /* baseHitRate= */ 0.04,
+              /* baseSmoothedRate= */ 0.99);
+      walk.samples = PROBE_WALK_BUDGET - 10;
+      climber.tier.step.size = STRIDE;
+      density.rates.smoothed = 0.05;
+      density.rates.deviation = noisy ? 0.05 : 0.001;
+      climber.sample.previousHitRate = 0.05;
+      long adjustment =
+          sample(
+              climber,
+              /* windowMax= */ 2560,
+              /* windowHits= */ 10,
+              /* mainHits= */ 30,
+              /* misses= */ 960);
+
+      assertThat(density.walk).isNotNull();
+      assertThat(adjustment > 0).isEqualTo(noisy);
+    }
+  }
+
+  @Test
+  public void probeEnding_budgetExpiry_undoesAndDoubles() {
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    walkOf(density).samples = PROBE_WALK_BUDGET;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 495,
+            /* mainHits= */ 5,
+            /* misses= */ 500);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo(7000 - 5000);
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(density.refractoryLeft).isEqualTo(density.starvation.rung);
+  }
+
+  @Test
+  public void probeEnding_watchedRegionIsMainForDownProbe() {
+    // the window earning richly must not adjudicate a down probe; main is the watched region
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 900,
+            /* mainHits= */ 5,
+            /* misses= */ 95);
+
+    assertThat(density.walk).isNotNull();
+    assertThat(adjustment).isEqualTo((long) (STEP_DECAY_RATE * -STRIDE));
+  }
+
+  @Test
+  public void probeEnding_adjudication_confirmsOnDensity() {
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 5,
+            /* mainHits= */ 900,
+            /* misses= */ 95);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(density.refractoryLeft).isEqualTo(0);
+    assertThat(adjustment)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 5, /* mainHits= */ 900));
+  }
+
+  @Test
+  public void probeEnding_adjudication_wrongSignFailsAndDoubles() {
+    // the 5000-entry restore exceeds the 30% maximum step, so the undo honors the cap and the
+    // remainder is carried across the following samples before steering resumes
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var density = (DensityClimber) climber.tier;
+    double cap = MAX_STEP_FRACTION * MAXIMUM;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 880,
+            /* mainHits= */ 20,
+            /* misses= */ 100);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo((long) cap);
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+
+    long second =
+        sample(
+            climber,
+            /* windowMax= */ 2000 + adjustment,
+            /* windowHits= */ 880,
+            /* mainHits= */ 20,
+            /* misses= */ 100);
+    assertThat(second).isEqualTo((long) cap);
+
+    long third =
+        sample(
+            climber,
+            /* windowMax= */ 2000 + adjustment + second,
+            /* windowHits= */ 880,
+            /* mainHits= */ 20,
+            /* misses= */ 100);
+    assertThat(third).isEqualTo(5000 - (2 * (long) (MAX_STEP_FRACTION * MAXIMUM)));
+    assertThat(adjustment + second + third).isEqualTo(5000);
+    assertThat(density.undoRemaining).isEqualTo(0);
+  }
+
+  @Test
+  public void probeEnding_secondConsecutiveCrash_escalates() {
+    // one crash is priced as a possible workload shift (no doubling); a cycle of them is probe
+    // damage, so consecutive crashes escalate like completed failures instead of repeating at a
+    // fixed rung forever
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    long first =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 340,
+            /* mainHits= */ 0,
+            /* misses= */ 660);
+    assertThat(first).isEqualTo(7000 - 5000);
+    assertThat(density.starvation.crashStreak).isEqualTo(1);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_INITIAL);
+
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ false,
+            /* down= */ true,
+            /* baseWindow= */ 7000,
+            /* baseHitRate= */ 0.5,
+            /* baseSmoothedRate= */ 0.0);
+    walk.samples = 1;
+    climber.tier.step.size = -STRIDE;
+    climber.sample.previousHitRate = 0.5;
+    long second =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 340,
+            /* mainHits= */ 0,
+            /* misses= */ 660);
+    assertThat(second).isEqualTo(7000 - 5000);
+    assertThat(density.starvation.crashStreak).isEqualTo(2);
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void probeEnding_crashStreak_saturates() {
+    // the ledger only distinguishes a lone crash from a run, so the streak holds at the escalation
+    // threshold rather than counting on toward a wrap
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    density.starvation.crashStreak = PROBE_CRASH_ESCALATION;
+    long returned =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 340,
+            /* mainHits= */ 0,
+            /* misses= */ 660);
+    assertThat(returned).isEqualTo(7000 - 5000);
+    assertThat(density.starvation.crashStreak).isEqualTo(PROBE_CRASH_ESCALATION);
+    assertThat(density.starvation.crashEscalates()).isTrue();
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void probeEnding_midRungCommitment_blocksEarlyExit() {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.starvation.rung = 2 * PROBE_BACKOFF_INITIAL;
+    long entry =
+        sample(
+            climber,
+            /* windowMax= */ 1024,
+            /* windowHits= */ 0,
+            /* mainHits= */ 500,
+            /* misses= */ 500);
+    assertThat(density.walk).isNotNull();
+    assertThat(entry).isEqualTo(2 * (long) STRIDE);
+
+    // depth 1 < the middle rung's commitment of 2: adjudication is blocked despite the signal
+    long walked =
+        sample(
+            climber,
+            /* windowMax= */ 3072,
+            /* windowHits= */ 400,
+            /* mainHits= */ 100,
+            /* misses= */ 500);
+    assertThat(density.walk).isNotNull();
+    assertThat(walked).isEqualTo((long) (STEP_DECAY_RATE * 2 * STRIDE));
+
+    // depth 2: the same signal now adjudicates (and confirms; the window is the denser region)
+    long confirmed =
+        sample(
+            climber,
+            /* windowMax= */ 3072,
+            /* windowHits= */ 400,
+            /* mainHits= */ 100,
+            /* misses= */ 500);
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(confirmed)
+        .isEqualTo(densityStep(/* windowMax= */ 3072, /* windowHits= */ 400, /* mainHits= */ 100));
+  }
+
+  @Test
+  public void probeEnding_upProbe_confirmsAgainstFrozenBaseline() {
+    // The up-probe verdict prices opportunity cost at main's margin: a thin reuse band whose
+    // window density loses to main's protected-core AVERAGE still confirms by out-earning the
+    // probation baseline frozen at the probe's start (the trickle family's repair). Density then
+    // walks the window home in the same sample, and the ladder prices that reversal as a completed
+    // experiment, so the next walk commits deeper (the band past a first-round stride is reached
+    // by the deeper rungs, not by the confirm)
+    var climber =
+        probingUp(
+            /* stepSize= */ STRIDE, /* baseHitRate= */ 0.5, /* baseProbationDensity= */ 0.002);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 30,
+            /* mainHits= */ 940,
+            /* misses= */ 30);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(density.refractoryLeft).isEqualTo(0);
+    assertThat(adjustment)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 30, /* mainHits= */ 940));
+  }
+
+  @Test
+  public void probeEnding_upProbe_failsAgainstRicherFrozenBaseline() {
+    // The mirror: when the boundary was earning richly at arm time (a frequency floor), the same
+    // watched signal fails the verdict and the walk is undone with the ladder doubled.
+    var climber =
+        probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5, /* baseProbationDensity= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 30,
+            /* mainHits= */ 940,
+            /* misses= */ 30);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo(1024 - 2000);
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(density.refractoryLeft).isEqualTo(density.starvation.rung);
+  }
+
+  @Test
+  public void probeEnding_upProbeVerdict_isFreeOfTheSampleLength() {
+    // The up-probe divides a live window density by a probation density frozen at the arm, and a
+    // density is a hit count over a capacity: two of them form a ratio only when both count the
+    // same span. The same per-request rates over a sample twice as long must reach the same
+    // verdict. Nothing pins this on an unweighted cache, whose period is a constant four maxima;
+    // a weighted one samples on the sketch's entry-denominated period, which moves with the
+    // resident count, so a growing count would otherwise confirm every up-probe it lengthens.
+    var brief =
+        probingUp(
+            /* stepSize= */ STRIDE, /* baseHitRate= */ 0.97, /* baseProbationDensity= */ 0.02);
+    var briefDensity = (DensityClimber) brief.tier;
+    long briefVerdict =
+        sample(
+            brief,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 30,
+            /* mainHits= */ 940,
+            /* misses= */ 30);
+
+    var extended =
+        probingUp(
+            /* stepSize= */ STRIDE, /* baseHitRate= */ 0.97, /* baseProbationDensity= */ 0.02);
+    var extendedDensity = (DensityClimber) extended.tier;
+    long extendedVerdict =
+        sample(
+            extended,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 60,
+            /* mainHits= */ 1880,
+            /* misses= */ 60);
+
+    // the window earns less per request than the boundary did, so both fail and undo to the base
+    assertThat(briefDensity.walk).isNull();
+    assertThat(extendedDensity.walk).isNull();
+    assertThat(briefVerdict).isEqualTo(1024 - 2000);
+    assertThat(extendedVerdict).isEqualTo(1024 - 2000);
+    assertThat(briefDensity.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(extendedDensity.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void armProbe_freezesProbationBaselinePerArm() {
+    // The baseline snapshots at each arm, never mid-walk: the walk's own demotions enrich live
+    // probation (a demoted protected-hot core earns furiously there), so adjudicating against
+    // the live rate is an absorbing false-veto; re-arming re-snapshots, so a cold-start
+    // transient baseline heals on the next round.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    long capacity = probationCapacity(1024);
+    long entry =
+        sampleWithProbation(
+            climber,
+            /* windowMax= */ 1024,
+            /* windowHits= */ 0,
+            /* mainHits= */ 500,
+            /* probationHits= */ 200,
+            /* misses= */ 500);
+    assertThat(density.walk).isNotNull();
+    assertThat(entry).isEqualTo((long) STRIDE);
+    assertThat(walkOf(density).baseProbationDensity).isWithin(1.0e-9).of(200.0 / capacity);
+
+    density.walk = null;
+    density.refractoryLeft = 0;
+    long rearm =
+        sampleWithProbation(
+            climber,
+            /* windowMax= */ 1024,
+            /* windowHits= */ 0,
+            /* mainHits= */ 500,
+            /* probationHits= */ 10,
+            /* misses= */ 500);
+    assertThat(density.walk).isNotNull();
+    assertThat(rearm).isEqualTo((long) STRIDE);
+    assertThat(walkOf(density).baseProbationDensity).isWithin(1.0e-9).of(10.0 / capacity);
+  }
+
+  @Test
+  public void probeEnding_upProbe_zeroBaselineConfirmsOnAnySignal() {
+    // A probation region earning nothing at arm time prices the claimed capacity at ~zero, so
+    // any watched earnings above the adjudication bar confirm. The opportunity cost of a dead
+    // boundary is nothing; the confirm hands to density, which reverses the sparser window, and
+    // that reversal deepens the ladder rather than resetting it
+    var climber =
+        probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5, /* baseProbationDensity= */ 0.0);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 30,
+            /* mainHits= */ 940,
+            /* misses= */ 30);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(adjustment)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 30, /* mainHits= */ 940));
+  }
+
+  @Test
+  public void probeEnding_starvationConfirm_reversedByDensity_escalatesTheLadder() {
+    // A confirm the density arm reverses in the same sample keeps nothing: the window is walked
+    // home and the corner re-arms, so a reward here restarts the ladder on every cycle of a dither
+    // whose first-round stride never reaches the band it is looking for. The reversal is priced as
+    // the completed experiment it is, so the next walk commits deeper; the handoff to density and
+    // the zero refractory of a confirm are unchanged, and the ladder's cap still holds
+    var reversed =
+        probingUp(
+            /* stepSize= */ STRIDE, /* baseHitRate= */ 0.5, /* baseProbationDensity= */ 0.002);
+    var reversedDensity = (DensityClimber) reversed.tier;
+    long adjustment =
+        sample(
+            reversed,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 30,
+            /* mainHits= */ 940,
+            /* misses= */ 30);
+    assertThat(reversedDensity.walk).isNull();
+    assertThat(reversedDensity.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+    assertThat(reversedDensity.refractoryLeft).isEqualTo(0);
+    assertThat(reversedDensity.anchor.held).isFalse();
+    assertThat(adjustment).isLessThan(0L);
+    assertThat(adjustment)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 30, /* mainHits= */ 940));
+
+    // the same verdict where density agrees with the walk keeps the reward
+    var agreed = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var agreedDensity = (DensityClimber) agreed.tier;
+    sample(
+        agreed, /* windowMax= */ 2000, /* windowHits= */ 5, /* mainHits= */ 900, /* misses= */ 95);
+    assertThat(agreedDensity.walk).isNull();
+    assertThat(agreedDensity.starvation.rung).isEqualTo(1);
+    assertThat(agreedDensity.refractoryLeft).isEqualTo(0);
+
+    // at the deepest rung a reversal cannot deepen the ladder further
+    var deepest =
+        probingUp(
+            /* stepSize= */ STRIDE, /* baseHitRate= */ 0.5, /* baseProbationDensity= */ 0.002);
+    var deepestDensity = (DensityClimber) deepest.tier;
+    deepestDensity.starvation.rung = PROBE_BACKOFF_MAX;
+    walkOf(deepestDensity).samples = PROBE_COMMITMENT_DEEP;
+    sample(
+        deepest,
+        /* windowMax= */ 2000,
+        /* windowHits= */ 30,
+        /* mainHits= */ 940,
+        /* misses= */ 30);
+    assertThat(deepestDensity.walk).isNull();
+    assertThat(deepestDensity.starvation.rung).isEqualTo(PROBE_BACKOFF_MAX);
+    assertThat(deepestDensity.refractoryLeft).isEqualTo(0);
+  }
+
+  @Test
+  public void probeEnding_starvationConfirm_repeatOfTheFarthest_escalatesTheLadder() {
+    // A kept confirm at or short of the farthest window the ladder's walks have already confirmed
+    // re-finds ground the machine found and then lost, so it is priced as a completed experiment
+    // rather than rewarded: rewarding it pins the ladder at its first rung on every cycle of a lure
+    // that a first-round stride catches and density dismantles when it stops (the absolve family).
+    // The handoff to density and the zero refractory are unchanged; a confirm beyond the farthest
+    // is new ground and still rewards, moving the memory with it
+    var climber = probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    sample(
+        climber,
+        /* windowMax= */ 2000,
+        /* windowHits= */ 500,
+        /* mainHits= */ 400,
+        /* misses= */ 100);
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(density.starvation.farthest).isEqualTo(2000);
+    assertThat(density.starvation.farthestDown).isFalse();
+
+    reprobeUp(climber, /* baseHitRate= */ 0.5);
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 1800,
+            /* windowHits= */ 500,
+            /* mainHits= */ 400,
+            /* misses= */ 100);
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(2);
+    assertThat(density.refractoryLeft).isEqualTo(0);
+    assertThat(density.starvation.farthest).isEqualTo(2000);
+    assertThat(adjustment)
+        .isEqualTo(densityStep(/* windowMax= */ 1800, /* windowHits= */ 500, /* mainHits= */ 400));
+
+    // within the stable band of the farthest is still a repeat
+    reprobeUp(climber, /* baseHitRate= */ 0.5);
+    sample(
+        climber,
+        /* windowMax= */ 2100,
+        /* windowHits= */ 500,
+        /* mainHits= */ 400,
+        /* misses= */ 100);
+    assertThat(density.starvation.rung).isEqualTo(4);
+    assertThat(density.starvation.farthest).isEqualTo(2100);
+
+    reprobeUp(climber, /* baseHitRate= */ 0.5);
+    sample(
+        climber,
+        /* windowMax= */ 2600,
+        /* windowHits= */ 500,
+        /* mainHits= */ 400,
+        /* misses= */ 100);
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(density.starvation.farthest).isEqualTo(2600);
+  }
+
+  @Test
+  public void probeEnding_starvationConfirm_theOtherDirection_startsTheMemoryOver() {
+    // the memory is per direction: a down-walk's confirm after up-walk confirms is new ground, and
+    // farthest for a down-walk is the smallest window
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var density = (DensityClimber) climber.tier;
+    density.starvation.remember(/* down= */ false, 2000);
+    sample(
+        climber, /* windowMax= */ 2000, /* windowHits= */ 5, /* mainHits= */ 900, /* misses= */ 95);
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(density.starvation.farthestDown).isTrue();
+    assertThat(density.starvation.farthest).isEqualTo(2000);
+
+    reprobeDown(climber, /* baseHitRate= */ 0.9);
+    sample(
+        climber, /* windowMax= */ 2100, /* windowHits= */ 5, /* mainHits= */ 900, /* misses= */ 95);
+    assertThat(density.starvation.rung).isEqualTo(2);
+    assertThat(density.starvation.farthest).isEqualTo(2000);
+
+    reprobeDown(climber, /* baseHitRate= */ 0.9);
+    sample(
+        climber, /* windowMax= */ 1500, /* windowHits= */ 5, /* mainHits= */ 900, /* misses= */ 95);
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(density.starvation.farthest).isEqualTo(1500);
+  }
+
+  @Test
+  public void undoProbe_starvationFailOrCrash_forgetsTheFarthest() {
+    // a walk that keeps nothing shows the terrain the memory was found on has moved; an audit's
+    // endings leave the starvation ladder's memory alone
+    var failed = probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5);
+    var failedDensity = (DensityClimber) failed.tier;
+    sample(
+        failed,
+        /* windowMax= */ 2000,
+        /* windowHits= */ 500,
+        /* mainHits= */ 400,
+        /* misses= */ 100);
+    assertThat(failedDensity.starvation.farthest).isEqualTo(2000);
+    reprobeUp(failed, /* baseHitRate= */ 0.5).samples = PROBE_WALK_BUDGET;
+    sample(
+        failed, /* windowMax= */ 1500, /* windowHits= */ 0, /* mainHits= */ 500, /* misses= */ 500);
+    assertThat(failedDensity.walk).isNull();
+    assertThat(failedDensity.starvation.farthest).isEqualTo(-1);
+
+    var crashed = probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5);
+    var crashedDensity = (DensityClimber) crashed.tier;
+    sample(
+        crashed,
+        /* windowMax= */ 2000,
+        /* windowHits= */ 500,
+        /* mainHits= */ 400,
+        /* misses= */ 100);
+    reprobeUp(crashed, /* baseHitRate= */ 0.5);
+    sample(
+        crashed,
+        /* windowMax= */ 1500,
+        /* windowHits= */ 0,
+        /* mainHits= */ 100,
+        /* misses= */ 900);
+    assertThat(crashedDensity.walk).isNull();
+    assertThat(crashedDensity.starvation.crashStreak).isEqualTo(1);
+    assertThat(crashedDensity.starvation.farthest).isEqualTo(-1);
+
+    var audited = probingUp(/* stepSize= */ STRIDE, /* baseHitRate= */ 0.5);
+    var auditedDensity = (DensityClimber) audited.tier;
+    sample(
+        audited,
+        /* windowMax= */ 2000,
+        /* windowHits= */ 500,
+        /* mainHits= */ 400,
+        /* misses= */ 100);
+    injectWalk(
+                auditedDensity,
+                /* isAudit= */ true,
+                /* down= */ true,
+                /* baseWindow= */ 2000,
+                /* baseHitRate= */ 0.5,
+                /* baseSmoothedRate= */ 0.5)
+            .samples =
+        PROBE_WALK_BUDGET;
+    audited.sample.previousHitRate = 0.5;
+    sample(
+        audited,
+        /* windowMax= */ 1800,
+        /* windowHits= */ 400,
+        /* mainHits= */ 100,
+        /* misses= */ 500);
+    assertThat(auditedDensity.walk).isNull();
+    assertThat(auditedDensity.starvation.farthest).isEqualTo(2000);
+  }
+
+  @Test
+  public void probeEnding_deepReversedConfirm_goalConfirmed_parksAsAnAudit() {
+    // A starvation walk that took the deepest commitment, whose confirm density reverses, and
+    // that satisfies the audit's own confirm test is an audit in all but name: it is kept as a
+    // park, since density would walk it home in the same sample, and the sample takes no parting
+    // step. The base rate is far below what the walk earns, so the goal metric confirms it
+    var climber =
+        probingUp(
+            /* stepSize= */ STRIDE, /* baseHitRate= */ 0.30, /* baseProbationDensity= */ 0.002);
+    var density = (DensityClimber) climber.tier;
+    density.starvation.rung = PROBE_BACKOFF_MAX;
+    var walk = walkOf(density);
+    walk.samples = PROBE_COMMITMENT_DEEP;
+    walk.aboveStreak = AUDIT_CONFIRM_STREAK - 1;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 30,
+            /* mainHits= */ 940,
+            /* misses= */ 30);
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo(0);
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.freshLeft).isEqualTo(AUDIT_WAIT_INITIAL);
+    assertThat(density.anchor.window).isEqualTo(2000);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_MAX);
+
+    // without the goal metric's streak the same confirm hands back to density, as any reversed
+    // confirm does
+    var unconfirmed =
+        probingUp(
+            /* stepSize= */ STRIDE, /* baseHitRate= */ 0.30, /* baseProbationDensity= */ 0.002);
+    var unconfirmedDensity = (DensityClimber) unconfirmed.tier;
+    unconfirmedDensity.starvation.rung = PROBE_BACKOFF_MAX;
+    walkOf(unconfirmedDensity).samples = PROBE_COMMITMENT_DEEP;
+    long steered =
+        sample(
+            unconfirmed,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 30,
+            /* mainHits= */ 940,
+            /* misses= */ 30);
+    assertThat(unconfirmedDensity.walk).isNull();
+    assertThat(unconfirmedDensity.anchor.held).isFalse();
+    assertThat(steered)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 30, /* mainHits= */ 940));
+
+    // and so does a walk short of the deepest commitment, streak or not
+    var shallow =
+        probingUp(
+            /* stepSize= */ STRIDE, /* baseHitRate= */ 0.30, /* baseProbationDensity= */ 0.002);
+    var shallowDensity = (DensityClimber) shallow.tier;
+    walkOf(shallowDensity).aboveStreak = AUDIT_CONFIRM_STREAK - 1;
+    long shallowStep =
+        sample(
+            shallow,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 30,
+            /* mainHits= */ 940,
+            /* misses= */ 30);
+    assertThat(shallowDensity.walk).isNull();
+    assertThat(shallowDensity.anchor.held).isFalse();
+    assertThat(shallowStep)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 30, /* mainHits= */ 940));
+  }
+
+  @Test
+  public void audit_walkFromPark_crashScaleMove_keepsThePark() {
+    // an audit's walk out of a park is the park's own re-test: the crash-scale move it makes when
+    // it walks into a valley is what the crash abort prices, and the undo returns to the park, so
+    // it is not read as a workload shift that stands the park down (a shift while no walk is in
+    // flight still does, as guardRail_crashScaleShift_releasesTheParkAndReturn pins)
+    var climber = armAudit(/* windowMax= */ 2000);
+    var density = (DensityClimber) climber.tier;
+    density.anchor.held = true;
+    density.anchor.freshLeft = 0;
+    long walked = 2000 + climber.adjustment();
+    long undo = steadySample(climber, walked, /* hitRate= */ 0.50);
+    assertThat(density.walk).isNull();
+    assertThat(undo).isEqualTo(2000 - walked);
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(2000);
+  }
+
+  @Test
+  public void probeEnding_downProbe_ignoresProbationBaseline() {
+    // Down-probes keep the average-density verdict, since the window has no marginal substructure,
+    // so a poisoned baseline must not affect their adjudication.
+    var climber =
+        probingDown(
+            /* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9, /* baseProbationDensity= */ 1.0e9);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 5,
+            /* mainHits= */ 900,
+            /* misses= */ 95);
+
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(1);
+    assertThat(adjustment)
+        .isEqualTo(densityStep(/* windowMax= */ 2000, /* windowHits= */ 5, /* mainHits= */ 900));
+  }
+
+  @Test
+  public void probeEnding_adjudicationBar_isFourTimesTheStarvationBar() {
+    // the watched region may judge at exactly four times the bar; one hit fewer keeps walking
+    var judged = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var judgedDensity = (DensityClimber) judged.tier;
+    long verdict =
+        sample(
+            judged,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 850,
+            /* mainHits= */ 16,
+            /* misses= */ 134);
+    assertThat(judgedDensity.walk).isNull();
+    assertThat(verdict).isEqualTo((long) (MAX_STEP_FRACTION * MAXIMUM));
+
+    var walking = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var walkingDensity = (DensityClimber) walking.tier;
+    long stride =
+        sample(
+            walking,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 850,
+            /* mainHits= */ 15,
+            /* misses= */ 135);
+    assertThat(walkingDensity.walk).isNotNull();
+    assertThat(stride).isEqualTo((long) (STEP_DECAY_RATE * -STRIDE));
+  }
+
+  @Test
+  public void probeEnding_neutralVerdict_fails() {
+    // "no better, no worse" must fail: an early design that kept neutral positions let the
+    // density arm walk the window home and the probe re-fire, forever. Equal densities give a
+    // signed verdict of exactly zero, which does not confirm the probed direction.
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.9);
+    var density = (DensityClimber) climber.tier;
+    long adjustment =
+        sample(
+            climber,
+            /* windowMax= */ 2000,
+            /* windowHits= */ 250,
+            /* mainHits= */ 774,
+            /* misses= */ 0);
+
+    assertThat(density.walk).isNull();
+    assertThat(adjustment).isEqualTo((long) (MAX_STEP_FRACTION * MAXIMUM));
+    assertThat(density.undoRemaining).isEqualTo(5000 - (long) (MAX_STEP_FRACTION * MAXIMUM));
+    assertThat(density.starvation.rung).isEqualTo(2 * PROBE_BACKOFF_INITIAL);
+  }
+
+  @Test
+  public void probeEnding_ladderCapBinds() {
+    var climber = probingDown(/* stepSize= */ -STRIDE, /* baseHitRate= */ 0.5);
+    var density = (DensityClimber) climber.tier;
+    density.starvation.rung = PROBE_BACKOFF_MAX;
+    walkOf(density).samples = PROBE_WALK_BUDGET;
+    long undo =
+        sample(
+            climber,
+            /* windowMax= */ 5000,
+            /* windowHits= */ 495,
+            /* mainHits= */ 5,
+            /* misses= */ 500);
+
+    assertThat(undo).isEqualTo(7000 - 5000);
+    assertThat(density.walk).isNull();
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_MAX);
+  }
+
+  /* --------------- Tiers --------------- */
+
+  @Test
+  public void mediumTier_usesSketchPeriodAndStandardDecay() {
+    var climber = new WindowClimber();
+    climber.resized(2048);
+    double seed = climber.tier.step.size;
+
+    for (int i = 0; i < 500; i++) {
+      climber.recordHit(/* inWindow= */ false, /* inProbation= */ false);
+      climber.recordMiss();
+    }
+    climber.determineAdjustment(
+        2048, /* windowMaximum= */ 200, protectedMax(2048, 200), /* sketchSampleSize= */ 1001);
+    assertThat(climber.adjustment()).isEqualTo(0);
+    assertThat(climber.sample.hits).isEqualTo(500);
+
+    climber.recordMiss();
+    climber.determineAdjustment(
+        2048, /* windowMaximum= */ 200, protectedMax(2048, 200), /* sketchSampleSize= */ 1001);
+    assertThat(climber.adjustment()).isEqualTo((long) seed);
+    assertThat(climber.sample.hits).isEqualTo(0);
+
+    for (int i = 0; i < 505; i++) {
+      climber.recordHit(/* inWindow= */ false, /* inProbation= */ false);
+    }
+    for (int i = 0; i < 496; i++) {
+      climber.recordMiss();
+    }
+    climber.determineAdjustment(
+        2048, /* windowMaximum= */ 200, protectedMax(2048, 200), /* sketchSampleSize= */ 1001);
+    assertThat(climber.adjustment()).isEqualTo((long) seed);
+    assertThat(climber.tier.step.size).isWithin(1.0e-9).of(STEP_DECAY_RATE * seed);
+  }
+
+  @Test
+  public void mediumTier_reversesOnWorse_andRestartsOnCrashScaleChange() {
+    // the reactive climber's two remaining decisions: a worsening sub-crash sample reverses the
+    // bold driver, and a crash-scale change re-anneals the decayed step to its full magnitude
+    var climber = new WindowClimber();
+    climber.resized(2048);
+    double seed = climber.tier.step.size;
+    assertThat(seed).isEqualTo(-STEP_PERCENT * 2048);
+
+    reactiveSample(climber, /* hits= */ 500, /* misses= */ 501);
+    assertThat(climber.adjustment()).isEqualTo((long) seed);
+
+    reactiveSample(climber, /* hits= */ 480, /* misses= */ 521);
+    assertThat(climber.adjustment()).isEqualTo((long) -seed);
+    assertThat(climber.tier.step.size).isWithin(1.0e-9).of(STEP_DECAY_RATE * -seed);
+
+    reactiveSample(climber, /* hits= */ 590, /* misses= */ 411);
+    assertThat(climber.adjustment()).isEqualTo((long) (STEP_DECAY_RATE * -seed));
+    assertThat(climber.tier.step.size).isEqualTo(-seed);
+  }
+
+  /** Completes one full sample in the medium tier (sketch period 1001). */
+  private static void reactiveSample(WindowClimber climber, int hits, int misses) {
+    for (int i = 0; i < hits; i++) {
+      climber.recordHit(/* inWindow= */ false, /* inProbation= */ false);
+    }
+    for (int i = 0; i < misses; i++) {
+      climber.recordMiss();
+    }
+    climber.determineAdjustment(
+        2048, /* windowMaximum= */ 200, protectedMax(2048, 200), /* sketchSampleSize= */ 1001);
+  }
+
+  /* --------------- The review's wall-sit scenario --------------- */
+
+  @Test
+  public void walk_floorBlockedDownProbe_neverStridesUpAndUndoesOnExpiry() {
+    var climber = new WindowClimber();
+    long maximum = 1_048_576;
+    climber.resized(maximum);
+    var density = (DensityClimber) climber.tier;
+    density.starvation.rung = PROBE_BACKOFF_MAX;
+    double floor = WINDOW_FLOOR_FRACTION * maximum;
+    double stride = STEP_PERCENT * maximum;
+    double base = 800_000;
+
+    // the walk arms from a dead sample past the midpoint, the one down trigger left now that a
+    // starved main beside a large window steers instead of probing
+    long windowMax = (long) base;
+    long arming = bigSample(climber, maximum, windowMax, /* hits= */ 0);
+    double expected = -Math.min(MAX_STEP_FRACTION * maximum, 4 * stride);
+    assertThat(arming).isEqualTo((long) expected);
+    assertThat(walkOf(density).down).isTrue();
+    windowMax += arming;
+
+    int moving = 1;
+    int blocked = 0;
+    for (int i = 0; (i < PROBE_WALK_BUDGET) && (density.walk != null); i++) {
+      int hits = (blocked == 4) ? 540 : 500; // an improving sub-crash jitter mid-wall
+      long adjustment = bigSample(climber, maximum, windowMax, hits);
+      if (density.walk != null) {
+        assertThat(adjustment).isAtMost(0);
+        if (adjustment == 0) {
+          assertThat(windowMax).isAtLeast((long) floor);
+          assertThat(windowMax).isAtMost((long) Math.ceil(floor) + 1);
+          blocked++;
+        } else {
+          moving++;
+        }
+        windowMax += adjustment;
+      } else {
+        // the restore honors the maximum step; the remainder continues on the following samples
+        double cap = MAX_STEP_FRACTION * maximum;
+        assertThat(adjustment).isAtMost((long) cap);
+        windowMax += adjustment;
+        for (int j = 0; (j < PROBE_WALK_BUDGET) && (density.undoRemaining != 0); j++) {
+          long chunk = bigSample(climber, maximum, windowMax, /* hits= */ 500);
+          assertThat(Math.abs(chunk)).isAtMost((long) cap);
+          windowMax += chunk;
+        }
+        assertThat(density.undoRemaining).isEqualTo(0);
+      }
+    }
+    assertThat(density.walk).isNull();
+    assertThat((double) windowMax).isWithin(4.0).of(base);
+    assertThat(moving).isAtMost(5);
+    assertThat(blocked).isAtLeast(10);
+    assertThat(density.starvation.rung).isEqualTo(PROBE_BACKOFF_MAX);
+  }
+
+  @Test
+  public void walk_floorBlockedAudit_chargesTheClockForEvidenceItNeverGathered() {
+    // The sibling above pins the starvation half of a floor-blocked walk. This is the audit half,
+    // and it is the costlier one: strides that clamp at the rail still spend a sample apiece and
+    // the walk still ends at its budget, and since there is no BLOCKED ending the expiry is
+    // priced as a completed failure. At the deepest rung that doubles the wait between audits on
+    // evidence the walk never gathered. Pinned as the current contract, so a BLOCKED ending would
+    // have to move these numbers deliberately.
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    density.audit.rung = PROBE_BACKOFF_MAX;
+    density.auditClock.waitSamples = AUDIT_WAIT_MAX / 2;
+    density.auditClock.stillSamples = AUDIT_WAIT_MAX;
+    density.rates.smoothed = 0.50;
+    density.rates.deviation = 0.001;
+    climber.sample.previousHitRate = 0.50;
+
+    // Both regions earn, so no blind corner pre-empts the clock; the window sits past the upper
+    // corner, where the direction rule chooses down and the walk runs into the floor.
+    long windowMax = 7000;
+    windowMax +=
+        sample(climber, windowMax, /* windowHits= */ 250, /* mainHits= */ 250, /* misses= */ 500);
+    assertThat(walkOf(density).isAudit).isTrue();
+    assertThat(walkOf(density).down).isTrue();
+
+    long lowest = windowMax;
+    int blocked = 0;
+    for (int i = 0; (i < PROBE_WALK_BUDGET) && (density.walk != null); i++) {
+      long adjustment =
+          sample(climber, windowMax, /* windowHits= */ 250, /* mainHits= */ 250, /* misses= */ 500);
+      if ((density.walk != null) && (adjustment == 0)) {
+        blocked++;
+      }
+      windowMax += adjustment;
+      lowest = Math.min(lowest, windowMax);
+    }
+
+    // it reached the rail, stood there for most of its budget, and was charged a failure for it
+    assertThat(density.walk).isNull();
+    assertThat(blocked).isAtLeast(PROBE_WALK_BUDGET / 2);
+    assertThat(lowest).isAtMost((long) Math.ceil(FLOOR) + 1);
+    assertThat(density.audit.rung).isEqualTo(PROBE_BACKOFF_MAX);
+    assertThat(density.auditClock.waitSamples).isEqualTo(AUDIT_WAIT_MAX);
+  }
+
+  /* --------------- Helpers --------------- */
+
+  private static WindowClimber makeClimber() {
+    var climber = new WindowClimber();
+    climber.resized(MAXIMUM);
+    return climber;
+  }
+
+  /**
+   * The walk in flight, asserting that there is one. Never hold the result across a sample: an
+   * ending discards the walk, so a carried local reports the state it died in.
+   */
+  private static Walk walkOf(DensityClimber density) {
+    var walk = density.walk;
+    assertThat(walk).isNotNull();
+    return walk;
+  }
+
+  /**
+   * Puts a walk in flight, as an arm would have left it, so a scenario can start from a base the
+   * machine would need many samples to reach. The returned walk is the handle for the counters a
+   * scenario also wants to pre-set; the probation baseline is the zero a fresh climber carries,
+   * since only an up-probe's starvation verdict reads it.
+   */
+  private static Walk injectWalk(
+      DensityClimber density,
+      boolean isAudit,
+      boolean down,
+      long baseWindow,
+      double baseHitRate,
+      double baseSmoothedRate) {
+    var walk =
+        new Walk(
+            isAudit ? density.audit : density.starvation,
+            isAudit,
+            down,
+            baseWindow,
+            /* baseRequestCount= */ 1000,
+            baseHitRate,
+            baseSmoothedRate,
+            /* baseProbationDensity= */ 0.0);
+    density.walk = walk;
+    return walk;
+  }
+
+  /**
+   * Copies the active walk with a colder smoothed-rate baseline, the state an arm carries when its
+   * rate lags a warming sample, preserving the strides already taken. The bases stay final because
+   * the verdict studies rely on the frozen-at-arm property, so this replaces the walk rather than
+   * mutating it.
+   */
+  private static Walk rebaseReference(WindowClimber climber, double reference) {
+    var density = (DensityClimber) climber.tier;
+    var armed = walkOf(density);
+    var walk =
+        new Walk(
+            armed.ladder,
+            armed.isAudit,
+            armed.down,
+            armed.baseWindow,
+            armed.baseRequestCount,
+            armed.baseHitRate,
+            reference,
+            armed.baseProbationDensity);
+    walk.samples = armed.samples;
+    walk.belowBarStreak = armed.belowBarStreak;
+    walk.aboveStreak = armed.aboveStreak;
+    walk.beatBase = armed.beatBase;
+    density.walk = walk;
+    return walk;
+  }
+
+  private static WindowClimber probingUp(double stepSize, double baseHitRate) {
+    return probingUp(stepSize, baseHitRate, /* baseProbationDensity= */ 0.0);
+  }
+
+  /** Puts a fresh up-probe in flight on a climber whose ladder already carries a history. */
+  private static Walk reprobeUp(WindowClimber climber, double baseHitRate) {
+    return reprobe(climber, /* down= */ false, /* baseWindow= */ 1024, STRIDE, baseHitRate);
+  }
+
+  /** Puts a fresh down-probe in flight on a climber whose ladder already carries a history. */
+  private static Walk reprobeDown(WindowClimber climber, double baseHitRate) {
+    return reprobe(climber, /* down= */ true, /* baseWindow= */ 7000, -STRIDE, baseHitRate);
+  }
+
+  private static Walk reprobe(
+      WindowClimber climber, boolean down, long baseWindow, double stepSize, double baseHitRate) {
+    var density = (DensityClimber) climber.tier;
+    var walk =
+        injectWalk(
+            density,
+            /* isAudit= */ false,
+            down,
+            baseWindow,
+            baseHitRate,
+            /* baseSmoothedRate= */ 0.0);
+    walk.samples = 1;
+    climber.tier.step.size = stepSize;
+    climber.sample.previousHitRate = baseHitRate;
+    density.refractoryLeft = 0;
+    density.undoRemaining = 0;
+    return walk;
+  }
+
+  /**
+   * Arms an audit at a quiet equilibrium and walks it to a confirmed park at the improved rate,
+   * returning the climber parked below the position (the first interior audit explores down).
+   */
+  private static WindowClimber confirmedAuditPark(
+      long windowMax, double baseRate, double walkedRate) {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < (AUDIT_WAIT_INITIAL + 2); i++) {
+      steadySample(climber, windowMax, baseRate);
+      if (density.walk != null) {
+        break;
+      }
+    }
+    assertThat(walkOf(density).isAudit).isTrue();
+    assertThat(walkOf(density).down).isTrue();
+    long walked = windowMax + climber.adjustment();
+    for (int i = 0; i < PROBE_WALK_BUDGET; i++) {
+      walked += steadySample(climber, walked, walkedRate);
+      if (density.walk == null) {
+        break;
+      }
+    }
+    assertThat(density.walk).isNull();
+    assertThat(density.anchor.held).isTrue();
+    assertThat(density.anchor.window).isEqualTo(walked);
+    return climber;
+  }
+
+  /** Holds the position still at the rate until the next audit arms, asserting it does. */
+  private static void armNextAudit(WindowClimber climber, long windowMax, double hitRate) {
+    var density = (DensityClimber) climber.tier;
+    for (int i = 0; i < (2 * AUDIT_WAIT_INITIAL); i++) {
+      steadySample(climber, windowMax, hitRate);
+      if (density.walk != null) {
+        break;
+      }
+    }
+    assertThat(walkOf(density).isAudit).isTrue();
+  }
+
+  private static WindowClimber probingUp(
+      double stepSize, double baseHitRate, double baseProbationDensity) {
+    return probing(
+        /* down= */ false, stepSize, baseHitRate, /* baseWindow= */ 1024, baseProbationDensity);
+  }
+
+  private static WindowClimber probingDown(double stepSize, double baseHitRate) {
+    return probingDown(stepSize, baseHitRate, /* baseProbationDensity= */ 0.0);
+  }
+
+  private static WindowClimber probingDown(
+      double stepSize, double baseHitRate, double baseProbationDensity) {
+    return probing(
+        /* down= */ true, stepSize, baseHitRate, /* baseWindow= */ 7000, baseProbationDensity);
+  }
+
+  /**
+   * Arms a down probe whose first sample fails on the density verdict, leaving a retreat longer
+   * than one capped stride so that the undo drains across the samples that follow.
+   */
+  private static WindowClimber failingDownProbe() {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    injectWalk(
+                density,
+                /* isAudit= */ false,
+                /* down= */ true,
+                /* baseWindow= */ 7000,
+                /* baseHitRate= */ 0.70,
+                /* baseSmoothedRate= */ 0.0)
+            .samples =
+        1;
+    climber.sample.previousHitRate = 0.70;
+    density.rates.deviation = 0.001;
+    density.rates.smoothed = 0.70;
+    climber.tier.step.size = -STRIDE;
+    return climber;
+  }
+
+  private static WindowClimber probing(
+      boolean down,
+      double stepSize,
+      double baseHitRate,
+      long baseWindow,
+      double baseProbationDensity) {
+    var climber = makeClimber();
+    var density = (DensityClimber) climber.tier;
+    var walk =
+        new Walk(
+            density.starvation,
+            /* isAudit= */ false,
+            down,
+            baseWindow,
+            /* baseRequestCount= */ 1000,
+            baseHitRate,
+            /* baseSmoothedRate= */ 0.0,
+            baseProbationDensity);
+    walk.samples = 1;
+    density.walk = walk;
+    climber.tier.step.size = stepSize;
+    climber.sample.previousHitRate = baseHitRate;
+    return climber;
+  }
+
+  /** Completes one thousand-request sample and returns the committed adjustment. */
+  private static long sample(
+      WindowClimber climber, long windowMax, int windowHits, int mainHits, int misses) {
+    return sampleWithProbation(
+        climber, windowMax, windowHits, mainHits, /* probationHits= */ 0, misses);
+  }
+
+  /** Completes one sample whose main hits include the given probation-attributed share. */
+  private static long sampleWithProbation(
+      WindowClimber climber,
+      long windowMax,
+      int windowHits,
+      int mainHits,
+      int probationHits,
+      int misses) {
+    for (int i = 0; i < windowHits; i++) {
+      climber.recordHit(/* inWindow= */ true, /* inProbation= */ false);
+    }
+    for (int i = 0; i < (mainHits - probationHits); i++) {
+      climber.recordHit(/* inWindow= */ false, /* inProbation= */ false);
+    }
+    for (int i = 0; i < probationHits; i++) {
+      climber.recordHit(/* inWindow= */ false, /* inProbation= */ true);
+    }
+    for (int i = 0; i < misses; i++) {
+      climber.recordMiss();
+    }
+    int requests = windowHits + mainHits + misses;
+    climber.determineAdjustment(
+        MAXIMUM, windowMax, protectedMax(MAXIMUM, windowMax), /* sketchSampleSize= */ requests);
+    return climber.adjustment();
+  }
+
+  /** Completes a thousand-request sample with the given window hits (main earns nothing). */
+  private static long bigSample(WindowClimber climber, long maximum, long windowMax, int hits) {
+    for (int i = 0; i < hits; i++) {
+      climber.recordHit(/* inWindow= */ true, /* inProbation= */ false);
+    }
+    for (int i = 0; i < (1000 - hits); i++) {
+      climber.recordMiss();
+    }
+    climber.determineAdjustment(
+        maximum, windowMax, protectedMax(maximum, windowMax), /* sketchSampleSize= */ 1000);
+    return climber.adjustment();
+  }
+
+  /**
+   * The protected region's maximum for the main space left by the window (80% of main). This is a
+   * per-position simplification: the cache sets protected once per resize and conserves window plus
+   * protected, so its probation stays fixed while this helper's varies with the window.
+   */
+  private static long protectedMax(long maximum, long windowMax) {
+    return ((maximum - windowMax) * 4) / 5;
+  }
+
+  /** The probation capacity implied by {@link #protectedMax}. */
+  private static long probationCapacity(long windowMax) {
+    return MAXIMUM - windowMax - protectedMax(MAXIMUM, windowMax);
+  }
+
+  /** Mirrors the density arm's proportional step for an expected-value computation. */
+  private static long densityStep(long windowMax, int windowHits, int mainHits) {
+    double windowDensity = windowHits / (double) windowMax;
+    double mainDensity = mainHits / (double) (MAXIMUM - windowMax);
+    double error = Math.log((windowDensity + DENSITY_EPSILON) / (mainDensity + DENSITY_EPSILON));
+    double magnitude =
+        Math.min(MAX_STEP_FRACTION * MAXIMUM, Math.abs(error) * DENSITY_GAIN * MAXIMUM);
+    double step = (error >= 0) ? magnitude : -magnitude;
+    double clamped =
+        ((step < 0) && ((windowMax + step) < FLOOR)) ? Math.min(0.0, FLOOR - windowMax) : step;
+    return (long) clamped;
+  }
+}

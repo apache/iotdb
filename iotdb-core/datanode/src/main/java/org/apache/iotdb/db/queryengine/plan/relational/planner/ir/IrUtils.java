@@ -36,8 +36,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Arrays;

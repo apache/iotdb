@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.schema.quota;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -123,7 +124,7 @@ public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
       }
       // delete some timeseries and database
       statement.execute("delete database root.sg2;");
-      statement.execute("delete timeseries root.sg1.d0.s0;");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.sg1.d0.s0;");
       waitForSchemaQuotaUpdate();
       // now we can create 3 new timeseries or 1 new device
       statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d4");

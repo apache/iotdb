@@ -250,6 +250,17 @@ public class ConfigNodeConfig {
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
+  private boolean enableSyncSchemaDeletion = false;
+
+  /** Maximum number of tree-model timeseries deletion tasks waiting to execute. */
+  private volatile int timeseriesDeletionQueueCapacity = 1024;
+
+  /** Minimum interval between starting tree-model timeseries deletion tasks, in milliseconds. */
+  private long timeseriesDeletionExecutionIntervalMs = 1000;
+
+  /** Maximum number of tree-model timeseries deletion tasks executing concurrently. */
+  private int timeseriesDeletionMaxConcurrentTasks = 1;
+
   /** Thread pool size for publishing cluster load statistics changes. */
   private int loadStatisticsPublisherThreadCount = 5;
 
@@ -796,8 +807,46 @@ public class ConfigNodeConfig {
     this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
   }
 
+  public boolean isEnableSyncSchemaDeletion() {
+    return enableSyncSchemaDeletion;
+  }
+
+  public void setEnableSyncSchemaDeletion(boolean enableSyncSchemaDeletion) {
+    this.enableSyncSchemaDeletion = enableSyncSchemaDeletion;
+  }
+
   public int getLoadStatisticsPublisherThreadCount() {
     return loadStatisticsPublisherThreadCount;
+  }
+
+  public int getTimeseriesDeletionQueueCapacity() {
+    return timeseriesDeletionQueueCapacity;
+  }
+
+  public void setTimeseriesDeletionQueueCapacity(int capacity) {
+    if (capacity <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    timeseriesDeletionQueueCapacity = capacity;
+  }
+
+  public long getTimeseriesDeletionExecutionIntervalMs() {
+    return timeseriesDeletionExecutionIntervalMs;
+  }
+
+  public void setTimeseriesDeletionExecutionIntervalMs(long intervalMs) {
+    timeseriesDeletionExecutionIntervalMs = Math.max(0L, intervalMs);
+  }
+
+  public int getTimeseriesDeletionMaxConcurrentTasks() {
+    return timeseriesDeletionMaxConcurrentTasks;
+  }
+
+  public void setTimeseriesDeletionMaxConcurrentTasks(int maxConcurrentTasks) {
+    if (maxConcurrentTasks <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    timeseriesDeletionMaxConcurrentTasks = maxConcurrentTasks;
   }
 
   public void setLoadStatisticsPublisherThreadCount(int loadStatisticsPublisherThreadCount) {

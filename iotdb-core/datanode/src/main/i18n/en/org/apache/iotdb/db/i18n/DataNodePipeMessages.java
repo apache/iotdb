@@ -20,6 +20,14 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
+  public static final String
+      EXCEPTION_CANNOT_DETERMINE_TABLE_NAMES_BECAUSE_THE_NON_EMPTY_TSFILE_RESOURCE_HAS_NO_DEVICE_METADATA_6A0CBC2B =
+          "Cannot determine table names because the non-empty TsFile resource has no device metadata.";
+
+  public static final String
+      LOG_AIR_GAP_UDP_RECEIVE_BUFFER_IS_ARG_BYTES_BELOW_THE_REQUESTED_ARG_BYTES_INCREASE_THE_OPERATING_SYSTEM_RECEIVE_BUFFER_LIMIT_AND_RESTART_THE_DATANODE_TO_REDUCE_PACKET_LOSS_89B20AFC =
+          "Air gap UDP receive buffer is {} bytes, below the requested {} bytes. Increase the operating system receive-buffer limit and restart the DataNode to reduce packet loss.";
+
   public static final String LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98 =
       "Subscription replay stalled for {} ms: {}; diagnostics={}. Inspect prefetch worker stacks and WAL I/O.";
 
@@ -647,6 +655,9 @@ public final class DataNodePipeMessages {
       "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}";
   public static final String PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING =
       "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}";
+  public static final String
+      EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3 =
+          "Pipe {}@{}: time partition {} changed during historical TsFile extraction after one refresh";
   public static final String PIPE_FINISH_TO_EXTRACT_DELETIONS_EXTRACT_DELETIONS =
       "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}, took {} ms";
   public static final String PIPE_FINISH_TO_EXTRACT_HISTORICAL_TSFILE_EXTRACTED =
@@ -3168,4 +3179,20 @@ public final class DataNodePipeMessages {
       EXCEPTION_HISTORICAL_SUMMARY_EXTRACTEDTSFILECOUNT_ARG_SKIPPEDTSFILECOUNT_ARG_SPLITTSFILECOUNT_ARG_UNSPLITTSFILECOUNT_ARG_DELETIONCOUNT_ARG_C8BF3247 =
           "historical summary: extractedTsFileCount=%s, skippedTsFileCount=%s, splitTsFileCount=%s,"
               + " unsplitTsFileCount=%s, deletionCount=%s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_THE_PIPE_FILE_ARG_BECAUSE_IT_DOES_NOT_EXIST_1741B8E4 =
+          "Failed to pin the pipe file %s because it does not exist";
+
+  public static final String LOG_PIPE_HARDLINK_DIRECTORIES_ARE_RESOLVED_AS_ARG_1DAB3D0F =
+      "Pipe hardlink directories are resolved as {}.";
+
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_THE_TSFILE_ARG_BY_CREATING_A_HARDLINK_AND_THE_TSFILE_CAN_NOT_BE_COPIED_BECAUSE_IT_IS_NOT_CLOSED_YET_4E346D68 =
+          "Failed to pin the TsFile %s by creating a hardlink, and the TsFile can not be copied"
+              + " because it is not closed yet";
+  public static final String EXCEPTION_DELETION_RESOURCE_MANAGER_FOR_DATAREGION_ARG_IS_CLOSED_OR_DELETED_951C0622 =
+      "Deletion resource manager for DataRegion %s is closed or deleted.";
+  public static final String LOG_DELETION_PERSIST_ARG_TIMED_OUT_WAITING_FOR_ARG_DELETIONS_TO_FLUSH_BEFORE_SHUTDOWN_52469B0D =
+      "Deletion persist-{}: timed out waiting for {} deletions to flush before shutdown.";
 }

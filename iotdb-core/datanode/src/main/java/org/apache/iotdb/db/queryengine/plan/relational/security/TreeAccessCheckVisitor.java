@@ -161,6 +161,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDeleteTimeSeriesProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
@@ -176,7 +177,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -2028,6 +2029,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         context.setAuditLogOperation(AuditLogOperation.CONTROL),
         PrivilegeType.SYSTEM,
         AuditEventType.INTEGRITY_CHECK);
+  }
+
+  @Override
+  public TSStatus visitShowDeleteTimeSeriesProgress(
+      ShowDeleteTimeSeriesProgressStatement statement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.QUERY), PrivilegeType.MAINTAIN, () -> "");
   }
 
   @Override

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -80,7 +81,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_SERVER;
@@ -89,6 +89,7 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.S
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.GET_DATA_BLOCK_NUM_SERVER;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_SERVER;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
@@ -420,6 +421,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   public interface SinkListener {
     void onFinish(ISink sink);
 
+    /**
+     * Remote channels may publish the end under their monitor before an outstanding ACK. This
+     * callback must be non-blocking and must not acquire the owning shuffle handle's lock.
+     */
     void onEndOfBlocks(ISink sink);
 
     Optional<Throwable> onAborted(ISink sink);
@@ -692,8 +697,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   private final LocalMemoryManager localMemoryManager;
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
-  private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-      mppDataExchangeServiceClientManager;
+  private final MPPDataExchangeClientManager mppDataExchangeServiceClientManager;
   private final Map<TFragmentInstanceId, Map<String, ISourceHandle>> sourceHandles;
 
   /** Each FI has only one ShuffleSinkHandle. */
@@ -705,8 +709,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       LocalMemoryManager localMemoryManager,
       Supplier<TsBlockSerde> tsBlockSerdeFactory,
       ExecutorService executorService,
-      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-          mppDataExchangeServiceClientManager) {
+      MPPDataExchangeClientManager mppDataExchangeServiceClientManager) {
     this.localMemoryManager =
         Validate.notNull(
             localMemoryManager,
@@ -855,23 +858,29 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           localFragmentInstanceId);
     }
 
-    return new SinkChannel(
-        remoteEndpoint,
-        remoteFragmentInstanceId,
-        remotePlanNodeId,
-        localPlanNodeId,
-        localFragmentInstanceId,
-        localMemoryManager,
-        executorService,
-        tsBlockSerdeFactory.get(),
-        new ISinkChannelListenerImpl(
+    SinkChannel channel =
+        new SinkChannel(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
+            localPlanNodeId,
             localFragmentInstanceId,
-            instanceContext,
-            instanceContext::failed,
-            cnt,
-            hasChannelFailedOrAborted),
-        instanceContext.isHighestPriority(),
-        mppDataExchangeServiceClientManager);
+            localMemoryManager,
+            executorService,
+            tsBlockSerdeFactory.get(),
+            new ISinkChannelListenerImpl(
+                localFragmentInstanceId,
+                instanceContext,
+                instanceContext::failed,
+                cnt,
+                hasChannelFailedOrAborted),
+            instanceContext.isHighestPriority(),
+            instanceContext.getExchangeDeadlineMs(),
+            mppDataExchangeServiceClientManager);
+    instanceContext
+        .getStateMachine()
+        .addFinalStateChangeListener(state -> channel.stopNotifications(state.isFailed()));
+    return channel;
   }
 
   @Override

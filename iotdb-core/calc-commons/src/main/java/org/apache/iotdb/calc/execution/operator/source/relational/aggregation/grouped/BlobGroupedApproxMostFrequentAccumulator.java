@@ -21,7 +21,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
 
-import com.google.gson.Gson;
+import org.apache.ratis.thirdparty.com.google.gson.Gson;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;

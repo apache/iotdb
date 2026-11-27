@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.schema.column;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
@@ -157,6 +157,7 @@ public class ColumnHeaderConstant {
   public static final String LAST_CONSUMER_ID = "LastConsumerId";
   public static final String SEEK_GENERATION = "SeekGeneration";
   public static final String READY_ON_DNS = "ready_on_dns";
+  public static final String QUEUES_BOUND_ON_DNS = "queues_bound_on_dns";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -688,6 +689,17 @@ public class ColumnHeaderConstant {
           new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN),
           new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showDeleteTimeSeriesProgressColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader("ProcedureId", TSDataType.INT64),
+          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
+          new ColumnHeader(PATHS, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader("Progress", TSDataType.TEXT),
+          new ColumnHeader("ErrorMessage", TSDataType.TEXT),
+          new ColumnHeader("WrittenModFileCount", TSDataType.INT64),
+          new ColumnHeader("RemainingModFileCount", TSDataType.INT64));
+
   public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_STATUS, TSDataType.TEXT),
@@ -740,7 +752,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(LAST_POLL_TIME, TSDataType.INT64),
           new ColumnHeader(LAST_CONSUMER_ID, TSDataType.TEXT),
           new ColumnHeader(SEEK_GENERATION, TSDataType.INT64),
-          new ColumnHeader(READY_ON_DNS, TSDataType.TEXT));
+          new ColumnHeader(READY_ON_DNS, TSDataType.TEXT),
+          new ColumnHeader(QUEUES_BOUND_ON_DNS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(

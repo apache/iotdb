@@ -43,8 +43,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.math.LongMath.saturatedAdd;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class SessionTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";

@@ -104,6 +104,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -124,6 +125,29 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class StatementGeneratorTest {
+
+  @Test
+  public void testShowDeleteTimeSeriesProgress() {
+    for (String sql :
+        new String[] {"SHOW DELETE TIMESERIES PROGRESS", "show delete timeseries progress"}) {
+      assertEquals(
+          StatementType.SHOW_DELETE_TIMESERIES_PROGRESS,
+          StatementGenerator.createStatement(sql, ZoneId.systemDefault()).getType());
+    }
+  }
+
+  @Test
+  public void testDuplicateRealtimeModeAttributesAreRejected() {
+    for (final String statement :
+        new String[] {
+          "CREATE TOPIC topic1 WITH ('realtime.mode'='hybrid','REALTIME.MODE'='batch')",
+          "ALTER TOPIC topic1 WITH ('realtime.mode'='hybrid','REALTIME.MODE'='batch')"
+        }) {
+      Assert.assertThrows(
+          SemanticException.class,
+          () -> StatementGenerator.createStatement(statement, ZonedDateTime.now().getOffset()));
+    }
+  }
 
   @Test
   public void testAlterTopicStatement() {

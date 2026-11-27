@@ -32,12 +32,10 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -200,14 +198,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           }
         }
         for (final Pair<Boolean, Tablet> tabletPair : batchTablets) {
-          try (final PublicBAOS byteArrayOutputStream =
-                  new PublicBAOS(calculateTabletSerializedSize(tabletPair.getRight()));
-              final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-            tabletPair.getRight().serialize(outputStream);
-            ReadWriteIOUtils.write(true, outputStream);
-            tabletBuffers.add(
-                ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
-          }
+          tabletBuffers.add(serializeTabletWithAlignment(tabletPair.getRight(), true));
           tabletDataBases.add(databaseName);
         }
       }
@@ -268,13 +259,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
                 pipeRawTabletInsertionEvent.getTableModelDatabaseName());
       } else {
         final Tablet tablet = pipeRawTabletInsertionEvent.convertToTablet();
-        try (final PublicBAOS byteArrayOutputStream =
-                new PublicBAOS(calculateTabletSerializedSize(tablet));
-            final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-          tablet.serialize(outputStream);
-          ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
-          buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-        }
+        buffer = serializeTabletWithAlignment(tablet, pipeRawTabletInsertionEvent.isAligned());
         final String databaseName = pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
         estimateSize = RamUsageEstimator.sizeOf(databaseName) + buffer.limit();
         increaseTotalBufferSizeAndUpdateMemoryBlock(estimateSize);
@@ -307,8 +292,14 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + 4;
   }
 
-  private static int calculateTabletSerializedSize(final Tablet tablet) {
-    return tablet.serializedSize() + Byte.BYTES;
+  private static ByteBuffer serializeTabletWithAlignment(
+      final Tablet tablet, final boolean isAligned) {
+    final ByteBuffer buffer =
+        ByteBuffer.allocate(Math.addExact(tablet.serializedSize(), Byte.BYTES));
+    tablet.serialize(buffer);
+    ReadWriteIOUtils.write(isAligned, buffer);
+    buffer.flip();
+    return buffer;
   }
 
   static boolean mayAppendTablet(final Tablet target, final Tablet source) {

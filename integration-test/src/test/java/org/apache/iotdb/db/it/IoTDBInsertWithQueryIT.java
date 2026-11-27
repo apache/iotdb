@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -62,7 +63,7 @@ public class IoTDBInsertWithQueryIT {
   public void tearDown() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("DELETE TIMESERIES root.fans.**");
+      TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.fans.**");
     }
   }
 

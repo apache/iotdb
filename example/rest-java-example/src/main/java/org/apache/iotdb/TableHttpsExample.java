@@ -19,7 +19,7 @@
 
 package org.apache.iotdb;
 
-import com.google.gson.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -37,6 +37,7 @@ import java.util.Base64;
 
 public class TableHttpsExample {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableHttpsExample.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final String UTF8 = "utf-8";
 
@@ -64,7 +65,7 @@ public class TableHttpsExample {
       response = httpClient.execute(httpGet);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      String result = JsonParser.parseString(message).getAsJsonObject().toString();
+      String result = MAPPER.readTree(message).toString();
       System.out.println(result);
     } catch (IOException e) {
       e.printStackTrace();
@@ -102,7 +103,7 @@ public class TableHttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      String result = JsonParser.parseString(message).getAsJsonObject().toString();
+      String result = MAPPER.readTree(message).toString();
       System.out.println(result);
     } catch (IOException e) {
       e.printStackTrace();
@@ -130,7 +131,7 @@ public class TableHttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      System.out.println(JsonParser.parseString(message).getAsJsonObject().toString());
+      System.out.println(MAPPER.readTree(message).toString());
     } catch (IOException e) {
       e.printStackTrace();
       System.out.println("The non query rest api failed");
@@ -156,7 +157,7 @@ public class TableHttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      System.out.println(JsonParser.parseString(message).getAsJsonObject().toString());
+      System.out.println(MAPPER.readTree(message).toString());
     } catch (IOException e) {
       e.printStackTrace();
       System.out.println("The non query rest api failed");
@@ -183,7 +184,7 @@ public class TableHttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      System.out.println(JsonParser.parseString(message).getAsJsonObject().toString());
+      System.out.println(MAPPER.readTree(message).toString());
     } catch (IOException e) {
       e.printStackTrace();
       System.out.println("create table failed");
@@ -209,7 +210,7 @@ public class TableHttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      System.out.println(JsonParser.parseString(message).getAsJsonObject().toString());
+      System.out.println(MAPPER.readTree(message).toString());
     } catch (IOException e) {
       e.printStackTrace();
       System.out.println("The query rest api failed");
@@ -237,7 +238,7 @@ public class TableHttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      LOGGER.info("message with time zone = {}", JsonParser.parseString(message).getAsJsonObject());
+      LOGGER.info("message with time zone = {}", MAPPER.readTree(message));
     } catch (IOException e) {
       LOGGER.error("The query with time zone rest api failed", e);
     } finally {

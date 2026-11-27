@@ -70,6 +70,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegio
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -457,10 +458,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     schemaRegionId2ListeningQueueNewFirstIndex.forEach(
-        (schemaRegionId, listeningQueueNewFirstIndex) ->
-            PipeDataNodeAgent.runtime()
-                .schemaListener(new SchemaRegionId(schemaRegionId))
-                .removeBefore(listeningQueueNewFirstIndex));
+        (schemaRegionId, listeningQueueNewFirstIndex) -> {
+          final SchemaRegionListeningQueue listeningQueue =
+              PipeDataNodeAgent.runtime()
+                  .schemaListenerIfPresent(new SchemaRegionId(schemaRegionId));
+          if (listeningQueue != null) {
+            listeningQueue.removeBefore(listeningQueueNewFirstIndex);
+          }
+        });
 
     return schemaRegionId2ListeningQueueNewFirstIndex.keySet();
   }
@@ -700,7 +705,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   // to the pipe's runtime metadata, and is selected by the pipe's source parameters. This expected
   // set is used instead of the already-created PipeTask map so that a failed task initialization is
   // not silently treated as a completed region.
-  private Set<Integer> getExpectedDataRegionIds(final PipeMeta pipeMeta) {
+  Set<Integer> getExpectedDataRegionIds(final PipeMeta pipeMeta) {
     final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
     final PipeParameters sourceParameters = staticMeta.getSourceParameters();
     final Set<Integer> localDataRegionIds =
@@ -805,6 +810,59 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return pipeMeta == null
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
+  }
+
+  /**
+   * Returns the DataRegion IDs expected to be transferred by this DataNode for the given pipe, or
+   * {@link Optional#empty()} if the task read lock is currently contended and completion cannot be
+   * proven yet. If the pipe metadata is absent (for example in unit tests without registered
+   * metadata), returns an empty set.
+   */
+  public Optional<Set<Integer>> getExpectedDataRegionIds(
+      final String pipeName, final long creationTime) {
+    if (pipeName == null) {
+      return Optional.of(Collections.emptySet());
+    }
+    if (!tryReadLockWithTimeOutInMs(10)) {
+      return Optional.empty();
+    }
+    try {
+      final PipeMeta pipeMeta =
+          creationTime == 0
+              ? pipeMetaKeeper.getPipeMeta(pipeName)
+              : pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      return pipeMeta == null
+          ? Optional.of(Collections.emptySet())
+          : Optional.of(getExpectedDataRegionIds(pipeMeta));
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  /**
+   * Returns {@code true} if the given subscription pipe exists in {@link PipeStatus#RUNNING} state,
+   * expects zero local DataRegions on this DataNode, and owns zero local {@link PipeTask}s (for
+   * example, all DataRegions of the subscribed data reside on remote DataNodes).
+   */
+  public boolean isRunningSubscriptionPipeWithoutLocalTasks(
+      final String pipeName, final boolean isTableModel) {
+    if (!tryReadLockWithTimeOutInMs(10)) {
+      return false;
+    }
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, isTableModel);
+      if (Objects.isNull(pipeMeta)
+          || pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING
+          || pipeMeta.isTaskInstallationIncomplete()) {
+        return false;
+      }
+      final Map<Integer, PipeTask> pipeTasks =
+          pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+      return (Objects.isNull(pipeTasks) || pipeTasks.isEmpty())
+          && getExpectedDataRegionIds(pipeMeta).isEmpty();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /**
