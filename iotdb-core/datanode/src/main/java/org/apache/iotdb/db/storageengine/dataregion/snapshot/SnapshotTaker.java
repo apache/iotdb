@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileSnapshot;
 
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -94,20 +96,38 @@ public class SnapshotTaker {
       boolean success;
       snapshotLogger.logSnapshotId(finalSnapshotId);
 
+      final Map<String, File> loadTerminalHistory;
       try {
-        readLockTheFile();
-        if (flushBeforeSnapshot) {
+        synchronized (dataRegion) {
+          // Prevent lazy manager creation while selecting the LOAD and data snapshot boundary.
+          final LoadTsFileManager loadManager =
+              dataRegion.getLoadTsFileManagerIfPresent().orElse(null);
+          if (loadManager != null) {
+            loadManager.lockSnapshotBoundary();
+          }
           try {
-            dataRegion.writeLock("snapshotTaker");
-            dataRegion.syncCloseAllWorkingTsFileProcessors();
+            loadTerminalHistory = LoadTsFileSnapshot.captureTerminalHistory(dataRegion);
+            readLockTheFile();
+            if (flushBeforeSnapshot) {
+              dataRegion.writeLock("snapshotTaker");
+              try {
+                dataRegion.syncCloseAllWorkingTsFileProcessors();
+              } finally {
+                dataRegion.writeUnlock();
+              }
+            }
+            // A COMMIT after data-file selection must not remove staging before it is copied.
+            // Its pieces may predate the new replica's sync channel and never be replayed there.
+            success = LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir, loadTerminalHistory);
           } finally {
-            dataRegion.writeUnlock();
+            if (loadManager != null) {
+              loadManager.unlockSnapshotBoundary();
+            }
           }
         }
-        success = createSnapshot(seqFiles, tempSnapshotId);
+        success = success && createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
         success = success && snapshotCompressionRatio(snapshotDirPath);
-        success = success && LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir);
       } finally {
         readUnlockTheFile();
       }

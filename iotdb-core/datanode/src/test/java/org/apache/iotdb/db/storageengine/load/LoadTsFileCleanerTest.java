@@ -45,12 +45,14 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /** How the staged directory of a LOAD that received no command is reclaimed. */
@@ -263,6 +265,91 @@ public class LoadTsFileCleanerTest {
           taskDir.exists());
     } finally {
       manager.stop();
+    }
+  }
+
+  @Test
+  public void testLegacyTerminalIsMigratedBeforeCleanerReclaimsTask() throws Exception {
+    final String loadId = "legacy-terminal-task";
+    final File regionDir = LoadStagingDirs.regionLoadDir(tempDir, DATABASE, "0");
+    final File taskDir = new File(regionDir, loadId);
+    Assert.assertTrue(taskDir.mkdirs());
+    stageOneChunk(taskDir, 5L);
+    new LoadTsFileProgress(new File(taskDir, "root.sg-0-0.tsfile"))
+        .recordTerminal(LoadTsFileConsensusOp.ABORT, 7L);
+    walWatermark.set(10L);
+
+    final AtomicReference<LoadTsFileManager> manager = new AtomicReference<>();
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent())
+        .thenAnswer(invocation -> Optional.ofNullable(manager.get()));
+    Mockito.when(dataRegion.getLoadTsFileManager())
+        .thenAnswer(
+            invocation -> {
+              final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+              manager.set(recovered);
+              return recovered;
+            });
+
+    try {
+      final Method scanRegion =
+          LoadTsFileCleaner.class.getDeclaredMethod("scanRegion", DataRegion.class, File.class);
+      scanRegion.setAccessible(true);
+      scanRegion.invoke(LoadTsFileCleaner.getInstance(), dataRegion, regionDir);
+
+      Assert.assertFalse("the replicated ABORT may release its old staging", taskDir.exists());
+      final File historyRecord =
+          LoadTsFileProgress.progressFileFor(
+              new File(new File(regionDir, LoadTsFileManager.TERMINAL_HISTORY_DIR), loadId));
+      final LoadTsFileProgress.TerminalRecord terminal =
+          LoadTsFileProgress.readTerminal(historyRecord);
+      Assert.assertNotNull(terminal);
+      Assert.assertEquals(LoadTsFileConsensusOp.ABORT, terminal.op());
+    } finally {
+      if (manager.get() != null) {
+        manager.get().stop();
+      }
+    }
+  }
+
+  @Test
+  public void testLegacyTerminalIsNotReclaimedWhenMigrationCannotPersist() throws Exception {
+    final String loadId = "unmigratable-legacy-terminal-task";
+    final File regionDir = LoadStagingDirs.regionLoadDir(tempDir, DATABASE, "0");
+    final File taskDir = new File(regionDir, loadId);
+    Assert.assertTrue(taskDir.mkdirs());
+    stageOneChunk(taskDir, 5L);
+    new LoadTsFileProgress(new File(taskDir, "root.sg-0-0.tsfile"))
+        .recordTerminal(LoadTsFileConsensusOp.ABORT, 7L);
+    final File historyDir = new File(regionDir, LoadTsFileManager.TERMINAL_HISTORY_DIR);
+    Files.write(historyDir.toPath(), new byte[0]);
+    walWatermark.set(10L);
+
+    final AtomicReference<LoadTsFileManager> manager = new AtomicReference<>();
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent())
+        .thenAnswer(invocation -> Optional.ofNullable(manager.get()));
+    Mockito.when(dataRegion.getLoadTsFileManager())
+        .thenAnswer(
+            invocation -> {
+              final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+              manager.set(recovered);
+              return recovered;
+            });
+
+    try {
+      final Method scanRegion =
+          LoadTsFileCleaner.class.getDeclaredMethod("scanRegion", DataRegion.class, File.class);
+      scanRegion.setAccessible(true);
+      scanRegion.invoke(LoadTsFileCleaner.getInstance(), dataRegion, regionDir);
+
+      Assert.assertTrue(
+          "the staged legacy decision is the only retry record when migration fails",
+          taskDir.exists());
+      Assert.assertTrue(
+          "the test must keep the history destination unavailable", historyDir.isFile());
+    } finally {
+      if (manager.get() != null) {
+        manager.get().stop();
+      }
     }
   }
 
