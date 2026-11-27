@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
@@ -569,5 +570,23 @@ public class PlanGraphJsonPrinterTest {
     assertTrue(props.get("Streamable").getAsBoolean());
     assertEquals("device", props.getAsJsonArray("PreGroupedSymbols").get(0).getAsString());
     assertEquals("SINGLE", props.get("Step").getAsString());
+  }
+
+  @Test
+  public void testGroupReferenceIsRenderedAsLeaf() {
+    // GroupReference appears as a child inside the iterative optimizer's memo and throws from
+    // getChildren(); the printer must still render such a plan without failing.
+    GroupReference groupReference =
+        new GroupReference(new PlanNodeId("groupRef"), 1, ImmutableList.of(new Symbol("s1")));
+    LimitNode limitNode =
+        new LimitNode(new PlanNodeId("limit"), groupReference, 10, Optional.empty());
+
+    JsonObject root =
+        JsonParser.parseString(PlanGraphJsonPrinter.toPrettyJson(limitNode)).getAsJsonObject();
+    JsonObject child = root.getAsJsonArray("children").get(0).getAsJsonObject();
+
+    assertEquals("LimitNode-limit", root.get("name").getAsString());
+    assertEquals("GroupReference-groupRef", child.get("name").getAsString());
+    assertFalse(child.has("children"));
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.Gr
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphJsonPrinter;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.QueryPlanOptimizerStatistics;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
@@ -211,16 +212,18 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
       try {
         long start = nanoTime();
         result = rule.apply(match.capture(nodeCapture), match.captures(), ruleContext(context));
-
-        if (LOG.isDebugEnabled() && !result.isEmpty()) {
-          LOG.debug(
-              DataNodeQueryMessages.RULE_S_BEFORE_S_AFTER_S, rule.getClass().getName(), "", "");
-        }
         duration = nanoTime() - start;
       } catch (RuntimeException e) {
         stats.recordFailure(rule);
         context.iterativeOptimizerStatsCollector.recordFailure(rule);
         throw e;
+      }
+      if (LOG.isDebugEnabled() && !result.isEmpty()) {
+        LOG.debug(
+            DataNodeQueryMessages.RULE_S_BEFORE_S_AFTER_S,
+            rule.getClass().getName(),
+            renderPlan(node),
+            renderPlan(result.getTransformedPlan().get()));
       }
       stats.record(rule, duration, !result.isEmpty());
 
@@ -230,6 +233,19 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
     }
 
     return Rule.Result.empty();
+  }
+
+  /**
+   * Renders the subtree rooted at the given node for the rule-application debug log. Rendering is
+   * best-effort: it runs on optimizer-internal nodes, so a rendering failure must not fail the
+   * query and falls back to the node's own {@code toString}.
+   */
+  private static String renderPlan(PlanNode node) {
+    try {
+      return String.join(System.lineSeparator(), PlanGraphJsonPrinter.getJsonLines(node));
+    } catch (RuntimeException e) {
+      return node.toString();
+    }
   }
 
   private boolean exploreChildren(int group, Context context, Set<PlanNodeId> changedPlanNodeIds) {
