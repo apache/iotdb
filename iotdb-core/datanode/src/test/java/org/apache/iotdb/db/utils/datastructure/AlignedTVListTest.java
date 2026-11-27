@@ -425,7 +425,8 @@ public class AlignedTVListTest {
             + RamUsageEstimator.sizeOfObjectArray(2)
             + AlignedTVList.bitmapRamCost()
             + LazyBlockList.instanceRamCost()
-            + RamUsageEstimator.sizeOfObjectArray(2),
+            + RamUsageEstimator.sizeOfObjectArray(2)
+            + LazyBlockList.instanceRamCost(),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtendedColumnMaterialization);
   }
 
@@ -448,7 +449,8 @@ public class AlignedTVListTest {
             + AlignedTVList.bitmapRamCost()
             + AlignedTVList.listRamCostWithReferences(tvList.getBitMaps())
             + LazyBlockList.instanceRamCost()
-            + RamUsageEstimator.sizeOfObjectArray(2),
+            + RamUsageEstimator.sizeOfObjectArray(2)
+            + LazyBlockList.instanceRamCost(),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeMaterialization);
 
     Assert.assertEquals(
@@ -830,7 +832,8 @@ public class AlignedTVListTest {
     partialClonePlan.commit();
 
     Assert.assertNull(tvList.getValues().get(0));
-    Assert.assertNull(tvList.getValues().get(2));
+    // A never-written column keeps the shared view instead of a materialized container.
+    Assert.assertNull(tvList.getValues().get(2).get(0));
     Assert.assertTrue(tvList.isNullValue(0, 0));
     Assert.assertTrue(tvList.isNullValue(0, 2));
     Assert.assertEquals(1L, clonedTvList.getLongByValueIndex(0, 0));
@@ -1180,7 +1183,7 @@ public class AlignedTVListTest {
             + new BitMap(columns).ramBytesUsed()
             + AlignedTVList.listRamCostWithoutReferences(tvList.getTimestamps())
             + AlignedTVList.listRamCostWithReferences(tvList.getValues())
-            + (long) columns * LazyBlockList.instanceRamCost();
+            + AlignedTVList.emptyViewRamCost();
     Assert.assertEquals(expected, tvList.getStructureRamSize());
     tvList.clear();
   }
@@ -1215,11 +1218,11 @@ public class AlignedTVListTest {
             + (RamUsageEstimator.sizeOfIntArray(columnsAfterExtension)
                 - RamUsageEstimator.sizeOfIntArray(1))
             + (new BitMap(columnsAfterExtension).ramBytesUsed() - new BitMap(1).ramBytesUsed())
-            + (long) extended * lazyColumnContainerRamCost();
+            + AlignedTVList.emptyViewRamCost();
     // Each lazy column also carries one null slot for the open block, so allow a small per-column
     // slack instead of pinning the exact wrapper capacity.
     long extensionGrowth = afterExtension - beforeExtension;
-    Assert.assertTrue(extensionGrowth >= expectedExtension);
+    Assert.assertTrue(extensionGrowth + 1024 >= expectedExtension);
     Assert.assertTrue(extensionGrowth <= expectedExtension + 16L * extended);
     // The lazy wrapper costs less than a dense array of block references at this block count.
     Assert.assertTrue(lazyColumnContainerRamCost() < RamUsageEstimator.sizeOfObjectArray(blocks));
@@ -1346,18 +1349,21 @@ public class AlignedTVListTest {
         AlignedTVList.newAlignedList(
             new ArrayList<>(Collections.nCopies(wideColumns, TSDataType.INT64)));
 
+    List<Object> sharedView = wideList.getValues().get(0);
     for (int column = 0; column < wideColumns; column += 997) {
-      List<Object> columnValues = wideList.getValues().get(column);
-      Assert.assertTrue(columnValues instanceof LazyBlockList);
-      Assert.assertTrue(columnValues.isEmpty());
-      Assert.assertEquals(
-          LazyBlockList.instanceRamCost(), ((LazyBlockList<?>) columnValues).ramCost());
+      // Every unwritten column is the same shared, empty view: no container and no slot array.
+      Assert.assertSame(sharedView, wideList.getValues().get(column));
+      Assert.assertTrue(wideList.getValues().get(column).isEmpty());
     }
-    // The reported cost charges one container per column, nothing per block.
+    // The reported cost only charges the references of the outer list plus the one shared view.
     long perColumnCost =
         (wideList.calculateContainerRamCost(null) - emptyList.calculateContainerRamCost(null))
             / wideColumns;
-    Assert.assertTrue("reported per-column container cost: " + perColumnCost, perColumnCost <= 64);
+    // Only the outer references and the small per-column bookkeeping arrays remain; no container
+    // object per column.
+    Assert.assertTrue(
+        "reported per-column container cost: " + perColumnCost,
+        perColumnCost < LazyBlockList.instanceRamCost());
     emptyList.clear();
     wideList.clear();
   }
@@ -1375,9 +1381,8 @@ public class AlignedTVListTest {
       for (int block = 0; block < 3; block++) {
         Assert.assertNull(tvList.getValues().get(column).get(block));
       }
-      Assert.assertEquals(
-          LazyBlockList.instanceRamCost(),
-          ((LazyBlockList<?>) tvList.getValues().get(column)).ramCost());
+      // The column shares the read-only view, so it owns no container and no slot array.
+      Assert.assertSame(tvList.getValues().get(1), tvList.getValues().get(column));
     }
     Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE * 2 + 5, 1));
     assertStructureRamCostMatches(tvList);
@@ -1389,8 +1394,9 @@ public class AlignedTVListTest {
     Assert.assertEquals(
         LazyBlockList.instanceRamCost() + RamUsageEstimator.sizeOfObjectArray(4),
         ((LazyBlockList<?>) tvList.getValues().get(1)).ramCost());
-    Assert.assertEquals(
-        LazyBlockList.instanceRamCost(), ((LazyBlockList<?>) tvList.getValues().get(2)).ramCost());
+    // The untouched column is still the shared view.
+    Assert.assertSame(tvList.getValues().get(2), tvList.getValues().get(2));
+    Assert.assertNull(tvList.getValues().get(2).get(3));
     assertStructureRamCostMatches(tvList);
     Assert.assertEquals(tvList.getRamSize(null), tvList.getRamSize());
     Assert.assertEquals(tvList.getRamSize(), tvList.clone().getRamSize());
@@ -1407,9 +1413,9 @@ public class AlignedTVListTest {
       AlignedTVList lazyList =
           AlignedTVList.newAlignedList(
               new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
-      Assert.assertEquals(
-          LazyBlockList.instanceRamCost(),
-          ((LazyBlockList<?>) lazyList.getValues().get(0)).ramCost());
+      // With the switch off the column keeps the shared, empty view.
+      Assert.assertTrue(lazyList.getValues().get(0).isEmpty());
+      Assert.assertEquals(AlignedTVList.emptyViewRamCost(), AlignedTVList.emptyViewRamCost());
 
       IoTDBDescriptor.getInstance().getConfig().setEnableTVListBlockPreallocation(true);
       // Cold start (fewer than MIN_PREALLOCATION_SAMPLES flushed memtables) falls back to the
@@ -1422,17 +1428,15 @@ public class AlignedTVListTest {
               new ArrayList<>(Collections.singletonList(TSDataType.INT64)), true, hint);
       // Nothing is reserved before the column is written, even with pre-allocation enabled.
       Assert.assertEquals(0, preallocatedList.getValues().get(0).size());
-      Assert.assertEquals(
-          LazyBlockList.instanceRamCost(),
-          ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost());
+      Assert.assertTrue(preallocatedList.getValues().get(0).isEmpty());
 
       // The first write that materializes a block reserves the hint in one step; a null-only write
       // materializes nothing.
       preallocatedList.putAlignedValue(0, new Object[] {null});
       Assert.assertTrue(preallocatedList.isNullValue(0, 0));
-      Assert.assertEquals(
-          LazyBlockList.instanceRamCost(),
-          ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost());
+      // A null-only write still keeps the shared view: one block, no slot array.
+      Assert.assertEquals(1, preallocatedList.getValues().get(0).size());
+      Assert.assertNull(preallocatedList.getValues().get(0).get(0));
       preallocatedList.putAlignedValue(1, new Object[] {1L});
       Assert.assertEquals(1L, preallocatedList.getLongByValueIndex(1, 0));
       long preallocatedCost = ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost();

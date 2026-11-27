@@ -58,12 +58,14 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.RandomAccess;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -88,6 +90,13 @@ public abstract class AlignedTVList extends TVList {
    * pre-allocation.
    */
   private int preallocatedBlockNum;
+
+  /**
+   * Shared read-only view used by every column that has never been written. It reports the current
+   * block count and reads every block as null, so such a column costs no container object and no
+   * slot array; the column is upgraded to a real {@link LazyBlockList} on its first non-null write.
+   */
+  private final List<Object> emptyColumnView = new EmptyColumnView();
 
   // Type interfaces of dataTypes, resolved once per column. writeCell resolves the Type of every
   // written cell, so keeping one reference per column removes an enum switch from that loop. Kept
@@ -212,15 +221,53 @@ public abstract class AlignedTVList extends TVList {
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
-      // A wide device owns many columns but writes only a few of them, and a memtable column holds
-      // only a few blocks, so a column container stays empty until a block of that column receives
-      // a
-      // value array. Pre-allocation is opt-in through getDefaultArrayNum().
-      values.add(initializeValueColumns ? new LazyBlockList<>(0, preallocatedBlockNum) : null);
+      // A wide device owns many columns but writes only a few of them, so every column starts on a
+      // shared read-only view and is upgraded to a real container by its first non-null write.
+      values.add(initializeValueColumns ? emptyColumnView : null);
     }
     // arrayMemCostWithoutPrimitiveArrays depends on per-column value arrays, so values must be
     // initialized before computing it
     refreshArrayMemCostWithoutPrimitiveArrays();
+  }
+
+  /** Retained memory of the shared view, which is allocated once per list. */
+  private static final long EMPTY_VIEW_RAM_COST =
+      RamUsageEstimator.shallowSizeOfInstance(EmptyColumnView.class);
+
+  /** Retained memory of the shared view of the unwritten columns. */
+  static long emptyViewRamCost() {
+    return EMPTY_VIEW_RAM_COST;
+  }
+
+  /** Read-only view of a column that has never been written; see {@link #emptyColumnView}. */
+  private final class EmptyColumnView extends AbstractList<Object> implements RandomAccess {
+
+    @Override
+    public int size() {
+      return timestamps.size();
+    }
+
+    @Override
+    public Object get(int index) {
+      Objects.checkIndex(index, timestamps.size());
+      return null;
+    }
+
+    @Override
+    public Object set(int index, Object element) {
+      // Writing must upgrade the column first, which only the enclosing list can do.
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void add(int index, Object element) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clear() {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /** Resolve the Type interface of every column, leaving a null slot for a non-existent column. */
@@ -465,6 +512,10 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValues == null) {
         // Defensive: prepareMovePlan already validated that every moved column is materialized.
+        continue;
+      }
+      if (columnValues == emptyColumnView) {
+        // An unwritten column keeps the target's own view instead of the source instance.
         continue;
       }
       plan.cloneList.values.set(i, columnValues);
@@ -755,12 +806,12 @@ public abstract class AlignedTVList extends TVList {
     int existingBlockCount = timestamps.size();
     int firstNewColumn = dataTypes.size();
     for (TSDataType dataType : newDataTypes) {
-      // The new column is null for every block that is already open; those slots stay implicit.
-      List<Object> columnValue = new LazyBlockList<>(existingBlockCount, preallocatedBlockNum);
+      // The new column is null for every block that is already open; it stays on the shared view
+      // until its first non-null write.
       if (bitMaps != null) {
         bitMaps.add(null);
       }
-      values.add(columnValue);
+      values.add(emptyColumnView);
       dataTypes.add(dataType);
     }
     // Recompute the full-width memory estimate only once for the entire batch.
@@ -1304,6 +1355,14 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
 
+      if (columnValues == emptyColumnView) {
+        // The shared view is per list: the clone keeps its own instance and nothing is
+        // materialized.
+        hasBitMapsToMove |= bitMaps != null && bitMaps.get(i) != null;
+        cloneList.values.set(i, cloneList.emptyColumnView);
+        continue;
+      }
+
       if (columnValues instanceof LazyBlockList) {
         // Copy the structure (block count and allocated slots) as well, otherwise the deep clone
         // would materialize one reference per block and retain a different container size.
@@ -1374,7 +1433,7 @@ public abstract class AlignedTVList extends TVList {
   protected void clearValue() {
     for (int i = 0; i < dataTypes.size(); i++) {
       List<Object> columnValues = values.get(i);
-      if (columnValues != null) {
+      if (columnValues != null && columnValues != emptyColumnView) {
         for (Object dataArray : columnValues) {
           if (dataArray != null) {
             PrimitiveArrayManager.release(dataArray);
@@ -1425,7 +1484,10 @@ public abstract class AlignedTVList extends TVList {
                     .EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6,
                 i));
       }
-      columnValues.add(null);
+      if (columnValues != emptyColumnView) {
+        // The shared view follows the block count by itself.
+        columnValues.add(null);
+      }
       if (bitMaps != null && bitMaps.get(i) != null) {
         bitMaps.get(i).add(null);
       }
@@ -1695,6 +1757,11 @@ public abstract class AlignedTVList extends TVList {
     List<Object> columnValues = values.get(columnIndex);
     Object valueArray = columnValues.get(arrayIndex);
     if (valueArray == null) {
+      if (columnValues == emptyColumnView) {
+        // First non-null value of this column: upgrade the shared view to a real container.
+        columnValues = new LazyBlockList<>(timestamps.size(), preallocatedBlockNum);
+        values.set(columnIndex, columnValues);
+      }
       // The slot is about to be backed by the container array, so the container grows.
       long previousContainerCost = containerRamCost(columnValues);
       valueArray = getPrimitiveArraysByType(dataTypes.get(columnIndex));
@@ -1863,6 +1930,8 @@ public abstract class AlignedTVList extends TVList {
     }
 
     size += listRamCostWithReferences(values);
+    // The shared view of the unwritten columns is a single object per list.
+    size += EMPTY_VIEW_RAM_COST;
     for (int i = 0; i < values.size(); i++) {
       if (retainedColumns != null && !retainedColumns.contains(i)) {
         continue;
@@ -1898,9 +1967,13 @@ public abstract class AlignedTVList extends TVList {
   }
 
   /** Retained memory of one column container. */
-  private static long containerRamCost(List<?> container) {
+  private long containerRamCost(List<?> container) {
     if (container instanceof LazyBlockList) {
       return ((LazyBlockList<?>) container).ramCost();
+    }
+    if (container == emptyColumnView) {
+      // Shared by every unwritten column, so it is charged once for the whole list.
+      return 0L;
     }
     return listRamCostWithReferences(container);
   }
