@@ -416,7 +416,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
    * workload, while a wide device would reserve a container for every measurement it owns,
    * including the measurements it never writes. Enable it only for dense devices.
    */
-  private boolean enableTVListBlockPreallocation = false;
+  private volatile boolean enableTVListBlockPreallocation = false;
+
+  /**
+   * Upper bound of blocks a memtable container may pre-allocate when block pre-allocation is
+   * enabled. The recent (EWMA) mean points per series is clamped into {@code [1, this value]}, so a
+   * temporarily dense workload cannot inflate the hint.
+   */
+  private volatile int tvListMaxPreallocatedBlocks = 16;
 
   /**
    * If a memTable's last update time is older than current time minus this, the memtable will be
@@ -2302,6 +2309,16 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setEnableTVListBlockPreallocation(boolean enableTVListBlockPreallocation) {
     this.enableTVListBlockPreallocation = enableTVListBlockPreallocation;
+  }
+
+  public int getTvListMaxPreallocatedBlocks() {
+    return tvListMaxPreallocatedBlocks;
+  }
+
+  public void setTvListMaxPreallocatedBlocks(int tvListMaxPreallocatedBlocks) {
+    if (tvListMaxPreallocatedBlocks >= 0) {
+      this.tvListMaxPreallocatedBlocks = tvListMaxPreallocatedBlocks;
+    }
   }
 
   public boolean isWalFileListCacheEnabled() {

@@ -48,6 +48,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 
 public class WritingMetrics implements IMetricSet {
@@ -478,6 +482,22 @@ public class WritingMetrics implements IMetricSet {
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
+  /**
+   * Weight of the newest sample of the recent (EWMA) mean series point number. A recent mean is
+   * used for the opt-in memtable block pre-allocation so that a temporarily dense workload cannot
+   * pin the hint at a high value forever.
+   */
+  private static final double RECENT_MEAN_WEIGHT = 0.25d;
+
+  // Process-lifetime, node-wide mean of the points per series of flushed memtables. It is kept for
+  // observability and API compatibility; allocations must use the bounded recent mean instead.
+  private final DoubleAdder avgSeriesPointNumSum = new DoubleAdder();
+  private final LongAdder flushedMemTableCount = new LongAdder();
+  // Recent (EWMA) means: work-adaptive pre-allocation hints.
+  private final AtomicLong recentAvgSeriesPointNumBits = new AtomicLong(0L);
+  private final ConcurrentHashMap<Integer, AtomicLong> regionRecentAvgSeriesPointNumBits =
+      new ConcurrentHashMap<>();
+
   private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
       DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
 
@@ -739,6 +759,7 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void removeFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
+    regionRecentAvgSeriesPointNumBits.remove(dataRegionId.getId());
     Arrays.asList(
             MEM_TABLE_SIZE,
             SERIES_NUM,
@@ -864,6 +885,46 @@ public class WritingMetrics implements IMetricSet {
             AVG_SERIES_POINT_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
+
+    avgSeriesPointNumSum.add(avgSeriesNum);
+    flushedMemTableCount.increment();
+    updateRecentMean(recentAvgSeriesPointNumBits, avgSeriesNum);
+    updateRecentMean(
+        regionRecentAvgSeriesPointNumBits.computeIfAbsent(
+            dataRegionId.getId(), id -> new AtomicLong(0L)),
+        avgSeriesNum);
+  }
+
+  /** Update a lock-free exponential moving average. */
+  private static void updateRecentMean(AtomicLong targetBits, double sample) {
+    while (true) {
+      long previousBits = targetBits.get();
+      double previous = Double.longBitsToDouble(previousBits);
+      double next =
+          previousBits == 0L
+              ? sample
+              : RECENT_MEAN_WEIGHT * sample + (1.0d - RECENT_MEAN_WEIGHT) * previous;
+      if (targetBits.compareAndSet(previousBits, Double.doubleToRawLongBits(next))) {
+        return;
+      }
+    }
+  }
+
+  /** Process-lifetime node-wide mean points per series of flushed memtables. */
+  public double getGlobalAvgSeriesPointNum() {
+    long count = flushedMemTableCount.sum();
+    return count == 0 ? 0.0d : avgSeriesPointNumSum.sum() / count;
+  }
+
+  /** Recent node-wide mean points per series, resilient to historical workload changes. */
+  public double getRecentAvgSeriesPointNum() {
+    return Double.longBitsToDouble(recentAvgSeriesPointNumBits.get());
+  }
+
+  /** Recent mean points per series of one DataRegion, falling back to the node-wide recent mean. */
+  public double getRecentAvgSeriesPointNum(int dataRegionId) {
+    AtomicLong bits = regionRecentAvgSeriesPointNumBits.get(dataRegionId);
+    return bits == null ? getRecentAvgSeriesPointNum() : Double.longBitsToDouble(bits.get());
   }
 
   public void recordFlushTsFileSize(String storageGroup, long size) {

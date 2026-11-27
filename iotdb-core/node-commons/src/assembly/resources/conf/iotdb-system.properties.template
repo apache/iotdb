@@ -931,6 +931,12 @@ write_memory_proportion=19:1
 # Datatype: boolean
 enable_tvlist_block_preallocation=false
 
+# Upper bound of blocks a memtable container may pre-allocate when block pre-allocation is enabled.
+# The recent mean points per series is clamped into [1, this value].
+# effectiveMode: hot_reload
+# Datatype: int
+tvlist_max_preallocated_blocks=16
+
 # primitive array size (length of each array) in array pool
 # effectiveMode: restart
 # Datatype: int

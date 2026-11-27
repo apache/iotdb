@@ -2141,6 +2141,10 @@ public class IoTDBDescriptor {
     if (enableBlockPreallocation != null) {
       conf.setEnableTVListBlockPreallocation(Boolean.parseBoolean(enableBlockPreallocation.trim()));
     }
+    String maxPreallocatedBlocks = properties.getProperty("tvlist_max_preallocated_blocks");
+    if (maxPreallocatedBlocks != null) {
+      conf.setTvListMaxPreallocatedBlocks(Integer.parseInt(maxPreallocatedBlocks.trim()));
+    }
   }
 
   // timed flush memtable
