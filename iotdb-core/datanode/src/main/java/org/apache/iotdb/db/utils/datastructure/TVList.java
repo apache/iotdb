@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -1228,13 +1229,24 @@ public abstract class TVList implements WALEntryValue {
   protected static int getDefaultArrayNum() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     if (!config.isEnableTVListBlockPreallocation()) {
+      // Default: no pre-allocation at all. A container allocates on the first write and then grows.
       return 0;
     }
     int maxBlocks = config.getTvListMaxPreallocatedBlocks();
     if (maxBlocks <= 0) {
       return 0;
     }
-    return maxBlocks;
+    // The original hint: the mean points per series divided by the primitive array size, so a
+    // column reserves roughly the number of blocks an average series holds. The mean is the
+    // decaying
+    // (recent) one, so a temporarily dense workload cannot pin the hint at a high value, and the
+    // result is clamped by the configured bound.
+    double recentPoints = WritingMetrics.getInstance().getRecentAvgSeriesPointNum();
+    if (recentPoints <= 0.0d) {
+      return maxBlocks;
+    }
+    long estimatedBlocks = (long) Math.ceil(recentPoints / ARRAY_SIZE);
+    return (int) Math.max(1L, Math.min(estimatedBlocks, maxBlocks));
   }
 
   /** Initial block capacity of a memtable container, avoiding {@code new ArrayList<>(0)}. */

@@ -1412,20 +1412,27 @@ public class AlignedTVListTest {
           ((LazyBlockList<?>) lazyList.getValues().get(0)).ramCost());
 
       IoTDBDescriptor.getInstance().getConfig().setEnableTVListBlockPreallocation(true);
+      int configuredBlocks =
+          IoTDBDescriptor.getInstance().getConfig().getTvListMaxPreallocatedBlocks();
       AlignedTVList preallocatedList =
           AlignedTVList.newAlignedList(
               new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
-      // Pre-allocation only reserves slots: the visible content is unchanged.
+      // Nothing is reserved before the column is written, even with pre-allocation enabled.
       Assert.assertEquals(0, preallocatedList.getValues().get(0).size());
+      Assert.assertEquals(
+          LazyBlockList.instanceRamCost(),
+          ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost());
+
+      // The first write that materializes a block reserves the configured capacity in one step.
+      preallocatedList.putAlignedValue(0, new Object[] {1L});
       long preallocatedCost = ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost();
       Assert.assertEquals(
           LazyBlockList.instanceRamCost()
-              + RamUsageEstimator.sizeOfObjectArray(TVList.PREALLOCATED_BLOCK_NUM),
+              + RamUsageEstimator.sizeOfObjectArray(
+                  Math.max(1, Math.min(configuredBlocks, Integer.MAX_VALUE))),
           preallocatedCost);
-      preallocatedList.putAlignedValue(0, new Object[] {null});
-      Assert.assertTrue(preallocatedList.isNullValue(0, 0));
-      Assert.assertEquals(
-          preallocatedCost, ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost());
+      // A null-only write does not materialize anything, so the container stays empty.
+      Assert.assertEquals(1L, preallocatedList.getLongByValueIndex(0, 0));
       assertStructureRamCostMatches(preallocatedList);
       lazyList.clear();
       preallocatedList.clear();

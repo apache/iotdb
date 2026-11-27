@@ -57,11 +57,16 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
   /** Number of blocks this column covers, including the implicit nulls before and after them. */
   private int blockCount;
 
+  /**
+   * Slots reserved when this column is written for the first time. A column that is never written
+   * allocates nothing, so the many empty columns of a wide device stay free. Growth after the first
+   * materialization follows the regular 1.5x policy.
+   */
+  private final int initialCapacity;
+
   LazyBlockList(int blockCount, int preallocatedBlockNum) {
     this.blockCount = blockCount;
-    if (preallocatedBlockNum > 0) {
-      blocks = new Object[preallocatedBlockNum];
-    }
+    this.initialCapacity = Math.max(0, preallocatedBlockNum);
   }
 
   @Override
@@ -135,7 +140,7 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
 
   /** Copy the block count and the allocated capacity, leaving the slots empty. */
   LazyBlockList<T> copyStructure() {
-    LazyBlockList<T> copy = new LazyBlockList<>(blockCount, 0);
+    LazyBlockList<T> copy = new LazyBlockList<>(blockCount, initialCapacity);
     if (blocks != null) {
       copy.blocks = new Object[blocks.length];
     }
@@ -159,7 +164,9 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
 
   private Object[] ensureCapacity(int minLength) {
     if (blocks == null) {
-      blocks = new Object[minLength];
+      // First materialization of this column: honor the configured pre-allocation once. Later
+      // growth always follows the regular policy.
+      blocks = new Object[Math.max(minLength, initialCapacity)];
     } else if (blocks.length < minLength) {
       blocks = Arrays.copyOf(blocks, grownCapacity(blocks.length, minLength));
     }

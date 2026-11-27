@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
@@ -480,10 +481,15 @@ public class WritingMetrics implements IMetricSet {
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
+  /** Weight of the newest sample of the decaying mean used as a pre-allocation hint. */
+  private static final double RECENT_MEAN_WEIGHT = 0.25d;
+
   // Process-lifetime, node-wide mean of the points per series of flushed memtables. It is kept for
-  // observability only: container pre-allocation is bounded by configuration, never by this mean.
+  // observability; the pre-allocation hint uses the decaying mean below, so a temporarily dense
+  // workload cannot pin the hint at a high value.
   private final DoubleAdder avgSeriesPointNumSum = new DoubleAdder();
   private final LongAdder flushedMemTableCount = new LongAdder();
+  private final AtomicLong recentAvgSeriesPointNumBits = new AtomicLong(0L);
 
   private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
       DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
@@ -874,6 +880,29 @@ public class WritingMetrics implements IMetricSet {
 
     avgSeriesPointNumSum.add(avgSeriesNum);
     flushedMemTableCount.increment();
+    updateRecentMean(recentAvgSeriesPointNumBits, avgSeriesNum);
+  }
+
+  /**
+   * Update a lock-free exponential moving average; a node-global metric is shared by all regions.
+   */
+  private static void updateRecentMean(AtomicLong targetBits, double sample) {
+    while (true) {
+      long previousBits = targetBits.get();
+      double previous = Double.longBitsToDouble(previousBits);
+      double next =
+          previousBits == 0L
+              ? sample
+              : RECENT_MEAN_WEIGHT * sample + (1.0d - RECENT_MEAN_WEIGHT) * previous;
+      if (targetBits.compareAndSet(previousBits, Double.doubleToRawLongBits(next))) {
+        return;
+      }
+    }
+  }
+
+  /** Decaying node-wide mean points per series, used as the bounded pre-allocation hint. */
+  public double getRecentAvgSeriesPointNum() {
+    return Double.longBitsToDouble(recentAvgSeriesPointNumBits.get());
   }
 
   /** Process-lifetime node-wide mean points per series of flushed memtables, for observability. */

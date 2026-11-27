@@ -92,20 +92,28 @@ public class LazyBlockListTest {
   }
 
   @Test
-  public void testPreallocationIsReservedButEmpty() {
+  public void testPreallocationAppliesToTheFirstWriteOnly() {
     LazyBlockList<Object> container = new LazyBlockList<>(0, 16);
 
+    // A configured pre-allocation is not reserved before the column is written at all.
     Assert.assertEquals(0, container.size());
+    Assert.assertEquals(0, container.materializedLength());
+    Assert.assertEquals(LazyBlockList.instanceRamCost(), container.ramCost());
+
+    // The first write reserves the configured capacity in one allocation.
+    container.add("v0");
+    Assert.assertEquals(1, container.size());
     Assert.assertEquals(16, container.materializedLength());
     Assert.assertEquals(
         LazyBlockList.instanceRamCost() + RamUsageEstimator.sizeOfObjectArray(16),
         container.ramCost());
 
-    // Filling the reserved slots does not allocate again.
-    long ramCost = container.ramCost();
-    container.add("v0");
-    Assert.assertEquals(1, container.size());
-    Assert.assertEquals(ramCost, container.ramCost());
+    // Later growth follows the regular policy instead of the configured capacity.
+    long oneBlock = container.ramCost();
+    container.add("v1");
+    Assert.assertEquals(oneBlock, container.ramCost());
+    container.add("v2");
+    Assert.assertEquals(oneBlock, container.ramCost());
   }
 
   @Test
