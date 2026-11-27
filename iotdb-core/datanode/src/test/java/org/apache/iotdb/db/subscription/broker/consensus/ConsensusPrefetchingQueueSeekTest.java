@@ -228,7 +228,8 @@ public class ConsensusPrefetchingQueueSeekTest {
                 final ConsensusGroupId regionId,
                 final RegionProgress regionProgress,
                 final boolean explicitSeek,
-                final Consumer<RegionProgress> afterReset) {
+                final Consumer<RegionProgress> afterReset,
+                final Object owner) {
               return super.resetState(
                   consumerGroupId,
                   topicName,
@@ -258,7 +259,8 @@ public class ConsensusPrefetchingQueueSeekTest {
                           .atMost(5L, TimeUnit.SECONDS)
                           .until(() -> broadcastThread.getState() == Thread.State.BLOCKED);
                     }
-                  });
+                  },
+                  owner);
             }
           };
       commitManager.getOrCreateState("consumerGroup", "topic", regionId);
@@ -506,6 +508,156 @@ public class ConsensusPrefetchingQueueSeekTest {
         executor.shutdown();
       }
       config.setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(originalPrefetchThreads);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test(timeout = 10_000L)
+  public void testSupersededQueueSeekIsRejectedWithoutOverwritingReplacementState()
+      throws Exception {
+    final int originalPrefetchThreads =
+        config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("supersededQueueSeekRejected");
+    ConsensusSubscriptionPrefetchExecutor executor = null;
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(1);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+      executor = new ConsensusSubscriptionPrefetchExecutor();
+      when(manager.getExecutor()).thenReturn(executor);
+      when(walNode.getCurrentSearchIndex()).thenReturn(10L);
+      when(walNode.getLogDirectory()).thenReturn(systemDir);
+      when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final DataRegionId regionId = new DataRegionId(88);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final RegionProgress initialProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(100L, 1L)));
+      final ConsensusSubscriptionCommitManager commitManager =
+          new ConsensusSubscriptionCommitManager(
+              (consumerGroupId, topicName, ignored) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+                      initialProgress));
+      commitManager.getOrCreateState("consumerGroup", "topic", regionId);
+
+      final Object replacementOwner = new Object();
+      final WriterProgress replacementCommitted = new WriterProgress(200L, 2L);
+      final WriterProgress replacementOutstanding = new WriterProgress(300L, 3L);
+      final java.util.concurrent.atomic.AtomicBoolean readyForSeekRace =
+          new java.util.concurrent.atomic.AtomicBoolean(false);
+      final java.util.concurrent.atomic.AtomicBoolean replacementClaimed =
+          new java.util.concurrent.atomic.AtomicBoolean(false);
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              server,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              commitManager,
+              initialProgress,
+              1L,
+              1L,
+              true) {
+            @Override
+            protected ReplayLocateDecision locateReplayStartForRegionProgress(
+                final RegionProgress progress, final boolean seekAfter) {
+              if (readyForSeekRace.get() && replacementClaimed.compareAndSet(false, true)) {
+                // Simulate a replacement queue claiming ownership, advancing the frontier, and
+                // recording an in-flight mapping before this superseded queue applies its seek.
+                commitManager.claimTransientInFlightState(
+                    "consumerGroup", "topic", regionId, replacementOwner);
+                commitManager.recordMapping(
+                    "consumerGroup",
+                    "topic",
+                    regionId,
+                    writerId,
+                    replacementCommitted,
+                    replacementOwner);
+                org.junit.Assert.assertTrue(
+                    commitManager.commit(
+                        "consumerGroup",
+                        "topic",
+                        regionId,
+                        writerId,
+                        replacementCommitted,
+                        replacementOwner));
+                commitManager.recordMapping(
+                    "consumerGroup",
+                    "topic",
+                    regionId,
+                    writerId,
+                    replacementOutstanding,
+                    replacementOwner);
+              }
+              return ReplayLocateDecision.found(1L, progress, "test-superseded-seek");
+            }
+
+            @Override
+            protected ProgressWALIterator createSubscriptionWALIterator(
+                final long startSearchIndex) {
+              return new ProgressWALIterator(systemDir, startSearchIndex) {
+                @Override
+                boolean hasNext(final ScanBudget scanBudget) {
+                  return false;
+                }
+              };
+            }
+          };
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+      queue.poll("consumer");
+      readyForSeekRace.set(true);
+
+      final ConsensusPrefetchingQueue supersededQueue = queue;
+      final RegionProgress rewindTarget =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(50L, 0L)));
+      final IllegalStateException ex =
+          org.junit.Assert.assertThrows(
+              IllegalStateException.class,
+              () -> supersededQueue.seekAfterRegionProgress(rewindTarget));
+      org.junit.Assert.assertTrue(
+          ex.getMessage() != null
+              && (ex.getMessage().contains("superseded") || ex.getMessage().contains("取代")));
+
+      // Replacement owner's ownership, committed frontier, and outstanding mapping remain intact.
+      assertFalse(
+          commitManager.isSupersededTransientOwner(
+              "consumerGroup", "topic", regionId, replacementOwner));
+      assertEquals(
+          replacementCommitted,
+          commitManager
+              .getCommittedRegionProgress("consumerGroup", "topic", regionId)
+              .getWriterPositions()
+              .get(writerId));
+      org.junit.Assert.assertTrue(
+          commitManager.commit(
+              "consumerGroup",
+              "topic",
+              regionId,
+              writerId,
+              replacementOutstanding,
+              replacementOwner));
+      assertEquals(
+          replacementOutstanding,
+          commitManager
+              .getCommittedRegionProgress("consumerGroup", "topic", regionId)
+              .getWriterPositions()
+              .get(writerId));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      if (executor != null) {
+        executor.shutdown();
+      }
       config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(originalPrefetchThreads);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
