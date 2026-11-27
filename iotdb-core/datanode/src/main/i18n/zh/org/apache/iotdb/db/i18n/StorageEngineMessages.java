@@ -656,8 +656,6 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_CREATE_TSFILE_DIR_AFTER_RETRIES = "重试后仍无法创建 TsFile 目录";
   public static final String FAILED_TO_CREATE_DIR_AFTER_RETRIES = "重试后仍无法创建目录";
   public static final String TSFILE_NAME_FORMAT_INCORRECT = "TsFile 文件名格式不正确: ";
-  public static final String WRONG_TIME_INDEX_TYPE_LOG = "错误的 timeIndex 类型 {}";
-  public static final String WRONG_TIME_INDEX_TYPE = "错误的 timeIndex 类型 ";
   public static final String ERROR_RECORD_FILE_TIME_INDEX_CACHE = "记录 FileTimeIndexCache 时遇到错误: {}";
   public static final String ERROR_RECORD_FILE_TIME_INDEX_CACHE_NO_DETAIL = "记录 FileTimeIndexCache 时遇到错误";
   public static final String ERROR_COMPACT_FILE_TIME_INDEX_CACHE = "压缩 FileTimeIndexCache 时遇到错误: {}";

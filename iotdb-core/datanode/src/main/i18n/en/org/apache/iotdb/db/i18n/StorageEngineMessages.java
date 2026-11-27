@@ -675,8 +675,6 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_CREATE_TSFILE_DIR_AFTER_RETRIES = "Failed to create tsfile directory after retries";
   public static final String FAILED_TO_CREATE_DIR_AFTER_RETRIES = "Failed to create directory after retries";
   public static final String TSFILE_NAME_FORMAT_INCORRECT = "tsfile file name format is incorrect:";
-  public static final String WRONG_TIME_INDEX_TYPE_LOG = "Wrong timeIndex type {}";
-  public static final String WRONG_TIME_INDEX_TYPE = "Wrong timeIndex type ";
   public static final String ERROR_RECORD_FILE_TIME_INDEX_CACHE = "Meet error when record FileTimeIndexCache: {}";
   public static final String ERROR_RECORD_FILE_TIME_INDEX_CACHE_NO_DETAIL = "Meet error when record FileTimeIndexCache";
   public static final String ERROR_COMPACT_FILE_TIME_INDEX_CACHE = "Meet error when compact FileTimeIndexCache: {}";

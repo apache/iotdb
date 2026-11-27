@@ -48,7 +48,7 @@ import java.util.Set;
 
 public class FileTimeIndex implements ITimeIndex {
 
-  private static final long INSTANCE_SIZE =
+  public static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(FileTimeIndex.class);
 
   private static final Logger logger = LoggerFactory.getLogger(FileTimeIndex.class);
@@ -278,19 +278,6 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public boolean checkDeviceIdExist(IDeviceID deviceId) {
     return true;
-  }
-
-  @Override
-  public int compareDegradePriority(ITimeIndex timeIndex) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex) {
-      return 1;
-    } else if (timeIndex instanceof FileTimeIndex) {
-      return Long.compare(startTime, timeIndex.getMinStartTime());
-    } else {
-      logger.error(StorageEngineMessages.WRONG_TIME_INDEX_TYPE_LOG, timeIndex.getClass().getName());
-      throw new RuntimeException(
-          StorageEngineMessages.WRONG_TIME_INDEX_TYPE + timeIndex.getClass().getName());
-    }
   }
 
   @Override

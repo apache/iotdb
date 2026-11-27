@@ -40,17 +40,25 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertValues;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.ITableCache;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.ZoneId;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
@@ -1073,5 +1081,25 @@ public class AstMemoryEstimatorTest {
     Statement statement = parseSQL(sb.toString());
     long memorySize = estimateMemorySize(statement);
     assertTrue("Memory size should be positive", memorySize > 0);
+  }
+
+  @Test
+  public void testLoadRamSizeCountsSharedFileOnce() throws IOException {
+    Path input = Files.createTempFile("load-ram-", ".tsfile");
+    try {
+      LoadTsFile load = LoadTsFile.createUnchecked(null, input.toString(), Collections.emptyMap());
+      File file = load.getTsFiles().get(0);
+      load.addTsFileResource(null);
+      long filesOnly = load.ramBytesUsed();
+      TsFileResource resource = new TsFileResource(file);
+      load.getResources().set(0, resource);
+      assertEquals(
+          filesOnly + resource.calculateRamSize() - MemUtils.getFileRamBytes(file),
+          load.ramBytesUsed());
+      resource.setFile(new File(file.getParentFile(), "0-2-0-0.tsfile"));
+      assertEquals(filesOnly + resource.calculateRamSize(), load.ramBytesUsed());
+    } finally {
+      Files.deleteIfExists(input);
+    }
   }
 }

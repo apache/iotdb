@@ -29,6 +29,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
@@ -39,12 +40,42 @@ import org.apache.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
+import javax.management.ObjectName;
+
+import java.io.File;
+import java.lang.management.ManagementFactory;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MemUtilsTest {
+
+  @Test
+  public void testFilePathRamBytes() throws Exception {
+    Assert.assertEquals(0, MemUtils.getFilePathRamBytes(null));
+    Assume.assumeTrue(
+        ManagementFactory.getPlatformMBeanServer()
+            .isRegistered(new ObjectName("com.sun.management:type=HotSpotDiagnostic")));
+    Field storage = String.class.getDeclaredField("value");
+    Assume.assumeTrue(storage.trySetAccessible());
+    for (String path :
+        new String[] {
+          "target/data/0123456789.tsfile",
+          "target/café/données.tsfile",
+          "target/数据/0123456789.tsfile"
+        }) {
+      long bytes =
+          RamUsageEstimator.shallowSizeOf(path)
+              + RamUsageEstimator.shallowSizeOf(storage.get(path));
+      Assert.assertEquals(bytes, MemUtils.getFilePathRamBytes(path));
+      File file = new File(path);
+      Assert.assertEquals(
+          RamUsageEstimator.shallowSizeOf(file) + bytes, MemUtils.getFileRamBytes(file));
+    }
+  }
 
   @Test
   public void getRecordSizeTest() {
