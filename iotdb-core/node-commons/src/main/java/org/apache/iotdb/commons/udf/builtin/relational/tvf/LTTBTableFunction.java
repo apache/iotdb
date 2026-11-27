@@ -978,10 +978,12 @@ public class LTTBTableFunction implements TableFunction {
   static final class PointBuffer {
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(PointBuffer.class);
+    private static final long[] EMPTY_LONGS = new long[0];
+    private static final double[] EMPTY_DOUBLES = new double[0];
 
     private final BufferMemoryBudget memoryBudget;
-    private long[] times;
-    private double[] values;
+    private long[] times = EMPTY_LONGS;
+    private double[] values = EMPTY_DOUBLES;
     private long[] integralValues;
     private int size;
     private int onlyFiniteIndex = NOT_SELECTED;
@@ -989,16 +991,16 @@ public class LTTBTableFunction implements TableFunction {
     PointBuffer(boolean integral, BufferMemoryBudget memoryBudget) {
       this.memoryBudget = memoryBudget;
       if (memoryBudget != null) {
-        memoryBudget.reserve(INSTANCE_SIZE + arrayBytes(INITIAL_CAPACITY, integral));
+        memoryBudget.reserve(INSTANCE_SIZE);
       }
-      times = new long[INITIAL_CAPACITY];
-      values = new double[INITIAL_CAPACITY];
-      if (integral) {
-        integralValues = new long[INITIAL_CAPACITY];
-      }
+      integralValues = integral ? EMPTY_LONGS : null;
     }
 
     private static long arrayBytes(int capacity, boolean integral) {
+      if (capacity == 0) {
+        // Empty buffers share their backing arrays until the first eligible point arrives.
+        return 0;
+      }
       return RamUsageEstimator.sizeOfLongArray(capacity)
           + RamUsageEstimator.sizeOfDoubleArray(capacity)
           + (integral ? RamUsageEstimator.sizeOfLongArray(capacity) : 0);
@@ -1072,7 +1074,10 @@ public class LTTBTableFunction implements TableFunction {
                     .EXCEPTION_LTTB_BUFFERS_AT_MOST_ARG_ELIGIBLE_POINTS_PER_COLUMN_IN_ONE_PARTITION_OR_WINDOW_4C746D82,
                 MAX_BUFFERED_POINTS));
       }
-      int newCapacity = (int) Math.min((long) times.length * 2, MAX_BUFFERED_POINTS);
+      int newCapacity =
+          size == 0
+              ? INITIAL_CAPACITY
+              : (int) Math.min((long) times.length * 2, MAX_BUFFERED_POINTS);
       long oldArrayBytes = arrayBytes(times.length, integralValues != null);
       if (memoryBudget != null) {
         // Reserve before copying: the old arrays remain live until their replacements exist.
@@ -1744,14 +1749,22 @@ public class LTTBTableFunction implements TableFunction {
       }
       for (int i = 0; i < participantColumns.length; i++) {
         if (hasLastEligible[i] && containsPosition(window, lastEligiblePositions[i])) {
-          // A sole candidate before the next window start is emitted here even if it becomes L.
-          // Compare the offset within this window so the next start need not fit in a long.
+          // The last window containing L reports it. Earlier overlapping windows drop it.
+          // Compare offsets so the next window start need not fit in a long.
           long windowStart = window.endExclusive - size;
-          if (window.buffers[i].size() != 1 || lastEligiblePositions[i] - windowStart >= slide) {
+          boolean shared = lastEligiblePositions[i] - windowStart >= slide;
+          int candidateCount = window.buffers[i].size();
+          // Dropping a trailing non-finite point leaves the pick and anchor unchanged if another
+          // candidate remains. In L's own window only a singleton gives the same output either way.
+          boolean sameOutput =
+              shared
+                  ? candidateCount > 1 && !Double.isFinite(lastEligibleValues[i])
+                  : candidateCount == 1;
+          if (!sameOutput) {
             return false;
           }
         }
-        // Once L is outside this bucket, a sole finite candidate wins for every possible C.
+        // A sole finite candidate wins for every possible C.
         if (firstPendingFinite[i] != window || window.buffers[i].onlyFiniteIndex != NOT_SELECTED) {
           continue;
         }

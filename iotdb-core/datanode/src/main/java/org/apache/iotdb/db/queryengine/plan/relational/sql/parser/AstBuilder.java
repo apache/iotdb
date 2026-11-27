@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllRows;
@@ -329,6 +330,7 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SkipT
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SkipTo.skipToFirst;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SkipTo.skipToLast;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SkipTo.skipToNextRow;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
@@ -344,10 +346,12 @@ import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseString
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   private int parameterPosition;
+  private boolean preserveDateTimeLiteralType;
 
   @Nullable private final NodeLocation baseLocation;
 
@@ -2921,9 +2925,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitTableFunctionCall(RelationalSqlParser.TableFunctionCallContext context) {
     QualifiedName name = getQualifiedName(context.qualifiedName());
-    List<TableFunctionArgument> arguments =
-        visit(context.tableFunctionArgument(), TableFunctionArgument.class);
-
+    boolean isLttb =
+        TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(name.toString());
+    List<TableFunctionArgument> arguments = new ArrayList<>();
+    boolean previous = preserveDateTimeLiteralType;
+    try {
+      for (RelationalSqlParser.TableFunctionArgumentContext argument :
+          context.tableFunctionArgument()) {
+        // LTTB distinguishes integer counts from timestamps when it analyzes scalar arguments.
+        preserveDateTimeLiteralType = isLttb && argument.scalarArgument() != null;
+        arguments.add((TableFunctionArgument) visit(argument));
+      }
+    } finally {
+      preserveDateTimeLiteralType = previous;
+    }
     return new TableFunctionInvocation(getLocation(context), name, arguments);
   }
 
@@ -3328,10 +3343,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDateTimeExpression(RelationalSqlParser.DateTimeExpressionContext ctx) {
-    return new LongLiteral(
-        getLocation(ctx),
-        String.valueOf(
-            parseDateExpression(ctx.dateExpression(), CommonDateTimeUtils.currentTime())));
+    return dateTimeLiteral(
+        ctx, parseDateExpression(ctx.dateExpression(), CommonDateTimeUtils.currentTime()));
+  }
+
+  private Node dateTimeLiteral(ParserRuleContext context, long timestamp) {
+    NodeLocation location = getLocation(context);
+    LongLiteral epoch = new LongLiteral(location, Long.toString(timestamp));
+    return preserveDateTimeLiteralType ? new Cast(location, epoch, toSqlType(TIMESTAMP)) : epoch;
   }
 
   private Long parseDateExpression(
@@ -3904,11 +3923,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDatetimeLiteral(RelationalSqlParser.DatetimeLiteralContext ctx) {
-    return new LongLiteral(
-        getLocation(ctx),
-        String.valueOf(
-            parseDateTimeFormat(
-                ctx.getChild(0).getText(), CommonDateTimeUtils.currentTime(), zoneId)));
+    return dateTimeLiteral(
+        ctx,
+        parseDateTimeFormat(ctx.getChild(0).getText(), CommonDateTimeUtils.currentTime(), zoneId));
   }
 
   @Override

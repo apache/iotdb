@@ -1186,6 +1186,28 @@ public class TableFunctionTest {
   }
 
   @Test
+  public void testLTTBDateTimeLiteralsRetainTheirType() {
+    String prefix = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', ";
+    String timestamp = "1970-01-01T00:00:00.004+00:00";
+    String countError =
+        CommonMessages.EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E;
+    assertAnalyzeFails(prefix + "N => " + timestamp + ")", countError);
+    assertAnalyzeFails(prefix + "N => (" + timestamp + " + 1ms))", countError);
+    for (String argument : ImmutableList.of("SIZE", "SLIDE")) {
+      String arguments = argument.equals("SIZE") ? "SIZE => " : "SIZE => 4, SLIDE => ";
+      assertAnalyzeFails(
+          prefix + arguments + timestamp + ")",
+          String.format(
+              DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S,
+              argument,
+              "INT64",
+              "TIMESTAMP"));
+    }
+    analyzeSQL(prefix + "N => CAST(" + timestamp + " AS INT64))", TEST_MATADATA, QUERY_CONTEXT);
+    analyzeSQL(prefix + "SIZE => 1ms, ORIGIN => " + timestamp + ")", TEST_MATADATA, QUERY_CONTEXT);
+  }
+
+  @Test
   public void testLTTBWindowArgumentsAcceptIntegerCastsAndDurations() {
     String prefix = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', ";
     analyzeSQL(

@@ -6460,7 +6460,8 @@ public class StatementAnalyzer {
         return analyzeTableArgument(
             (TableFunctionTableArgument) argument.getValue(),
             (TableParameterSpecification) parameterSpecification,
-            scope);
+            scope,
+            TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName));
       } else if (parameterSpecification instanceof ScalarParameterSpecification) {
         if (!(argument.getValue() instanceof Expression)) {
           throw new SemanticException(
@@ -6484,7 +6485,8 @@ public class StatementAnalyzer {
     private ArgumentAnalysis analyzeTableArgument(
         TableFunctionTableArgument tableArgument,
         TableParameterSpecification argumentSpecification,
-        Optional<Scope> scope) {
+        Optional<Scope> scope,
+        boolean useResolvedColumnNames) {
       List<Optional<String>> fieldNames;
       List<org.apache.iotdb.udf.api.type.Type> fieldTypes;
       List<String> partitionBy = Collections.emptyList();
@@ -6542,7 +6544,10 @@ public class StatementAnalyzer {
                       if (expression instanceof Identifier) {
                         return ((Identifier) expression).getValue();
                       } else if (expression instanceof DereferenceExpression) {
-                        return expression.toString();
+                        return tableArgumentColumnName(
+                            (DereferenceExpression) expression,
+                            argumentScope,
+                            useResolvedColumnNames);
                       } else {
                         throw new IllegalStateException(
                             String.format(
@@ -6600,7 +6605,10 @@ public class StatementAnalyzer {
                       if (expression instanceof Identifier) {
                         return ((Identifier) expression).getValue();
                       } else if (expression instanceof DereferenceExpression) {
-                        return expression.toString();
+                        return tableArgumentColumnName(
+                            (DereferenceExpression) expression,
+                            argumentScope,
+                            useResolvedColumnNames);
                       } else {
                         throw new IllegalStateException(
                             String.format(
@@ -6620,6 +6628,17 @@ public class StatementAnalyzer {
           new TableArgument(
               fieldNames, fieldTypes, partitionBy, orderBy, argumentSpecification.isRowSemantics()),
           Optional.of(analysisBuilder.build()));
+    }
+
+    private String tableArgumentColumnName(
+        DereferenceExpression column, Scope scope, boolean useResolvedColumnNames) {
+      if (!useResolvedColumnNames) {
+        return column.toString();
+      }
+      // TableArgument exposes unqualified field names. Resolving the short name also catches
+      // qualified keys that would otherwise match more than one input column in LTTB.
+      QualifiedName name = QualifiedName.of(ImmutableList.of(column.getField().get()));
+      return scope.resolveField(column, name).getField().getName().get();
     }
 
     private static void validateOrderByDirection(

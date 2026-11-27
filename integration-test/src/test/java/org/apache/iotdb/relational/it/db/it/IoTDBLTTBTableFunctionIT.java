@@ -178,7 +178,7 @@ public class IoTDBLTTBTableFunctionIT {
   @Test
   public void testTargetCountPreservesEndpointsAndAlignsColumns() {
     tableResultSetEqualTest(
-        "SELECT * FROM LTTB(DATA => metrics PARTITION BY device ORDER BY time, "
+        "SELECT * FROM LTTB(DATA => metrics PARTITION BY metrics.device ORDER BY metrics.time, "
             + "TIMECOL => 'time', N => 3) ORDER BY device, s1_time",
         new String[] {"window_index", "device", "s1_time", "s1", "s2_time", "s2"},
         new String[] {

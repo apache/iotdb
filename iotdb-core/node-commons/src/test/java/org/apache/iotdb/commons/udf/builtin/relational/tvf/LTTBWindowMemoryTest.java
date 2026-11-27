@@ -213,9 +213,13 @@ public class LTTBWindowMemoryTest {
   @Test
   public void testInitialBuffersShareCapacityBudget() {
     LTTBTableFunction.BufferMemoryBudget budget = new LTTBTableFunction.BufferMemoryBudget(4096);
-    new LTTBTableFunction.PointBuffer(true, budget);
-    new LTTBTableFunction.PointBuffer(true, budget);
-    assertMemoryLimit(() -> new LTTBTableFunction.PointBuffer(true, budget), 4096);
+    LTTBTableFunction.PointBuffer first = new LTTBTableFunction.PointBuffer(true, budget);
+    LTTBTableFunction.PointBuffer second = new LTTBTableFunction.PointBuffer(true, budget);
+    LTTBTableFunction.PointBuffer third = new LTTBTableFunction.PointBuffer(true, budget);
+    first.addIntegral(0, 1);
+    second.addIntegral(0, 1);
+    assertMemoryLimit(() -> third.addIntegral(0, 1), 4096);
+    assertEquals(0, third.size());
   }
 
   @Test
@@ -480,6 +484,54 @@ public class LTTBWindowMemoryTest {
       }
     } finally {
       config.setLttbBufferSize(previousBudget);
+    }
+  }
+
+  @Test
+  public void testSharedNonFiniteEndpointAllowsEarlierWindowToStream() {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      for (boolean sparseColumnResumes : new boolean[] {false, true}) {
+        TableFunctionDataProcessor processor =
+            processor(timeWindow, 3, 2, Type.DOUBLE, Type.DOUBLE);
+        List<ColumnBuilder> builders = new ArrayList<>(builders(timeWindow));
+        builders.add(new LongColumnBuilder(null, 16));
+        builders.add(new DoubleColumnBuilder(null, 16));
+        try {
+          processor.process(record(0, 0.0, 0.0), builders, null);
+          processor.process(record(1, 1.0, 1.0), builders, null);
+          processor.process(record(2, Double.NaN, 2.0), builders, null);
+          for (int t = 3; t < 13; t++) {
+            processor.process(record(t, null, (double) t), builders, null);
+          }
+          // [0,3) picks t=1 whether the NaN in [2,5) is the endpoint or a later value arrives.
+          // The dense column must already have produced rows beyond these two windows.
+          assertTrue(builders.get(0).getPositionCount() > 3);
+          if (sparseColumnResumes) {
+            processor.process(record(13, 13.0, 13.0), builders, null);
+          }
+          processor.finish(builders, null);
+
+          int timeIndex = timeWindow ? 2 : 1;
+          Column times = builders.get(timeIndex).build();
+          Column windows = builders.get(0).build();
+          List<Long> sparseTimes = new ArrayList<>();
+          for (int i = 0; i < times.getPositionCount(); i++) {
+            if (!times.isNull(i)) {
+              long time = times.getLong(i);
+              sparseTimes.add(time);
+              if (time == 2) {
+                assertEquals(timeWindow ? 2 : 1, windows.getLong(i));
+                assertTrue(Double.isNaN(builders.get(timeIndex + 1).build().getDouble(i)));
+              }
+            }
+          }
+          assertEquals(
+              sparseColumnResumes ? Arrays.asList(0L, 1L, 2L, 13L) : Arrays.asList(0L, 1L, 2L),
+              sparseTimes);
+        } finally {
+          processor.beforeDestroy();
+        }
+      }
     }
   }
 

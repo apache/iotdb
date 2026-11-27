@@ -372,6 +372,41 @@ public class LTTBRegressionTest {
     }
   }
 
+  @Test
+  public void testOverlappingWindowsWithManyNullColumnsFitMemoryBudget() {
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    long previousBudget = config.getLttbBufferSize();
+    try {
+      config.setLttbBufferSize(4L * 1024 * 1024);
+      Double[][] dense = new Double[120][1];
+      Double[][] sparse = new Double[120][128];
+      for (int i = 0; i < dense.length; i++) {
+        dense[i][0] = (double) i;
+        sparse[i][0] = dense[i][0];
+      }
+      List<ColumnBuilder> expected = sample("COUNT_WINDOW", 120, 1, 0, dense);
+      List<ColumnBuilder> actual = sample("COUNT_WINDOW", 120, 1, 0, sparse);
+      int rows = expected.get(0).getPositionCount();
+      assertEquals(121, rows);
+      for (int i = 0; i < actual.size(); i++) {
+        Column column = actual.get(i).build();
+        assertEquals(rows, column.getPositionCount());
+        Column reference = i < expected.size() ? expected.get(i).build() : null;
+        for (int row = 0; row < rows; row++) {
+          if (reference == null) {
+            assertTrue(column.isNull(row));
+          } else if (i == 2) {
+            assertEquals(reference.getDouble(row), column.getDouble(row), 0.0);
+          } else {
+            assertEquals(reference.getLong(row), column.getLong(row));
+          }
+        }
+      }
+    } finally {
+      config.setLttbBufferSize(previousBudget);
+    }
+  }
+
   private static List<ColumnBuilder> sample(
       String mode, long size, long slide, long origin, Double[][] rows) {
     int columns = rows[0].length;
