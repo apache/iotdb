@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
@@ -195,6 +197,75 @@ public class IoTDBDescriptorTest {
       config.setWalMemTableSnapshotThreshold(originalWalMemTableSnapshotThreshold);
       config.setMaxWalMemTableSnapshotNum(originalMaxWalMemTableSnapshotNum);
       config.setDeleteWalFilesPeriodInMs(originalDeleteWalFilesPeriodInMs);
+    }
+  }
+
+  @Test
+  public void testShowConfigurationReflectsEffectiveRuntimeLimits() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final IoTDBConfig config = descriptor.getConfig();
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final DataNodeMemoryConfig memoryConfig = descriptor.getMemoryConfig();
+    final long originalSortBufferSize = commonConfig.getSortBufferSize();
+    final long originalModsCacheSize = config.getModsCacheSizeLimitPerFI();
+    final long originalCteBufferSize = commonConfig.getCteBufferSize();
+    final int originalMaxRowsInCteBuffer = commonConfig.getMaxRowsInCteBuffer();
+    final int originalMaxSubTaskNum = config.getMaxSubTaskNumForInformationTableScan();
+    final int originalMppPayloadSize = config.getMppDataExchangeMaxPayloadSizeInBytes();
+    final long originalTableQueryBatchSize =
+        memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes();
+    final long originalThrottleThreshold = config.getThrottleThreshold();
+    final Map<String, String> originalAppliedProperties =
+        new HashMap<>(ConfigurationFileUtils.getAppliedProperties());
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("sort_buffer_size_in_bytes", "0");
+    properties.setProperty("mods_cache_size_limit_per_fi_in_bytes", "0");
+    properties.setProperty("cte_buffer_size_in_bytes", "0");
+    properties.setProperty("max_rows_in_cte_buffer", "0");
+    properties.setProperty("max_sub_task_num_for_information_table_scan", "0");
+    properties.setProperty("mpp_data_exchange_max_payload_size_in_bytes", "0");
+    properties.setProperty("table_query_device_entry_batch_size_in_bytes", "0");
+    properties.setProperty("wal_throttle_threshold_in_byte", "-1");
+
+    try {
+      descriptor.loadProperties(properties);
+
+      final Map<String, String> appliedProperties = ConfigurationFileUtils.getAppliedProperties();
+      Assert.assertEquals(
+          Long.toString(commonConfig.getSortBufferSize()),
+          appliedProperties.get("sort_buffer_size_in_bytes"));
+      Assert.assertEquals(
+          Long.toString(config.getModsCacheSizeLimitPerFI()),
+          appliedProperties.get("mods_cache_size_limit_per_fi_in_bytes"));
+      Assert.assertEquals(
+          Long.toString(commonConfig.getCteBufferSize()),
+          appliedProperties.get("cte_buffer_size_in_bytes"));
+      Assert.assertEquals(
+          Integer.toString(commonConfig.getMaxRowsInCteBuffer()),
+          appliedProperties.get("max_rows_in_cte_buffer"));
+      Assert.assertEquals(
+          Integer.toString(config.getMaxSubTaskNumForInformationTableScan()),
+          appliedProperties.get("max_sub_task_num_for_information_table_scan"));
+      Assert.assertEquals(
+          Integer.toString(config.getMppDataExchangeMaxPayloadSizeInBytes()),
+          appliedProperties.get("mpp_data_exchange_max_payload_size_in_bytes"));
+      Assert.assertEquals(
+          Long.toString(memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes()),
+          appliedProperties.get("table_query_device_entry_batch_size_in_bytes"));
+      Assert.assertEquals(
+          Long.toString(config.getThrottleThreshold()),
+          appliedProperties.get("wal_throttle_threshold_in_byte"));
+    } finally {
+      commonConfig.setSortBufferSize(originalSortBufferSize);
+      config.setModsCacheSizeLimitPerFI(originalModsCacheSize);
+      commonConfig.setCteBufferSize(originalCteBufferSize);
+      commonConfig.setMaxRowsInCteBuffer(originalMaxRowsInCteBuffer);
+      config.setMaxSubTaskNumForInformationTableScan(originalMaxSubTaskNum);
+      config.setMppDataExchangeMaxPayloadSizeInBytes(originalMppPayloadSize);
+      memoryConfig.setTableQueryDeviceEntryBatchSizeInBytes(originalTableQueryBatchSize);
+      config.setThrottleThreshold(originalThrottleThreshold);
+      ConfigurationFileUtils.getAppliedProperties().clear();
+      ConfigurationFileUtils.getAppliedProperties().putAll(originalAppliedProperties);
     }
   }
 

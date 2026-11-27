@@ -174,6 +174,71 @@ public class ConfigValidationTest {
   }
 
   @Test
+  public void testConsensusSinkParameters() {
+    for (final BuiltinPipePlugin plugin :
+        new BuiltinPipePlugin[] {
+          BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_CONNECTOR,
+          BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR,
+          BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_SINK,
+          BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_SINK
+        }) {
+      final String prefix = plugin.getPipePluginName().endsWith("connector") ? "connector" : "sink";
+      final Map<String, String> attributes =
+          Map.of(
+              prefix,
+              plugin.getPipePluginName(),
+              prefix + ".consensus.group-id",
+              "1",
+              prefix + ".consensus.pipe-name",
+              "region-migration",
+              prefix + ".ip",
+              "127.0.0.1",
+              prefix + ".port",
+              "6667",
+              prefix + ".parallel.tasks",
+              "1",
+              prefix + ".realtime-first",
+              "true");
+
+      assertEquals(attributes, PipeParameterDefinitions.validateSink(attributes));
+    }
+  }
+
+  @Test
+  public void testSubscriptionSinkParameterAliases() {
+    final Map<String, String> unprefixed =
+        Map.of("sink", "subscription-sink", "topic", "topic-a", "consumer-group", "group-a");
+    assertEquals(unprefixed, PipeParameterDefinitions.validateSink(unprefixed));
+
+    final Map<String, String> sinkPrefixed =
+        Map.of(
+            "sink", "subscription-sink",
+            "sink.topic", "topic-b",
+            "sink.consumer-group", "group-b");
+    assertEquals(sinkPrefixed, PipeParameterDefinitions.validateSink(sinkPrefixed));
+
+    final Map<String, String> connectorPrefixed =
+        Map.of(
+            "connector", "subscription-sink",
+            "connector.topic", "topic-c",
+            "connector.consumer-group", "group-c");
+    assertEquals(connectorPrefixed, PipeParameterDefinitions.validateSink(connectorPrefixed));
+  }
+
+  @Test
+  public void testStandardStatisticsProcessorParameters() {
+    final Map<String, String> parameters =
+        Map.of(
+            "processor", BuiltinPipePlugin.STANDARD_STATISTICS_PROCESSOR.getPipePluginName(),
+            "processor.output.database", "root.output",
+            "processor.output.measurements", "avg,max,min",
+            "processor.operators", "avg,max,min",
+            "processor.windowing-strategy", "tumbling-time");
+
+    assertEquals(parameters, PipeParameterDefinitions.validateProcessor(parameters));
+  }
+
+  @Test
   public void testAggregateProcessorMaxDelaySupportsUnlimited() {
     final Map<String, String> unlimited =
         Map.of(

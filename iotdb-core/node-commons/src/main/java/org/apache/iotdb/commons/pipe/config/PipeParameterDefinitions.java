@@ -149,6 +149,7 @@ public final class PipeParameterDefinitions {
           known = reduced.equals("output-series") || reduced.equals("output.series");
           break;
         case AGGREGATE_PROCESSOR:
+        case STANDARD_STATISTICS_PROCESSOR:
           known =
               reduced.startsWith("output.")
                   || reduced.startsWith("sliding.")

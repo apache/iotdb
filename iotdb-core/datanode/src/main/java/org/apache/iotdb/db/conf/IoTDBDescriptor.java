@@ -1351,6 +1351,8 @@ public class IoTDBDescriptor {
     if (maxSubTaskNumForInformationTableScan > 0) {
       conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
     }
+
+    overlayEffectiveConfigurationValues();
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -2549,6 +2551,7 @@ public class IoTDBDescriptor {
       // Overwrite the keys whose setters above may have rewritten, so `show configuration`
       // displays the effective values rather than the raw file values.
       IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
+      overlayEffectiveConfigurationValues();
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2556,6 +2559,29 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
+  }
+
+  private void overlayEffectiveConfigurationValues() {
+    ConfigurationFileUtils.updateAppliedProperties(
+        "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "max_sub_task_num_for_information_table_scan",
+        Integer.toString(conf.getMaxSubTaskNumForInformationTableScan()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "sort_buffer_size_in_bytes",
+        Long.toString(commonDescriptor.getConfig().getSortBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "table_query_device_entry_batch_size_in_bytes",
+        Long.toString(memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "mpp_data_exchange_max_payload_size_in_bytes",
+        Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
