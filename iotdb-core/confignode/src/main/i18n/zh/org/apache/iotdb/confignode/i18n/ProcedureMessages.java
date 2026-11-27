@@ -438,8 +438,6 @@ public final class ProcedureMessages {
       "使时间序列 {} 第二次的 schemaEngine 缓存失效失败";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW =
       "使视图 {} 的 schemaengine 缓存失效失败";
-  public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES =
-      "使模板时间序列 {} 的 schema 缓存失效失败";
   public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_FIRST_TIME =
       "使模板时间序列 {} 的 schema 缓存第一次失效失败";
   public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_SECOND_TIME =

@@ -453,8 +453,6 @@ public final class ProcedureMessages {
       "Failed to invalidate schemaEngine cache of timeSeries {} for the second time";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW =
       "Failed to invalidate schemaengine cache of view {}";
-  public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES =
-      "Failed to invalidate schema cache of template timeSeries {}";
   public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_FIRST_TIME =
       "Failed to invalidate schema cache of template timeSeries {} for the first time";
   public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_SECOND_TIME =
