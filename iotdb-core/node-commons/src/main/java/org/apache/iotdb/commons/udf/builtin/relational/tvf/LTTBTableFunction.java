@@ -1553,13 +1553,25 @@ public class LTTBTableFunction implements TableFunction {
 
     protected abstract void processRecord(Record input, long time);
 
-    protected final boolean hasParticipantValue(Record input) {
-      for (ParticipantColumn column : participantColumns) {
-        if (!column.isNull(input)) {
-          return true;
+    protected enum WindowsForRow {
+      NONE,
+      FIRST,
+      ALL
+    }
+
+    // A column's first eligible point is stored separately and reported by its earliest window.
+    // Later points are bucket candidates in every window that contains them.
+    protected final WindowsForRow windowsForRow(Record input) {
+      WindowsForRow windows = WindowsForRow.NONE;
+      for (int i = 0; i < participantColumns.length; i++) {
+        if (!participantColumns[i].isNull(input)) {
+          if (hasFirstEligible[i]) {
+            return WindowsForRow.ALL;
+          }
+          windows = WindowsForRow.FIRST;
         }
       }
-      return false;
+      return windows;
     }
 
     /**
@@ -1977,19 +1989,18 @@ public class LTTBTableFunction implements TableFunction {
               throw windowBoundaryOverflow();
             }
           }
-          // A later eligible row opens any still-relevant windows on the same grid.
-          if (!hasParticipantValue(input)) {
+          WindowsForRow windows = windowsForRow(input);
+          if (windows == WindowsForRow.NONE) {
             return;
           }
-        }
-        while (!windowsExhausted && nextWindowStart <= time) {
-          activeWindows.addLast(
-              new TimeWindowState(newWindowBuffers(), nextWindowStart, nextWindowStart + size));
-          // An unrepresentable next start means there are no more windows, but the current
-          // window can still be valid and must collect this and subsequent input rows.
-          if (nextWindowStart > Long.MAX_VALUE - slide) {
-            windowsExhausted = true;
-          } else {
+          while (nextWindowStart <= time
+              && (windows == WindowsForRow.ALL || activeWindows.isEmpty())) {
+            activeWindows.addLast(
+                new TimeWindowState(newWindowBuffers(), nextWindowStart, nextWindowStart + size));
+            if (nextWindowStart > Long.MAX_VALUE - slide) {
+              windowsExhausted = true;
+              break;
+            }
             nextWindowStart += slide;
           }
         }
@@ -2066,14 +2077,16 @@ public class LTTBTableFunction implements TableFunction {
       }
 
       if (nextWindowIndex <= lastIndex) {
-        if (!hasParticipantValue(input)) {
+        WindowsForRow windows = windowsForRow(input);
+        if (windows == WindowsForRow.NONE) {
           return;
         }
         // A NULL prefix may span many starts. Materialize only windows still containing this row,
         // keeping their indexes on the original grid (including windows that emitted no rows).
         long firstIndex = position < size ? 0 : (position - size) / slide + 1;
         nextWindowIndex = Math.max(nextWindowIndex, firstIndex);
-        while (nextWindowIndex <= lastIndex) {
+        while (nextWindowIndex <= lastIndex
+            && (windows == WindowsForRow.ALL || activeWindows.isEmpty())) {
           long end = nextWindowIndex * slide + size;
           activeWindows.addLast(new CountWindowState(newWindowBuffers(), end, nextWindowIndex++));
         }

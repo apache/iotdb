@@ -591,19 +591,24 @@ public class TableFunctionOperatorTest {
 
   @Test
   public void testLttbDuplicateTimestampsAcrossInputBlocks() throws Exception {
-    SemanticException duplicate =
-        assertThrows(SemanticException.class, () -> readLttbPartitionsAcrossBlocks(1));
-    assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), duplicate.getErrorCode());
-    assertEquals(
-        String.format(
-            CommonMessages
-                .EXCEPTION_LTTB_DOES_NOT_SUPPORT_DUPLICATE_TIMESTAMPS_BUT_TIMESTAMP_ARG_APPEARS_MORE_THAN_ONCE_IN_THE_SAME_PARTITION_7713FEDD,
-            7L),
-        duplicate.getMessage());
-    assertEquals(Arrays.asList(1, 2), readLttbPartitionsAcrossBlocks(2));
+    for (LTTBTableFunction.Mode mode : LTTBTableFunction.Mode.values()) {
+      SemanticException duplicate =
+          assertThrows(SemanticException.class, () -> readLttbPartitionsAcrossBlocks(mode, 1));
+      assertEquals(
+          mode.name(), TSStatusCode.SEMANTIC_ERROR.getStatusCode(), duplicate.getErrorCode());
+      assertEquals(
+          mode.name(),
+          String.format(
+              CommonMessages
+                  .EXCEPTION_LTTB_DOES_NOT_SUPPORT_DUPLICATE_TIMESTAMPS_BUT_TIMESTAMP_ARG_APPEARS_MORE_THAN_ONCE_IN_THE_SAME_PARTITION_7713FEDD,
+              7L),
+          duplicate.getMessage());
+      assertEquals(mode.name(), Arrays.asList(1, 2), readLttbPartitionsAcrossBlocks(mode, 2));
+    }
   }
 
-  private List<Integer> readLttbPartitionsAcrossBlocks(int secondPartition) throws Exception {
+  private List<Integer> readLttbPartitionsAcrossBlocks(
+      LTTBTableFunction.Mode mode, int secondPartition) throws Exception {
     List<TSDataType> input =
         Arrays.asList(TSDataType.TIMESTAMP, TSDataType.INT32, TSDataType.INT32);
     TsBlockBuilder rows = new TsBlockBuilder(input);
@@ -614,15 +619,30 @@ public class TableFunctionOperatorTest {
       rows.declarePosition();
     }
     TsBlock data = rows.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 2));
+    MapTableFunctionHandle.Builder handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(LTTBTableFunction.MODE_PROPERTY, mode.name())
+            .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "INT32")
+            .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "INT32");
+    if (mode == LTTBTableFunction.Mode.TARGET_COUNT) {
+      handle.addProperty(LTTBTableFunction.N_PARAMETER_NAME, 3L);
+    } else {
+      handle
+          .addProperty(LTTBTableFunction.SIZE_PARAMETER_NAME, 2L)
+          .addProperty(LTTBTableFunction.SLIDE_PARAMETER_NAME, 2L);
+    }
+    List<TSDataType> output = new ArrayList<>();
+    if (mode == LTTBTableFunction.Mode.TIME_WINDOW) {
+      handle.addProperty(LTTBTableFunction.ORIGIN_PARAMETER_NAME, 0L);
+      output.add(TSDataType.TIMESTAMP);
+      output.add(TSDataType.TIMESTAMP);
+    } else {
+      output.add(TSDataType.INT64);
+    }
+    int partitionChannel = output.size();
+    output.addAll(Arrays.asList(TSDataType.INT32, TSDataType.TIMESTAMP, TSDataType.INT32));
     TableFunctionProcessorProvider lttb =
-        new LTTBTableFunction()
-            .getProcessorProvider(
-                new MapTableFunctionHandle.Builder()
-                    .addProperty(LTTBTableFunction.MODE_PROPERTY, "TARGET_COUNT")
-                    .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "INT32")
-                    .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "INT32")
-                    .addProperty(LTTBTableFunction.N_PARAMETER_NAME, 3L)
-                    .build());
+        new LTTBTableFunction().getProcessorProvider(handle.build());
     List<Integer> partitions = new ArrayList<>();
     try (TableFunctionOperator operator =
         new TableFunctionOperator(
@@ -631,9 +651,8 @@ public class TableFunctionOperatorTest {
             0L,
             childWithBlocks(Arrays.asList(data.getRegion(0, 1), data.getRegion(1, 1)).iterator()),
             input,
-            Arrays.asList(
-                TSDataType.INT64, TSDataType.INT32, TSDataType.TIMESTAMP, TSDataType.INT32),
-            4,
+            output,
+            output.size(),
             Arrays.asList(0, 1, 2),
             Collections.emptyList(),
             false,
@@ -645,9 +664,9 @@ public class TableFunctionOperatorTest {
         TsBlock block = operator.next();
         if (block != null) {
           for (int i = 0; i < block.getPositionCount(); i++) {
-            partitions.add(block.getColumn(1).getInt(i));
-            assertEquals(7L, block.getColumn(2).getLong(i));
-            assertEquals(42, block.getColumn(3).getInt(i));
+            partitions.add(block.getColumn(partitionChannel).getInt(i));
+            assertEquals(7L, block.getColumn(partitionChannel + 1).getLong(i));
+            assertEquals(42, block.getColumn(partitionChannel + 2).getInt(i));
           }
         }
       }

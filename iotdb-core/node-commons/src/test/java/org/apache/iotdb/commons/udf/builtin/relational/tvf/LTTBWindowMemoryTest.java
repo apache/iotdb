@@ -168,11 +168,86 @@ public class LTTBWindowMemoryTest {
   }
 
   @Test
-  public void testTimeWindowCreationIsBoundedForEligibleInput() {
-    TableFunctionDataProcessor processor = processor(true, 1_000_000, 1, Type.DOUBLE);
+  public void testFirstPointOnlyNeedsItsEarliestTimeWindow() {
+    TableFunctionDataProcessor processor = processor(true, 3_600_000, 10, Type.DOUBLE);
+    List<ColumnBuilder> builders = builders(true);
     try {
+      processor.process(record(0, 42.0), builders, null);
+      processor.finish(builders, null);
+      assertEquals(1, builders.get(0).getPositionCount());
+      assertEquals(-3_599_990, builders.get(0).build().getLong(0));
+      assertEquals(10, builders.get(1).build().getLong(0));
+      assertEquals(0, builders.get(2).build().getLong(0));
+      assertEquals(42.0, builders.get(3).build().getDouble(0), 0.0);
+    } finally {
+      processor.beforeDestroy();
+    }
+  }
+
+  @Test
+  public void testFirstPointAfterNullPrefixOnlyNeedsItsEarliestCountWindow() {
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    long previousBudget = config.getLttbBufferSize();
+    try {
+      config.setLttbBufferSize(4 * 1024);
+      TableFunctionDataProcessor processor = processor(false, 128, 1, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(false);
+      try {
+        for (int t = 0; t < 128; t++) {
+          processor.process(record(t, (Number) null), builders, null);
+        }
+        processor.process(record(128, 42.0), builders, null);
+        processor.finish(builders, null);
+        assertEquals(1, builders.get(0).getPositionCount());
+        assertEquals(1, builders.get(0).build().getLong(0));
+        assertEquals(128, builders.get(1).build().getLong(0));
+        assertEquals(42.0, builders.get(2).build().getDouble(0), 0.0);
+      } finally {
+        processor.beforeDestroy();
+      }
+    } finally {
+      config.setLttbBufferSize(previousBudget);
+    }
+  }
+
+  @Test
+  public void testLaterCandidatesOpenDeferredWindowsForAllColumns() {
+    TableFunctionDataProcessor processor = processor(true, 4, 2, Type.DOUBLE, Type.DOUBLE);
+    List<ColumnBuilder> builders = new ArrayList<>(builders(true));
+    builders.add(new LongColumnBuilder(null, 16));
+    builders.add(new DoubleColumnBuilder(null, 16));
+    try {
+      processor.process(record(0, 0.0, null), builders, null);
+      processor.process(record(2, 8.0, 5.0), builders, null);
+      processor.process(record(3, 1.0, 7.0), builders, null);
+      processor.process(record(4, 0.0, null), builders, null);
+      processor.finish(builders, null);
+      assertEquals(4, builders.get(0).getPositionCount());
+      long[] firstColumnTimes = {0, 2, 3, 4};
+      Column starts = builders.get(0).build();
+      Column first = builders.get(2).build();
+      Column second = builders.get(4).build();
+      for (int row = 0; row < firstColumnTimes.length; row++) {
+        assertEquals(2L * row - 2, starts.getLong(row));
+        assertEquals(firstColumnTimes[row], first.getLong(row));
+      }
+      assertTrue(second.isNull(0));
+      assertEquals(2, second.getLong(1));
+      assertEquals(3, second.getLong(2));
+      assertTrue(second.isNull(3));
+    } finally {
+      processor.beforeDestroy();
+    }
+  }
+
+  @Test
+  public void testTimeWindowCreationIsBoundedForBucketCandidates() {
+    TableFunctionDataProcessor processor = processor(true, 1_000_000, 1, Type.DOUBLE);
+    List<ColumnBuilder> builders = builders(true);
+    try {
+      processor.process(record(0, 1.0), builders, null);
       assertMemoryLimit(
-          () -> processor.process(record(0, 1.0), Collections.emptyList(), null),
+          () -> processor.process(record(1, 2.0), builders, null),
           LTTBTableFunction.DEFAULT_MAX_BUFFER_BYTES);
     } finally {
       processor.beforeDestroy();

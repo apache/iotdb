@@ -155,6 +155,18 @@ public class IoTDBLTTBTableFunctionIT {
   }
 
   @Test
+  public void testSinglePointInHighlyOverlappingTimeWindows() {
+    tableResultSetEqualTest(
+        "SELECT CAST(window_start AS INT64) AS start_ms, CAST(window_end AS INT64) AS end_ms, "
+            + "CAST(s1_time AS INT64) AS sample_ms, s1 FROM LTTB("
+            + "DATA => (SELECT time, s1 FROM metrics WHERE device = 'd1' AND time = 0) "
+            + "ORDER BY time, TIMECOL => 'time', SIZE => 1h, SLIDE => 10ms)",
+        new String[] {"start_ms", "end_ms", "sample_ms", "s1"},
+        new String[] {"-3599990,10,0,0.0,"},
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testSparseTailInOverlappingCountWindows() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
@@ -186,6 +198,30 @@ public class IoTDBLTTBTableFunctionIT {
           "0,d1,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.003Z,9.0,",
           "0,d1,1970-01-01T00:00:00.005Z,0.0,1970-01-01T00:00:00.005Z,0.0,",
           "0,d2,1970-01-01T00:00:00.000Z,0.0,1970-01-01T00:00:00.000Z,0.0,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTargetCountPadsShorterParticipantColumns() {
+    tableResultSetEqualTest(
+        "SELECT * FROM LTTB(DATA => (SELECT time, s1, "
+            + "CASE WHEN time = 3 THEN s2 END AS sparse_value, CAST(NULL AS DOUBLE) AS empty_value "
+            + "FROM metrics WHERE device = 'd1' AND time <= 3) ORDER BY time, "
+            + "TIMECOL => 'time', N => 3) ORDER BY s1_time",
+        new String[] {
+          "window_index",
+          "s1_time",
+          "s1",
+          "sparse_value_time",
+          "sparse_value",
+          "empty_value_time",
+          "empty_value"
+        },
+        new String[] {
+          "0,1970-01-01T00:00:00.000Z,0.0,1970-01-01T00:00:00.003Z,9.0,null,null,",
+          "0,1970-01-01T00:00:00.002Z,8.0,null,null,null,null,",
+          "0,1970-01-01T00:00:00.003Z,2.0,null,null,null,null,"
         },
         DATABASE_NAME);
   }
