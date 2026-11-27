@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -115,7 +116,8 @@ public class ImportSchemaTable extends AbstractImportSchema {
     } else {
       failedFilePath = failedFileDirectory + file.getName() + ".failed";
     }
-    try (BufferedReader br = new BufferedReader(new FileReader(file.getAbsolutePath()))) {
+    try (BufferedReader br =
+        new BufferedReader(new FileReader(file.getAbsolutePath(), StandardCharsets.UTF_8))) {
       StringBuilder sqlBuilder = new StringBuilder();
       String sql;
       while ((sql = br.readLine()) != null) {
@@ -173,7 +175,7 @@ public class ImportSchemaTable extends AbstractImportSchema {
     if (!failedRecords.isEmpty()) {
       FileWriter writer = null;
       try {
-        writer = new FileWriter(failedFilePath);
+        writer = new FileWriter(failedFilePath, StandardCharsets.UTF_8);
         for (List<Object> failedRecord : failedRecords) {
           writer.write(failedRecord.get(0).toString() + ";\n");
         }

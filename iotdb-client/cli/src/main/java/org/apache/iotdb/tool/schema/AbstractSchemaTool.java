@@ -34,6 +34,10 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
+import org.apache.ratis.thirdparty.com.google.gson.Gson;
+import org.apache.ratis.thirdparty.com.google.gson.GsonBuilder;
+import org.apache.ratis.thirdparty.com.google.gson.stream.JsonReader;
+import org.apache.ratis.thirdparty.com.google.gson.stream.JsonToken;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.jline.reader.LineReader;
 import org.slf4j.Logger;
@@ -41,8 +45,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.LongAdder;
 
 public abstract class AbstractSchemaTool {
@@ -218,6 +226,86 @@ public abstract class AbstractSchemaTool {
     }
   }
 
+  /**
+   * The RFC4180 CSV layout of the schema files, i.e. the delimiter is {@code ','}, the quote char
+   * is {@code '"'} and no escape char is configured. A JSON object cell is therefore always quoted
+   * and its inner quotes are doubled, which is exactly what RFC4180 asks for.
+   */
+  static CSVFormat.Builder createRfc4180CsvFormat() {
+    return CSVFormat.Builder.create(CSVFormat.DEFAULT)
+        .setQuote('"')
+        .setQuoteMode(QuoteMode.MINIMAL)
+        .setRecordSeparator('\n');
+  }
+
+  private static final Gson JSON_GSON = new GsonBuilder().disableHtmlEscaping().create();
+
+  /**
+   * Serializes tags or attributes into the compact JSON object cell of the schema file. Keys are
+   * sorted so that repeated exports of the same schema are identical.
+   *
+   * @return an empty string when there is nothing to write, never {@code {}} or {@code null}
+   */
+  static String toJsonCell(Map<String, String> values) {
+    if (values == null || values.isEmpty()) {
+      return "";
+    }
+    return JSON_GSON.toJson(new TreeMap<>(values));
+  }
+
+  /**
+   * Parses a Tags / Attributes cell written by {@link #toJsonCell(Map)}. The reader is strict: the
+   * document must be a JSON object whose values are strings, so a JSON array of pairs and unquoted
+   * tokens such as {@code {"room":yes}} are both rejected.
+   *
+   * @return {@code null} when the cell carries no value, never an empty map
+   * @throws IllegalArgumentException when the cell is not such an object
+   */
+  static Map<String, String> parseJsonCell(String cell) {
+    if (cell == null) {
+      return null;
+    }
+    String trimmed = cell.trim();
+    if (trimmed.isEmpty() || "null".equals(trimmed)) {
+      return null;
+    }
+    Map<String, String> values = parseStrictJsonObject(trimmed);
+    return values.isEmpty() ? null : values;
+  }
+
+  private static Map<String, String> parseStrictJsonObject(String text) {
+    JsonReader reader = new JsonReader(new StringReader(text));
+    reader.setLenient(false);
+    Map<String, String> values = new TreeMap<>();
+    try {
+      reader.beginObject();
+      while (reader.hasNext()) {
+        String name = reader.nextName();
+        if (reader.peek() != JsonToken.STRING) {
+          throw new IllegalArgumentException(
+              CliMessages.EXCEPTION_TAGS_AND_ATTRIBUTES_VALUES_MUST_BE_JSON_STRINGS_C0A5BF8E);
+        }
+        if (values.put(name, reader.nextString()) != null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  CliMessages.EXCEPTION_DUPLICATE_KEY_ARG_IN_A_JSON_OBJECT_F12787DC, name));
+        }
+      }
+      reader.endObject();
+      if (reader.peek() != JsonToken.END_DOCUMENT) {
+        throw new IllegalArgumentException(
+            CliMessages.EXCEPTION_TAGS_AND_ATTRIBUTES_CELLS_MUST_BE_A_JSON_OBJECT_567BB6E5);
+      }
+      return values;
+    } catch (IOException e) {
+      throw new IllegalArgumentException(
+          CliMessages.EXCEPTION_TAGS_AND_ATTRIBUTES_CELLS_MUST_BE_A_JSON_OBJECT_567BB6E5, e);
+    } catch (IllegalStateException e) {
+      throw new IllegalArgumentException(
+          CliMessages.EXCEPTION_TAGS_AND_ATTRIBUTES_CELLS_MUST_BE_A_JSON_OBJECT_567BB6E5, e);
+    }
+  }
+
   static class CSVPrinterWrapper {
     private final String filePath;
     private final CSVFormat csvFormat;
@@ -225,25 +313,19 @@ public abstract class AbstractSchemaTool {
 
     public CSVPrinterWrapper(String filePath) {
       this.filePath = filePath;
-      this.csvFormat =
-          CSVFormat.Builder.create(CSVFormat.DEFAULT)
-              .setHeader()
-              .setSkipHeaderRecord(true)
-              .setEscape('\\')
-              .setQuoteMode(QuoteMode.NONE)
-              .build();
+      this.csvFormat = createRfc4180CsvFormat().setHeader().setSkipHeaderRecord(true).build();
     }
 
     public void printRecord(final Iterable<?> values) throws IOException {
       if (csvPrinter == null) {
-        csvPrinter = csvFormat.print(new PrintWriter(filePath));
+        csvPrinter = csvFormat.print(new PrintWriter(filePath, StandardCharsets.UTF_8));
       }
       csvPrinter.printRecord(values);
     }
 
     public void printRecordLn(final Iterable<?> values) throws IOException {
       if (csvPrinter == null) {
-        csvPrinter = csvFormat.print(new PrintWriter(filePath));
+        csvPrinter = csvFormat.print(new PrintWriter(filePath, StandardCharsets.UTF_8));
       }
       Iterator var2 = values.iterator();
 
@@ -257,7 +339,7 @@ public abstract class AbstractSchemaTool {
     public void print(Object value) {
       if (csvPrinter == null) {
         try {
-          csvPrinter = csvFormat.print(new PrintWriter(filePath));
+          csvPrinter = csvFormat.print(new PrintWriter(filePath, StandardCharsets.UTF_8));
         } catch (IOException e) {
           ioTPrinter.printException(e);
           return;
