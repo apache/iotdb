@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.gapfill;
 
+import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
@@ -42,12 +43,21 @@ import org.junit.AfterClass;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class GapFillWoGroupWoMoOperatorTest {
 
@@ -70,6 +80,63 @@ public class GapFillWoGroupWoMoOperatorTest {
   @AfterClass
   public static void tearDown() {
     instanceNotificationExecutor.shutdown();
+  }
+
+  @Test
+  public void testFinalGapAfterChildExhausted() throws Exception {
+    assertFinalGapEmittedOnce(3L);
+  }
+
+  @Test
+  public void testFinalGapAtLongMaxValueEmittedOnce() throws Exception {
+    assertFinalGapEmittedOnce(Long.MAX_VALUE);
+  }
+
+  private void assertFinalGapEmittedOnce(long endTime) throws Exception {
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.TIMESTAMP, TSDataType.DOUBLE);
+    TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
+    builder.getColumnBuilder(0).writeLong(endTime - 1);
+    builder.getColumnBuilder(1).writeDouble(2.0);
+    builder.declarePosition();
+    Iterator<TsBlock> blocks =
+        Collections.singletonList(
+                builder.build(
+                    new RunLengthEncodedColumn(CommonOperatorUtils.TIME_COLUMN_TEMPLATE, 1)))
+            .iterator();
+    Operator child = mock(Operator.class);
+    when(child.hasNextWithTimer()).thenAnswer(invocation -> blocks.hasNext());
+    when(child.nextWithTimer()).thenAnswer(invocation -> blocks.next());
+    when(child.isFinished()).thenAnswer(invocation -> !blocks.hasNext());
+
+    try (GapFillWoGroupWoMoOperator operator =
+        new GapFillWoGroupWoMoOperator(
+            mock(CommonOperatorContext.class), child, 0, endTime - 2, endTime, dataTypes, 1L)) {
+      assertTrue(operator.hasNext());
+      assertFalse(operator.isFinished());
+      TsBlock first = operator.next();
+      assertEquals(2, first.getPositionCount());
+      assertEquals(endTime - 2, first.getColumn(0).getLong(0));
+      assertTrue(first.getColumn(1).isNull(0));
+      assertEquals(endTime - 1, first.getColumn(0).getLong(1));
+      assertEquals(2.0, first.getColumn(1).getDouble(1), 0.0);
+
+      // The child is exhausted, but the inclusive final window still needs to be emitted.
+      assertFalse(child.hasNextWithTimer());
+      assertTrue(child.isFinished());
+      assertTrue(operator.hasNext());
+      assertFalse(operator.isFinished());
+      TsBlock last = operator.next();
+      assertEquals(1, last.getPositionCount());
+      assertEquals(endTime, last.getColumn(0).getLong(0));
+      assertTrue(last.getColumn(1).isNull(0));
+
+      assertFalse(operator.hasNext());
+      assertTrue(operator.isFinished());
+      assertNull(operator.next());
+      assertFalse(operator.hasNext());
+      assertTrue(operator.isFinished());
+      verify(child, times(1)).nextWithTimer();
+    }
   }
 
   @Test
