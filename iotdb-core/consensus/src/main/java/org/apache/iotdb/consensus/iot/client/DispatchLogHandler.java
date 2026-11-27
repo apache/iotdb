@@ -68,11 +68,10 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
     recordTransferAttempt(response);
-    if (response.getStatuses().stream()
-        .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode()))) {
+    if (response.getStatuses().stream().anyMatch(status -> needRetryForSyncLog(status.getCode()))) {
       List<String> retryStatusMessages =
           response.getStatuses().stream()
-              .filter(status -> RetryUtils.needRetryForWrite(status.getCode()))
+              .filter(status -> needRetryForSyncLog(status.getCode()))
               .map(TSStatus::getMessage)
               .collect(Collectors.toList());
 
@@ -114,6 +113,10 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
       LogDispatcher.getSenderMemSizeSum().addAndGet(batch.getMemorySize());
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
+  }
+
+  private boolean needRetryForSyncLog(int statusCode) {
+    return RetryUtils.needRetryForWrite(statusCode);
   }
 
   @Override

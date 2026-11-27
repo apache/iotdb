@@ -102,6 +102,10 @@ final class SubscriptionTreeViewProjector {
     return Objects.nonNull(projector);
   }
 
+  TreeViewTabletProjector getTreeViewTabletProjector() {
+    return projector;
+  }
+
   String getDatabaseName() {
     return Objects.nonNull(projector) ? projector.getDatabaseName() : null;
   }
