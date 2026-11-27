@@ -78,9 +78,7 @@ public class SessionPoolExceptionTest {
             .maxSize(10)
             .enableAutoFetch(false)
             .build();
-    ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
-    queue.add(session);
-    Whitebox.setInternalState(sessionPool, "queue", queue);
+    ((SessionPool) sessionPool).putBack(session);
   }
 
   @After
@@ -253,9 +251,7 @@ public class SessionPoolExceptionTest {
 
   @Test
   public void testInsertRecords2() throws Exception {
-    ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
-    queue.add(session);
-    Whitebox.setInternalState(sessionPool, "queue", queue);
+    ((SessionPool) sessionPool).putBack(session);
     List<String> deviceIds = Arrays.asList("device1", "device2");
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =

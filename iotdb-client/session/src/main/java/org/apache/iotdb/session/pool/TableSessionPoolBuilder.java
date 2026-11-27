@@ -64,6 +64,33 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   }
 
   /**
+   * Sets the minimum number of sessions kept in the pool. Idle sessions will not be evicted when
+   * the total number of sessions reaches this value.
+   *
+   * @param coreSize the minimum number of sessions, must be in [0, maxSize].
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue 0
+   */
+  public TableSessionPoolBuilder coreSize(int coreSize) {
+    this.coreSize = coreSize;
+    return this;
+  }
+
+  /**
+   * Sets the maximum time in milliseconds that an idle session can stay in the pool. Idle sessions
+   * are evicted until the total number of sessions drops to the core size. 0 means idle sessions
+   * are never evicted.
+   *
+   * @param maxIdleTimeInMs the maximum idle time in milliseconds, must not be negative.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue 0
+   */
+  public TableSessionPoolBuilder maxIdleTimeInMs(long maxIdleTimeInMs) {
+    this.maxIdleTimeInMs = maxIdleTimeInMs;
+    return this;
+  }
+
+  /**
    * Sets the username for the connection.
    *
    * @param user the username.

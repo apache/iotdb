@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
@@ -76,6 +77,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -167,6 +170,156 @@ public class SessionPoolTest {
     assertEquals(Version.V_0_13, pool.getVersion());
   }
 
+  @Test
+  public void testBuilderCoreSizeAndMaxIdleTime() {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .maxSize(10)
+            .coreSize(3)
+            .maxIdleTimeInMs(5_000L)
+            .enableAutoFetch(false)
+            .build();
+    int coreSize = Whitebox.getInternalState(pool, "coreSize");
+    long maxIdleTimeInMs = Whitebox.getInternalState(pool, "maxIdleTimeInMs");
+    assertEquals(3, coreSize);
+    assertEquals(5_000L, maxIdleTimeInMs);
+    pool.close();
+  }
+
+  @Test
+  public void testBuilderPoolDefaultsDisableEviction() {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .maxSize(5)
+            .enableAutoFetch(false)
+            .build();
+    int coreSize = Whitebox.getInternalState(pool, "coreSize");
+    long maxIdleTimeInMs = Whitebox.getInternalState(pool, "maxIdleTimeInMs");
+    assertEquals(0, coreSize);
+    assertEquals(0L, maxIdleTimeInMs);
+    // no eviction task is registered when maxIdleTimeInMs is 0
+    assertNull(Whitebox.getInternalState(pool, "executorService"));
+    pool.close();
+  }
+
+  @Test
+  public void testTableSessionPoolBuilderCoreSizeAndMaxIdleTime() {
+    ITableSessionPool tableSessionPool =
+        new TableSessionPoolBuilder()
+            .nodeUrls(Collections.singletonList("127.0.0.1:6667"))
+            .maxSize(5)
+            .coreSize(2)
+            .maxIdleTimeInMs(1_000L)
+            .enableAutoFetch(false)
+            .build();
+    SessionPool pool = Whitebox.getInternalState(tableSessionPool, "sessionPool");
+    int coreSize = Whitebox.getInternalState(pool, "coreSize");
+    long maxIdleTimeInMs = Whitebox.getInternalState(pool, "maxIdleTimeInMs");
+    assertEquals(2, coreSize);
+    assertEquals(1_000L, maxIdleTimeInMs);
+    tableSessionPool.close();
+  }
+
+  @Test
+  public void testIllegalCoreSize() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new SessionPool.Builder().host("localhost").port(1234).maxSize(5).coreSize(6).build());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new SessionPool.Builder().host("localhost").port(1234).coreSize(-1).build());
+  }
+
+  @Test
+  public void testIllegalMaxIdleTime() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new SessionPool.Builder().host("localhost").port(1234).maxIdleTimeInMs(-1).build());
+  }
+
+  @Test
+  public void testEvictIdleSessions() throws Exception {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .maxSize(10)
+            .coreSize(2)
+            .maxIdleTimeInMs(5_000L)
+            .enableAutoFetch(false)
+            .build();
+    try {
+      List<ISession> sessions = new ArrayList<>();
+      for (int i = 0; i < 5; i++) {
+        sessions.add(Mockito.mock(ISession.class));
+      }
+      // push puts a session at the head, so sessions.get(0) ends up at the tail (earliest idle)
+      long idleSince = System.currentTimeMillis() - 20_000L;
+      for (ISession s : sessions) {
+        pool.putBack(s);
+        Whitebox.setInternalState(idleQueueOf(pool).peekFirst(), "idleSince", idleSince);
+      }
+      Whitebox.setInternalState(pool, "size", 5);
+
+      Whitebox.invokeMethod(pool, "evictIdleSessions");
+
+      assertEquals(2, idleQueueOf(pool).size());
+      int size = Whitebox.getInternalState(pool, "size");
+      assertEquals(2, size);
+      // the 3 earliest idle sessions are evicted, the 2 most recently returned ones are kept
+      Mockito.verify(sessions.get(0)).close();
+      Mockito.verify(sessions.get(1)).close();
+      Mockito.verify(sessions.get(2)).close();
+      Mockito.verify(sessions.get(3), Mockito.never()).close();
+      Mockito.verify(sessions.get(4), Mockito.never()).close();
+    } finally {
+      pool.close();
+    }
+  }
+
+  @Test
+  public void testEvictIdleSessionsDoesNotGoBelowCoreSize() throws Exception {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .maxSize(10)
+            .coreSize(3)
+            .maxIdleTimeInMs(5_000L)
+            .enableAutoFetch(false)
+            .build();
+    try {
+      long idleSince = System.currentTimeMillis() - 20_000L;
+      ISession session1 = Mockito.mock(ISession.class);
+      ISession session2 = Mockito.mock(ISession.class);
+      pool.putBack(session1);
+      Whitebox.setInternalState(idleQueueOf(pool).peekFirst(), "idleSince", idleSince);
+      pool.putBack(session2);
+      Whitebox.setInternalState(idleQueueOf(pool).peekFirst(), "idleSince", idleSince);
+      Whitebox.setInternalState(pool, "size", 2);
+
+      Whitebox.invokeMethod(pool, "evictIdleSessions");
+
+      assertEquals(2, idleQueueOf(pool).size());
+      int size = Whitebox.getInternalState(pool, "size");
+      assertEquals(2, size);
+      Mockito.verify(session1, Mockito.never()).close();
+      Mockito.verify(session2, Mockito.never()).close();
+    } finally {
+      pool.close();
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static ConcurrentLinkedDeque<Object> idleQueueOf(SessionPool pool) {
+    return Whitebox.getInternalState(pool, "queue");
+  }
+
   @Before
   public void setUp() throws IoTDBConnectionException, StatementExecutionException, TException {
     // Initialize the session pool before each test
@@ -196,11 +349,8 @@ public class SessionPoolTest {
             .enableAutoFetch(false)
             .build();
 
-    ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
-    queue.add(session);
-
-    // set SessionPool's internal field state
-    Whitebox.setInternalState(sessionPool, "queue", queue);
+    // set SessionPool's internal field state: one idle session in the queue
+    ((SessionPool) sessionPool).putBack(session);
   }
 
   @After
