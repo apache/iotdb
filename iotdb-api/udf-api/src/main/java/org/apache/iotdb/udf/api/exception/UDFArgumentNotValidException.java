@@ -24,4 +24,8 @@ public class UDFArgumentNotValidException extends UDFException {
   public UDFArgumentNotValidException(String message) {
     super(message);
   }
+
+  public UDFArgumentNotValidException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
