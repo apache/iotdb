@@ -919,7 +919,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       result.setTemplateList(list);
       result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     } catch (MetadataException e) {
-      LOGGER.error(e.getMessage(), e);
+      LOGGER.warn(e.getMessage());
       result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return result;
@@ -948,7 +948,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           Collections.singletonList(
               templateTable.getTemplate(checkTemplateSettablePlan.getName())));
     } catch (final MetadataException e) {
-      LOGGER.error(e.getMessage(), e);
+      LOGGER.warn(e.getMessage());
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
 
@@ -1141,7 +1141,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       resp.setPatternTemplateMap(result);
       return resp;
     } catch (MetadataException e) {
-      LOGGER.error(e.getMessage(), e);
+      LOGGER.warn(e.getMessage());
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return resp;
@@ -1152,7 +1152,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       treeModelMTree.preUnsetTemplate(plan.getTemplateId(), plan.getPath());
       return StatusUtils.OK;
     } catch (MetadataException e) {
-      LOGGER.error(e.getMessage(), e);
+      LOGGER.warn(e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -1162,7 +1162,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       treeModelMTree.rollbackUnsetTemplate(plan.getTemplateId(), plan.getPath());
       return StatusUtils.OK;
     } catch (MetadataException e) {
-      LOGGER.error(e.getMessage(), e);
+      LOGGER.warn(e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -1172,7 +1172,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       treeModelMTree.unsetTemplate(plan.getTemplateId(), plan.getPath());
       return StatusUtils.OK;
     } catch (MetadataException e) {
-      LOGGER.error(e.getMessage(), e);
+      LOGGER.warn(e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }

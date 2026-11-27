@@ -2010,9 +2010,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaLockManager.getInstance()
         .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     try {
-      TableDeviceSchemaCache.getInstance()
-          .invalidateAndPreDelete(
-              PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
+      final String database = PathUtils.unQualifyDatabaseName(req.getDatabase());
+      if (req.isSetCleanDataNodeTableCache() && !req.isCleanDataNodeTableCache()) {
+        TableDeviceSchemaCache.getInstance()
+            .invalidate(database, req.getTableName(), Collections.emptyList());
+      } else {
+        TableDeviceSchemaCache.getInstance().invalidateAndPreDelete(database, req.getTableName());
+      }
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()

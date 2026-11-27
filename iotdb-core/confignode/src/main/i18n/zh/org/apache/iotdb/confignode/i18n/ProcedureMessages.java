@@ -418,14 +418,30 @@ public final class ProcedureMessages {
       "使表 {}.{} 的 {} 列 {} 缓存失效失败";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE =
       "使表 {}.{} 中设备的 schemaEngine 缓存失效失败";
+  public static final String
+      FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE_FIRST_TIME =
+          "使表 {}.{} 中设备的 schemaEngine 缓存第一次失效失败";
+  public static final String
+      FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE_SECOND_TIME =
+          "使表 {}.{} 中设备的 schemaEngine 缓存第二次失效失败";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE =
       "使表 {}.{} 的 schemaEngine 缓存失效失败";
+  public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE_FIRST_TIME =
+      "使表 {}.{} 的 schemaEngine 缓存第一次失效失败";
+  public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE_SECOND_TIME =
+      "使表 {}.{} 的 schemaEngine 缓存第二次失效失败";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES =
       "使时间序列 {} 的 schemaEngine 缓存失效失败";
+  public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES_FIRST_TIME =
+      "使时间序列 {} 第一次的 schemaEngine 缓存失效失败";
+  public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES_SECOND_TIME =
+      "使时间序列 {} 第二次的 schemaEngine 缓存失效失败";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW =
       "使视图 {} 的 schemaengine 缓存失效失败";
-  public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES =
-      "使模板时间序列 {} 的 schema 缓存失效失败";
+  public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_FIRST_TIME =
+      "使模板时间序列 {} 的 schema 缓存第一次失效失败";
+  public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_SECOND_TIME =
+      "使模板时间序列 {} 的 schema 缓存第二次失效失败";
   public static final String FAILED_TO_INVALIDATE_TEMPLATE_CACHE_OF_TEMPLATE_SET_ON =
       "使模板 {}（设置在 {} 上）的模板缓存失效失败";
   public static final String FAILED_TO_PRE_RELEASE_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS =
@@ -550,9 +566,25 @@ public final class ProcedureMessages {
   public static final String FOR_FAILED_WHEN_CONSTRUCT_BLACK_LIST_FOR_TABLE_BECAUSE_FAILED =
       "[%s] 对 %s.%s 失败，当为表构建黑名单时，原因：在所有 replicaset（%s %s）中执行失败。失败信息：%s";
   public static final String INVALIDATE_CACHE_OF_DEVICES_IN = "使 {}.{} 中设备的缓存失效";
+  public static final String INVALIDATE_CACHE_OF_DEVICES_IN_FIRST_TIME =
+      "使 {}.{} 中设备的缓存第一次失效";
+  public static final String INVALIDATE_CACHE_OF_DEVICES_IN_SECOND_TIME =
+      "使 {}.{} 中设备的缓存第二次失效";
   public static final String INVALIDATE_CACHE_OF_TEMPLATE_SET_ON = "使模板 {}（设置在 {} 上）的缓存失效";
   public static final String INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES = "使模板时间序列 {} 的缓存失效";
+  public static final String INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES_FIRST_TIME =
+      "使模板时间序列 {} 的缓存第一次失效";
+  public static final String INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES_SECOND_TIME =
+      "使模板时间序列 {} 的缓存第二次失效";
+  public static final String INVALIDATE_CACHE_OF_TABLE_FIRST_TIME =
+      "使表 {}.{} 的缓存第一次失效";
+  public static final String INVALIDATE_CACHE_OF_TABLE_SECOND_TIME =
+      "使表 {}.{} 的缓存第二次失效";
   public static final String INVALIDATE_CACHE_OF_TIMESERIES = "使时间序列 {} 的缓存失效";
+  public static final String INVALIDATE_CACHE_OF_TIMESERIES_FIRST_TIME =
+      "使时间序列 {} 第一次的缓存失效";
+  public static final String INVALIDATE_CACHE_OF_TIMESERIES_SECOND_TIME =
+      "使时间序列 {} 第二次的缓存失效";
   public static final String INVALIDATE_CACHE_OF_VIEW = "使视图 {} 的缓存失效";
   public static final String INVALIDATE_COLUMN_CACHE_FAILED_FOR_TABLE = "使表 %s.%s 的列 %s 缓存失效失败";
   public static final String INVALIDATE_SCHEMAENGINE_CACHE_FAILED = "使 SchemaEngine 缓存失效失败";

@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
@@ -170,6 +171,9 @@ public class TableDeviceSchemaCache {
   // The input deviceId shall have its tailing nulls trimmed
   public void putAttributes(
       final String database, final IDeviceID deviceId, final Map<String, Binary> attributeMap) {
+    if (isDataNodeFenced()) {
+      return;
+    }
     readWriteLock.readLock().lock();
     try {
       // Avoid stale table
@@ -190,6 +194,9 @@ public class TableDeviceSchemaCache {
 
   public void updateAttributes(
       final String database, final IDeviceID deviceId, final Map<String, Binary> attributeMap) {
+    if (isDataNodeFenced()) {
+      return;
+    }
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
@@ -222,41 +229,35 @@ public class TableDeviceSchemaCache {
   /////////////////////////////// Last Cache ///////////////////////////////
 
   /**
-   * Update the last cache on query or data recover.
+   * Declare the last cache of the fetched measurements before a LAST and LAST BY query accesses
+   * data.
    *
-   * <p>Note: The query shall put the cache twice:
+   * <p>The entry is created if absent, and the measurements without a cached last value get a
+   * placeholder. It does not indicate that the measurements are all {@code null}s, just to allow
+   * the writing to update the cache, then avoid that the query puts a stale value to cache and
+   * breaks the consistency.
    *
-   * <p>- First time put the {@link TimeValuePair} array as {@code null} before the query accesses
-   * data. It does not indicate that the measurements are all {@code null}s, just to allow the
-   * writing to update the cache, then avoid that the query put a stale value to cache and break the
-   * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
-   * is written, but it won't affect the eventual consistency.
+   * <p>Only the last cache is touched here: the device schema shall never be set by a LAST query,
+   * otherwise a query analyzed before a deletion may restore a stale schema into this cache.
    *
-   * <p>- Second time put the calculated {@link TimeValuePair}s, and use {@link
-   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[])}. The input {@link
-   * TimeValuePair}s shall never be or contain {@code null}. If a measurement is with all {@code
-   * null}s, its {@link TimeValuePair} shall be {@link
-   * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN}; if it is known to be {@code null} at a concrete
-   * last-row time, preserve that time and use {@link TableDeviceLastCache#PLACEHOLDER_NO_VALUE} as
-   * the value. For time column, the input measurement shall be "", and the value shall be {@link
-   * TableDeviceLastCache#PLACEHOLDER_NO_VALUE}. If the time column is not explicitly specified, the
-   * device's last time won't be updated because we cannot guarantee the completeness of the
-   * existing measurements in cache.
-   *
-   * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
-   * in the first time, to avoid the stale writing damaging the eventual consistency. The input
-   * {@link TimeValuePair}s shall be all {@code null}s in this case.
-   *
-   * @param database the device's database, without "root"
+   * @param database the device's database, without "root" in table model
    * @param deviceId {@link IDeviceID}
-   * @param measurements the fetched measurements
-   * @param isInvalidate whether to init or invalidate the cache
+   * @param measurements the fetched measurements, "" for the time column
+   * @param isTableModel whether the device belongs to the table model, which decides the first key
+   *     of the cache and whether the measurement names are interned
    */
-  public void initOrInvalidateLastCache(
+  public void declareLastCache(
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
-      final boolean isInvalidate) {
+      final boolean isTableModel) {
+    if (isDataNodeFenced()) {
+      return;
+    }
+    if (!isTableModel) {
+      declareLastCacheInternal(database, deviceId, measurements, false);
+      return;
+    }
     readWriteLock.readLock().lock();
     try {
       // Avoid stale table
@@ -265,17 +266,25 @@ public class TableDeviceSchemaCache {
       if (Objects.isNull(table) || Boolean.FALSE.equals(table.getCachedNeedLastCache())) {
         return;
       }
-      dualKeyCache.update(
-          new TableId(database, deviceId.getTableName()),
-          deviceId,
-          new TableDeviceCacheEntry(),
-          entry ->
-              entry.initOrInvalidateLastCache(
-                  database, deviceId.getTableName(), measurements, isInvalidate, true),
-          !isInvalidate);
+      declareLastCacheInternal(database, deviceId, measurements, true);
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  private void declareLastCacheInternal(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final boolean isTableModel) {
+    dualKeyCache.update(
+        new TableId(isTableModel ? database : null, deviceId.getTableName()),
+        deviceId,
+        new TableDeviceCacheEntry(),
+        entry ->
+            entry.initOrInvalidateLastCache(
+                database, deviceId.getTableName(), measurements, false, isTableModel),
+        true);
   }
 
   /**
@@ -317,6 +326,9 @@ public class TableDeviceSchemaCache {
       final @Nullable IMeasurementSchema[] measurementSchemas,
       final TimeValuePair[] timeValuePairs,
       boolean invalidateNull) {
+    if (isDataNodeFenced()) {
+      return;
+    }
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
@@ -333,25 +345,14 @@ public class TableDeviceSchemaCache {
       final String[] measurements,
       final @Nullable IMeasurementSchema[] measurementSchemas,
       final LastCacheUpdateSource updateSource) {
+    if (isDataNodeFenced()) {
+      return;
+    }
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
         null,
         entry -> entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
-        false);
-  }
-
-  /** Update query results without inferring the device's last-row time from FIELD timestamps. */
-  public void updateLastCacheFromQuery(
-      final String database,
-      final IDeviceID deviceId,
-      final String[] measurements,
-      final TimeValuePair[] timeValuePairs) {
-    dualKeyCache.update(
-        new TableId(database, deviceId.getTableName()),
-        deviceId,
-        null,
-        entry -> entry.tryUpdateLastCacheFromQuery(measurements, timeValuePairs),
         false);
   }
 
@@ -391,14 +392,11 @@ public class TableDeviceSchemaCache {
   }
 
   /**
-   * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
-   * "time". If you want to get the last of "time", use "" to represent.
+   * Get the last values of the given measurements.
    *
-   * @param database the device's database, without "root", {@code null} for tree model
-   * @param deviceId {@link IDeviceID}
-   * @param measurements the measurements to get
-   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN} iff
-   *     cache hit but the measurement has no values at all, and the result value otherwise.
+   * @return {@code null} iff the device entry is absent; otherwise one element per measurement,
+   *     {@code null} for a cache miss, {@link TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN} for a
+   *     measurement with no values, and the cached value otherwise.
    */
   public TimeValuePair[] getLastEntries(
       final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {
@@ -467,6 +465,9 @@ public class TableDeviceSchemaCache {
   /////////////////////////////// Tree model ///////////////////////////////
 
   public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
+    if (isDataNodeFenced()) {
+      return;
+    }
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
     final IDeviceID deviceID = devicePath.getIDeviceID();
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
@@ -493,61 +494,89 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
   }
 
-  void updateLastCache(
-      final String database,
-      final IDeviceID deviceID,
-      final String[] measurements,
-      final @Nullable TimeValuePair[] timeValuePairs,
-      final boolean isAligned,
-      final IMeasurementSchema[] measurementSchemas,
-      final boolean initOrInvalidate) {
-    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
-    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
-
-    dualKeyCache.update(
-        new TableId(null, deviceID.getTableName()),
-        deviceID,
-        Objects.isNull(timeValuePairs) ? new TableDeviceCacheEntry() : null,
-        initOrInvalidate
-            ? entry ->
-                entry.setMeasurementSchema(
-                        database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.initOrInvalidateLastCache(
-                        database,
-                        deviceID.getTableName(),
-                        measurements,
-                        Objects.nonNull(timeValuePairs),
-                        false)
-            : entry ->
-                entry.setMeasurementSchema(
-                        database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
-        Objects.isNull(timeValuePairs));
+  /**
+   * Remove the whole TableDeviceCacheEntry of the device, including its device schema, attributes
+   * and last cache. Used when a LAST query ends abnormally after declaring the cache.
+   */
+  public void invalidateDeviceEntry(final TableId tableId, final IDeviceID deviceID) {
+    readWriteLock.writeLock().lock();
+    try {
+      dualKeyCache.invalidate(tableId, deviceID);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 
   void updateLastCache(
-      final String database,
       final IDeviceID deviceID,
       final String[] measurements,
-      final LastCacheUpdateSource updateSource,
-      final boolean isAligned,
+      final TimeValuePair[] timeValuePairs,
       final IMeasurementSchema[] measurementSchemas) {
-    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
-    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
-
+    if (isDataNodeFenced()) {
+      return;
+    }
     dualKeyCache.update(
         new TableId(null, deviceID.getTableName()),
         deviceID,
         null,
-        entry ->
-            entry.setMeasurementSchema(database2Use, isAligned, measurements, measurementSchemas)
-                + entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
+        entry -> entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs, false),
+        false);
+  }
+
+  /**
+   * Put back the last values calculated by a LAST / LAST_BY query into the last cache.
+   *
+   * <p>Only the last cache is touched here: the device schema shall never be set by a LAST query.
+   *
+   * <p>Only an existing entry is updated: if the entry declared before the query has been cleaned
+   * by a deletion, the value is skipped. An all-null result caches {@link
+   * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN} on the placeholder, or removes the cached value
+   * if a concrete value has been cached. A concrete value arriving while the entry already holds an
+   * all-null result is dropped instead of overwriting it, so the put-back order of concurrent LAST
+   * queries does not matter.
+   */
+  public void putBackLastCache(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs,
+      final boolean isTableModel) {
+    if (isDataNodeFenced()) {
+      return;
+    }
+    dualKeyCache.update(
+        new TableId(isTableModel ? database : null, deviceId.getTableName()),
+        deviceId,
+        null,
+        entry -> entry.update0rDeleteLastCache(measurements, measurementSchemas, timeValuePairs),
+        false);
+  }
+
+  void updateLastCache(
+      final IDeviceID deviceID,
+      final String[] measurements,
+      final LastCacheUpdateSource updateSource,
+      final IMeasurementSchema[] measurementSchemas) {
+    if (isDataNodeFenced()) {
+      return;
+    }
+    dualKeyCache.update(
+        new TableId(null, deviceID.getTableName()),
+        deviceID,
+        null,
+        entry -> entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
         false);
   }
 
   public boolean getLastCache(
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> inputMap) {
     return dualKeyCache.batchApply(inputMap, TableDeviceCacheEntry::updateInputMap);
+  }
+
+  /** A fenced DataNode must not write schema or last-cache data until the lease recovers. */
+  protected boolean isDataNodeFenced() {
+    return MetadataLeaseManager.getInstance().isFenced();
   }
 
   // WARNING: This is not guaranteed to affect table model's cache

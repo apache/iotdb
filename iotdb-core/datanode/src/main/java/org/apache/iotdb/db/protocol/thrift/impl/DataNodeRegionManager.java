@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -209,11 +210,15 @@ public class DataNodeRegionManager {
   }
 
   public TSStatus deleteDataRegion(DataRegionId dataRegionId) {
-    TSStatus status = storageEngine.deleteDataRegion(dataRegionId);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataRegionLockMap.remove(dataRegionId);
+    try {
+      TSStatus status = storageEngine.deleteDataRegion(dataRegionId);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        dataRegionLockMap.remove(dataRegionId);
+      }
+      return status;
+    } finally {
+      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     }
-    return status;
   }
 
   public TSStatus deleteSchemaRegion(SchemaRegionId schemaRegionId) {

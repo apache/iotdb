@@ -137,7 +137,7 @@ public class TableDeviceLastCachePerformanceTest {
     }
 
     final TableDeviceLastCache cache = new TableDeviceLastCache(false);
-    cache.initOrInvalidate(null, null, cachedMeasurements, false);
+    cache.initOrInvalidateLastCache(null, null, cachedMeasurements, false);
     return new Scenario(
         cache,
         measurements,

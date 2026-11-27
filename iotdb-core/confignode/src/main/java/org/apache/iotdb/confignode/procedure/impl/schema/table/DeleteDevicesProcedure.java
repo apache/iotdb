@@ -67,6 +67,7 @@ import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesSt
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CONSTRUCT_BLACK_LIST;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DELETE_DATA;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DELETE_DEVICE_SCHEMA;
+import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.TABLE_NOT_EXISTS;
 
 public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<DeleteDevicesState> {
@@ -119,12 +120,28 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_DEVICES_IN, database, tableName);
-          invalidateCache(env);
+          LOGGER.info(
+              ProcedureMessages.INVALIDATE_CACHE_OF_DEVICES_IN_FIRST_TIME, database, tableName);
+          if (invalidateCache(
+              env,
+              ProcedureMessages
+                  .FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE_FIRST_TIME)) {
+            setNextState(DELETE_DATA);
+          }
           break;
         case DELETE_DATA:
           LOGGER.info(ProcedureMessages.DELETE_DATA_OF_DEVICES_IN, database, tableName);
           deleteData(env);
+          break;
+        case DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE:
+          LOGGER.info(
+              ProcedureMessages.INVALIDATE_CACHE_OF_DEVICES_IN_SECOND_TIME, database, tableName);
+          if (invalidateCache(
+              env,
+              ProcedureMessages
+                  .FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE_SECOND_TIME)) {
+            setNextState(DELETE_DEVICE_SCHEMA);
+          }
           break;
         case DELETE_DEVICE_SCHEMA:
           LOGGER.info(ProcedureMessages.DELETE_DEVICES_IN_IN_SCHEMAENGINE, database, tableName);
@@ -223,7 +240,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             : 0;
   }
 
-  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+  private boolean invalidateCache(final ConfigNodeProcedureEnv env, final String failureMessage) {
     TTableDeviceInvalidateCacheReq req =
         new TTableDeviceInvalidateCacheReq(database, tableName, ByteBuffer.wrap(patternBytes));
     boolean proceeded =
@@ -231,17 +248,13 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             .propagate(targets -> broadCastInvalidateCache(req, targets));
 
     if (!proceeded) {
-      LOGGER.warn(
-          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE,
-          database,
-          tableName);
+      LOGGER.warn(failureMessage, database, tableName);
       setFailure(
           new ProcedureException(
               new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
-      return;
+      return false;
     }
-
-    setNextState(DELETE_DATA);
+    return true;
   }
 
   private Map<Integer, TSStatus> broadCastInvalidateCache(
@@ -267,7 +280,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
                 new TTableDeviceDeletionWithPatternOrModReq(
                     consensusGroupIdList, tableName, ByteBuffer.wrap(modBytes)))
         .execute();
-    setNextState(DELETE_DEVICE_SCHEMA);
+    setNextState(DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE);
   }
 
   private void deleteDeviceSchema(final ConfigNodeProcedureEnv env) {
@@ -319,6 +332,19 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
                   new TTableDeviceDeletionWithPatternOrModReq(
                       consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
           .execute();
+    }
+  }
+
+  @Override
+  protected boolean isRollbackSupported(final DeleteDevicesState deleteDevicesState) {
+    switch (deleteDevicesState) {
+      case CHECK_TABLE_EXISTENCE:
+      case CONSTRUCT_BLACK_LIST:
+      case CLEAN_DATANODE_SCHEMA_CACHE:
+      case DELETE_DATA:
+        return true;
+      default:
+        return false;
     }
   }
 

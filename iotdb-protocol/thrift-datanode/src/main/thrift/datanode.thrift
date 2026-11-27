@@ -384,6 +384,7 @@ struct TUpdateTree2TableView{
 struct TInvalidateTableCacheReq {
   1: required string database
   2: required string tableName
+  3: optional bool cleanDataNodeTableCache
 }
 
 struct TInvalidateColumnCacheReq {

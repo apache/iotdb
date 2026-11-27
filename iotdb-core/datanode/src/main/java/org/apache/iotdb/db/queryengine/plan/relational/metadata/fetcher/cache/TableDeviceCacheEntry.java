@@ -131,6 +131,13 @@ public class TableDeviceCacheEntry {
     }
   }
 
+  /**
+   * Set the schemas of the measurements into the device schema.
+   *
+   * <p>The writing execution stage and the LAST query execution stage shall NOT call this: the
+   * device schema may only be put by the analysis stage (see {@link #setDeviceSchema}), otherwise a
+   * query or a write analyzed before a deletion may restore a stale schema into the cache.
+   */
   int setMeasurementSchema(
       final String database,
       final boolean isAligned,
@@ -180,7 +187,7 @@ public class TableDeviceCacheEntry {
       final String database,
       final String tableName,
       final String[] measurements,
-      final boolean isInvalidate,
+      final boolean invalidateLastCacheValue,
       final boolean isTableModel) {
     int result =
         lastCache.compareAndSet(null, new TableDeviceLastCache(isTableModel))
@@ -189,14 +196,10 @@ public class TableDeviceCacheEntry {
     final TableDeviceLastCache cache = lastCache.get();
     result +=
         Objects.nonNull(cache)
-            ? cache.initOrInvalidate(database, tableName, measurements, isInvalidate)
+            ? cache.initOrInvalidateLastCache(
+                database, tableName, measurements, invalidateLastCacheValue)
             : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
-  }
-
-  int tryUpdateLastCache(
-      final String[] measurements, final TimeValuePair[] timeValuePairs, boolean invalidateNull) {
-    return tryUpdateLastCache(measurements, null, timeValuePairs, invalidateNull);
   }
 
   int tryUpdateLastCache(
@@ -208,6 +211,18 @@ public class TableDeviceCacheEntry {
     final int result =
         Objects.nonNull(cache)
             ? cache.tryUpdate(measurements, measurementSchemas, timeValuePairs, invalidateNull)
+            : 0;
+    return Objects.nonNull(lastCache.get()) ? result : 0;
+  }
+
+  int update0rDeleteLastCache(
+      final String[] measurements,
+      final IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs) {
+    final TableDeviceLastCache cache = lastCache.get();
+    final int result =
+        Objects.nonNull(cache)
+            ? cache.updateOrDelete(measurements, measurementSchemas, timeValuePairs)
             : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
@@ -224,23 +239,12 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
-  int tryUpdateLastCacheFromQuery(
+  int tryUpdateLastCacheFromTableQuery(
       final String[] measurements, final TimeValuePair[] timeValuePairs) {
     final TableDeviceLastCache cache = lastCache.get();
     final int result =
-        Objects.nonNull(cache) ? cache.tryUpdateFromQuery(measurements, timeValuePairs) : 0;
+        Objects.nonNull(cache) ? cache.tryUpdateFromTableQuery(measurements, timeValuePairs) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
-  }
-
-  int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
-    return tryUpdateLastCache(measurements, timeValuePairs, false);
-  }
-
-  int tryUpdateLastCache(
-      final String[] measurements,
-      final @Nullable IMeasurementSchema[] measurementSchemas,
-      final TimeValuePair[] timeValuePairs) {
-    return tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs, false);
   }
 
   int invalidateLastCache(final String measurement) {

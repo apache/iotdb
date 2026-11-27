@@ -1953,11 +1953,15 @@ public class DataNodeTableOperatorGenerator
                 updateColumns[j] = parameter.getMeasurementColumnNames().get(j - 1);
               }
               TableDeviceSchemaCache.getInstance()
-                  .initOrInvalidateLastCache(
+                  .declareLastCache(
                       node.getQualifiedObjectName().getDatabaseName(),
                       deviceEntry.getDeviceID(),
                       updateColumns,
-                      false);
+                      true);
+              if (context.dataNodeQueryContext != null) {
+                context.dataNodeQueryContext.addDeclaredDevice(
+                    node.getQualifiedObjectName().getDatabaseName(), deviceEntry.getDeviceID());
+              }
             } else {
               hitCachesIndexes.add(i);
               lastRowCacheResults.add(lastByResult.get());
@@ -2047,13 +2051,17 @@ public class DataNodeTableOperatorGenerator
               addUncachedDeviceToContext(node, context, deviceEntry);
 
               TableDeviceSchemaCache.getInstance()
-                  .initOrInvalidateLastCache(
+                  .declareLastCache(
                       node.getQualifiedObjectName().getDatabaseName(),
                       deviceEntry.getDeviceID(),
                       needInitTime || node.getGroupingKeys().isEmpty()
                           ? targetColumns
                           : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
-                      false);
+                      true);
+              if (context.dataNodeQueryContext != null) {
+                context.dataNodeQueryContext.addDeclaredDevice(
+                    node.getQualifiedObjectName().getDatabaseName(), deviceEntry.getDeviceID());
+              }
             } else {
               hitCachesIndexes.add(i);
               lastValuesCacheResults.add(lastResult);

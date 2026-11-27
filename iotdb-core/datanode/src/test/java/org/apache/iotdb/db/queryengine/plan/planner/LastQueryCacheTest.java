@@ -76,7 +76,6 @@ public class LastQueryCacheTest {
   private static final String DATABASE = "root.last_query_cache";
   private final boolean aligned;
   private final Filter timeFilter;
-  private final boolean updateSchema;
   private final boolean updateNullEntry;
   private final TreeDeviceSchemaCacheManager cache = TreeDeviceSchemaCacheManager.getInstance();
   private MeasurementPath path;
@@ -85,21 +84,19 @@ public class LastQueryCacheTest {
   @Parameterized.Parameters(name = "aligned={0}, filter={1}")
   public static Collection<Object[]> parameters() {
     return Arrays.asList(
-        new Object[] {false, null, true, true},
-        new Object[] {true, null, true, true},
-        new Object[] {false, TimeFilterApi.gt(10), true, false},
-        new Object[] {true, TimeFilterApi.gt(10), true, false},
-        new Object[] {false, TimeFilterApi.gtEq(10), true, false},
-        new Object[] {true, TimeFilterApi.gtEq(10), true, false},
-        new Object[] {false, TimeFilterApi.lt(10), false, false},
-        new Object[] {true, TimeFilterApi.lt(10), false, false});
+        new Object[] {false, null, true},
+        new Object[] {true, null, true},
+        new Object[] {false, TimeFilterApi.gt(10), false},
+        new Object[] {true, TimeFilterApi.gt(10), false},
+        new Object[] {false, TimeFilterApi.gtEq(10), false},
+        new Object[] {true, TimeFilterApi.gtEq(10), false},
+        new Object[] {false, TimeFilterApi.lt(10), false},
+        new Object[] {true, TimeFilterApi.lt(10), false});
   }
 
-  public LastQueryCacheTest(
-      boolean aligned, Filter timeFilter, boolean updateSchema, boolean updateNullEntry) {
+  public LastQueryCacheTest(boolean aligned, Filter timeFilter, boolean updateNullEntry) {
     this.aligned = aligned;
     this.timeFilter = timeFilter;
-    this.updateSchema = updateSchema;
     this.updateNullEntry = updateNullEntry;
   }
 
@@ -155,11 +152,8 @@ public class LastQueryCacheTest {
     when(dataRegion.getDatabaseName()).thenReturn(DATABASE);
     LocalExecutionPlanContext context = createContext(dataRegion);
     try (Operator operator = createOperator(context)) {
-      if (updateSchema) {
-        assertEquals(DATABASE, cache.getMatchedNormalSchema(path).getBelongedDatabase(path));
-      } else {
-        assertTrue(cache.getMatchedNormalSchema(path).isEmpty());
-      }
+      // LAST planning must not populate the device schema cache.
+      assertTrue(cache.getMatchedNormalSchema(path).isEmpty());
       consumeEmptyResult(operator, context);
       if (updateNullEntry) {
         assertEquals(TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN, cache.getLastCache(path));

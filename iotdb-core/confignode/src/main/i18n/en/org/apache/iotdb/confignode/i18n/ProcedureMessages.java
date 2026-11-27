@@ -433,14 +433,30 @@ public final class ProcedureMessages {
       "Failed to invalidate {} column {}'s cache of table {}.{}";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE =
       "Failed to invalidate schemaEngine cache of devices in table {}.{}";
+  public static final String
+      FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE_FIRST_TIME =
+          "Failed to invalidate schemaEngine cache of devices in table {}.{} for the first time";
+  public static final String
+      FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE_SECOND_TIME =
+          "Failed to invalidate schemaEngine cache of devices in table {}.{} for the second time";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE =
       "Failed to invalidate schemaEngine cache of table {}.{}";
+  public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE_FIRST_TIME =
+      "Failed to invalidate schemaEngine cache of table {}.{} for the first time";
+  public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE_SECOND_TIME =
+      "Failed to invalidate schemaEngine cache of table {}.{} for the second time";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES =
       "Failed to invalidate schemaEngine cache of timeSeries {}";
+  public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES_FIRST_TIME =
+      "Failed to invalidate schemaEngine cache of timeSeries {} for the first time";
+  public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES_SECOND_TIME =
+      "Failed to invalidate schemaEngine cache of timeSeries {} for the second time";
   public static final String FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW =
       "Failed to invalidate schemaengine cache of view {}";
-  public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES =
-      "Failed to invalidate schema cache of template timeSeries {}";
+  public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_FIRST_TIME =
+      "Failed to invalidate schema cache of template timeSeries {} for the first time";
+  public static final String FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_SECOND_TIME =
+      "Failed to invalidate schema cache of template timeSeries {} for the second time";
   public static final String FAILED_TO_INVALIDATE_TEMPLATE_CACHE_OF_TEMPLATE_SET_ON =
       "Failed to invalidate template cache of template {} set on {}";
   public static final String FAILED_TO_PRE_RELEASE_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS =
@@ -575,11 +591,27 @@ public final class ProcedureMessages {
       "[%s] for %s.%s failed when construct black list for table because failed to execute in all replicaset of %s %s. Failures: %s";
   public static final String INVALIDATE_CACHE_OF_DEVICES_IN =
       "Invalidate cache of devices in {}.{}";
+  public static final String INVALIDATE_CACHE_OF_DEVICES_IN_FIRST_TIME =
+      "Invalidate cache of devices in {}.{} for the first time";
+  public static final String INVALIDATE_CACHE_OF_DEVICES_IN_SECOND_TIME =
+      "Invalidate cache of devices in {}.{} for the second time";
   public static final String INVALIDATE_CACHE_OF_TEMPLATE_SET_ON =
       "Invalidate cache of template {} set on {}";
   public static final String INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES =
       "Invalidate cache of template timeSeries {}";
+  public static final String INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES_FIRST_TIME =
+      "Invalidate cache of template timeSeries {} for the first time";
+  public static final String INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES_SECOND_TIME =
+      "Invalidate cache of template timeSeries {} for the second time";
+  public static final String INVALIDATE_CACHE_OF_TABLE_FIRST_TIME =
+      "Invalidate cache of table {}.{} for the first time";
+  public static final String INVALIDATE_CACHE_OF_TABLE_SECOND_TIME =
+      "Invalidate cache of table {}.{} for the second time";
   public static final String INVALIDATE_CACHE_OF_TIMESERIES = "Invalidate cache of timeSeries {}";
+  public static final String INVALIDATE_CACHE_OF_TIMESERIES_FIRST_TIME =
+      "Invalidate cache of timeSeries {} for the first time";
+  public static final String INVALIDATE_CACHE_OF_TIMESERIES_SECOND_TIME =
+      "Invalidate cache of timeSeries {} for the second time";
   public static final String INVALIDATE_CACHE_OF_VIEW = "Invalidate cache of view {}";
   public static final String INVALIDATE_COLUMN_CACHE_FAILED_FOR_TABLE =
       "Invalidate column %s cache failed for table %s.%s";

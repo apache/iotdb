@@ -530,6 +530,11 @@ public class FragmentInstanceContext extends QueryContext {
 
   private void updateStatsIfDone(FragmentInstanceState newState) {
     if (newState.isDone()) {
+      if (newState.isFailed() && dataNodeQueryContext != null) {
+        // A LAST query that declared last-cache entries may have thrown before putting back a
+        // valid value. Drop the whole entries of the devices declared by this query attempt.
+        dataNodeQueryContext.invalidateDeclaredLastCaches();
+      }
       long now = System.currentTimeMillis();
 
       // before setting the end times, make sure a start has been recorded

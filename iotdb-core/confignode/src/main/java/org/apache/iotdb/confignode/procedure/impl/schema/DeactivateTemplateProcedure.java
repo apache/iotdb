@@ -116,12 +116,29 @@ public class DeactivateTemplateProcedure
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES, requestMessage);
-          invalidateCache(env);
+          LOGGER.info(
+              ProcedureMessages.INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES_FIRST_TIME, requestMessage);
+          if (invalidateCache(
+              env,
+              ProcedureMessages
+                  .FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_FIRST_TIME)) {
+            setNextState(DeactivateTemplateState.DELETE_DATA);
+          }
           break;
         case DELETE_DATA:
           LOGGER.info(ProcedureMessages.DELETE_DATA_OF_TEMPLATE_TIMESERIES, requestMessage);
           deleteData(env);
+          break;
+        case DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE:
+          LOGGER.info(
+              ProcedureMessages.INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES_SECOND_TIME,
+              requestMessage);
+          if (invalidateCache(
+              env,
+              ProcedureMessages
+                  .FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES_SECOND_TIME)) {
+            setNextState(DeactivateTemplateState.DEACTIVATE_TEMPLATE);
+          }
           break;
         case DEACTIVATE_TEMPLATE:
           LOGGER.info(ProcedureMessages.DEACTIVATE_TEMPLATE_OF, requestMessage);
@@ -180,7 +197,7 @@ public class DeactivateTemplateProcedure
     return preDeletedNum;
   }
 
-  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+  private boolean invalidateCache(final ConfigNodeProcedureEnv env, final String failureMessage) {
     // if no target timeseries, return directly
     if (!timeSeriesPatternTree.isEmpty()) {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap =
@@ -196,18 +213,15 @@ public class DeactivateTemplateProcedure
       for (TSStatus status : statusMap.values()) {
         // all dataNodes must clear the related schema cache
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.error(
-              ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES,
-              requestMessage);
+          LOGGER.error(failureMessage, requestMessage);
           setFailure(
               new ProcedureException(
                   new MetadataException(ProcedureMessages.INVALIDATE_SCHEMA_CACHE_FAILED)));
-          return;
+          return false;
         }
       }
     }
-
-    setNextState(DeactivateTemplateState.DELETE_DATA);
+    return true;
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
@@ -228,7 +242,7 @@ public class DeactivateTemplateProcedure
                       new ArrayList<>(consensusGroupIdList), timeSeriesPatternTreeBytes)));
       deleteDataTask.execute();
     }
-    setNextState(DeactivateTemplateState.DEACTIVATE_TEMPLATE);
+    setNextState(DeactivateTemplateState.DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE);
   }
 
   private void deactivateTemplate(ConfigNodeProcedureEnv env) {
@@ -285,7 +299,14 @@ public class DeactivateTemplateProcedure
 
   @Override
   protected boolean isRollbackSupported(DeactivateTemplateState deactivateTemplateState) {
-    return true;
+    switch (deactivateTemplateState) {
+      case CONSTRUCT_BLACK_LIST:
+      case CLEAN_DATANODE_SCHEMA_CACHE:
+      case DELETE_DATA:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override

@@ -217,10 +217,9 @@ public class TreeDeviceSchemaCacheManagerTest {
         new TimeValuePair[] {
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
         },
-        false,
         new MeasurementSchema[] {s1});
     treeDeviceSchemaCacheManager.invalidateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1));
+        new MeasurementPath(device.concatNode("s1"), s1));
 
     // "s2" shall be null since the "null" timeValuePair has not been put
     treeDeviceSchemaCacheManager.updateLastCacheIfExists(
@@ -229,7 +228,6 @@ public class TreeDeviceSchemaCacheManagerTest {
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         new String[] {"s2"},
         new TimeValuePair[] {tv1},
-        false,
         new MeasurementSchema[] {s2});
 
     treeDeviceSchemaCacheManager.updateLastCacheIfExists(
@@ -238,7 +236,6 @@ public class TreeDeviceSchemaCacheManagerTest {
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         new String[] {"s3"},
         new TimeValuePair[] {tv1},
-        false,
         new MeasurementSchema[] {s3});
 
     Assert.assertNull(
@@ -260,7 +257,6 @@ public class TreeDeviceSchemaCacheManagerTest {
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2))
         },
-        false,
         measurementSchemas);
 
     Assert.assertNull(
@@ -293,7 +289,6 @@ public class TreeDeviceSchemaCacheManagerTest {
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         new String[] {"s1"},
         new TimeValuePair[] {tv1},
-        false,
         new MeasurementSchema[] {s1});
     Assert.assertEquals(tv1, treeDeviceSchemaCacheManager.getLastCache(measurementPath));
 
@@ -398,7 +393,6 @@ public class TreeDeviceSchemaCacheManagerTest {
             StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes())),
         new String[] {path.getMeasurement()},
         new TimeValuePair[] {timeValuePair},
-        false,
         new MeasurementSchema[] {schema});
   }
 

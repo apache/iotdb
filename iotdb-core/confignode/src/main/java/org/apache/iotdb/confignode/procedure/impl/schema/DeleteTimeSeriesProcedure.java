@@ -150,13 +150,30 @@ public class DeleteTimeSeriesProcedure
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES, requestMessage);
-          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, true);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES_FIRST_TIME, requestMessage);
+          invalidateCache(
+              env,
+              patternTreeBytes,
+              requestMessage,
+              this::setFailure,
+              true,
+              ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES_FIRST_TIME);
           setNextState(DeleteTimeSeriesState.DELETE_DATA);
           break;
         case DELETE_DATA:
           LOGGER.info(ProcedureMessages.DELETE_DATA_OF_TIMESERIES, requestMessage);
           deleteData(env);
+          break;
+        case DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE:
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES_SECOND_TIME, requestMessage);
+          invalidateCache(
+              env,
+              patternTreeBytes,
+              requestMessage,
+              this::setFailure,
+              true,
+              ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES_SECOND_TIME);
+          setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
           break;
         case DELETE_TIMESERIES_SCHEMA:
           LOGGER.info(ProcedureMessages.DELETE_TIMESERIES_SCHEMAENGINE_OF, requestMessage);
@@ -327,7 +344,8 @@ public class DeleteTimeSeriesProcedure
       final ByteBuffer patternTreeBytes,
       final String requestMessage,
       final Consumer<ProcedureException> setFailure,
-      final boolean needLock) {
+      final boolean needLock,
+      final String failureMessage) {
     // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
     // schema cache and resyncs on recovery, so it cannot serve the to-be-deleted/altered series),
     // instead of hard-failing on the first unreachable DataNode. This runs before the physical
@@ -335,8 +353,7 @@ public class DeleteTimeSeriesProcedure
     if (!SchemaUtils.invalidateMatchedSchemaCache(
         env.getConfigManager(), patternTreeBytes, needLock)) {
       // All dataNodes must clear the related schemaEngine cache
-      LOGGER.warn(
-          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES, requestMessage);
+      LOGGER.warn(failureMessage, requestMessage);
       setFailure.accept(
           new ProcedureException(
               new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
@@ -346,7 +363,7 @@ public class DeleteTimeSeriesProcedure
   private void deleteData(final ConfigNodeProcedureEnv env) {
     if (isAllLogicalView) {
       modProgress.finishWithoutModFiles();
-      setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
+      setNextState(DeleteTimeSeriesState.DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE);
       return;
     }
 
@@ -356,7 +373,7 @@ public class DeleteTimeSeriesProcedure
     // Target timeSeries has no data
     if (relatedDataRegionGroup.isEmpty()) {
       modProgress.finishWithoutModFiles();
-      setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
+      setNextState(DeleteTimeSeriesState.DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE);
       return;
     }
 
@@ -457,7 +474,15 @@ public class DeleteTimeSeriesProcedure
 
   @Override
   protected boolean isRollbackSupported(final DeleteTimeSeriesState deleteTimeSeriesState) {
-    return true;
+    switch (deleteTimeSeriesState) {
+      case PREPARE_DELETE:
+      case CONSTRUCT_BLACK_LIST:
+      case CLEAN_DATANODE_SCHEMA_CACHE:
+      case DELETE_DATA:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override
