@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAdder;
@@ -490,6 +491,8 @@ public class WritingMetrics implements IMetricSet {
   private final DoubleAdder avgSeriesPointNumSum = new DoubleAdder();
   private final LongAdder flushedMemTableCount = new LongAdder();
   private final AtomicLong recentAvgSeriesPointNumBits = new AtomicLong(0L);
+  private final ConcurrentHashMap<Integer, AtomicLong> regionRecentAvgSeriesPointNumBits =
+      new ConcurrentHashMap<>();
 
   private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
       DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
@@ -752,6 +755,7 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void removeFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
+    regionRecentAvgSeriesPointNumBits.remove(dataRegionId.getId());
     Arrays.asList(
             MEM_TABLE_SIZE,
             SERIES_NUM,
@@ -881,6 +885,21 @@ public class WritingMetrics implements IMetricSet {
     avgSeriesPointNumSum.add(avgSeriesNum);
     flushedMemTableCount.increment();
     updateRecentMean(recentAvgSeriesPointNumBits, avgSeriesNum);
+    updateRecentMean(
+        regionRecentAvgSeriesPointNumBits.computeIfAbsent(
+            dataRegionId.getId(), id -> new AtomicLong(0L)),
+        avgSeriesNum);
+  }
+
+  /** Number of flushed memtables sampled so far, used to ignore a cold-start sample. */
+  public long getFlushedMemTableCount() {
+    return flushedMemTableCount.sum();
+  }
+
+  /** Decaying mean points per series of one DataRegion, falling back to the node-wide one. */
+  public double getRecentAvgSeriesPointNum(int dataRegionId) {
+    AtomicLong bits = regionRecentAvgSeriesPointNumBits.get(dataRegionId);
+    return bits == null ? getRecentAvgSeriesPointNum() : Double.longBitsToDouble(bits.get());
   }
 
   /**

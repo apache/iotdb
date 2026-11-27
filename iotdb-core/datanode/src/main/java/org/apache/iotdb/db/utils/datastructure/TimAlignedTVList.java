@@ -30,7 +30,12 @@ public class TimAlignedTVList extends AlignedTVList {
   }
 
   TimAlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
-    super(types, initializeValueColumns);
+    this(types, initializeValueColumns, 0);
+  }
+
+  TimAlignedTVList(
+      List<TSDataType> types, boolean initializeValueColumns, int preallocatedBlockNum) {
+    super(types, initializeValueColumns, preallocatedBlockNum);
     policy = new TimSort(this);
   }
 

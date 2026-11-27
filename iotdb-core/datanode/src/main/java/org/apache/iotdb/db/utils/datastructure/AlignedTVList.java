@@ -83,6 +83,12 @@ public abstract class AlignedTVList extends TVList {
   // Data types of this aligned tvList
   protected List<TSDataType> dataTypes;
 
+  /**
+   * Capacity reserved by a column container on its first materialization. 0 means no
+   * pre-allocation.
+   */
+  private int preallocatedBlockNum;
+
   // Type interfaces of dataTypes, resolved once per column. writeCell resolves the Type of every
   // written cell, so keeping one reference per column removes an enum switch from that loop. Kept
   // in sync by the constructor and extendColumns, the only places where dataTypes changes; null
@@ -187,11 +193,16 @@ public abstract class AlignedTVList extends TVList {
   private final AlignedTVList outer = this;
 
   AlignedTVList(List<TSDataType> types) {
-    this(types, true);
+    this(types, true, 0);
   }
 
   AlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
+    this(types, initializeValueColumns, 0);
+  }
+
+  AlignedTVList(List<TSDataType> types, boolean initializeValueColumns, int preallocatedBlockNum) {
     super();
+    this.preallocatedBlockNum = Math.max(0, preallocatedBlockNum);
     dataTypes = types;
     columnTypes = resolveColumnTypes(types);
     memoryBinaryChunkSize = new long[dataTypes.size()];
@@ -205,7 +216,7 @@ public abstract class AlignedTVList extends TVList {
       // only a few blocks, so a column container stays empty until a block of that column receives
       // a
       // value array. Pre-allocation is opt-in through getDefaultArrayNum().
-      values.add(initializeValueColumns ? new LazyBlockList<>(0, getDefaultArrayNum()) : null);
+      values.add(initializeValueColumns ? new LazyBlockList<>(0, preallocatedBlockNum) : null);
     }
     // arrayMemCostWithoutPrimitiveArrays depends on per-column value arrays, so values must be
     // initialized before computing it
@@ -223,18 +234,23 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
-    return newAlignedList(dataTypes, true);
+    return newAlignedList(dataTypes, true, 0);
   }
 
   public static AlignedTVList newAlignedList(
       List<TSDataType> dataTypes, boolean initializeValueColumns) {
+    return newAlignedList(dataTypes, initializeValueColumns, 0);
+  }
+
+  public static AlignedTVList newAlignedList(
+      List<TSDataType> dataTypes, boolean initializeValueColumns, int preallocatedBlockNum) {
     switch (TVLIST_SORT_ALGORITHM) {
       case QUICK:
-        return new QuickAlignedTVList(dataTypes, initializeValueColumns);
+        return new QuickAlignedTVList(dataTypes, initializeValueColumns, preallocatedBlockNum);
       case BACKWARD:
-        return new BackAlignedTVList(dataTypes, initializeValueColumns);
+        return new BackAlignedTVList(dataTypes, initializeValueColumns, preallocatedBlockNum);
       default:
-        return new TimAlignedTVList(dataTypes, initializeValueColumns);
+        return new TimAlignedTVList(dataTypes, initializeValueColumns, preallocatedBlockNum);
     }
   }
 
@@ -740,7 +756,7 @@ public abstract class AlignedTVList extends TVList {
     int firstNewColumn = dataTypes.size();
     for (TSDataType dataType : newDataTypes) {
       // The new column is null for every block that is already open; those slots stay implicit.
-      List<Object> columnValue = new LazyBlockList<>(existingBlockCount, getDefaultArrayNum());
+      List<Object> columnValue = new LazyBlockList<>(existingBlockCount, preallocatedBlockNum);
       if (bitMaps != null) {
         bitMaps.add(null);
       }

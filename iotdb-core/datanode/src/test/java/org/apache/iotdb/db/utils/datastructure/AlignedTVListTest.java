@@ -1412,27 +1412,33 @@ public class AlignedTVListTest {
           ((LazyBlockList<?>) lazyList.getValues().get(0)).ramCost());
 
       IoTDBDescriptor.getInstance().getConfig().setEnableTVListBlockPreallocation(true);
-      int configuredBlocks =
-          IoTDBDescriptor.getInstance().getConfig().getTvListMaxPreallocatedBlocks();
+      // Cold start (fewer than MIN_PREALLOCATION_SAMPLES flushed memtables) falls back to the
+      // configured bound, which is what the memchunk passes to the list.
+      int hint = TVList.getDefaultArrayNum(null);
+      Assert.assertEquals(
+          IoTDBDescriptor.getInstance().getConfig().getTvListMaxPreallocatedBlocks(), hint);
       AlignedTVList preallocatedList =
           AlignedTVList.newAlignedList(
-              new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+              new ArrayList<>(Collections.singletonList(TSDataType.INT64)), true, hint);
       // Nothing is reserved before the column is written, even with pre-allocation enabled.
       Assert.assertEquals(0, preallocatedList.getValues().get(0).size());
       Assert.assertEquals(
           LazyBlockList.instanceRamCost(),
           ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost());
 
-      // The first write that materializes a block reserves the configured capacity in one step.
-      preallocatedList.putAlignedValue(0, new Object[] {1L});
+      // The first write that materializes a block reserves the hint in one step; a null-only write
+      // materializes nothing.
+      preallocatedList.putAlignedValue(0, new Object[] {null});
+      Assert.assertTrue(preallocatedList.isNullValue(0, 0));
+      Assert.assertEquals(
+          LazyBlockList.instanceRamCost(),
+          ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost());
+      preallocatedList.putAlignedValue(1, new Object[] {1L});
+      Assert.assertEquals(1L, preallocatedList.getLongByValueIndex(1, 0));
       long preallocatedCost = ((LazyBlockList<?>) preallocatedList.getValues().get(0)).ramCost();
       Assert.assertEquals(
-          LazyBlockList.instanceRamCost()
-              + RamUsageEstimator.sizeOfObjectArray(
-                  Math.max(1, Math.min(configuredBlocks, Integer.MAX_VALUE))),
+          LazyBlockList.instanceRamCost() + RamUsageEstimator.sizeOfObjectArray(hint),
           preallocatedCost);
-      // A null-only write does not materialize anything, so the container stays empty.
-      Assert.assertEquals(1L, preallocatedList.getLongByValueIndex(0, 0));
       assertStructureRamCostMatches(preallocatedList);
       lazyList.clear();
       preallocatedList.clear();

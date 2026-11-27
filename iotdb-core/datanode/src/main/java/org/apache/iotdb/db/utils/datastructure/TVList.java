@@ -161,6 +161,9 @@ public abstract class TVList implements WALEntryValue {
    */
   static final int PREALLOCATED_BLOCK_NUM = 16; // legacy default, kept for tests
 
+  /** Flushed memtables required before the recent mean is trusted for pre-allocation. */
+  static final int MIN_PREALLOCATION_SAMPLES = 3;
+
   protected TVList() {
     timestamps = newBlockList(getDefaultArrayNum());
     rowCount = 0;
@@ -1227,6 +1230,21 @@ public abstract class TVList implements WALEntryValue {
    * a hot reload affects the lists created afterwards.
    */
   protected static int getDefaultArrayNum() {
+    return getDefaultArrayNum(null);
+  }
+
+  /**
+   * Initial block capacity reserved when a column is written for the first time.
+   *
+   * <p>The size follows the original heuristic: the mean points per series divided by the primitive
+   * array size, so a column reserves roughly the number of blocks an average series holds. The mean
+   * is the decaying (recent) one and is scoped to the DataRegion when its id is known, so a dense
+   * region or a temporarily dense workload cannot inflate the containers of another region. The
+   * result is clamped by {@code tvlist_max_preallocated_blocks}; before {@link
+   * #MIN_PREALLOCATION_SAMPLES} memtables have been flushed the configured bound is used instead of
+   * a single cold-start sample, and a disabled switch means "allocate nothing".
+   */
+  public static int getDefaultArrayNum(String dataRegionId) {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     if (!config.isEnableTVListBlockPreallocation()) {
       // Default: no pre-allocation at all. A container allocates on the first write and then grows.
@@ -1236,17 +1254,33 @@ public abstract class TVList implements WALEntryValue {
     if (maxBlocks <= 0) {
       return 0;
     }
-    // The original hint: the mean points per series divided by the primitive array size, so a
-    // column reserves roughly the number of blocks an average series holds. The mean is the
-    // decaying
-    // (recent) one, so a temporarily dense workload cannot pin the hint at a high value, and the
-    // result is clamped by the configured bound.
-    double recentPoints = WritingMetrics.getInstance().getRecentAvgSeriesPointNum();
+    WritingMetrics metrics = WritingMetrics.getInstance();
+    if (metrics.getFlushedMemTableCount() < MIN_PREALLOCATION_SAMPLES) {
+      // Cold start: there is no trustworthy history yet, so use the configured bound.
+      return maxBlocks;
+    }
+    double recentPoints;
+    int regionKey = parseDataRegionId(dataRegionId);
+    recentPoints =
+        regionKey < 0
+            ? metrics.getRecentAvgSeriesPointNum()
+            : metrics.getRecentAvgSeriesPointNum(regionKey);
     if (recentPoints <= 0.0d) {
       return maxBlocks;
     }
     long estimatedBlocks = (long) Math.ceil(recentPoints / ARRAY_SIZE);
     return (int) Math.max(1L, Math.min(estimatedBlocks, maxBlocks));
+  }
+
+  private static int parseDataRegionId(String dataRegionId) {
+    if (dataRegionId == null) {
+      return -1;
+    }
+    try {
+      return Integer.parseInt(dataRegionId.trim());
+    } catch (NumberFormatException e) {
+      return -1;
+    }
   }
 
   /** Initial block capacity of a memtable container, avoiding {@code new ArrayList<>(0)}. */

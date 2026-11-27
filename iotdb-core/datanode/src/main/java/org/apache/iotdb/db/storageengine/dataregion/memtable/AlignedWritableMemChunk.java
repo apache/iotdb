@@ -82,12 +82,20 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   private EncryptParameter encryptParameter;
 
+  /** Capacity reserved by a column container on its first materialization. */
+  private int preallocatedBlockNum;
+
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
-    this(schemaList, EncryptUtils.getEncryptParameter());
+    this(schemaList, EncryptUtils.getEncryptParameter(), null);
   }
 
   public AlignedWritableMemChunk(
       List<IMeasurementSchema> schemaList, EncryptParameter encryptParameter) {
+    this(schemaList, encryptParameter, null);
+  }
+
+  public AlignedWritableMemChunk(
+      List<IMeasurementSchema> schemaList, EncryptParameter encryptParameter, String dataRegionId) {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.dataTypes = new ArrayList<>();
     this.schemaList = schemaList;
@@ -95,7 +103,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
       dataTypes.add(schemaList.get(i).getType());
     }
-    this.list = AlignedTVList.newAlignedList(dataTypes);
+    this.preallocatedBlockNum = TVList.getDefaultArrayNum(dataRegionId);
+    this.list = AlignedTVList.newAlignedList(dataTypes, true, preallocatedBlockNum);
     this.sortedList = new ArrayList<>();
     this.encryptParameter = encryptParameter;
   }
@@ -217,7 +226,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
     sortedList.add(list);
     this.sortedRowCount += list.rowCount();
-    this.list = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
+    this.list =
+        AlignedTVList.newAlignedList(new ArrayList<>(dataTypes), true, preallocatedBlockNum);
     this.dataTypes = list.getTsDataTypes();
   }
 
