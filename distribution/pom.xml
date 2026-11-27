@@ -130,6 +130,29 @@
     </build>
     <profiles>
         <profile>
+            <id>apache-release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.gmaven</groupId>
+                        <artifactId>groovy-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>generate-release-zip-sboms</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>execute</goal>
+                                </goals>
+                                <configuration>
+                                    <source>${maven.multiModuleProjectDirectory}/src/main/groovy/generateReleaseSboms.groovy</source>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>.os-unix</id>
             <activation>
                 <os>

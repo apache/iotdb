@@ -803,6 +803,23 @@
                     <version>3.1.1</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.codehaus.gmaven</groupId>
+                    <artifactId>groovy-maven-plugin</artifactId>
+                    <version>2.1.1</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.apache.groovy</groupId>
+                            <artifactId>groovy</artifactId>
+                            <version>4.0.22</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.apache.groovy</groupId>
+                            <artifactId>groovy-json</artifactId>
+                            <version>4.0.22</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-assembly-plugin</artifactId>
                     <version>${maven.assembly.version}</version>
@@ -1632,7 +1649,6 @@
                     <plugin>
                         <groupId>org.codehaus.gmaven</groupId>
                         <artifactId>groovy-maven-plugin</artifactId>
-                        <version>2.1.1</version>
                         <!-- Only run this in the root module of the project -->
                         <inherited>false</inherited>
                         <executions>
@@ -1647,13 +1663,6 @@
                                 </configuration>
                             </execution>
                         </executions>
-                        <dependencies>
-                            <dependency>
-                                <groupId>org.apache.groovy</groupId>
-                                <artifactId>groovy</artifactId>
-                                <version>4.0.22</version>
-                            </dependency>
-                        </dependencies>
                     </plugin>
                 </plugins>
             </build>
@@ -1737,6 +1746,23 @@
                                         </fileSet>
                                     </fileSets>
                                     <failIfNoFiles>false</failIfNoFiles>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.gmaven</groupId>
+                        <artifactId>groovy-maven-plugin</artifactId>
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <id>generate-release-zip-sboms</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>execute</goal>
+                                </goals>
+                                <configuration>
+                                    <source>${maven.multiModuleProjectDirectory}/src/main/groovy/generateReleaseSboms.groovy</source>
                                 </configuration>
                             </execution>
                         </executions>
