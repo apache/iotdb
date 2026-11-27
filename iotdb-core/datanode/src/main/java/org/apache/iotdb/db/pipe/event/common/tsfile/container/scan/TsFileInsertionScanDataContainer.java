@@ -85,7 +85,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private final long startTime;
   private final long endTime;
+  private final boolean trackPointCounts;
   private final Filter filter;
+  private final Map<IDeviceID, Map<String, Long>> parsedPointCountsByDevice = new HashMap<>();
+  private final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice = new HashMap<>();
 
   private IChunkReader chunkReader;
   private BatchData data;
@@ -147,6 +150,33 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       final boolean isWithMod,
       final TsFileInsertionEventParserMemoryManager memoryManager)
       throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        isWithMod,
+        memoryManager,
+        false);
+  }
+
+  public TsFileInsertionScanDataContainer(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager,
+      final boolean trackPointCounts)
+      throws IOException {
     super(
         tsFile,
         pipeName,
@@ -161,6 +191,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
     this.startTime = startTime;
     this.endTime = endTime;
+    this.trackPointCounts = trackPointCounts;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
     this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
@@ -222,6 +253,29 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       final TsFileInsertionEventParserMemoryManager memoryManager)
       throws IOException {
     this(
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        isWithMod,
+        memoryManager,
+        false);
+  }
+
+  public TsFileInsertionScanDataContainer(
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager,
+      final boolean trackPointCounts)
+      throws IOException {
+    this(
         null,
         0,
         tsFile,
@@ -231,7 +285,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         pipeTaskMeta,
         sourceEvent,
         isWithMod,
-        memoryManager);
+        memoryManager,
+        trackPointCounts);
   }
 
   @Override
@@ -337,6 +392,22 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     return Objects.nonNull(currentDevice) ? new PlainDeviceID(currentDevice) : null;
   }
 
+  public Map<IDeviceID, Map<String, Long>> getParsedPointCounts() {
+    return copyPointCounts(parsedPointCountsByDevice);
+  }
+
+  public Map<IDeviceID, Map<String, Long>> getExpectedPointCounts() {
+    return copyPointCounts(expectedPointCountsByDevice);
+  }
+
+  private Map<IDeviceID, Map<String, Long>> copyPointCounts(
+      final Map<IDeviceID, Map<String, Long>> pointCountsByDevice) {
+    final Map<IDeviceID, Map<String, Long>> result = new HashMap<>();
+    pointCountsByDevice.forEach(
+        (device, pointCounts) -> result.put(device, new HashMap<>(pointCounts)));
+    return result;
+  }
+
   public boolean isCurrentAligned() {
     return currentIsAligned;
   }
@@ -379,6 +450,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
           final int rowIndex = tablet.rowSize;
 
+          recordParsedPointCounts(data);
+          recordExpectedPointCounts(data);
           if (putValueToColumns(data, tablet, rowIndex)) {
             PipeTabletUtils.putTimestamp(tablet, rowIndex, data.currentTime());
           }
@@ -418,6 +491,46 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     }
   }
 
+  private void recordParsedPointCounts(final BatchData batchData) {
+    if (!trackPointCounts) {
+      return;
+    }
+
+    if (batchData.getDataType() == TSDataType.VECTOR) {
+      final TsPrimitiveType[] values = batchData.getVector();
+      for (int column = 0; column < values.length; column++) {
+        if (values[column] != null) {
+          addParsedPointCount(currentMeasurements.get(column).getMeasurementId(), 1);
+        }
+      }
+      return;
+    }
+
+    addParsedPointCount(currentMeasurements.get(0).getMeasurementId(), 1);
+  }
+
+  private void recordExpectedPointCounts(final BatchData batchData) {
+    if (!trackPointCounts || currentModifications.isEmpty()) {
+      return;
+    }
+
+    if (batchData.getDataType() == TSDataType.VECTOR) {
+      final TsPrimitiveType[] values = batchData.getVector();
+      for (int column = 0; column < values.length; column++) {
+        if (values[column] != null
+            && !ModsOperationUtil.isDelete(batchData.currentTime(), modsInfos.get(column))) {
+          addExpectedPointCount(currentMeasurements.get(column).getMeasurementId());
+        }
+      }
+      return;
+    }
+
+    if (modsInfos.isEmpty()
+        || !ModsOperationUtil.isDelete(batchData.currentTime(), modsInfos.get(0))) {
+      addExpectedPointCount(currentMeasurements.get(0).getMeasurementId());
+    }
+  }
+
   private void throwIfDeferredException() {
     if (Objects.isNull(deferredException)) {
       return;
@@ -426,6 +539,24 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     final Exception exception = deferredException;
     deferredException = null;
     throw new PipeException("Failed to prepare next tablet insertion event.", exception);
+  }
+
+  private void addParsedPointCount(final String measurement, final long pointCount) {
+    if (!trackPointCounts || pointCount == 0 || Objects.isNull(currentDevice)) {
+      return;
+    }
+    parsedPointCountsByDevice
+        .computeIfAbsent(new PlainDeviceID(currentDevice), key -> new HashMap<>())
+        .merge(measurement, pointCount, Long::sum);
+  }
+
+  private void addExpectedPointCount(final String measurement) {
+    if (Objects.isNull(currentDevice)) {
+      return;
+    }
+    expectedPointCountsByDevice
+        .computeIfAbsent(new PlainDeviceID(currentDevice), key -> new HashMap<>())
+        .merge(measurement, 1L, Long::sum);
   }
 
   private boolean isLastTabletWithoutDeferredException() {
@@ -653,10 +784,6 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
               final long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-              if (filterChunk(currentChunkHeaderOffset, chunkHeader, true, marker)) {
-                break;
-              }
-
               // Increase value index.
               final String measurementID =
                   tabletStringInternPool.intern(chunkHeader.getMeasurementID());
@@ -664,6 +791,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                   measurementIndexMap.compute(
                       measurementID,
                       (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
+
+              if (filterChunk(currentChunkHeaderOffset, chunkHeader, true, marker)) {
+                break;
+              }
 
               // Do not record or end current value chunks when there are empty chunks.
               if (chunkHeader.getDataSize() == 0) {
@@ -782,6 +913,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
               statistics.getStartTime(),
               statistics.getEndTime(),
               currentModifications)) {
+        addParsedPointCount(chunkHeader.getMeasurementID(), statistics.getCount());
         tsFileSequenceReader.position(nextMarkerOffset);
         return true;
       }
