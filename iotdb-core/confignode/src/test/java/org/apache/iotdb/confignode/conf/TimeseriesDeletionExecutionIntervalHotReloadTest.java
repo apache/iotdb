@@ -27,14 +27,15 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
-import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class TimeseriesDeletionExecutionIntervalHotReloadTest {
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -48,11 +49,16 @@ public class TimeseriesDeletionExecutionIntervalHotReloadTest {
     final ConfigurationFileUtils.DefaultConfigurationItem queueCapacityItem =
         items.get("timeseries_deletion_queue_capacity");
 
+    final ConfigurationFileUtils.DefaultConfigurationItem syncSchemaDeletionItem =
+        items.get("enable_sync_schema_deletion");
     assertNotNull(intervalItem);
     assertEquals(ConfigurationFileUtils.EffectiveModeType.HOT_RELOAD, intervalItem.effectiveMode);
     assertNotNull(queueCapacityItem);
     assertEquals(
         ConfigurationFileUtils.EffectiveModeType.HOT_RELOAD, queueCapacityItem.effectiveMode);
+    assertNotNull(syncSchemaDeletionItem);
+    assertEquals(
+        ConfigurationFileUtils.EffectiveModeType.HOT_RELOAD, syncSchemaDeletionItem.effectiveMode);
   }
 
   @Test
@@ -65,30 +71,55 @@ public class TimeseriesDeletionExecutionIntervalHotReloadTest {
         StandardCharsets.UTF_8);
     System.setProperty(ConfigNodeConstant.CONFIGNODE_CONF, confDir.getAbsolutePath());
     try {
-      final Constructor<ConfigNodeDescriptor> constructor =
-          ConfigNodeDescriptor.class.getDeclaredConstructor();
-      constructor.setAccessible(true);
-      final ConfigNodeDescriptor descriptor = constructor.newInstance();
+      final ConfigNodeDescriptor descriptor = ConfigNodeDescriptor.getInstance();
       final ConfigNodeConfig conf = descriptor.getConf();
       final int originalQueueCapacity = conf.getTimeseriesDeletionQueueCapacity();
+      final long originalIntervalMs = conf.getTimeseriesDeletionExecutionIntervalMs();
+      final boolean originalEnableSyncSchemaDeletion = conf.isEnableSyncSchemaDeletion();
       final long updatedIntervalMs = conf.getTimeseriesDeletionExecutionIntervalMs() + 1;
       final int updatedQueueCapacity = conf.getTimeseriesDeletionQueueCapacity() + 1;
-      final TrimProperties invalidProperties = new TrimProperties();
-      invalidProperties.setProperty("timeseries_deletion_queue_capacity", "0");
-      assertThrows(
-          IllegalArgumentException.class, () -> descriptor.loadHotModifiedProps(invalidProperties));
-      assertEquals(originalQueueCapacity, conf.getTimeseriesDeletionQueueCapacity());
+      try {
+        conf.setEnableSyncSchemaDeletion(false);
+        final TrimProperties invalidProperties = new TrimProperties();
+        invalidProperties.setProperty("enable_sync_schema_deletion", "true");
+        invalidProperties.setProperty("timeseries_deletion_queue_capacity", "0");
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> descriptor.loadHotModifiedProps(invalidProperties));
+        assertEquals(originalQueueCapacity, conf.getTimeseriesDeletionQueueCapacity());
+        assertFalse(conf.isEnableSyncSchemaDeletion());
 
-      final TrimProperties properties = new TrimProperties();
-      properties.setProperty(
-          "timeseries_deletion_execution_interval_ms", String.valueOf(updatedIntervalMs));
-      properties.setProperty(
-          "timeseries_deletion_queue_capacity", String.valueOf(updatedQueueCapacity));
+        invalidProperties.setProperty("timeseries_deletion_queue_capacity", "invalid");
+        assertThrows(
+            NumberFormatException.class, () -> descriptor.loadHotModifiedProps(invalidProperties));
+        assertFalse(conf.isEnableSyncSchemaDeletion());
 
-      descriptor.loadHotModifiedProps(properties);
+        final TrimProperties properties = new TrimProperties();
+        properties.setProperty(
+            "timeseries_deletion_execution_interval_ms", String.valueOf(updatedIntervalMs));
+        properties.setProperty(
+            "timeseries_deletion_queue_capacity", String.valueOf(updatedQueueCapacity));
+        properties.setProperty("enable_sync_schema_deletion", "true");
+        descriptor.loadHotModifiedProps(properties);
 
-      assertEquals(updatedIntervalMs, conf.getTimeseriesDeletionExecutionIntervalMs());
-      assertEquals(updatedQueueCapacity, conf.getTimeseriesDeletionQueueCapacity());
+        assertEquals(updatedIntervalMs, conf.getTimeseriesDeletionExecutionIntervalMs());
+        assertEquals(updatedQueueCapacity, conf.getTimeseriesDeletionQueueCapacity());
+        assertTrue(conf.isEnableSyncSchemaDeletion());
+
+        descriptor.loadHotModifiedProps(properties);
+        assertTrue(conf.isEnableSyncSchemaDeletion());
+
+        descriptor.loadHotModifiedProps(new TrimProperties());
+        assertTrue(conf.isEnableSyncSchemaDeletion());
+
+        properties.setProperty("enable_sync_schema_deletion", "false");
+        descriptor.loadHotModifiedProps(properties);
+        assertFalse(conf.isEnableSyncSchemaDeletion());
+      } finally {
+        conf.setTimeseriesDeletionQueueCapacity(originalQueueCapacity);
+        conf.setTimeseriesDeletionExecutionIntervalMs(originalIntervalMs);
+        conf.setEnableSyncSchemaDeletion(originalEnableSyncSchemaDeletion);
+      }
     } finally {
       if (originalConf == null) {
         System.clearProperty(ConfigNodeConstant.CONFIGNODE_CONF);

@@ -250,7 +250,7 @@ public class ConfigNodeConfig {
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
-  private boolean enableSyncSchemaDeletion = false;
+  private volatile boolean enableSyncSchemaDeletion = false;
 
   /** Maximum number of tree-model timeseries deletion tasks waiting to execute. */
   private volatile int timeseriesDeletionQueueCapacity = 1024;
