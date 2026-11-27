@@ -148,6 +148,19 @@ the corresponding module file; link to existing guidance instead of copying it.
   secrets or entire payloads in messages. User-facing exception messages must follow the i18n rules
   below.
 
+### Java server thread pools
+
+- In server modules that use `node-commons`, create new production pools with
+  `IoTDBThreadPoolFactory`. When the owner needs direct executor operations such as
+  `remove(Runnable)`, use `WrappedThreadPoolExecutor`. Both register the pool with JMX and
+  expose active workers and queued tasks through `ThreadPoolMetrics`.
+- Base the worker thread prefix and monitored pool name on `ThreadName`. Give pools that
+  coexist in one JVM distinct names, and add new enum entries to the corresponding module set.
+  Shut down the pool when its owner stops so the wrapper unregisters its MBean and metrics.
+- For pools whose core workers should retire when idle, use
+  `newFixedThreadPoolWithIdleThreadTimeout` or set a positive keep-alive time and call
+  `allowCoreThreadTimeOut(true)` on the wrapped executor.
+
 ## Architecture
 
 ### Node Types
