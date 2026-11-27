@@ -42,6 +42,8 @@ public interface CommonConfig {
 
   CommonConfig setEnableGrantOption(boolean enableGrantOption);
 
+  CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMinMs(int minMs);
+
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);

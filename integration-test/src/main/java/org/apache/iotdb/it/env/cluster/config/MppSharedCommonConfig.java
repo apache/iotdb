@@ -96,6 +96,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMinMs(int minMs) {
+    cnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMinMs(minMs);
+    dnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMinMs(minMs);
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     cnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
     dnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);

@@ -179,6 +179,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMinMs(int minMs) {
+    setProperty("config_node_ratis_rpc_leader_election_timeout_min_ms", String.valueOf(minMs));
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     setProperty("config_node_ratis_rpc_leader_election_timeout_max_ms", String.valueOf(maxMs));
     return this;

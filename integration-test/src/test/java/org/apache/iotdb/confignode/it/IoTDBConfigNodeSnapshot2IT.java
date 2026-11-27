@@ -38,6 +38,8 @@ public class IoTDBConfigNodeSnapshot2IT extends IoTDBConfigNodeSnapshotIT {
         .getConfig()
         .getCommonConfig()
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setConfigRegionRatisRPCLeaderElectionTimeoutMinMs(10000)
+        .setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(20000)
         .setConfigNodeRatisSnapshotTriggerThreshold(1)
         .setTimePartitionInterval(testTimePartitionInterval);
 
