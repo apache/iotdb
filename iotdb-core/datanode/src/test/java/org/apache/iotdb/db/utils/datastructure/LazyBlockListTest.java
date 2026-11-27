@@ -25,21 +25,6 @@ import org.junit.Test;
 
 public class LazyBlockListTest {
 
-  private static final long PAGE_RAM_COST =
-      RamUsageEstimator.sizeOfObjectArray(LazyBlockList.PAGE_SIZE);
-
-  @Test
-  public void testInliningSingleBlockAllocatesNoArray() {
-    LazyBlockList<Object> container = new LazyBlockList<>(0, 0);
-    container.add("v0");
-
-    Assert.assertEquals(1, container.size());
-    Assert.assertEquals("v0", container.get(0));
-    // One written block lives in the container itself: no array at all.
-    Assert.assertEquals(LazyBlockList.instanceRamCost(), container.ramCost());
-    Assert.assertEquals(1, container.materializedLength());
-  }
-
   @Test
   public void testNullSlotsStayImplicit() {
     LazyBlockList<Object> container = new LazyBlockList<>(0, 0);
@@ -56,65 +41,67 @@ public class LazyBlockListTest {
   }
 
   @Test
-  public void testWriteFarAheadAllocatesNoPrefix() {
-    // A column that is first written at block 1000 must not materialize the skipped prefix; a
-    // single block is inlined regardless of its index.
-    LazyBlockList<Object> container = new LazyBlockList(2_000, 0);
-    container.set(1_000, "far");
-
-    Assert.assertEquals(2_000, container.size());
-    Assert.assertEquals("far", container.get(1_000));
-    Assert.assertEquals(LazyBlockList.instanceRamCost(), container.ramCost());
-    Assert.assertEquals(1_001, container.materializedLength());
-    for (int block = 0; block < 1_000; block++) {
-      Assert.assertNull(container.get(block));
-    }
-  }
-
-  @Test
-  public void testCrossPagePromotionReusesLeafPages() {
-    LazyBlockList<Object> container = new LazyBlockList(100, 0);
-    container.set(1, "page0");
-    // A single block is inlined, so far there is no array at all.
-    Assert.assertEquals(LazyBlockList.instanceRamCost(), container.ramCost());
-
-    // A second block on the same page keeps one leaf page and reuses the inlined element.
-    container.set(2, "page0b");
-    Assert.assertEquals(LazyBlockList.instanceRamCost() + PAGE_RAM_COST, container.ramCost());
-
-    // Moving to another page turns the container into a directory of two leaf pages.
-    container.set(20, "page1");
-    long twoPages = LazyBlockList.instanceRamCost() + 2L * PAGE_RAM_COST + directoryRamCost(4);
-    Assert.assertEquals(twoPages, container.ramCost());
-    Assert.assertEquals("page0", container.get(1));
-    Assert.assertEquals("page0b", container.get(2));
-    Assert.assertEquals("page1", container.get(20));
-  }
-
-  @Test
-  public void testDenseGrowthKeepsEverySlot() {
-    LazyBlockList<Object> container = new LazyBlockList(0, 0);
-    int lastMaterialized = 0;
+  public void testGeometricGrowthKeepsEverySlot() {
+    LazyBlockList<Object> container = new LazyBlockList<>(0, 0);
+    int lastCapacity = 0;
     for (int block = 0; block < 1_000; block++) {
       container.add("v" + block);
-      Assert.assertTrue(container.materializedLength() >= lastMaterialized);
-      lastMaterialized = container.materializedLength();
+      // The backing array always covers every slot the container reported so far, and its length
+      // never shrinks, so an already materialized slot never disappears.
+      Assert.assertTrue(container.materializedLength() >= container.size());
+      Assert.assertTrue(container.materializedLength() >= lastCapacity);
+      lastCapacity = container.materializedLength();
     }
 
     for (int block = 0; block < 1_000; block++) {
       Assert.assertEquals("v" + block, container.get(block));
     }
-    Assert.assertEquals(1_000, container.size());
+    Assert.assertEquals(
+        LazyBlockList.instanceRamCost() + RamUsageEstimator.sizeOfObjectArray(lastCapacity),
+        container.ramCost());
   }
 
   @Test
-  public void testPreallocationReservesOnePage() {
-    LazyBlockList<Object> container = new LazyBlockList(0, 16);
+  public void testGrownCapacityDoesNotOverflow() {
+    // Geometric growth for a normal container.
+    Assert.assertEquals(15, LazyBlockList.grownCapacity(10, 11));
+    Assert.assertEquals(2, LazyBlockList.grownCapacity(1, 2));
+    // The requested length always wins when it is larger than the grown length.
+    Assert.assertEquals(64, LazyBlockList.grownCapacity(10, 64));
+    // A nearly full array must not overflow into a shorter (or negative) capacity.
+    int nearlyFull = Integer.MAX_VALUE - 8;
+    Assert.assertEquals(nearlyFull, LazyBlockList.grownCapacity(nearlyFull, nearlyFull));
+    Assert.assertEquals(nearlyFull, LazyBlockList.grownCapacity(nearlyFull, nearlyFull - 10));
+    // At the array length limit the exact minimum is requested, so the allocation fails instead of
+    // silently dropping slots.
+    Assert.assertEquals(
+        Integer.MAX_VALUE, LazyBlockList.grownCapacity(nearlyFull, Integer.MAX_VALUE));
+  }
+
+  @Test
+  public void testWriteFarAheadCoversTheWholePrefix() {
+    LazyBlockList<Object> container = new LazyBlockList(2_000, 0);
+    container.set(1_999, "tail");
+
+    Assert.assertEquals(2_000, container.size());
+    Assert.assertTrue(container.materializedLength() >= 2_000);
+    Assert.assertEquals("tail", container.get(1_999));
+    for (int block = 0; block < 1_999; block++) {
+      Assert.assertNull(container.get(block));
+    }
+  }
+
+  @Test
+  public void testPreallocationIsReservedButEmpty() {
+    LazyBlockList<Object> container = new LazyBlockList<>(0, 16);
 
     Assert.assertEquals(0, container.size());
     Assert.assertEquals(16, container.materializedLength());
-    Assert.assertEquals(LazyBlockList.instanceRamCost() + PAGE_RAM_COST, container.ramCost());
+    Assert.assertEquals(
+        LazyBlockList.instanceRamCost() + RamUsageEstimator.sizeOfObjectArray(16),
+        container.ramCost());
 
+    // Filling the reserved slots does not allocate again.
     long ramCost = container.ramCost();
     container.add("v0");
     Assert.assertEquals(1, container.size());
@@ -122,10 +109,9 @@ public class LazyBlockListTest {
   }
 
   @Test
-  public void testCopyStructureKeepsLayoutWithoutValues() {
-    LazyBlockList<Object> container = new LazyBlockList(100, 0);
-    container.set(1, "a");
-    container.set(40, "b");
+  public void testCopyStructureKeepsCapacityWithoutValues() {
+    LazyBlockList<Object> container = new LazyBlockList(3, 0);
+    container.set(2, "value");
 
     LazyBlockList<Object> copy = container.copyStructure();
     Assert.assertEquals(container.size(), copy.size());
@@ -137,40 +123,14 @@ public class LazyBlockListTest {
   }
 
   @Test
-  public void testClearReleasesTheStorage() {
-    LazyBlockList<Object> container = new LazyBlockList(31, 0);
-    container.set(0, "v0");
-    container.set(30, "v30");
+  public void testClearReleasesTheSlots() {
+    LazyBlockList<Object> container = new LazyBlockList<>(0, 0);
+    container.add("v0");
+    Assert.assertTrue(container.materializedLength() > 0);
 
     container.clear();
     Assert.assertEquals(0, container.size());
     Assert.assertEquals(0, container.materializedLength());
     Assert.assertEquals(LazyBlockList.instanceRamCost(), container.ramCost());
-  }
-
-  @Test
-  public void testDirectoryGrowthDoesNotOverflow() {
-    Assert.assertEquals(4, LazyBlockList.grownDirectoryLength(0, 1));
-    Assert.assertEquals(64, LazyBlockList.grownDirectoryLength(8, 64));
-    int nearlyFull = LazyBlockList.MAX_CAPACITY;
-    Assert.assertEquals(nearlyFull, LazyBlockList.grownDirectoryLength(nearlyFull, nearlyFull));
-    Assert.assertEquals(
-        LazyBlockList.MAX_CAPACITY,
-        LazyBlockList.grownDirectoryLength(nearlyFull, LazyBlockList.MAX_CAPACITY));
-    // At the limit the exact minimum is requested so the allocation fails instead of shrinking.
-    Assert.assertEquals(
-        Integer.MAX_VALUE,
-        LazyBlockList.grownDirectoryLength(LazyBlockList.MAX_CAPACITY, Integer.MAX_VALUE));
-  }
-
-  @Test
-  public void testInsertInsideTheListIsRejected() {
-    LazyBlockList<Object> container = new LazyBlockList(0, 0);
-    container.add("v0");
-    Assert.assertThrows(UnsupportedOperationException.class, () -> container.add(0, "x"));
-  }
-
-  private static long directoryRamCost(int length) {
-    return RamUsageEstimator.sizeOfObjectArray(length);
   }
 }

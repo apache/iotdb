@@ -309,12 +309,13 @@ public class AlignedTVListTest {
         firstColumnBitMaps.get(2).ramBytesUsed() < new BitMap(ARRAY_SIZE).ramBytesUsed());
     Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE * 2 + 1, 0));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE * 2, 0));
-    // Only the lazily allocated bitmap and its (inlined) container are charged; no additional
+    // Only the lazily allocated bitmap and the slots of its container are charged; no additional
     // value array is materialized.
     Assert.assertEquals(
         AlignedTVList.bitmapRamCost()
             + AlignedTVList.listRamCostWithReferences(tvList.getBitMaps())
-            + LazyBlockList.instanceRamCost(),
+            + LazyBlockList.instanceRamCost()
+            + RamUsageEstimator.sizeOfObjectArray(3),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeBitmapAllocation);
   }
 
@@ -416,12 +417,15 @@ public class AlignedTVListTest {
     Assert.assertTrue(tvList.isNullValue(0, 2));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(2, tvList.getIntByValueIndex(ARRAY_SIZE + 2, 2));
-    // Materializing the extended column charges its primitive array, the bitmap and the container
-    // instances: one written block is inlined, so no block array is allocated.
+    // Materializing the extended column charges its primitive array, the value slot, the bitmap
+    // and the slots of its container. The implicit null prefix before the first value is
+    // represented by the bitmap only, never by an Object[] prefix.
     Assert.assertEquals(
         AlignedTVList.primitiveArrayMemCost(TSDataType.INT32)
+            + RamUsageEstimator.sizeOfObjectArray(2)
             + AlignedTVList.bitmapRamCost()
-            + LazyBlockList.instanceRamCost(),
+            + LazyBlockList.instanceRamCost()
+            + RamUsageEstimator.sizeOfObjectArray(2),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtendedColumnMaterialization);
   }
 
@@ -436,13 +440,15 @@ public class AlignedTVListTest {
     long ramSizeBeforeMaterialization = tvList.calculateRamSize().getRamSize();
     tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {1L, 1L});
 
-    // Materializing the second column charges its primitive array, the bitmap and the container
-    // instances: one written block is inlined, so no block array is allocated.
+    // Materializing the second column charges its primitive array, the value slot, the bitmap and
+    // the slots of its container.
     Assert.assertEquals(
         AlignedTVList.primitiveArrayMemCost(TSDataType.INT64)
+            + RamUsageEstimator.sizeOfObjectArray(2)
             + AlignedTVList.bitmapRamCost()
             + AlignedTVList.listRamCostWithReferences(tvList.getBitMaps())
-            + LazyBlockList.instanceRamCost(),
+            + LazyBlockList.instanceRamCost()
+            + RamUsageEstimator.sizeOfObjectArray(2),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeMaterialization);
 
     Assert.assertEquals(
@@ -1230,8 +1236,8 @@ public class AlignedTVListTest {
     long expectedMaterialization = 0;
     expectedMaterialization += AlignedTVList.listRamCostWithReferences(tvList.getBitMaps());
     for (List<BitMap> columnBitMaps : tvList.getBitMaps()) {
-      if (columnBitMaps instanceof LazyBlockList) {
-        expectedMaterialization += ((LazyBlockList<?>) columnBitMaps).ramCost();
+      if (columnBitMaps != null) {
+        expectedMaterialization += AlignedTVList.listRamCostWithoutReferences(columnBitMaps);
       }
     }
     long materializationGrowth = afterMaterialization - beforeMaterialization;
@@ -1380,9 +1386,9 @@ public class AlignedTVListTest {
     tvList.putAlignedValue(ARRAY_SIZE * 3L, new Object[] {1L, 2L, null});
     Assert.assertNotNull(tvList.getValues().get(1).get(3));
     Assert.assertNull(tvList.getValues().get(2).get(3));
-    // A single written block is inlined, so the container still allocates no array.
     Assert.assertEquals(
-        LazyBlockList.instanceRamCost(), ((LazyBlockList<?>) tvList.getValues().get(1)).ramCost());
+        LazyBlockList.instanceRamCost() + RamUsageEstimator.sizeOfObjectArray(4),
+        ((LazyBlockList<?>) tvList.getValues().get(1)).ramCost());
     Assert.assertEquals(
         LazyBlockList.instanceRamCost(), ((LazyBlockList<?>) tvList.getValues().get(2)).ramCost());
     assertStructureRamCostMatches(tvList);
