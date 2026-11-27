@@ -282,7 +282,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
                 resp.isSetTableModel() && resp.isTableModel(),
                 resp.getColumnIndex2TsBlockColumnIndexList() == null
                     ? null
-                    : new ArrayList<>(resp.getColumnIndex2TsBlockColumnIndexList()));
+                    : new ArrayList<>(resp.getColumnIndex2TsBlockColumnIndexList()),
+                resp.isSetOffset(),
+                resp.offset,
+                resp.totalLength);
       } catch (SQLException | RuntimeException e) {
         throw closeQueryOperationOnResultSetCreationFailure(queryId, e);
       }

@@ -33,9 +33,14 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -55,10 +60,15 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -78,6 +88,42 @@ import static org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern.bu
 import static org.apache.iotdb.db.auth.AuthorityChecker.NO_PERMISSION_PROMOTION;
 
 public class PipeTsFileInsertionEventTest {
+  @Test
+  public void testGeneratedTabletMemoryRemainsAccountedAfterSourceClose() {
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    final long usedMemoryBefore = memoryManager.getUsedMemorySizeInBytes();
+    final PipeTsFileInsertionEvent sourceEvent =
+        new PipeTsFileInsertionEvent(
+            true, "db1", new TsFileResource(new File("source.tsfile")), false);
+    final Tablet tablet =
+        new Tablet(
+            "root.test.d1",
+            Collections.singletonList(new MeasurementSchema("s1", TSDataType.TEXT)),
+            1);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("s1", 0, new Binary("payload", TSFileConfig.STRING_CHARSET));
+    final PipeRawTabletInsertionEvent tabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false, "db1", null, "db1", tablet, true, null, 0, null, sourceEvent, false);
+    final PipeMemoryBlock tabletMemoryBlock = tabletEvent.getEventMemoryBlock();
+    try {
+      Assert.assertTrue(tabletEvent.increaseReferenceCount("test"));
+      Assert.assertNull(tabletMemoryBlock.getParentBlock());
+      Assert.assertEquals(PipeMemoryBlockCategory.TABLET, tabletMemoryBlock.getCategory());
+      final long tabletMemorySize = tabletMemoryBlock.getMemoryUsageInBytes();
+      Assert.assertTrue(tabletMemorySize > 0);
+      sourceEvent.close();
+      Assert.assertSame(tablet, tabletEvent.convertToTablet());
+      Assert.assertEquals(tabletMemorySize, tabletMemoryBlock.getMemoryUsageInBytes());
+      Assert.assertEquals(
+          usedMemoryBefore + tabletMemorySize, memoryManager.getUsedMemorySizeInBytes());
+    } finally {
+      tabletEvent.clearReferenceCount("test");
+      sourceEvent.close();
+    }
+    Assert.assertEquals(usedMemoryBefore, memoryManager.getUsedMemorySizeInBytes());
+  }
+
   @Test
   public void testRealtimeTsFileTimeParsingRemainsUnchanged() {
     final TsFileResource resource = new TsFileResource(new File("1-1-0-0.tsfile"));
@@ -317,6 +363,131 @@ public class PipeTsFileInsertionEventTest {
     } finally {
       AuthorityChecker.setAccessControl(oldControl);
       FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    }
+  }
+
+  @Test
+  public void testHistoricalTableEventWithUnknownTableNamesChecksPrivilegesAfterClose() {
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    final TestAccessControl accessControl = Mockito.spy(new TestAccessControl());
+    final TsFileResource resource = Mockito.mock(TsFileResource.class);
+    final IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table", "d1"});
+    Mockito.when(resource.getTsFile()).thenReturn(new File("sequence/db/1/0/1-1-0-0.tsfile"));
+    Mockito.when(resource.getDevices()).thenReturn(Collections.singleton(deviceID));
+    Mockito.when(resource.isEmpty()).thenReturn(false);
+    Mockito.when(resource.isClosed()).thenReturn(true);
+    Mockito.when(resource.isGeneratedByPipe()).thenReturn(false);
+    Mockito.when(resource.isGeneratedByIoTConsensusV2()).thenReturn(false);
+    AuthorityChecker.setAccessControl(accessControl);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            true,
+            "db",
+            resource,
+            null,
+            false,
+            false,
+            true,
+            null,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    PipeTsFileInsertionEvent skipIfNoPrivilegesEvent = null;
+    try {
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+      Mockito.doReturn(true)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      event.throwIfNoPrivilege();
+      Assert.assertFalse(event.shouldParse4Privilege());
+
+      Mockito.doReturn(false)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      skipIfNoPrivilegesEvent =
+          new PipeTsFileInsertionEvent(
+              true,
+              "db",
+              resource,
+              null,
+              false,
+              false,
+              true,
+              null,
+              null,
+              0,
+              null,
+              buildUnionPattern(
+                  false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+              new TablePattern(true, null, null),
+              "0",
+              "user",
+              "localhost",
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      skipIfNoPrivilegesEvent.throwIfNoPrivilege();
+      Assert.assertTrue(skipIfNoPrivilegesEvent.shouldParse4Privilege());
+    } finally {
+      event.close();
+      if (skipIfNoPrivilegesEvent != null) {
+        skipIfNoPrivilegesEvent.close();
+      }
+      AuthorityChecker.setAccessControl(oldControl);
+    }
+  }
+
+  @Test
+  public void testMissingDeviceMetadataFailsWithClearMessage() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeMissingDeviceMetadata").toFile();
+    final TsFileResource resource =
+        createSpyTsFileResource(tempDir, "missing-device-metadata.tsfile", 1L, 1);
+    Mockito.doReturn(Collections.emptySet()).when(resource).getDevices();
+    resource.setStatus(TsFileResourceStatus.NORMAL);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            true,
+            "db",
+            resource,
+            null,
+            false,
+            true,
+            true,
+            null,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    try {
+      final PipeException exception =
+          Assert.assertThrows(PipeException.class, event::throwIfNoPrivilege);
+      Assert.assertTrue(exception.getCause() instanceof IOException);
+      Assert.assertEquals(
+          DataNodePipeMessages
+              .EXCEPTION_CANNOT_DETERMINE_TABLE_NAMES_BECAUSE_THE_NON_EMPTY_TSFILE_RESOURCE_HAS_NO_DEVICE_METADATA_6A0CBC2B,
+          exception.getCause().getMessage());
+      Assert.assertTrue(exception.getMessage().contains(resource.getTsFilePath()));
+    } finally {
+      event.close();
+      FileUtils.deleteFileOrDirectory(tempDir);
     }
   }
 

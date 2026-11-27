@@ -41,7 +41,7 @@ import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.junit.Assert;

@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.commons.path.fa;
 
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
+import org.apache.iotdb.commons.external.caffeine.cache.LoadingCache;
 import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
 import org.apache.iotdb.commons.path.fa.nfa.SimpleNFA;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 
 public class FAFactory {
 

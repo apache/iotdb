@@ -379,8 +379,7 @@ public class SessionConnectionTest {
         Assert.assertEquals(
             expected,
             Whitebox.getInternalState(
-                capabilitySession.getDefaultSessionConnection(),
-                "supportsDatabaseScopedTablet"));
+                capabilitySession.getDefaultSessionConnection(), "supportsDatabaseScopedTablet"));
       } finally {
         capabilitySession.forceClose();
       }
@@ -672,12 +671,7 @@ public class SessionConnectionTest {
         CountDownLatch continueRpc)
         throws Exception {
       this(
-          openSessionStarted,
-          continueOpenSession,
-          redirectEndpoint,
-          rpcStarted,
-          continueRpc,
-          null);
+          openSessionStarted, continueOpenSession, redirectEndpoint, rpcStarted, continueRpc, null);
     }
 
     private ForceCloseTestServer(
@@ -702,9 +696,9 @@ public class SessionConnectionTest {
                 }
                 TSOpenSessionResp response =
                     new TSOpenSessionResp(
-                        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-                        TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3)
-                    .setSessionId(1);
+                            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+                            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3)
+                        .setSessionId(1);
                 if (openSessionConfiguration != null) {
                   response.setConfiguration(openSessionConfiguration);
                 }

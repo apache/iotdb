@@ -20,7 +20,7 @@ package org.apache.iotdb.commons.queryengine.execution.operator.source.relationa
 
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.TypeUtil;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;

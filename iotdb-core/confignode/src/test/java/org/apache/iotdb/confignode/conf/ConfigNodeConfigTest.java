@@ -66,4 +66,13 @@ public class ConfigNodeConfigTest {
         () -> configNodeConfig.setConfigNodeSnapshotBufferSizeMax((long) Integer.MAX_VALUE + 1));
     Assert.assertEquals(256 * 1024L, configNodeConfig.getConfigNodeSnapshotBufferSizeMax());
   }
+
+  @Test
+  public void testSyncSchemaDeletionDefault() {
+    final ConfigNodeConfig configNodeConfig = new ConfigNodeConfig();
+
+    Assert.assertFalse(configNodeConfig.isEnableSyncSchemaDeletion());
+    configNodeConfig.setEnableSyncSchemaDeletion(true);
+    Assert.assertTrue(configNodeConfig.isEnableSyncSchemaDeletion());
+  }
 }

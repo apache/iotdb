@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionSta
 import org.apache.iotdb.udf.api.UDF;
 import org.apache.iotdb.udf.api.relational.SQLFunction;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.Optional;
 

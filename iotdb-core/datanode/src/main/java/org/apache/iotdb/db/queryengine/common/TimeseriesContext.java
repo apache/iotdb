@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.common;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 
-import com.google.common.collect.Maps;
+import org.apache.ratis.thirdparty.com.google.common.collect.Maps;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

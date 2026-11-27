@@ -20,6 +20,12 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ManagerMessages {
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_REALTIME_MODE_ARG_CONFLICTS_WITH_ARG_ARG_D08CF59B =
+          "Failed to create or alter topic, realtime.mode=%s conflicts with %s=%s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_REALTIME_MODE_ARG_EXPECTED_ONE_OF_STREAM_BATCH_79399284 =
+          "Failed to create or alter topic, unsupported realtime.mode=%s, expected one of [stream, batch]";
 
   public static final String ACTIVATEDATAALLOTTABLE_ACTIVATE_SERIESPARTITIONSLOT =
       "[ActivateDataAllotTable] Activate SeriesPartitionSlot {} ";
@@ -1059,4 +1065,14 @@ public final class ManagerMessages {
       EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C =
           "Reject register, please ensure that the parameter %s is consistent with the"
               + " Seed-ConfigNode.";
+  public static final String MESSAGE_TIMESERIES_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_USE_SHOW_DELETE_TIMESERIES_PROGRESS_TO_CHECK_ITS_PROGRESS_75958076 =
+      "Timeseries deletion task %s has been submitted for asynchronous execution. Use SHOW DELETE TIMESERIES PROGRESS to check its progress.";
+  public static final String MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_COLUMN_PROCEDURES_TO_CHECK_ITS_PROGRESS_41DCFDC3 =
+      "Column deletion task %s has been submitted for asynchronous execution. Query information_schema.drop_table_column_procedures to check its progress.";
+  public static final String MESSAGE_TABLE_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_PROCEDURES_TO_CHECK_ITS_PROGRESS_D7AB21D3 =
+      "Table deletion task %s has been submitted for asynchronous execution. Query information_schema.drop_table_procedures to check its progress.";
+  public static final String MESSAGE_THE_ASYNCHRONOUS_TIMESERIES_DELETION_QUEUE_IS_FULL_ARG_WAITING_TASKS_RETRY_LATER_93F6F407 =
+      "The asynchronous timeseries deletion queue is full (%s waiting tasks). Retry later.";
+  public static final String MESSAGE_SOME_OTHER_ASYNCHRONOUS_TASK_IS_DELETING_TARGET_TIMESERIES_USE_SHOW_DELETE_TIMESERIES_PROGRESS_TO_CHECK_ITS_PROGRESS_AND_RETRY_LATER_A799B41E =
+      "Some other asynchronous task is deleting target timeseries. Use SHOW DELETE TIMESERIES PROGRESS to check its progress and retry later.";
 }

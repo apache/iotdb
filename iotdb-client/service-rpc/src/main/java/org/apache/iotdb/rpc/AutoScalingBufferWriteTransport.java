@@ -177,4 +177,20 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
   public void checkReadBytesAvailable(long numBytes) throws TTransportException {
     // do Nothing
   }
+
+  int getAccountedBufferBytes() {
+    return buf.getAccountedCapacity();
+  }
+
+  int getReclaimableBufferBytes() {
+    return pos == 0 ? buf.getReclaimableBytes() : 0;
+  }
+
+  long trimToInitialCapacity() {
+    if (pos != 0) {
+      return 0;
+    }
+    temporaryBuffer = null;
+    return buf.trimToInitialCapacity();
+  }
 }

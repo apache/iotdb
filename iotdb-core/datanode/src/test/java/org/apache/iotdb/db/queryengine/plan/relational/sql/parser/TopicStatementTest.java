@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.DataNodeSqlFormatter;
 import org.apache.iotdb.db.subscription.tagfilter.TagFilterEvaluator;
 import org.apache.iotdb.db.subscription.tagfilter.TagFilterParser;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,6 +39,19 @@ import java.util.Map;
 public class TopicStatementTest {
 
   private final SqlParser sqlParser = new SqlParser();
+
+  @Test
+  public void testDuplicateRealtimeModeAttributesAreRejected() {
+    for (final String command :
+        new String[] {
+          "CREATE TOPIC topic1 WITH ('realtime.mode'='hybrid','REALTIME.MODE'='batch')",
+          "ALTER TOPIC topic1 WITH ('realtime.mode'='hybrid','REALTIME.MODE'='batch')"
+        }) {
+      Assert.assertThrows(
+          SemanticException.class,
+          () -> sqlParser.createStatement(command, ZoneId.systemDefault(), null));
+    }
+  }
 
   @Test
   public void testTagFilterQuotesInCreateAndAlterTopic() throws Exception {
@@ -87,6 +102,23 @@ public class TopicStatementTest {
                 ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta), ZoneId.systemDefault(), null);
     Assert.assertEquals("topic-1", recreated.getTopicName());
     Assert.assertEquals(filter, recreated.getTopicAttributes().get("tag-filter"));
+  }
+
+  @Test
+  public void testShowCreateTopicPreservesRealtimeMode() {
+    final TopicMeta topicMeta =
+        new TopicMeta(
+            "topic-1",
+            0L,
+            Map.of(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE));
+    final CreateTopic recreated =
+        (CreateTopic)
+            sqlParser.createStatement(
+                ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta), ZoneId.systemDefault(), null);
+
+    Assert.assertEquals(
+        TopicConstant.REALTIME_MODE_BATCH_VALUE,
+        recreated.getTopicAttributes().get(TopicConstant.REALTIME_MODE_KEY));
   }
 
   @Test

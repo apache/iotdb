@@ -19,8 +19,33 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator {
   private final transient int power;
+
+  private static final TypeService<Deserializer> DESERIALIZER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> operator -> operator.doubleValue = operator.intValue;
+            case INT64 -> operator -> operator.doubleValue = operator.longValue;
+            case FLOAT -> operator -> operator.doubleValue = operator.floatValue;
+            case DOUBLE -> operator -> {};
+            default ->
+                operator -> {
+                  throw new IOException();
+                };
+          };
+
+  @FunctionalInterface
+  private interface Deserializer {
+    void deserialize(IntegralPoweredSumOperator operator) throws IOException;
+  }
 
   public IntegralPoweredSumOperator(int power) {
     this.power = power;
@@ -33,45 +58,56 @@ public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator 
 
   @Override
   public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
-    intValue = (int) Math.pow(initialInput, power);
-    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+    doubleValue = Math.pow(initialInput, power);
+    outPutDataType = TSDataType.DOUBLE;
+    return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
-    longValue = (long) Math.pow(initialInput, power);
-    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+    doubleValue = Math.pow(initialInput, power);
+    outPutDataType = TSDataType.DOUBLE;
+    return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
-    floatValue = (float) Math.pow(initialInput, power);
-    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+    doubleValue = Math.pow(initialInput, power);
+    outPutDataType = TSDataType.DOUBLE;
+    return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
     doubleValue = Math.pow(initialInput, power);
-    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+    outPutDataType = TSDataType.DOUBLE;
+    return true;
   }
 
   @Override
   public void updateValue(int input, long timestamp) {
-    intValue += (int) Math.pow(input, power);
+    doubleValue += Math.pow(input, power);
   }
 
   @Override
   public void updateValue(long input, long timestamp) {
-    longValue += (long) Math.pow(input, power);
+    doubleValue += Math.pow(input, power);
   }
 
   @Override
   public void updateValue(float input, long timestamp) {
-    floatValue += (float) Math.pow(input, power);
+    doubleValue += Math.pow(input, power);
   }
 
   @Override
   public void updateValue(double input, long timestamp) {
     doubleValue += Math.pow(input, power);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer) throws IOException {
+    super.deserialize(byteBuffer);
+    DESERIALIZER_SERVICE.call(Type.fromTsDataType(outPutDataType)).deserialize(this);
+    outPutDataType = TSDataType.DOUBLE;
   }
 }

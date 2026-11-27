@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 
-import com.google.common.collect.Maps;
+import org.apache.ratis.thirdparty.com.google.common.collect.Maps;
 
 import java.util.Map;
 import java.util.Optional;

@@ -33,9 +33,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TQueryStatistics;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import org.apache.ratis.thirdparty.com.google.gson.JsonArray;
+import org.apache.ratis.thirdparty.com.google.gson.JsonObject;
+import org.apache.ratis.thirdparty.com.google.gson.JsonParser;
 import org.junit.Test;
 
 import java.time.ZoneId;

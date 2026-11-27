@@ -697,6 +697,13 @@ public abstract class AbstractEnv implements BaseEnv {
             nodeWrapper -> logger.info("You can find logs at {}", nodeWrapper.getLogDirPath()));
     for (final AbstractNodeWrapper nodeWrapper : allNodeWrappers) {
       nodeWrapper.stopForcibly();
+      if (nodeWrapper.isAlive()) {
+        logger.error(
+            IntegrationTestEnvMessages
+                .LOG_NODE_ARG_IS_STILL_ALIVE_AFTER_STOPFORCIBLY_SKIPPING_DIRECTORY_CLEANUP_AND_LOCK_FILE_REMOVAL_55F75817,
+            nodeWrapper.getId());
+        continue;
+      }
       nodeWrapper.destroyDir();
       final String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
       try {
@@ -888,12 +895,24 @@ public abstract class AbstractEnv implements BaseEnv {
       final String password,
       final String sqlDialect)
       throws SQLException {
+    return getConnection(version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  @Override
+  public Connection getConnection(
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect,
+      final int networkTimeoutMs)
+      throws SQLException {
     return System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")
         ? new ClusterTestConnection(
-            getWriteConnection(version, username, password, sqlDialect),
-            getReadConnections(version, username, password, sqlDialect),
+            getWriteConnection(version, username, password, sqlDialect, networkTimeoutMs),
+            getReadConnections(version, username, password, sqlDialect, networkTimeoutMs),
             this)
-        : getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnection();
+        : getWriteConnection(version, username, password, sqlDialect, networkTimeoutMs)
+            .getUnderlyingConnection();
   }
 
   @Override
@@ -1053,8 +1072,18 @@ public abstract class AbstractEnv implements BaseEnv {
   protected NodeConnection getWriteConnection(
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException {
+    return getWriteConnection(version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  protected NodeConnection getWriteConnection(
+      Constant.Version version,
+      String username,
+      String password,
+      String sqlDialect,
+      int networkTimeoutMs)
+      throws SQLException {
     return getWriteConnectionFromDataNodeList(
-        this.dataNodeWrapperList, version, username, password, sqlDialect);
+        this.dataNodeWrapperList, version, username, password, sqlDialect, networkTimeoutMs);
   }
 
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
@@ -1064,13 +1093,25 @@ public abstract class AbstractEnv implements BaseEnv {
       final String password,
       final String sqlDialect)
       throws SQLException {
+    return getWriteConnectionWithSpecifiedDataNode(
+        dataNode, version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
+      final DataNodeWrapper dataNode,
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect,
+      final int networkTimeoutMs)
+      throws SQLException {
     final String endpoint =
         UrlUtils.formatTEndPointIpv4AndIpv6Url(dataNode.getIp(), dataNode.getPort());
     final Connection writeConnection =
         DriverManager.getConnection(
             Config.IOTDB_URL_PREFIX
                 + endpoint
-                + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
+                + getParam(version, networkTimeoutMs, ZERO_TIME_ZONE),
             constructConnectionProperties(username, password, sqlDialect));
     return new NodeConnection(
         endpoint,
@@ -1086,13 +1127,25 @@ public abstract class AbstractEnv implements BaseEnv {
       final String password,
       final String sqlDialect)
       throws SQLException {
+    return getWriteConnectionFromDataNodeList(
+        dataNodeList, version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  protected NodeConnection getWriteConnectionFromDataNodeList(
+      final List<DataNodeWrapper> dataNodeList,
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect,
+      final int networkTimeoutMs)
+      throws SQLException {
     final List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeList);
     Collections.shuffle(dataNodeWrapperListCopy);
     SQLException lastException = null;
     for (final DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
       try {
         return getWriteConnectionWithSpecifiedDataNode(
-            dataNode, version, username, password, sqlDialect);
+            dataNode, version, username, password, sqlDialect, networkTimeoutMs);
       } catch (final SQLException e) {
         lastException = e;
       }
@@ -1108,6 +1161,16 @@ public abstract class AbstractEnv implements BaseEnv {
       final String username,
       final String password,
       final String sqlDialect)
+      throws SQLException {
+    return getReadConnections(version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  protected List<NodeConnection> getReadConnections(
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect,
+      final int networkTimeoutMs)
       throws SQLException {
     final List<String> endpoints = new ArrayList<>();
     final ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
@@ -1127,7 +1190,7 @@ public abstract class AbstractEnv implements BaseEnv {
                           DriverManager.getConnection(
                               Config.IOTDB_URL_PREFIX
                                   + endpoint
-                                  + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
+                                  + getParam(version, networkTimeoutMs, ZERO_TIME_ZONE),
                               constructConnectionProperties(username, password, sqlDialect))));
             });
     return readConnRequestDelegate.requestAll();

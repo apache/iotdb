@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -452,7 +453,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
       }
       assertEquals(ret1.size(), count);
 
-      statement.execute("delete timeseries root.turbine.d7.s2");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.turbine.d7.s2");
       count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries  root.turbine.**")) {
         while (resultSet.next()) {
@@ -535,7 +536,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
       }
       assertEquals(ret1.size(), count);
 
-      statement.execute("delete timeseries root.turbine.d7.status");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.turbine.d7.status");
       count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries  root.turbine.**")) {
         while (resultSet.next()) {
@@ -855,7 +856,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
         statement.execute(sql);
       }
 
-      statement.execute("delete timeseries root.turbine.d2.s0");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.turbine.d2.s0");
 
       // with *;
       int count = 0;

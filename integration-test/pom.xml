@@ -90,6 +90,7 @@
         <iotConsensusV2StreamMode.dataRegionReplicaNumber>2</iotConsensusV2StreamMode.dataRegionReplicaNumber>
         <iotConsensusV2StreamMode.schemaRegionConsensus>Ratis</iotConsensusV2StreamMode.schemaRegionConsensus>
         <iotConsensusV2StreamMode.schemaRegionReplicaNumber>3</iotConsensusV2StreamMode.schemaRegionReplicaNumber>
+        <sonar.skip>true</sonar.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -201,6 +202,11 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+        <!-- Included in the shared node template. -->
+        <dependency>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-thirdparty-misc</artifactId>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

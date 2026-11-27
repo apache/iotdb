@@ -106,7 +106,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
       ZoneId zoneId,
       Charset charset,
       boolean tableModel,
-      List<Integer> columnIndex2TsBlockColumnIndexList)
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength)
       throws SQLException {
     this.queryId = queryId;
     this.ioTDBRpcDataSet =
@@ -128,7 +131,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
             timeFormat,
             statement.getTimeFactor(),
             tableModel,
-            columnIndex2TsBlockColumnIndexList);
+            columnIndex2TsBlockColumnIndexList,
+            offsetSet,
+            offset,
+            totalLength);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
@@ -136,6 +142,49 @@ public class IoTDBJDBCResultSet implements ResultSet {
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
     }
     this.charset = charset;
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public IoTDBJDBCResultSet(
+      IoTDBStatement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      IClientRPCService.Iface client,
+      String sql,
+      long queryId,
+      long sessionId,
+      List<ByteBuffer> dataSet,
+      TSTracingInfo tracingInfo,
+      long timeout,
+      boolean moreData,
+      ZoneId zoneId,
+      Charset charset,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList)
+      throws SQLException {
+    this(
+        statement,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        ignoreTimeStamp,
+        client,
+        sql,
+        queryId,
+        sessionId,
+        dataSet,
+        tracingInfo,
+        timeout,
+        moreData,
+        zoneId,
+        charset,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -153,7 +202,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
       TSTracingInfo tracingInfo,
       long timeout,
       boolean moreData,
-      ZoneId zoneId)
+      ZoneId zoneId,
+      boolean offsetSet,
+      int offset,
+      int totalLength)
       throws SQLException {
     this.queryId = queryId;
     this.ioTDBRpcDataSet =
@@ -175,13 +227,53 @@ public class IoTDBJDBCResultSet implements ResultSet {
             timeFormat,
             ((IoTDBStatement) statement).getTimeFactor(),
             false,
-            IntStream.range(0, columnNameList.size()).boxed().collect(Collectors.toList()));
+            IntStream.range(0, columnNameList.size()).boxed().collect(Collectors.toList()),
+            offsetSet,
+            offset,
+            totalLength);
     this.statement = (IoTDBStatement) statement;
     this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
     }
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public IoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      IClientRPCService.Iface client,
+      String sql,
+      long queryId,
+      long sessionId,
+      List<ByteBuffer> dataSet,
+      TSTracingInfo tracingInfo,
+      long timeout,
+      boolean moreData,
+      ZoneId zoneId)
+      throws SQLException {
+    this(
+        statement,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        ignoreTimeStamp,
+        client,
+        sql,
+        queryId,
+        sessionId,
+        dataSet,
+        tracingInfo,
+        timeout,
+        moreData,
+        zoneId,
+        false,
+        0,
+        0);
   }
 
   private static IClientRPCService.Iface getResultSetClient(

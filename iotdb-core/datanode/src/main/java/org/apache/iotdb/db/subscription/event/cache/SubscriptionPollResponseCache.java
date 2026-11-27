@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.subscription.event.cache;
 
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
+import org.apache.iotdb.commons.external.caffeine.cache.LoadingCache;
+import org.apache.iotdb.commons.external.caffeine.cache.Weigher;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -27,9 +30,6 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.github.benmanes.caffeine.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

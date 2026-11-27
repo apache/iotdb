@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import com.google.common.collect.Maps;
+import org.apache.ratis.thirdparty.com.google.common.collect.Maps;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

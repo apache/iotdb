@@ -47,7 +47,7 @@ import org.apache.iotdb.rest.protocol.v2.model.ExpressionRequest;
 import org.apache.iotdb.rest.protocol.v2.model.SQL;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.base.Joiner;
+import org.apache.ratis.thirdparty.com.google.common.base.Joiner;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import jakarta.ws.rs.core.Response;

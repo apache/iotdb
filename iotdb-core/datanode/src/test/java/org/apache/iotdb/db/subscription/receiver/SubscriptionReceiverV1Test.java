@@ -443,6 +443,75 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  public void testHandleExitSkipsAutoUnsubscribeForRetainedSnapshotTopics() throws Exception {
+    final java.util.List<java.util.Set<String>> unsubscribedBatches = new java.util.ArrayList<>();
+    final Map<String, String> retainedSnapshotAttrs = new HashMap<>();
+    retainedSnapshotAttrs.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+    retainedSnapshotAttrs.put(
+        TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, Boolean.TRUE.toString());
+    final Map<String, String> plainSnapshotAttrs = new HashMap<>();
+    plainSnapshotAttrs.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+
+    final Map<String, org.apache.iotdb.rpc.subscription.config.TopicConfig> subscribedTopics =
+        new HashMap<>();
+    subscribedTopics.put(
+        "retained_snapshot",
+        new org.apache.iotdb.rpc.subscription.config.TopicConfig(retainedSnapshotAttrs));
+    subscribedTopics.put(
+        "plain_snapshot",
+        new org.apache.iotdb.rpc.subscription.config.TopicConfig(plainSnapshotAttrs));
+
+    final java.util.concurrent.atomic.AtomicReference<java.util.List<String>> completedTopics =
+        new java.util.concurrent.atomic.AtomicReference<>(
+            Collections.singletonList("retained_snapshot"));
+
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          protected int releaseInFlightEvents(final ConsumerConfig consumerConfig) {
+            return 0;
+          }
+
+          @Override
+          Map<String, org.apache.iotdb.rpc.subscription.config.TopicConfig>
+              fetchSubscribedTopicConfigs(final ConsumerConfig consumerConfig) {
+            return subscribedTopics;
+          }
+
+          @Override
+          java.util.List<String> fetchTopicNamesToUnsubscribe(
+              final ConsumerConfig consumerConfig, final java.util.Set<String> topicNames) {
+            return new java.util.ArrayList<>(completedTopics.get());
+          }
+
+          @Override
+          void unsubscribe(
+              final ConsumerConfig consumerConfig, final java.util.Set<String> topicNames) {
+            unsubscribedBatches.add(new java.util.HashSet<>(topicNames));
+          }
+        };
+
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
+        (ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal");
+
+    // When only a retained snapshot topic has completed on this DataNode, handleExit must not
+    // globally unsubscribe the consumer group on ConfigNode.
+    consumerConfigThreadLocal.set(consumerConfig);
+    receiver.handleExit();
+    Assert.assertTrue(unsubscribedBatches.isEmpty());
+
+    // When both a retained snapshot topic and a non-retained snapshot topic have completed, only
+    // the non-retained topic may be unsubscribed during handleExit.
+    completedTopics.set(java.util.Arrays.asList("retained_snapshot", "plain_snapshot"));
+    consumerConfigThreadLocal.set(consumerConfig);
+    receiver.handleExit();
+    Assert.assertEquals(
+        Collections.singletonList(Collections.singleton("plain_snapshot")), unsubscribedBatches);
+  }
+
+  @Test
   public void testInvalidatedConsumerReturnsFencedStatus() throws Exception {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
     final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);

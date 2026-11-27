@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
+import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker.SafeFrontier;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
@@ -82,6 +83,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -200,6 +202,10 @@ public class ConsensusPrefetchingQueue {
   /** Materialized data events indexed across both queued and in-flight lifecycle stages. */
   private final Map<SubscriptionCommitContext, SubscriptionEvent> outstandingEventsByCommitContext =
       new ConcurrentHashMap<>();
+
+  /** Events whose commit is being persisted outside the in-flight map callback. */
+  private final Set<SubscriptionEvent> acknowledgementInProgressEvents =
+      ConcurrentHashMap.newKeySet();
 
   /**
    * Compact batch boundaries and source positions; no Tablet or serialized response is retained.
@@ -1481,22 +1487,24 @@ public class ConsensusPrefetchingQueue {
     return writerStates.computeIfAbsent(writerNodeId, ignored -> new WriterState());
   }
 
-  private void refreshWriterSafeFrontiers() {
-    final Map<Integer, Long> safePts =
-        serverImpl.getWriterSafeFrontierTracker().snapshotEffectiveSafePts();
-    for (final Map.Entry<Integer, Long> entry : safePts.entrySet()) {
+  private WriterSafeFrontierTracker.Snapshot refreshWriterSafeFrontiers() {
+    final WriterSafeFrontierTracker.Snapshot safePts =
+        serverImpl.getWriterSafeFrontierTracker().snapshotEffectiveSafePtsWithVersion();
+    for (final Map.Entry<Integer, Long> entry : safePts.getEffectiveSafePts().entrySet()) {
       final WriterState writerState = trackWriterState(entry.getKey());
       writerState.effectiveSafePt = Math.max(writerState.effectiveSafePt, entry.getValue());
     }
+    return safePts;
   }
 
-  private <T extends WriterBufferedEntry> PriorityQueue<WriterFrontier> buildWriterFrontiers(
+  private <T extends WriterBufferedEntry> WriterFrontierSnapshot buildWriterFrontiers(
       final Map<Integer, ?> writerEntriesByWriter, final Function<Integer, T> headSupplier) {
-    refreshWriterSafeFrontiers();
-    final PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
+    final WriterSafeFrontierTracker.Snapshot safePts = refreshWriterSafeFrontiers();
+    final Set<Integer> activeWriterNodeIdsSnapshot = activeWriterNodeIds;
     final boolean useActiveWriterBarriers = shouldUseActiveWriterBarriers();
-    final Set<Integer> writerNodeIds = ConcurrentHashMap.newKeySet();
-    final Set<Integer> seenActiveWriterNodeIds = ConcurrentHashMap.newKeySet();
+    final PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
+    final Set<Integer> writerNodeIds = new HashSet<>();
+    final Set<Integer> seenActiveWriterNodeIds = new HashSet<>();
     writerNodeIds.addAll(writerStates.keySet());
     writerNodeIds.addAll(writerEntriesByWriter.keySet());
     for (final int writerNodeId : writerNodeIds) {
@@ -1506,29 +1514,36 @@ public class ConsensusPrefetchingQueue {
       }
       final T head = headSupplier.apply(writerNodeId);
       if (Objects.nonNull(head)) {
-        if (isWriterRuntimeActive(writerNodeId)) {
+        if (isWriterRuntimeActive(writerNodeId, activeWriterNodeIdsSnapshot)) {
           seenActiveWriterNodeIds.add(writerNodeId);
         }
-        frontiers.add(WriterFrontier.forHead(writerNodeId, head));
+        frontiers.add(WriterFrontier.forHead(writerNodeId, head.getOrderingKey()));
         continue;
       }
       if (Objects.nonNull(writerState)
           && writerState.effectiveSafePt > 0
           && useActiveWriterBarriers
-          && isWriterRuntimeActive(writerNodeId)) {
+          && isWriterRuntimeActive(writerNodeId, activeWriterNodeIdsSnapshot)) {
         seenActiveWriterNodeIds.add(writerNodeId);
         frontiers.add(WriterFrontier.forBarrier(writerNodeId, writerState.effectiveSafePt));
       }
     }
     if (useActiveWriterBarriers) {
-      for (final Integer activeWriterNodeId : activeWriterNodeIds) {
+      for (final Integer activeWriterNodeId : activeWriterNodeIdsSnapshot) {
         if (!seenActiveWriterNodeIds.contains(activeWriterNodeId)) {
-          frontiers.add(WriterFrontier.forBarrier(activeWriterNodeId, Long.MIN_VALUE));
+          frontiers.add(WriterFrontier.forUnknownActiveWriter(activeWriterNodeId));
           break;
         }
       }
     }
-    return frontiers;
+    return new WriterFrontierSnapshot(
+        frontiers, safePts.getVersion(), activeWriterNodeIdsSnapshot, useActiveWriterBarriers);
+  }
+
+  private boolean isWriterRuntimeActive(
+      final int writerNodeId, final Set<Integer> activeWriterNodeIdsSnapshot) {
+    return activeWriterNodeIdsSnapshot.isEmpty()
+        || activeWriterNodeIdsSnapshot.contains(writerNodeId);
   }
 
   private boolean shouldUseActiveWriterBarriers() {
@@ -1567,7 +1582,7 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private PriorityQueue<WriterFrontier> buildRealtimeWriterFrontiers() {
+  private WriterFrontierSnapshot buildRealtimeWriterFrontiers() {
     return buildWriterFrontiers(realtimeEntriesByWriter, this::peekRealtimeEntry);
   }
 
@@ -1640,6 +1655,10 @@ public class ConsensusPrefetchingQueue {
         }
 
         synchronized (event) {
+          if (acknowledgementInProgressEvents.contains(event)) {
+            prefetchingQueue.add(event);
+            continue;
+          }
           // ACK may have removed a recycled event while it was being claimed from the queue.
           if (event.isCommitted()
               || (event.getCommitContext().hasWriterProgress()
@@ -2146,6 +2165,7 @@ public class ConsensusPrefetchingQueue {
               new WriterFrontier(
                   writerNodeId,
                   new OrderingKey(head.getPhysicalTime(), writerNodeId, head.getProgressLocalSeq()),
+                  false,
                   false));
         } else {
           final SafeFrontier safe = safeFrontiers.get(writerNodeId);
@@ -3646,6 +3666,22 @@ public class ConsensusPrefetchingQueue {
     requestPrefetch();
   }
 
+  /** Releases a requeued event's materialized payload; it can be restored from its WAL record. */
+  private void detachPayloadForReplay(final SubscriptionEvent event) {
+    synchronized (event) {
+      if (Objects.isNull(deliveryBatches.get(event))
+          || event.isCommitted()
+          || outstandingEventsByCommitContext.get(event.getCommitContext()) != event
+          || !event.detachCurrentPayload(event.getCurrentResponse())) {
+        return;
+      }
+      final Long retainedBytes = retainedBytesByEvent.remove(event);
+      if (Objects.nonNull(retainedBytes)) {
+        releaseTabletMemory(retainedBytes);
+      }
+    }
+  }
+
   private boolean restorePayloadForDelivery(final SubscriptionEvent event) {
     if (!event.isPayloadDetached()) {
       return true;
@@ -3941,7 +3977,7 @@ public class ConsensusPrefetchingQueue {
 
   private <T extends WriterBufferedEntry> boolean drainWriterEntries(
       final DeliveryBatchState batchState,
-      final Supplier<PriorityQueue<WriterFrontier>> frontierSupplier,
+      final Supplier<WriterFrontierSnapshot> frontierSupplier,
       final Function<Integer, T> headSupplier,
       final Predicate<T> releasePredicate,
       final BiConsumer<Integer, T> removeHeadAction,
@@ -3950,20 +3986,44 @@ public class ConsensusPrefetchingQueue {
       final long maxBatchBytes,
       final boolean trackLingerTime,
       final long expectedSeekGeneration) {
+    WriterFrontierSnapshot frontierSnapshot = frontierSupplier.get();
+    final WriterFrontierQueue frontiers = new WriterFrontierQueue(frontierSnapshot.frontiers);
+    boolean hasConsumedEntrySinceRefresh = false;
+
     while (true) {
-      final PriorityQueue<WriterFrontier> frontiers = frontierSupplier.get();
-      if (frontiers.isEmpty()) {
+      if (frontierSnapshot.activeWriterNodeIds != activeWriterNodeIds
+          || frontierSnapshot.useActiveWriterBarriers != shouldUseActiveWriterBarriers()
+          || frontierSnapshot.safeFrontierVersion
+              != serverImpl.getWriterSafeFrontierTracker().getEffectiveSafePtVersion()) {
+        frontierSnapshot = frontierSupplier.get();
+        frontiers.reset(frontierSnapshot.frontiers);
+        hasConsumedEntrySinceRefresh = false;
+        continue;
+      }
+
+      final WriterFrontier frontier = frontiers.peek();
+      if (Objects.isNull(frontier)) {
         return true;
       }
-      final WriterFrontier frontier = frontiers.peek();
-      if (Objects.isNull(frontier) || frontier.isBarrier) {
+      if (frontier.isBarrier) {
+        if (hasConsumedEntrySinceRefresh) {
+          frontierSnapshot = frontierSupplier.get();
+          frontiers.reset(frontierSnapshot.frontiers);
+          hasConsumedEntrySinceRefresh = false;
+          continue;
+        }
         lastBlockedWriterFrontier = frontier;
         lastWriterBarrierInOrderedReplay = false;
         return true;
       }
+
+      frontiers.poll();
       final T writerHead = headSupplier.apply(frontier.writerNodeId);
       if (Objects.isNull(writerHead)) {
-        return true;
+        frontierSnapshot = frontierSupplier.get();
+        frontiers.reset(frontierSnapshot.frontiers);
+        hasConsumedEntrySinceRefresh = false;
+        continue;
       }
       if (!releasePredicate.test(writerHead)) {
         return true;
@@ -3974,6 +4034,8 @@ public class ConsensusPrefetchingQueue {
           return false;
         }
         removeHeadAction.accept(frontier.writerNodeId, writerHead);
+        hasConsumedEntrySinceRefresh = true;
+        addNextWriterFrontier(frontiers, frontierSnapshot, frontier, headSupplier);
         continue;
       }
 
@@ -3985,6 +4047,38 @@ public class ConsensusPrefetchingQueue {
 
       removeHeadAction.accept(frontier.writerNodeId, writerHead);
       batchState.append(writerHead, entryEstimatedBytes, trackLingerTime);
+      hasConsumedEntrySinceRefresh = true;
+      addNextWriterFrontier(frontiers, frontierSnapshot, frontier, headSupplier);
+    }
+  }
+
+  private <T extends WriterBufferedEntry> void addNextWriterFrontier(
+      final WriterFrontierQueue frontiers,
+      final WriterFrontierSnapshot frontierSnapshot,
+      final WriterFrontier frontier,
+      final Function<Integer, T> headSupplier) {
+    final T nextWriterHead = headSupplier.apply(frontier.writerNodeId);
+    if (Objects.nonNull(nextWriterHead)) {
+      frontiers.add(WriterFrontier.forHead(frontier.writerNodeId, nextWriterHead.getOrderingKey()));
+      return;
+    }
+
+    if (!frontierSnapshot.useActiveWriterBarriers) {
+      return;
+    }
+    final Set<Integer> activeWriterNodeIdsSnapshot = frontierSnapshot.activeWriterNodeIds;
+    final WriterState writerState = writerStates.get(frontier.writerNodeId);
+    final boolean writerIsRuntimeActive =
+        isWriterRuntimeActive(frontier.writerNodeId, activeWriterNodeIdsSnapshot);
+    if (Objects.nonNull(writerState)
+        && !writerState.closed
+        && writerState.effectiveSafePt > 0
+        && writerIsRuntimeActive) {
+      frontiers.add(WriterFrontier.forBarrier(frontier.writerNodeId, writerState.effectiveSafePt));
+    } else if (!activeWriterNodeIdsSnapshot.isEmpty()
+        && activeWriterNodeIdsSnapshot.contains(frontier.writerNodeId)
+        && !frontiers.hasUnknownActiveWriterBarrier()) {
+      frontiers.add(WriterFrontier.forUnknownActiveWriter(frontier.writerNodeId));
     }
   }
 
@@ -4193,6 +4287,7 @@ public class ConsensusPrefetchingQueue {
     final WriterProgress commitWriterProgress = extractCommitWriterProgress(commitContext);
     final AtomicBoolean found = new AtomicBoolean(false);
     final AtomicBoolean acked = new AtomicBoolean(false);
+    final SubscriptionEvent[] eventToCommit = new SubscriptionEvent[1];
     inFlightEvents.compute(
         new InFlightEventKey(consumerId, commitContext),
         (key, ev) -> {
@@ -4213,29 +4308,40 @@ public class ConsensusPrefetchingQueue {
             return null;
           }
 
-          final boolean committed = commitWriterProgress(commitWriterId, commitWriterProgress);
-          if (!committed) {
-            if (!silent) {
-              LOGGER.warn(
-                  DataNodePipeMessages
-                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0,
-                  this,
-                  commitContext);
-            }
-            return ev;
-          }
-
-          ev.ack();
-          ev.recordCommittedTimestamp();
-          acked.set(true);
-          cleanUpEvent(ev, false);
-          return null;
+          eventToCommit[0] = ev;
+          acknowledgementInProgressEvents.add(ev);
+          return ev;
         });
-    if (acked.get()) {
-      // Retention refresh can read metadata from every newly relevant WAL file. Keep that I/O out
-      // of ConcurrentHashMap.compute so recycling and requeueing other in-flight events can
-      // proceed while an ACK advances committed progress.
-      refreshCommittedWalRetentionBoundAndNotify();
+    final SubscriptionEvent event = eventToCommit[0];
+    if (event != null) {
+      try {
+        final boolean committed = commitWriterProgress(commitWriterId, commitWriterProgress);
+        if (committed) {
+          final InFlightEventKey key = new InFlightEventKey(consumerId, commitContext);
+          inFlightEvents.compute(
+              key,
+              (ignored, inFlightEvent) -> {
+                synchronized (event) {
+                  event.ack();
+                  event.recordCommittedTimestamp();
+                  acked.set(true);
+                  cleanUpEvent(event, false);
+                }
+                return inFlightEvent == event ? null : inFlightEvent;
+              });
+          inFlightEvents.entrySet().removeIf(entry -> entry.getValue() == event);
+          prefetchingQueue.remove(event);
+          refreshCommittedWalRetentionBoundAndNotify();
+        } else if (!silent) {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0,
+              this,
+              commitContext);
+        }
+      } finally {
+        acknowledgementInProgressEvents.remove(event);
+      }
     }
     return !found.get()
         ? InFlightAckResult.MISSING
@@ -4402,6 +4508,9 @@ public class ConsensusPrefetchingQueue {
                 ev.recordCommittedTimestamp();
                 cleanUpEvent(ev, false);
                 return null;
+              }
+              if (acknowledgementInProgressEvents.contains(ev)) {
+                detachPayloadForReplay(ev);
               }
               prefetchingQueue.add(ev);
               LOGGER.debug(
@@ -6540,25 +6649,114 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private static final class WriterFrontier implements Comparable<WriterFrontier> {
+  private static final class WriterFrontierSnapshot {
+    private final PriorityQueue<WriterFrontier> frontiers;
+    private final long safeFrontierVersion;
+    private final Set<Integer> activeWriterNodeIds;
+    private final boolean useActiveWriterBarriers;
+
+    private WriterFrontierSnapshot(
+        final PriorityQueue<WriterFrontier> frontiers,
+        final long safeFrontierVersion,
+        final Set<Integer> activeWriterNodeIds,
+        final boolean useActiveWriterBarriers) {
+      this.frontiers = frontiers;
+      this.safeFrontierVersion = safeFrontierVersion;
+      this.activeWriterNodeIds = activeWriterNodeIds;
+      this.useActiveWriterBarriers = useActiveWriterBarriers;
+    }
+  }
+
+  static final class WriterFrontierQueue {
+    private PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
+    private Integer unknownActiveWriterBarrierNodeId;
+
+    WriterFrontierQueue(final PriorityQueue<WriterFrontier> frontiers) {
+      reset(frontiers);
+    }
+
+    void reset(final PriorityQueue<WriterFrontier> frontiers) {
+      this.frontiers = frontiers;
+      unknownActiveWriterBarrierNodeId = null;
+      for (final WriterFrontier frontier : frontiers) {
+        if (frontier.isUnknownActiveWriterBarrier) {
+          unknownActiveWriterBarrierNodeId = frontier.writerNodeId;
+          break;
+        }
+      }
+    }
+
+    void add(final WriterFrontier frontier) {
+      frontiers.add(frontier);
+      if (frontier.isUnknownActiveWriterBarrier) {
+        unknownActiveWriterBarrierNodeId = frontier.writerNodeId;
+      }
+    }
+
+    WriterFrontier peek() {
+      return frontiers.peek();
+    }
+
+    WriterFrontier poll() {
+      final WriterFrontier frontier = frontiers.poll();
+      if (frontier != null && frontier.isUnknownActiveWriterBarrier) {
+        unknownActiveWriterBarrierNodeId = null;
+      }
+      return frontier;
+    }
+
+    boolean hasUnknownActiveWriterBarrier() {
+      return unknownActiveWriterBarrierNodeId != null;
+    }
+  }
+
+  static final class WriterFrontier implements Comparable<WriterFrontier> {
     private final int writerNodeId;
     private final OrderingKey orderingKey;
     private final boolean isBarrier;
+    private final boolean isUnknownActiveWriterBarrier;
 
     private WriterFrontier(
-        final int writerNodeId, final OrderingKey orderingKey, final boolean isBarrier) {
+        final int writerNodeId,
+        final OrderingKey orderingKey,
+        final boolean isBarrier,
+        final boolean isUnknownActiveWriterBarrier) {
       this.writerNodeId = writerNodeId;
       this.orderingKey = orderingKey;
       this.isBarrier = isBarrier;
+      this.isUnknownActiveWriterBarrier = isUnknownActiveWriterBarrier;
     }
 
     private static WriterFrontier forHead(final int writerNodeId, final WriterBufferedEntry entry) {
-      return new WriterFrontier(writerNodeId, entry.getOrderingKey(), false);
+      return forHead(writerNodeId, entry.getOrderingKey());
+    }
+
+    static WriterFrontier forHead(final int writerNodeId, final OrderingKey orderingKey) {
+      return new WriterFrontier(writerNodeId, orderingKey, false, false);
     }
 
     private static WriterFrontier forBarrier(final int writerNodeId, final long effectiveSafePt) {
       return new WriterFrontier(
-          writerNodeId, new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE), true);
+          writerNodeId,
+          new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE),
+          true,
+          false);
+    }
+
+    static WriterFrontier forUnknownActiveWriter(final int writerNodeId) {
+      return new WriterFrontier(
+          writerNodeId,
+          new OrderingKey(Long.MIN_VALUE, Integer.MIN_VALUE, Long.MIN_VALUE),
+          true,
+          true);
+    }
+
+    int getWriterNodeId() {
+      return writerNodeId;
+    }
+
+    boolean isBarrier() {
+      return isBarrier;
     }
 
     @Override

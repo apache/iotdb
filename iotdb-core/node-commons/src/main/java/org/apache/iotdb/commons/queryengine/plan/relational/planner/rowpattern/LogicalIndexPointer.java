@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
 
-import com.google.common.collect.Sets;
+import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -30,8 +30,8 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class LogicalIndexPointer {
   // a set of labels to navigate over:

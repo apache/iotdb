@@ -1,0 +1,450 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.external.caffeine.cache;
+
+import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.commons.external.caffeine.cache.testing.TruthAssert.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
+
+/**
+ * @author ben.manes@gmail.com (Ben Manes)
+ */
+public final class PacerTest {
+  private static final long ONE_MINUTE_IN_NANOS = TimeUnit.MINUTES.toNanos(1);
+  private static final long NOW = ThreadLocalRandom.current().nextLong();
+
+  @Test
+  public void schedule_initialize() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    long delay = ThreadLocalRandom.current().nextInt((int) Pacer.TOLERANCE);
+    when(scheduler.schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS))
+        .then(invocation -> future);
+    pacer.schedule(executor, command, NOW, delay);
+
+    assertThat(pacer.isScheduled()).isTrue();
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.nextFireTime).isEqualTo(NOW + Pacer.TOLERANCE);
+  }
+
+  @Test
+  public void schedule_initialize_recurse() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    long delay = ThreadLocalRandom.current().nextInt((int) Pacer.TOLERANCE);
+    when(scheduler.schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS))
+        .then(
+            invocation -> {
+              assertThat(pacer.future).isNull();
+              assertThat(pacer.nextFireTime).isNotEqualTo(0);
+              pacer.schedule(executor, command, NOW, delay);
+              return future;
+            });
+
+    pacer.schedule(executor, command, NOW, delay);
+
+    assertThat(pacer.isScheduled()).isTrue();
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.nextFireTime).isEqualTo(NOW + Pacer.TOLERANCE);
+  }
+
+  @Test
+  public void schedule_reschedule_recurse() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    when(scheduler.schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS))
+        .then(invocation -> DisabledFuture.instance())
+        .then(
+            invocation -> {
+              assertThat(pacer.future).isNull();
+              assertThat(pacer.nextFireTime).isNotEqualTo(0);
+              pacer.schedule(executor, command, NOW, /* delay= */ 0L);
+              return future;
+            });
+
+    pacer.schedule(executor, command, NOW, /* delay= */ 0L);
+    assertThat(pacer.isScheduled()).isFalse();
+
+    pacer.schedule(executor, command, NOW, /* delay= */ 0L);
+
+    verify(scheduler, times(2)).schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS);
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.nextFireTime).isEqualTo(NOW + Pacer.TOLERANCE);
+    assertThat(pacer.isScheduled()).isTrue();
+  }
+
+  @Test
+  public void schedule_cancel_schedule() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    long fireTime = NOW + Pacer.TOLERANCE;
+    long delay = ThreadLocalRandom.current().nextInt((int) Pacer.TOLERANCE);
+    when(scheduler.schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS))
+        .then(invocation -> future);
+
+    pacer.schedule(executor, command, NOW, delay);
+    assertThat(pacer.nextFireTime).isEqualTo(fireTime);
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.isScheduled()).isTrue();
+
+    pacer.cancel();
+    verify(future).cancel(false);
+    assertThat(pacer.nextFireTime).isEqualTo(0);
+    assertThat(pacer.isScheduled()).isFalse();
+    assertThat(pacer.future).isNull();
+
+    pacer.schedule(executor, command, NOW, delay);
+    assertThat(pacer.isScheduled()).isTrue();
+    assertThat(pacer.nextFireTime).isEqualTo(fireTime);
+    assertThat(pacer.future).isSameInstanceAs(future);
+  }
+
+  @Test
+  public void schedule_completedFuture_reschedules() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    when(scheduler.schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS))
+        .then(invocation -> DisabledFuture.instance())
+        .then(invocation -> future);
+
+    pacer.schedule(executor, command, NOW, /* delay= */ 0L);
+    assertThat(pacer.isScheduled()).isFalse();
+
+    pacer.schedule(executor, command, NOW, /* delay= */ 0L);
+
+    verify(scheduler, times(2)).schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS);
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.isScheduled()).isTrue();
+  }
+
+  @Test
+  public void schedule_overduePendingFuture_cancels() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    Future<?> next = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    // A future overdue past its fire time but not yet done is cancelled when it is replaced.
+    pacer.nextFireTime = NOW - ONE_MINUTE_IN_NANOS;
+    pacer.future = future;
+    when(scheduler.schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS))
+        .then(invocation -> next);
+
+    pacer.schedule(executor, command, NOW, /* delay= */ 0L);
+
+    verify(future).cancel(false);
+    assertThat(pacer.future).isSameInstanceAs(next);
+    assertThat(pacer.isScheduled()).isTrue();
+  }
+
+  @Test
+  public void scheduled_afterNextFireTime_skip() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    pacer.nextFireTime = NOW + ONE_MINUTE_IN_NANOS;
+    pacer.future = future;
+
+    long expectedNextFireTime = pacer.nextFireTime;
+    pacer.schedule(executor, command, NOW, ONE_MINUTE_IN_NANOS);
+    verifyZeroInteractions(scheduler, executor, command);
+    verify(future).isDone();
+    verifyNoMoreInteractions(future);
+
+    assertThat(pacer.isScheduled()).isTrue();
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.nextFireTime).isEqualTo(expectedNextFireTime);
+  }
+
+  @Test
+  public void schedule_beforeNextFireTime_skip() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    pacer.nextFireTime = NOW + ONE_MINUTE_IN_NANOS;
+    pacer.future = future;
+
+    long expectedNextFireTime = pacer.nextFireTime;
+    long delay =
+        ONE_MINUTE_IN_NANOS
+            - Math.max(1, ThreadLocalRandom.current().nextInt((int) Pacer.TOLERANCE));
+    pacer.schedule(executor, command, NOW, delay);
+    verifyZeroInteractions(scheduler, executor, command);
+    verify(future).isDone();
+    verifyNoMoreInteractions(future);
+
+    assertThat(pacer.isScheduled()).isTrue();
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.nextFireTime).isEqualTo(expectedNextFireTime);
+  }
+
+  @Test
+  public void schedule_beforeNextFireTime_minimumDelay() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    pacer.nextFireTime = NOW + ONE_MINUTE_IN_NANOS;
+    pacer.future = future;
+
+    long delay = ThreadLocalRandom.current().nextInt((int) Pacer.TOLERANCE);
+    when(scheduler.schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS))
+        .then(invocation -> future);
+    pacer.schedule(executor, command, NOW, delay);
+
+    verify(future).isDone();
+    verify(future).cancel(false);
+    verify(scheduler).schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS);
+
+    verifyZeroInteractions(executor, command);
+    verifyNoMoreInteractions(scheduler);
+    verifyNoMoreInteractions(future);
+
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.nextFireTime).isEqualTo(NOW + Pacer.TOLERANCE);
+    assertThat(pacer.isScheduled()).isTrue();
+  }
+
+  @Test
+  public void schedule_beforeNextFireTime_customDelay() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    pacer.nextFireTime = NOW + ONE_MINUTE_IN_NANOS;
+    pacer.future = future;
+
+    long delay = (Pacer.TOLERANCE + Math.max(1, ThreadLocalRandom.current().nextInt()));
+    when(scheduler.schedule(executor, command, delay, TimeUnit.NANOSECONDS))
+        .then(invocation -> future);
+    pacer.schedule(executor, command, NOW, delay);
+
+    verify(future).isDone();
+    verify(future).cancel(false);
+    verify(scheduler).schedule(executor, command, delay, TimeUnit.NANOSECONDS);
+
+    verifyZeroInteractions(executor, command);
+    verifyNoMoreInteractions(scheduler);
+    verifyNoMoreInteractions(future);
+
+    assertThat(pacer.future).isSameInstanceAs(future);
+    assertThat(pacer.nextFireTime).isEqualTo(NOW + delay);
+    assertThat(pacer.isScheduled()).isTrue();
+  }
+
+  @Test
+  public void cancel_initialize() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+
+    pacer.cancel();
+    assertThat(pacer.nextFireTime).isEqualTo(0);
+    assertThat(pacer.isScheduled()).isFalse();
+    assertThat(pacer.future).isNull();
+  }
+
+  @Test
+  public void cancel_scheduled() {
+    Future<?> future = Mockito.mock(Future.class);
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+
+    pacer.nextFireTime = NOW + ONE_MINUTE_IN_NANOS;
+    pacer.future = future;
+
+    pacer.cancel();
+    verify(future).cancel(false);
+    assertThat(pacer.future).isNull();
+    assertThat(pacer.isScheduled()).isFalse();
+    assertThat(pacer.nextFireTime).isEqualTo(0);
+  }
+
+  @Test
+  public void isScheduled_nullFuture() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+
+    pacer.future = null;
+    assertThat(pacer.isScheduled()).isFalse();
+  }
+
+  @Test
+  public void isScheduled_doneFuture() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+
+    pacer.future = DisabledFuture.instance();
+    assertThat(pacer.isScheduled()).isFalse();
+  }
+
+  @Test
+  public void isScheduled_inFlight() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+
+    pacer.future = new CompletableFuture<>();
+    assertThat(pacer.isScheduled()).isTrue();
+  }
+
+  @Test
+  public void schedule_nextFireTimeEqualsNow_reschedules() {
+    Scheduler scheduler = Mockito.mock(Scheduler.class);
+    Executor executor = Mockito.mock(Executor.class);
+    Runnable command = Mockito.mock(Runnable.class);
+    Future<?> future = Mockito.mock(Future.class);
+    Future<?> newFuture = Mockito.mock(Future.class);
+    var pacer = new Pacer(scheduler);
+
+    // nextFireTime - now == 0, so the `> 0` check falls through and reschedules
+    pacer.nextFireTime = NOW;
+    pacer.future = future;
+
+    when(scheduler.schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS))
+        .then(invocation -> newFuture);
+    pacer.schedule(executor, command, NOW, /* delay= */ 0L);
+
+    verify(scheduler).schedule(executor, command, Pacer.TOLERANCE, TimeUnit.NANOSECONDS);
+    assertThat(pacer.future).isSameInstanceAs(newFuture);
+    assertThat(pacer.nextFireTime).isEqualTo(NOW + Pacer.TOLERANCE);
+  }
+
+  @Test
+  public void maySkip_later() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    pacer.nextFireTime = NOW;
+    assertThat(pacer.maySkip(NOW + 1)).isTrue();
+  }
+
+  @Test
+  public void maySkip_exactMatch() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    pacer.nextFireTime = NOW;
+    assertThat(pacer.maySkip(NOW)).isTrue();
+  }
+
+  @Test
+  public void maySkip_earlierWithinTolerance() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    pacer.nextFireTime = NOW;
+    assertThat(pacer.maySkip(NOW - Pacer.TOLERANCE)).isTrue();
+  }
+
+  @Test
+  public void maySkip_earlierExceedsTolerance() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    pacer.nextFireTime = NOW;
+    assertThat(pacer.maySkip(NOW - Pacer.TOLERANCE - 1)).isFalse();
+  }
+
+  @Test
+  public void maySkip_deltaSaturates() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    pacer.nextFireTime = Long.MAX_VALUE;
+    assertThat(pacer.maySkip(/* scheduleAt= */ -1)).isFalse();
+  }
+
+  @Test
+  public void calculateSchedule_belowTolerance() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    long delay = Pacer.TOLERANCE - 1;
+    long scheduleAt = NOW + delay;
+    long actualDelay = pacer.calculateSchedule(NOW, delay, scheduleAt);
+    assertThat(actualDelay).isEqualTo(Pacer.TOLERANCE);
+    assertThat(pacer.nextFireTime).isEqualTo(NOW + Pacer.TOLERANCE);
+  }
+
+  @Test
+  public void calculateSchedule_atTolerance() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    long delay = Pacer.TOLERANCE;
+    long scheduleAt = NOW + delay;
+    long actualDelay = pacer.calculateSchedule(NOW, delay, scheduleAt);
+    assertThat(actualDelay).isEqualTo(Pacer.TOLERANCE);
+    assertThat(pacer.nextFireTime).isEqualTo(NOW + Pacer.TOLERANCE);
+  }
+
+  @Test
+  public void calculateSchedule_aboveTolerance() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    long delay = Pacer.TOLERANCE + 1;
+    long scheduleAt = NOW + delay;
+    long actualDelay = pacer.calculateSchedule(NOW, delay, scheduleAt);
+    assertThat(actualDelay).isEqualTo(delay);
+    assertThat(pacer.nextFireTime).isEqualTo(scheduleAt);
+  }
+
+  @Test
+  public void calculateSchedule_belowTolerance_avoidsZeroSentinel() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    long actualDelay =
+        pacer.calculateSchedule(
+            /* now= */ -Pacer.TOLERANCE, /* delay= */ 0L, /* scheduleAt= */ -Pacer.TOLERANCE);
+    assertThat(actualDelay).isEqualTo(Pacer.TOLERANCE);
+    assertThat(pacer.nextFireTime).isEqualTo(1L);
+  }
+
+  @Test
+  public void calculateSchedule_aboveTolerance_avoidsZeroSentinel() {
+    var pacer = new Pacer(Mockito.mock(Scheduler.class));
+    long delay = Pacer.TOLERANCE + 1;
+    long actualDelay = pacer.calculateSchedule(/* now= */ -delay, delay, /* scheduleAt= */ 0L);
+    assertThat(actualDelay).isEqualTo(delay);
+    assertThat(pacer.nextFireTime).isEqualTo(1L);
+  }
+}

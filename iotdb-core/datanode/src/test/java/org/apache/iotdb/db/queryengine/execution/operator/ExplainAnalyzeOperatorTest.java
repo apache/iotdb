@@ -27,8 +27,8 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsJsonDrawer;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import org.apache.ratis.thirdparty.com.google.gson.JsonObject;
+import org.apache.ratis.thirdparty.com.google.gson.JsonParser;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Test;

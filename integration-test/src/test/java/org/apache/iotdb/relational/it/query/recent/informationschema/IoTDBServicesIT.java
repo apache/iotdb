@@ -33,11 +33,14 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.drainResultSet;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
@@ -101,7 +104,12 @@ public class IoTDBServicesIT {
     try (Connection connection =
             EnvFactory.getEnv().getConnection("test", "TimechoDB@2021", model);
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(
+          exception.getMessage(),
+          exception
+              .getMessage()
+              .contains("No permissions for this operation, please add privilege SYSTEM"));
     } catch (SQLException e) {
       Assert.assertTrue(
           e.getMessage()
@@ -110,7 +118,9 @@ public class IoTDBServicesIT {
 
     try (Connection connection2 = EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, model);
         Statement statement2 = connection2.createStatement()) {
-      statement2.executeQuery(sql);
+      try (ResultSet resultSet = statement2.executeQuery(sql)) {
+        drainResultSet(resultSet);
+      }
     } catch (Exception e) {
       fail(e.getMessage());
     }

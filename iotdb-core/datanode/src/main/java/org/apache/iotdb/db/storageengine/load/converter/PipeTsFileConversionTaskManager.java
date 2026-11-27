@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.apache.ratis.thirdparty.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

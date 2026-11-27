@@ -20,6 +20,12 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ManagerMessages {
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_REALTIME_MODE_ARG_CONFLICTS_WITH_ARG_ARG_D08CF59B =
+          "创建或修改主题失败，realtime.mode=%s 与 %s=%s 冲突";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_REALTIME_MODE_ARG_EXPECTED_ONE_OF_STREAM_BATCH_79399284 =
+          "创建或修改主题失败，不支持 realtime.mode=%s，预期值为 [stream, batch] 之一";
 
   public static final String ACTIVATEDATAALLOTTABLE_ACTIVATE_SERIESPARTITIONSLOT =
       "[ActivateDataAllotTable] 激活 SeriesPartitionSlot {} ";
@@ -1008,4 +1014,14 @@ public final class ManagerMessages {
   public static final String
       EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C =
           "拒绝注册，请确保参数 %s 与 Seed-ConfigNode 一致。";
+  public static final String MESSAGE_TIMESERIES_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_USE_SHOW_DELETE_TIMESERIES_PROGRESS_TO_CHECK_ITS_PROGRESS_75958076 =
+      "时间序列删除任务 %s 已提交，将异步执行。请使用 SHOW DELETE TIMESERIES PROGRESS 查看进度。";
+  public static final String MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_COLUMN_PROCEDURES_TO_CHECK_ITS_PROGRESS_41DCFDC3 =
+      "列删除任务 %s 已提交异步执行。请查询 information_schema.drop_table_column_procedures 查看进度。";
+  public static final String MESSAGE_TABLE_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_PROCEDURES_TO_CHECK_ITS_PROGRESS_D7AB21D3 =
+      "表删除任务 %s 已提交，将异步执行。请查询 information_schema.drop_table_procedures 查看进度。";
+  public static final String MESSAGE_THE_ASYNCHRONOUS_TIMESERIES_DELETION_QUEUE_IS_FULL_ARG_WAITING_TASKS_RETRY_LATER_93F6F407 =
+      "异步时间序列删除队列已满（%s 个等待任务），请稍后重试。";
+  public static final String MESSAGE_SOME_OTHER_ASYNCHRONOUS_TASK_IS_DELETING_TARGET_TIMESERIES_USE_SHOW_DELETE_TIMESERIES_PROGRESS_TO_CHECK_ITS_PROGRESS_AND_RETRY_LATER_A799B41E =
+      "其他异步任务正在删除目标时间序列。请使用 SHOW DELETE TIMESERIES PROGRESS 查看进度，并稍后重试。";
 }

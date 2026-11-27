@@ -33,8 +33,8 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLog.DEFAULT_STANDARD_ERROR;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class ApproxCountDistinctAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =

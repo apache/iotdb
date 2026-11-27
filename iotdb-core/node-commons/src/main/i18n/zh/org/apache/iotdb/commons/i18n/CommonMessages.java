@@ -214,6 +214,9 @@ public final class CommonMessages {
   public static final String EXCEPTION_NO_COMPARABLE_COLUMNS_FOUND_FOR_M4_CALCULATION_4E5A3092 = "未找到可用于 M4 计算的可比较列。";
   public static final String EXCEPTION_INVALID_SCALAR_ARGUMENT_SLIDE_SHOULD_BE_A_POSITIVE_VALUE_F019E091 = "无效的标量参数 SLIDE，应为正数";
   public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 = "DATA 参数的 ORDER BY 子句必须仅包含 TIMECOL 参数指定的时间列。";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_ONE_TIMESTAMP_COLUMN_6B40C59B = "DATA 参数的 ORDER BY 子句必须仅包含一个 TIMESTAMP 列。";
+  public static final String EXCEPTION_THE_TIME_COLUMN_OF_THE_DATA_ARGUMENT_MUST_BE_MONOTONICALLY_INCREASING_WITHIN_EACH_PARTITION_68B8C2B7 = "DATA 参数的时间列在每个分区内必须单调递增。";
+  public static final String EXCEPTION_DERIVATIVE_FUNCTION_UNIT_SHOULD_BE_A_POSITIVE_DURATION_OF_AT_LEAST_ONE_43D975B7 = "应为正的时间长度，且至少为 1 %s";
   public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "不支持的 M4 值类型：";
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold 必须在 [0, 1) 范围内，但实际为 ";
   public static final String
@@ -225,6 +228,8 @@ public final class CommonMessages {
       LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF =
           "用户数据传送尝试：时间=%d，发起者=%s，源端=%s，目标端=%s，保护方法=%s，结果=%s，错误=%s";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION = "wpass的取值范围应该位于(0, 1)";
+  public static final String EXCEPTION_N_MUST_BE_A_POSITIVE_INTEGER_47990F38 = "N 要求是正整数";
+  public static final String EXCEPTION_SAMPLE_FUNCTION_N_MUST_NOT_EXCEED_ARG_290F49A0 = "N 不能超过 %d。";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "没有找到可以计算的列.";
   public static final String EXCEPTION_NOT_ALLOWED_COLUMNS = "只允许列类型为double, float, int32, int64参与函数计算, 当前列 %s 类型是 %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM = "分区行数超过了最大限制";
@@ -327,4 +332,47 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_OBJECT_ARG_WITH_RESULT_ARG_F0A4B9C0 =
           "用户 %s（ID=%d）请求对象 %s 的权限，结果为 %s";
+
+  // --- caffeine ---
+  public static final String EXCEPTION_AN_INVALID_STATE_WAS_DETECTED_OCCURRING_WHEN_THE_KEY_S_EQUALS_OR_HASHCODE_WAS_MODIFIED_WHILE_RESIDING_IN_THE_CACHE_THIS_VIOLATION_OF_THE_MAP_CONTRACT_CAN_LEAD_TO_NON_DETERMINISTIC_BEHAVIOR_KEY_ARG_KEY_TYPE_ARG_NODE_TYPE_ARG_CACHE_TYPE_ARG_CAA99713 = "检测到无效状态，键驻留在缓存中时其 equals 或 hashCode 被修改。违反 Map 契约可能导致不确定的行为（键：%s，键类型：%s，节点类型：%s，缓存类型：%s）。";
+  public static final String LOG_EXCEPTION_THROWN_BY_REMOVAL_LISTENER_2D0BFC36 = "移除监听器抛出异常";
+  public static final String LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_REMOVAL_LISTENER_1A41327E = "提交移除监听器时抛出异常";
+  public static final String LOG_EXCEPTION_THROWN_BY_EVICTION_LISTENER_E6D3BA60 = "淘汰监听器抛出异常";
+  public static final String EXCEPTION_MAXIMUM_MUST_NOT_BE_NEGATIVE_99D76153 = "maximum 不能为负数";
+  public static final String LOG_EXCEPTION_THROWN_WHEN_PERFORMING_THE_MAINTENANCE_TASK_8B817F20 = "执行缓存维护任务时抛出异常";
+  public static final String LOG_THE_CACHE_IS_EXPERIENCING_EXCESSIVE_WAIT_TIMES_FOR_ACQUIRING_THE_EVICTION_LOCK_THIS_MAY_INDICATE_THAT_A_LONG_RUNNING_COMPUTATION_HAS_HALTED_EVICTION_WHEN_TRYING_TO_REMOVE_THE_VICTIM_ENTRY_E115E498 = "缓存在获取淘汰锁时等待时间过长，可能由于长时间运行的计算阻塞了淘汰条目的移除。";
+  public static final String EXCEPTION_INVALID_DRAIN_STATUS_ARG_583D1358 = "无效的清理状态：%s";
+  public static final String LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_MAINTENANCE_TASK_C1E55928 = "提交缓存维护任务时抛出异常";
+  public static final String EXCEPTION_STREAM_HAS_ALREADY_BEEN_CLOSED_069DDD3D = "流已关闭";
+  public static final String EXCEPTION_LIMIT_CANNOT_BE_NEGATIVE_ARG_D4D15053 = "limit 不能为负数：%s";
+  public static final String EXCEPTION_WEIGHT_LIMIT_CANNOT_BE_NEGATIVE_ARG_2263B8E8 = "权重上限不能为负数：%s";
+  public static final String EXCEPTION_DURATION_CANNOT_BE_NEGATIVE_ARG_ARG_3C151FCA = "时长不能为负数：%s %s";
+  public static final String LOG_CANNOT_DETERMINE_IF_ARG_OVERRIDES_ARG_ARG_065FF946 = "无法判断 {} 是否重写了 {}({})";
+  public static final String EXCEPTION_INITIAL_CAPACITY_WAS_ALREADY_SET_TO_ARG_79FF9FB8 = "初始容量已设置为 %s";
+  public static final String EXCEPTION_INITIAL_CAPACITY_MUST_NOT_BE_NEGATIVE_89AD0C3E = "初始容量不能为负数";
+  public static final String EXCEPTION_EXECUTOR_WAS_ALREADY_SET_TO_ARG_58A5EECE = "executor 已设置为 %s";
+  public static final String EXCEPTION_SCHEDULER_WAS_ALREADY_SET_TO_ARG_E61EFF23 = "scheduler 已设置为 %s";
+  public static final String EXCEPTION_MAXIMUM_SIZE_WAS_ALREADY_SET_TO_ARG_0FE8510C = "最大容量已设置为 %s";
+  public static final String EXCEPTION_MAXIMUM_WEIGHT_WAS_ALREADY_SET_TO_ARG_FFCC0743 = "最大权重已设置为 %s";
+  public static final String EXCEPTION_MAXIMUM_SIZE_CANNOT_BE_COMBINED_WITH_WEIGHER_4A442F9D = "最大容量不能与 weigher 同时使用";
+  public static final String EXCEPTION_MAXIMUM_SIZE_MUST_NOT_BE_NEGATIVE_16AA24D2 = "最大容量不能为负数";
+  public static final String EXCEPTION_MAXIMUM_WEIGHT_MUST_NOT_BE_NEGATIVE_717B327F = "最大权重不能为负数";
+  public static final String EXCEPTION_WEIGHER_WAS_ALREADY_SET_TO_ARG_84645186 = "weigher 已设置为 %s";
+  public static final String EXCEPTION_WEIGHER_CANNOT_BE_COMBINED_WITH_MAXIMUM_SIZE_0A2D1969 = "weigher 不能与最大容量同时使用";
+  public static final String EXCEPTION_EXPIREAFTERWRITE_WAS_ALREADY_SET_TO_ARG_NS_7218F232 = "expireAfterWrite 已设置为 %s ns";
+  public static final String EXCEPTION_EXPIREAFTERACCESS_WAS_ALREADY_SET_TO_ARG_NS_CA739654 = "expireAfterAccess 已设置为 %s ns";
+  public static final String EXCEPTION_TICKER_WAS_ALREADY_SET_TO_ARG_59220FA7 = "Ticker 已设置为 %s";
+  public static final String EXCEPTION_EVICTION_LISTENER_WAS_ALREADY_SET_TO_ARG_083BC682 = "淘汰监听器已设置为 %s";
+  public static final String EXCEPTION_REMOVAL_LISTENER_WAS_ALREADY_SET_TO_ARG_5BF5704F = "移除监听器已设置为 %s";
+  public static final String EXCEPTION_STATISTICS_RECORDING_WAS_ALREADY_SET_8D7AA0B3 = "统计记录已设置";
+  public static final String EXCEPTION_MAXIMUMWEIGHT_REQUIRES_WEIGHER_458CD148 = "设置 maximumWeight 时必须指定 weigher";
+  public static final String EXCEPTION_WEIGHER_REQUIRES_MAXIMUMWEIGHT_D212C663 = "设置 weigher 时必须指定 maximumWeight";
+  public static final String EXCEPTION_MAX_CAPACITY_MUST_BE_4_OR_MORE_EBF0B1E8 = "最大容量必须大于等于 4";
+  public static final String EXCEPTION_INITIAL_CAPACITY_CANNOT_EXCEED_MAXIMUM_CAPACITY_BOTH_ROUNDED_UP_TO_A_POWER_OF_2_E58CF468 = "初始容量不能超过最大容量（向上取整到 2 的幂后）";
+  public static final String EXCEPTION_INITIAL_CAPACITY_MUST_BE_2_OR_MORE_494EA929 = "初始容量必须大于等于 2";
+  public static final String EXCEPTION_NEW_BUFFER_MUST_HAVE_AT_LEAST_ONE_ELEMENT_EF3B6ADE = "新缓冲区必须至少包含一个元素";
+  public static final String LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_SCHEDULED_TASK_78E45BDD = "提交定时调度任务时抛出异常";
+  public static final String LOG_EXCEPTION_THROWN_BY_SCHEDULER_DISCARDED_TASK_A219ACAC = "调度器抛出异常，已丢弃任务";
+  public static final String EXCEPTION_WEIGHT_CANNOT_BE_NEGATIVE_ARG_224339E2 = "权重不能为负数：%s";
+  public static final String LOG_EXCEPTION_THROWN_BY_STATS_COUNTER_259634D3 = "统计计数器抛出异常";
 }

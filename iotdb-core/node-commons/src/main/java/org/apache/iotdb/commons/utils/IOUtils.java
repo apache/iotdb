@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 
-import com.google.common.base.Supplier;
-import com.google.common.util.concurrent.RateLimiter;
+import org.apache.ratis.thirdparty.com.google.common.base.Supplier;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 
 import java.io.DataInputStream;
 import java.io.EOFException;

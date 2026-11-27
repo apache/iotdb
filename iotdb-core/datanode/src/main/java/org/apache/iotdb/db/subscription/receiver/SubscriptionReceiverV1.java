@@ -1412,17 +1412,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private void unsubscribeCompleteTopics(final ConsumerConfig consumerConfig) {
     // fetch subscribed topics
-    final Map<String, TopicConfig> topics =
-        SubscriptionAgent.topic()
-            .getTopicConfigs(
-                SubscriptionAgent.consumer()
-                    .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
-                isTableModel(consumerConfig));
+    final Map<String, TopicConfig> topics = fetchSubscribedTopicConfigs(consumerConfig);
 
     // fetch topics should be unsubscribed
     final List<String> topicNamesToUnsubscribe =
-        SubscriptionAgent.broker().fetchTopicNamesToUnsubscribe(consumerConfig, topics.keySet());
+        fetchTopicNamesToUnsubscribe(consumerConfig, topics.keySet());
 
     // If it is empty, it could be that the consumer has been closed, or there are no completed
     // topics. In this case, it should immediately return.
@@ -1430,12 +1424,43 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return;
     }
 
-    unsubscribe(consumerConfig, new HashSet<>(topicNamesToUnsubscribe));
+    // Retained snapshot topics coordinate completion across all DataNodes on the client side; a
+    // single DataNode disconnecting must not globally unsubscribe the consumer while other
+    // DataNodes may still be streaming historical data.
+    final Set<String> unsubscribableTopicNames = new HashSet<>();
+    for (final String topicName : topicNamesToUnsubscribe) {
+      final TopicConfig topicConfig = topics.get(topicName);
+      if (Objects.nonNull(topicConfig)
+          && topicConfig.isSnapshotMode()
+          && topicConfig.isProgressRetainedAfterUnsubscribe()) {
+        continue;
+      }
+      unsubscribableTopicNames.add(topicName);
+    }
+    if (unsubscribableTopicNames.isEmpty()) {
+      return;
+    }
+
+    unsubscribe(consumerConfig, unsubscribableTopicNames);
     LOGGER.info(
         DataNodePipeMessages
             .PIPE_LOG_SUBSCRIPTION_CONSUMER_UNSUBSCRIBE_COMPLETED_TOPICS_SUCCESSFULLY_44BAFF55,
         consumerConfig,
-        topicNamesToUnsubscribe);
+        unsubscribableTopicNames);
+  }
+
+  Map<String, TopicConfig> fetchSubscribedTopicConfigs(final ConsumerConfig consumerConfig) {
+    return SubscriptionAgent.topic()
+        .getTopicConfigs(
+            SubscriptionAgent.consumer()
+                .getTopicNamesSubscribedByConsumer(
+                    consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+            isTableModel(consumerConfig));
+  }
+
+  List<String> fetchTopicNamesToUnsubscribe(
+      final ConsumerConfig consumerConfig, final Set<String> topicNames) {
+    return SubscriptionAgent.broker().fetchTopicNamesToUnsubscribe(consumerConfig, topicNames);
   }
 
   //////////////////////////// consumer operations ////////////////////////////
@@ -1564,7 +1589,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private void unsubscribe(final ConsumerConfig consumerConfig, final Set<String> topicNames)
+  void unsubscribe(final ConsumerConfig consumerConfig, final Set<String> topicNames)
       throws SubscriptionException {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

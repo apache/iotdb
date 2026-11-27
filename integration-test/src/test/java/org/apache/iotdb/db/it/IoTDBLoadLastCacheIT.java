@@ -26,7 +26,7 @@ import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import com.google.common.util.concurrent.RateLimiter;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ColumnSchema;

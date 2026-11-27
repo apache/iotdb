@@ -29,9 +29,9 @@ import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
 
-import com.google.common.base.Ticker;
-import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
+import org.apache.ratis.thirdparty.com.google.common.base.Ticker;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;

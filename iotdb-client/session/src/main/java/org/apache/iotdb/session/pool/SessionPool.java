@@ -591,7 +591,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  private Session constructNewSession() {
+  protected Session constructNewSession() {
     Session session;
     if (nodeUrls == null) {
       // Construct custom Session

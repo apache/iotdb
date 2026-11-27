@@ -114,7 +114,9 @@ public class DataExecutionVisitorTest {
     Mockito.when(dataRegion.getDatabaseName()).thenReturn("root.sg");
     final DeleteDataNode node = createDeleteDataNode("root.sg.device.s1");
     final IOException failure = new IOException("injected tree delete failure");
-    Mockito.doThrow(failure).when(dataRegion).deleteByDevice(any(MeasurementPath.class), any());
+    Mockito.doThrow(failure)
+        .when(dataRegion)
+        .deleteByDevice(any(MeasurementPath.class), any(), any());
 
     final TSStatus status = new DataExecutionVisitor().visitDeleteData(node, dataRegion);
 
@@ -142,7 +144,8 @@ public class DataExecutionVisitorTest {
     Assert.assertTrue(appender.list.get(0).getFormattedMessage().contains(failure.getMessage()));
     Assert.assertNull(appender.list.get(0).getThrowableProxy());
     Mockito.verify(dataRegion).writeUnlock();
-    Mockito.verify(dataRegion, Mockito.never()).deleteByDevice(any(MeasurementPath.class), any());
+    Mockito.verify(dataRegion, Mockito.never())
+        .deleteByDevice(any(MeasurementPath.class), any(), any());
   }
 
   @Test
@@ -151,7 +154,9 @@ public class DataExecutionVisitorTest {
     Mockito.when(dataRegion.getDatabaseName()).thenReturn("root.sg");
     final DeleteDataNode node = createDeleteDataNode("root.sg.**");
     final IOException failure = new IOException("injected direct delete failure");
-    Mockito.doThrow(failure).when(dataRegion).deleteDataDirectly(any(MeasurementPath.class), any());
+    Mockito.doThrow(failure)
+        .when(dataRegion)
+        .deleteDataDirectly(any(MeasurementPath.class), any(), any());
 
     final TSStatus status = new DataExecutionVisitor().visitDeleteData(node, dataRegion);
 

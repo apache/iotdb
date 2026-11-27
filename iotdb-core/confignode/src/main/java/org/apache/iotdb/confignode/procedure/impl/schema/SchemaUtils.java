@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -40,10 +41,13 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
@@ -62,12 +66,152 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+
 public class SchemaUtils {
+  public static void checkTimeSeriesDeletionTarget(
+      ConfigManager configManager, PathPatternTree patternTree, boolean mayDeleteAudit)
+      throws MetadataException {
+    final TimeSeriesDeletionPrecheckTarget precheckTarget =
+        getTimeSeriesDeletionPrecheckTarget(configManager, patternTree);
+    if (!precheckTarget.databasePatternPaths.isEmpty()) {
+      checkSchemaRegionUsingTemplate(configManager, precheckTarget.databasePatternPaths);
+    }
+    final PathPatternTree precheckPatternTree = precheckTarget.patternTree;
+    if (precheckPatternTree.isEmpty()) {
+      return;
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      precheckPatternTree.serialize(dataOutputStream);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+    final byte[] patternTreeBytes = byteArrayOutputStream.toByteArray();
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        configManager.getRelatedSchemaRegionGroup(precheckPatternTree, mayDeleteAudit);
+    final List<TCheckTimeSeriesExistenceResp> responseList = new ArrayList<>();
+    final MetadataException[] exception = {null};
+    final DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
+        regionTask =
+            new DataNodeRegionTaskExecutor<
+                TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>(
+                configManager,
+                relatedSchemaRegionGroup,
+                false,
+                CnToDnAsyncRequestType.CHECK_TIMESERIES_EXISTENCE,
+                (dataNodeLocation, consensusGroupIdList) ->
+                    new TCheckTimeSeriesExistenceReq(
+                        ByteBuffer.wrap(patternTreeBytes), consensusGroupIdList)) {
+
+              @Override
+              protected List<TConsensusGroupId> processResponseOfOneDataNode(
+                  TDataNodeLocation dataNodeLocation,
+                  List<TConsensusGroupId> consensusGroupIdList,
+                  TCheckTimeSeriesExistenceResp response) {
+                responseList.add(response);
+                final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                final TSStatus status = response.getStatus();
+                if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  failureMap.remove(dataNodeLocation);
+                  return failedRegionList;
+                }
+
+                if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+                  final List<TSStatus> subStatusList = status.getSubStatus();
+                  for (int i = 0; i < subStatusList.size(); i++) {
+                    final int code = subStatusList.get(i).getCode();
+                    if (code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                        && code != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                      failedRegionList.add(consensusGroupIdList.get(i));
+                    }
+                  }
+                } else {
+                  failedRegionList.addAll(consensusGroupIdList);
+                }
+
+                if (failedRegionList.isEmpty()) {
+                  failureMap.remove(dataNodeLocation);
+                } else {
+                  failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(status));
+                }
+                return failedRegionList;
+              }
+
+              @Override
+              protected void onAllReplicasetFailure(
+                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
+                exception[0] =
+                    new MetadataException(
+                        String.format(
+                            ProcedureMessages
+                                .EXCEPTION_FAILED_CHECK_TIME_SERIES_EXISTENCE_ALL_REPLICASET_SCHEMAREGION_ARG_FAILURES_5F668154,
+                            consensusGroupId.id,
+                            printFailureMap()),
+                        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+                interruptTask();
+              }
+            };
+    regionTask.execute();
+    if (exception[0] != null) {
+      throw exception[0];
+    }
+    if (responseList.stream().noneMatch(TCheckTimeSeriesExistenceResp::isExists)) {
+      throw new PathNotExistException(
+          precheckPatternTree.getAllPathPatterns().stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toList()),
+          false);
+    }
+  }
+
+  static TimeSeriesDeletionPrecheckTarget getTimeSeriesDeletionPrecheckTarget(
+      ConfigManager configManager, PathPatternTree patternTree) {
+    final PathPatternTree precheckPatternTree = new PathPatternTree();
+    final List<PartialPath> databasePatternPaths = new ArrayList<>();
+    for (final PartialPath path : patternTree.getAllPathPatterns()) {
+      if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
+          && path.getNodeLength() > 1) {
+        final PartialPath prefix =
+            new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1));
+        if (!prefix.hasWildcard()) {
+          final Map<String, TDatabaseSchema> matched =
+              new HashMap<>(
+                  configManager
+                      .getClusterSchemaManager()
+                      .getMatchedDatabaseSchemasByPrefix(prefix));
+          matched.remove(TREE_MODEL_AUDIT_DATABASE);
+          if (!matched.isEmpty()) {
+            databasePatternPaths.add(path);
+            continue;
+          }
+        }
+      }
+      precheckPatternTree.appendPathPattern(path);
+    }
+    precheckPatternTree.constructTree();
+    return new TimeSeriesDeletionPrecheckTarget(precheckPatternTree, databasePatternPaths);
+  }
+
+  static final class TimeSeriesDeletionPrecheckTarget {
+    final PathPatternTree patternTree;
+    final List<PartialPath> databasePatternPaths;
+
+    private TimeSeriesDeletionPrecheckTarget(
+        PathPatternTree patternTree, List<PartialPath> databasePatternPaths) {
+      this.patternTree = patternTree;
+      this.databasePatternPaths = databasePatternPaths;
+    }
+  }
+
   /**
    * Check whether the specific template is activated on the given pattern tree.
    *

@@ -33,6 +33,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.path.IFullPath;
@@ -127,9 +129,9 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
-import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.SchemaDeletionModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
@@ -181,9 +183,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.io.BaseEncoding;
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 import org.apache.thrift.TException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -307,9 +307,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
 
-  // Only the latest drop is retained per region. The ConfigNode captures its final counters
-  // before the dedicated DROP TABLE worker executes another procedure's DELETE_DATA state.
-  private volatile Pair<Long, DropTableModProgress> dropTableModProgress;
+  private final Map<Long, SchemaDeletionModProgress> modFileDeletionProgress =
+      new ConcurrentHashMap<>();
 
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
@@ -2456,12 +2455,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteDALFolderAndClose() {
-    Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId.getId()))
-        .ifPresent(
-            manager -> {
-              manager.close();
-              manager.removeDAL();
-            });
+    DeletionResourceManager.closeAndRemoveDAL(dataRegionId.getId());
   }
 
   /** close all tsfile resource */
@@ -3425,6 +3419,14 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void deleteByDevice(final MeasurementPath pattern, final DeleteDataNode node)
       throws IOException, WriteProcessRejectException {
+    deleteByDevice(pattern, node, null);
+  }
+
+  public void deleteByDevice(
+      final MeasurementPath pattern,
+      final DeleteDataNode node,
+      final SchemaDeletionModProgress progress)
+      throws IOException, WriteProcessRejectException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           StorageEngineMessages
@@ -3476,7 +3478,7 @@ public class DataRegion implements IDataRegionForQuery {
       writeUnlock();
       hasReleasedLock = true;
 
-      deleteDataInSealedFiles(sealedTsFileResource, deletion);
+      deleteDataInSealedFiles(sealedTsFileResource, deletion, progress);
     } catch (WriteProcessRejectException e) {
       throw e;
     } catch (Exception e) {
@@ -3489,8 +3491,26 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public TDropTableModProgress getDropTableModProgress(final long procedureId) {
-    final Pair<Long, DropTableModProgress> progress = dropTableModProgress;
-    return progress != null && progress.left == procedureId ? progress.right.snapshot() : null;
+    return getDropTableModProgress(procedureId, false);
+  }
+
+  public TDropTableModProgress getDropTableModProgress(
+      final long procedureId, final boolean clearProgress) {
+    final SchemaDeletionModProgress progress =
+        clearProgress
+            ? modFileDeletionProgress.remove(procedureId)
+            : modFileDeletionProgress.get(procedureId);
+    return progress == null ? null : progress.snapshot();
+  }
+
+  public SchemaDeletionModProgress startTimeSeriesModProgress(final PlanNodeId planNodeId) {
+    final long procedureId = SchemaDeletionModProgress.procedureId(planNodeId);
+    if (procedureId < 0) {
+      return null;
+    }
+    final SchemaDeletionModProgress progress = SchemaDeletionModProgress.forTimeSeries();
+    modFileDeletionProgress.put(procedureId, progress);
+    return progress;
   }
 
   public void deleteByTable(RelationalDeleteDataNode node)
@@ -3507,11 +3527,12 @@ public class DataRegion implements IDataRegionForQuery {
     }
     List<TableDeletionEntry> modEntries = node.getModEntries();
 
-    final long procedureId = DropTableModProgress.procedureId(node.getPlanNodeId());
-    final DropTableModProgress progress =
-        procedureId >= 0 && modEntries.size() == 1 && modEntries.get(0).isDroppingTable()
-            ? new DropTableModProgress()
-            : null;
+    final long procedureId =
+        node.isGeneratedByRemoteConsensusLeader()
+            ? -1
+            : SchemaDeletionModProgress.procedureId(node.getPlanNodeId());
+    final SchemaDeletionModProgress progress =
+        procedureId >= 0 && modEntries.size() == 1 ? new SchemaDeletionModProgress() : null;
 
     logger.info(StorageEngineMessages.DELETION_EXECUTING_TABLE_DELETION, node);
 
@@ -3525,7 +3546,7 @@ public class DataRegion implements IDataRegionForQuery {
         ioTConsensusDeletionAdmitted = true;
       }
       if (progress != null) {
-        dropTableModProgress = new Pair<>(procedureId, progress);
+        modFileDeletionProgress.put(procedureId, progress);
       }
       if (deleted) {
         if (progress != null) {
@@ -3639,6 +3660,12 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void deleteDataDirectly(MeasurementPath pathToDelete, DeleteDataNode node)
       throws IOException, WriteProcessRejectException {
+    deleteDataDirectly(pathToDelete, node, null);
+  }
+
+  public void deleteDataDirectly(
+      MeasurementPath pathToDelete, DeleteDataNode node, SchemaDeletionModProgress progress)
+      throws IOException, WriteProcessRejectException {
     final long startTime = node.getDeleteStartTime();
     final long endTime = node.getDeleteEndTime();
     final long searchIndex = node.getSearchIndex();
@@ -3672,7 +3699,7 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
-      deleteDataDirectlyInFile(unsealedTsFileResource, deletion);
+      deleteDataDirectlyInFile(unsealedTsFileResource, deletion, progress);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
           PipeInsertionDataNodeListener.getInstance()
@@ -3683,7 +3710,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       writeUnlock();
       releasedLock = true;
-      deleteDataDirectlyInFile(sealedTsFileResource, deletion);
+      deleteDataDirectlyInFile(sealedTsFileResource, deletion, progress);
     } catch (WriteProcessRejectException e) {
       throw e;
     } catch (Exception e) {
@@ -3953,13 +3980,10 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
-      throws IOException {
-    deleteDataInSealedFiles(sealedTsFiles, deletion, null);
-  }
-
   private void deleteDataInSealedFiles(
-      Collection<TsFileResource> sealedTsFiles, ModEntry deletion, DropTableModProgress progress)
+      Collection<TsFileResource> sealedTsFiles,
+      ModEntry deletion,
+      SchemaDeletionModProgress progress)
       throws IOException {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     List<TsFileResource> deletedByMods = new ArrayList<>();
@@ -4055,7 +4079,7 @@ public class DataRegion implements IDataRegionForQuery {
             }
           }
           if (matchSize == devicesInFile.size()) {
-            if (sealedTsFile.setStatus(TsFileResourceStatus.DELETED)) {
+            if (sealedTsFile.transformStatus(TsFileResourceStatus.DELETED)) {
               deletedByFiles.add(sealedTsFile);
             } else {
               deletedByMods.add(sealedTsFile);
@@ -4095,7 +4119,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
 
-    if (progress != null) {
+    if (progress != null && deletion instanceof TableDeletionEntry) {
       progress.setTotalModFileCount(involvedModificationFiles.size());
     }
 
@@ -4112,7 +4136,7 @@ public class DataRegion implements IDataRegionForQuery {
                     modFile.write(deletion);
                     modFile.close();
                     if (progress != null) {
-                      progress.modFileWritten();
+                      progress.modFileWritten(modFile);
                     }
                   } catch (Exception e) {
                     return e;
@@ -4161,7 +4185,10 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void deleteDataDirectlyInFile(List<TsFileResource> tsfileResourceList, ModEntry modEntry)
+  private void deleteDataDirectlyInFile(
+      List<TsFileResource> tsfileResourceList,
+      ModEntry modEntry,
+      SchemaDeletionModProgress progress)
       throws IOException {
     List<TsFileResource> deletedByMods = new ArrayList<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
@@ -4182,6 +4209,9 @@ public class DataRegion implements IDataRegionForQuery {
       // The file size may be smaller than the original file, so the increment here may be
       // negative
       involvedModificationFile.close();
+      if (progress != null) {
+        progress.modFileWritten(involvedModificationFile);
+      }
       logger.debug(
           StorageEngineMessages.STORAGE_LOG_DELETION_DELETION_WRITTEN_INTO_MODS_FILE_F5E26D2A,
           modEntry,
@@ -4219,7 +4249,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (startTime <= fileStartTime
             && endTime >= fileEndTime
             && file.isClosed()
-            && file.setStatus(TsFileResourceStatus.DELETED)) {
+            && file.transformStatus(TsFileResourceStatus.DELETED)) {
           deletedByFiles.add(file);
         } else {
           deletedByMods.add(file);
@@ -4597,12 +4627,14 @@ public class DataRegion implements IDataRegionForQuery {
               newTsFileResource.getTsFile().getName()));
     }
 
+    final Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
+        newTsFileResource.getLastValues();
     TsFileLastReader lastReader = null;
     LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
     if (!isFromConsensus
         && (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
             || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
-        && newTsFileResource.getLastValues() == null) {
+        && lastValues == null) {
       try {
         // init reader outside of lock to boost performance
         lastReader =
@@ -4686,7 +4718,7 @@ public class DataRegion implements IDataRegionForQuery {
                 false);
       }
 
-      onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
+      onTsFileLoaded(newTsFileResource, isFromConsensus, lastValues, lastReader);
       if (isGeneratedByPipe) {
         logger.debug(StorageEngineMessages.TSFILE_LOADED_IN_UNSEQ_LIST, newFileName);
       } else {
@@ -4715,12 +4747,15 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void onTsFileLoaded(
-      TsFileResource newTsFileResource, boolean isFromConsensus, TsFileLastReader lastReader) {
+      TsFileResource newTsFileResource,
+      boolean isFromConsensus,
+      Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues,
+      TsFileLastReader lastReader) {
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && !isFromConsensus) {
       switch (config.getLastCacheLoadStrategy()) {
         case UPDATE:
         case UPDATE_NO_BLOB:
-          updateLastCache(newTsFileResource, lastReader);
+          updateLastCache(lastValues, lastReader);
           break;
         case CLEAN_ALL:
           // The inner cache is shared by TreeDeviceSchemaCacheManager and
@@ -4755,11 +4790,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   @SuppressWarnings("java:S112")
-  private void updateLastCache(TsFileResource newTsFileResource, TsFileLastReader lastReader) {
+  private void updateLastCache(
+      Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues, TsFileLastReader lastReader) {
     boolean isTableModel = isTableModelDatabase(databaseName);
 
-    Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
-        newTsFileResource.getLastValues();
     if (lastValues != null) {
       for (Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry : lastValues.entrySet()) {
         IDeviceID deviceID = entry.getKey();
@@ -4776,7 +4810,6 @@ public class DataRegion implements IDataRegionForQuery {
                   databaseName, deviceID, measurements, timeValuePairs, false, null);
         }
       }
-      newTsFileResource.setLastValues(null);
       return;
     }
 
@@ -4844,6 +4877,7 @@ public class DataRegion implements IDataRegionForQuery {
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {
       logger.warn(StorageEngineMessages.FILE_ALREADY_LOADED_IN_UNSEQ_LIST, tsFileResource);
+      tsFileResource.setLastValues(null);
       return false;
     }
 
@@ -4943,6 +4977,9 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
     }
+
+    // The file is published. Only loadNewTsFile needs the last values from this point on.
+    tsFileResource.setLastValues(null);
 
     // Only published mods belong in FileMetrics. Also replace any cached source-side handle.
     tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));

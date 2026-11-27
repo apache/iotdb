@@ -28,7 +28,7 @@ import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import static com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
 

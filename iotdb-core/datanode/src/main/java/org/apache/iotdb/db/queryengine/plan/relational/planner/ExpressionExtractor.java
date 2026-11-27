@@ -30,7 +30,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.function.Consumer;

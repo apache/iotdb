@@ -39,8 +39,8 @@
             <artifactId>micrometer-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-thirdparty-misc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

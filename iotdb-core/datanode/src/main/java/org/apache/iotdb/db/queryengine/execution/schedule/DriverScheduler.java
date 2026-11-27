@@ -38,9 +38,11 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
+import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
@@ -50,8 +52,8 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import com.google.common.util.concurrent.MoreExecutors;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -602,7 +604,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           task.unlock();
         }
         clearDriverTask(task);
-        Optional<Throwable> abortCause = task.getAbortCause();
+        Optional<Throwable> abortCause = resolveAbortCause(task);
         QueryId queryId = task.getDriverTaskId().getQueryId();
         Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
         if (queryRelatedTasks != null) {
@@ -625,6 +627,25 @@ public class DriverScheduler implements IDriverScheduler, IService {
           }
         }
       }
+    }
+
+    private Optional<Throwable> resolveAbortCause(DriverTask task) {
+      Optional<Throwable> abortCause = task.getAbortCause();
+      if (abortCause.isPresent() && !(abortCause.get() instanceof DriverTaskAbortedException)) {
+        return abortCause;
+      }
+      DriverContext driverContext = task.getDriver().getDriverContext();
+      FragmentInstanceContext fragmentInstanceContext =
+          driverContext == null ? null : driverContext.getFragmentInstanceContext();
+      if (fragmentInstanceContext != null) {
+        Optional<Throwable> fragmentCause = fragmentInstanceContext.getFailureCause();
+        if (fragmentCause.isPresent()
+            && (!abortCause.isPresent()
+                || !(fragmentCause.get() instanceof DriverTaskAbortedException))) {
+          return fragmentCause;
+        }
+      }
+      return abortCause;
     }
   }
 }

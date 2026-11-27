@@ -114,6 +114,14 @@ public class PipeTerminateEvent extends EnrichedEvent {
     addOnCommittedHook(this::markCompleted);
   }
 
+  public int getDataRegionId() {
+    return dataRegionId;
+  }
+
+  public boolean isShouldMark() {
+    return shouldMark;
+  }
+
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return true;

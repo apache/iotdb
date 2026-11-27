@@ -49,7 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessCo
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.mockito.Mockito;
 
 import java.time.ZoneId;

@@ -42,8 +42,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.rpc.TSStatusCode.EXECUTE_UDF_ERROR;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator {
 

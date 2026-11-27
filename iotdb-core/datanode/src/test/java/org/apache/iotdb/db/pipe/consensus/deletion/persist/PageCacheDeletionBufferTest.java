@@ -24,11 +24,16 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
@@ -37,6 +42,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.InOrder;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,11 +51,20 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -73,6 +88,178 @@ public class PageCacheDeletionBufferTest {
   @After
   public void tearDown() {
     PageCacheDeletionBuffer.setDalBufferSize(previousDalBufferSize);
+  }
+
+  @Test
+  public void testIdleCloseDoesNotWarnAboutQueueInterruption() throws Exception {
+    assertQueueInterruptionLogging(true);
+  }
+
+  @Test
+  public void testUnexpectedQueueInterruptionStillWarns() throws Exception {
+    assertQueueInterruptionLogging(false);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertQueueInterruptionLogging(boolean closeNormally) throws Exception {
+    final PageCacheDeletionBuffer deletionBuffer =
+        new PageCacheDeletionBuffer(1, temporaryFolder.newFolder("interrupt").getAbsolutePath());
+    final CountDownLatch taking = new CountDownLatch(1);
+    final AtomicBoolean queueInterrupted = new AtomicBoolean();
+    final AtomicReference<Thread> worker = new AtomicReference<>();
+    final Field queueField = PageCacheDeletionBuffer.class.getDeclaredField("deletionResources");
+    queueField.setAccessible(true);
+    final BlockingQueue<DeletionResource> originalQueue =
+        (BlockingQueue<DeletionResource>) queueField.get(deletionBuffer);
+    final BlockingQueue<DeletionResource> queue =
+        mock(BlockingQueue.class, delegatesTo(originalQueue));
+    doAnswer(
+            invocation -> {
+              worker.set(Thread.currentThread());
+              taking.countDown();
+              try {
+                return originalQueue.poll(invocation.getArgument(0), invocation.getArgument(1));
+              } catch (InterruptedException e) {
+                queueInterrupted.set(true);
+                throw e;
+              }
+            })
+        .when(queue)
+        .poll(anyLong(), any(TimeUnit.class));
+    queueField.set(deletionBuffer, queue);
+    final Logger logger = (Logger) LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
+    final Appender<ILoggingEvent> appender = mock(Appender.class);
+    logger.addAppender(appender);
+    deletionBuffer.start();
+    try {
+      Assert.assertTrue(taking.await(10, TimeUnit.SECONDS));
+      if (!closeNormally) {
+        worker.get().interrupt();
+        Awaitility.await()
+            .atMost(10, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    verify(appender, atLeastOnce())
+                        .doAppend(argThat(this::isQueueInterruptionWarning)));
+      }
+    } finally {
+      try {
+        deletionBuffer.close();
+        if (closeNormally) {
+          verify(appender, never()).doAppend(argThat(this::isQueueInterruptionWarning));
+          Assert.assertFalse(queueInterrupted.get());
+        }
+      } finally {
+        logger.detachAppender(appender);
+      }
+    }
+  }
+
+  @Test(timeout = 30000)
+  @SuppressWarnings("unchecked")
+  public void testCloseWhileBatchPollingFlushesWithoutInterruptingWorker() throws Exception {
+    final PageCacheDeletionBuffer buffer =
+        new PageCacheDeletionBuffer(1, temporaryFolder.newFolder("batch-close").getAbsolutePath());
+    final Field queueField = PageCacheDeletionBuffer.class.getDeclaredField("deletionResources");
+    queueField.setAccessible(true);
+    final BlockingQueue<DeletionResource> original =
+        (BlockingQueue<DeletionResource>) queueField.get(buffer);
+    final BlockingQueue<DeletionResource> queue = mock(BlockingQueue.class, delegatesTo(original));
+    final CountDownLatch collectingBatch = new CountDownLatch(1);
+    final CountDownLatch batchCanContinue = new CountDownLatch(1);
+    final AtomicBoolean queueInterrupted = new AtomicBoolean();
+    doAnswer(
+            invocation -> {
+              try {
+                if (invocation.getArgument(1) == TimeUnit.NANOSECONDS) {
+                  collectingBatch.countDown();
+                  Assert.assertTrue(batchCanContinue.await(10, TimeUnit.SECONDS));
+                }
+                return original.poll(invocation.getArgument(0), invocation.getArgument(1));
+              } catch (InterruptedException e) {
+                queueInterrupted.set(true);
+                throw e;
+              }
+            })
+        .when(queue)
+        .poll(anyLong(), any(TimeUnit.class));
+    queueField.set(buffer, queue);
+    final DeletionResource deletion = createDeletion(1, 1);
+    final ExecutorService closer = Executors.newSingleThreadExecutor();
+    buffer.start();
+    try {
+      buffer.registerDeletionResource(deletion);
+      Assert.assertTrue(collectingBatch.await(10, TimeUnit.SECONDS));
+      final Future<?> close = closer.submit(buffer::close);
+      final Field closed = PageCacheDeletionBuffer.class.getDeclaredField("isClosed");
+      closed.setAccessible(true);
+      Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> closed.getBoolean(buffer));
+      batchCanContinue.countDown();
+      close.get(10, TimeUnit.SECONDS);
+    } finally {
+      batchCanContinue.countDown();
+      closer.shutdownNow();
+      Assert.assertTrue(closer.awaitTermination(10, TimeUnit.SECONDS));
+    }
+    Assert.assertSame(DeletionResource.Status.SUCCESS, deletion.waitForResult());
+    // ThreadPoolExecutor may interrupt an idle worker during shutdown; assert the DAL wait itself.
+    Assert.assertFalse(queueInterrupted.get());
+    Assert.assertTrue(buffer.isAllDeletionFlushed());
+  }
+
+  @Test(timeout = 30000)
+  @SuppressWarnings("unchecked")
+  public void testFlushTimeoutWarnsAndForceInterruptsBatchPoll() throws Exception {
+    final PageCacheDeletionBuffer buffer =
+        new PageCacheDeletionBuffer(
+            1, temporaryFolder.newFolder("timeout-close").getAbsolutePath());
+    final Field queueField = PageCacheDeletionBuffer.class.getDeclaredField("deletionResources");
+    queueField.setAccessible(true);
+    final BlockingQueue<DeletionResource> original =
+        (BlockingQueue<DeletionResource>) queueField.get(buffer);
+    final BlockingQueue<DeletionResource> queue = mock(BlockingQueue.class, delegatesTo(original));
+    final CountDownLatch batchPollStarted = new CountDownLatch(1);
+    final CountDownLatch blockBatch = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              if (invocation.getArgument(1) == TimeUnit.NANOSECONDS) {
+                batchPollStarted.countDown();
+                blockBatch.await();
+              }
+              return original.poll(invocation.getArgument(0), invocation.getArgument(1));
+            })
+        .when(queue)
+        .poll(anyLong(), any(TimeUnit.class));
+    queueField.set(buffer, queue);
+    final Logger logger = (Logger) LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
+    final Appender<ILoggingEvent> appender = mock(Appender.class);
+    logger.addAppender(appender);
+    final DeletionResource deletion = createDeletion(1, 1);
+    buffer.start();
+    try {
+      buffer.registerDeletionResource(deletion);
+      Assert.assertTrue(batchPollStarted.await(10, TimeUnit.SECONDS));
+      buffer.close();
+      verify(appender)
+          .doAppend(
+              argThat(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && DataNodePipeMessages
+                              .LOG_DELETION_PERSIST_ARG_TIMED_OUT_WAITING_FOR_ARG_DELETIONS_TO_FLUSH_BEFORE_SHUTDOWN_52469B0D
+                              .equals(event.getMessage())));
+      Assert.assertSame(DeletionResource.Status.FAILURE, deletion.waitForResult());
+      Assert.assertNotNull(deletion.getCause());
+    } finally {
+      blockBatch.countDown();
+      logger.detachAppender(appender);
+    }
+  }
+
+  private boolean isQueueInterruptionWarning(ILoggingEvent event) {
+    return event.getLevel() == Level.WARN
+        && DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM.equals(
+            event.getMessage());
   }
 
   @Test

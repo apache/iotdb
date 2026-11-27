@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.queryengine.execution.operator.source.relationa
 
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.apache.ratis.thirdparty.com.google.common.annotations.VisibleForTesting;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.type.Type;

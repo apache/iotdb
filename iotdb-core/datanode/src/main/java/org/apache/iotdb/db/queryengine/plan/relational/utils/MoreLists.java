@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.utils;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.function.Function;
@@ -29,10 +29,10 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Streams.stream;
 
 public final class MoreLists {
   public static <T> List<List<T>> listOfListsCopy(List<List<T>> lists) {

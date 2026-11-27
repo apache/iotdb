@@ -24,15 +24,15 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class StrictSymbolsMatcher extends BaseStrictSymbolsMatcher {
   private final List<String> expectedAliases;

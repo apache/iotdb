@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.SchemaDeletionModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -325,7 +326,12 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   @Override
   public TSStatus visitDeleteData(DeleteDataNode node, DataRegion dataRegion) {
     dataRegion.writeLock("deleteData");
+    SchemaDeletionModProgress modProgress = null;
+    boolean succeeded = false;
     try {
+      if (!node.isGeneratedByRemoteConsensusLeader()) {
+        modProgress = dataRegion.startTimeSeriesModProgress(node.getPlanNodeId());
+      }
       for (MeasurementPath path : node.getPathList()) {
         MeasurementPath databaseToDelete =
             new MeasurementPath(dataRegion.getDatabaseName() + ".**");
@@ -336,12 +342,13 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
                   .PIPE_LOG_NOW_TRY_TO_DELETE_DIRECTLY_DATABASEPATH_DELETEPATH_A427CD01,
               databaseToDelete.getFullPath(),
               path.getFullPath());
-          dataRegion.deleteDataDirectly(databaseToDelete, node);
+          dataRegion.deleteDataDirectly(databaseToDelete, node, modProgress);
         } else {
-          dataRegion.deleteByDevice(path, node);
+          dataRegion.deleteByDevice(path, node, modProgress);
         }
       }
       dataRegion.insertSeparatorToWAL(node);
+      succeeded = true;
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -352,6 +359,9 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage());
       return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.getMessage());
     } finally {
+      if (modProgress != null) {
+        modProgress.finishTimeSeriesDeletion(succeeded);
+      }
       dataRegion.writeUnlock();
     }
   }

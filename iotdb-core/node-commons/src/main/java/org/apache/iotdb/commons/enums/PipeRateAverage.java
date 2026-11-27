@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.enums;
 
 import org.apache.iotdb.commons.i18n.CommonMessages;
 
-import com.codahale.metrics.Meter;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Meter;
 
 public enum PipeRateAverage {
   NONE,

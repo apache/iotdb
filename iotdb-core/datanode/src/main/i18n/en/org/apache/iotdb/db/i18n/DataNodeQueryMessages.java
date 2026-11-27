@@ -201,8 +201,6 @@ public final class DataNodeQueryMessages {
       "Failed to send new data block event, attempt times: {}";
   public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT =
       "Failed to send end of data block event, attempt times: {}";
-  public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT_2 =
-      "Failed to send end of data block event after all retry";
   public static final String SOURCE_HANDLE_IS_BLOCKED =
       "Source handle is blocked.";
   public static final String RESERVED_DATA_BLOCK_SIZE_IS_NULL =
@@ -2202,6 +2200,10 @@ public final class DataNodeQueryMessages {
       "Second argument of Aggregate functions [%s] should be orderable";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_OR_THREE_ARGUMENTS =
       "Aggregate functions [%s] should only have two or three arguments";
+  public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261 =
+      "Aggregate functions [%s] should only have one, two or three arguments";
+  public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_LITERAL_OR_INTEGER_498530E4 =
+      "Second argument of Aggregate functions [%s] should be a positive duration literal (e.g. 1s, 1m, 1h) or an integer literal";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_ARGUMENTS =
       "Aggregate functions [%s] should only have two arguments";
   public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_NUMBERIC_TYPE_AND_DO_NOT_USE =
@@ -2425,6 +2427,12 @@ public final class DataNodeQueryMessages {
       "Invalid argument %s. Partitioning can not be specified for table argument with row semantics";
   public static final String INVALID_ARGUMENT_S_ORDERING_CAN_NOT_BE_SPECIFIED_FOR_TABLE_ARGUMENT_WITH_ROW_SEMANTICS =
       "Invalid argument %s. Ordering can not be specified for table argument with row semantics";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_ASCENDING_ORDER_5E26E74A =
+          "The ORDER BY clause of the %s argument must be in ascending order.";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_DESCENDING_ORDER_C2B688D7 =
+          "The ORDER BY clause of the %s argument must be in descending order.";
   public static final String INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S =
       "Invalid scalar argument '%s'. Expected type %s, got %s";
   public static final String INVALID_SCALAR_ARGUMENT_S_S =
@@ -4974,6 +4982,26 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+
+  public static final String INVALID_SCALAR_ARGUMENT_S_VALUE_OUT_OF_RANGE_FOR_INT32_A865664C =
+      "Invalid scalar argument '%s'. Value out of range for INT32";
+
+  public static final String
+      EXCEPTION_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_THE_PENDING_RESULT_FRAGMENT_OFFSET_ARG_A1B13DBC =
+          "Request offset %d does not match the pending result fragment offset %d";
+  public static final String
+      EXCEPTION_REQUEST_OFFSET_ARG_IS_INVALID_BECAUSE_NO_RESULT_FRAGMENT_IS_PENDING_C403454F =
+          "Request offset %d is invalid because no result fragment is pending";
+
+  public static final String
+      EXCEPTION_WAITING_FOR_THE_MEMORY_OF_A_PENDING_RESULT_FRAGMENT_WAS_ABORTED_BECAUSE_THE_QUERY_WAS_CLEANED_UP_D51EC67C =
+          "Waiting for the memory of a pending result fragment was aborted because the query was cleaned up";
+
+  public static final String MESSAGE_COLUMN_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_OR_COLUMN_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_08F7DB64 =
+      "Column deletion is asynchronous. The specified table or column does not exist; no task was submitted.";
+  public static final String MESSAGE_TABLE_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_74E6521A =
+      "Table deletion is asynchronous. The specified table does not exist; no task was submitted.";
+
   public static final String EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A =
       "Not enough memory while analyzing time partitions. Narrow the query time range or increase query memory. Memory details: requested this time %s, current free memory %s. Original error: %s";
 
@@ -4982,5 +5010,4 @@ public final class DataNodeQueryMessages {
 
   public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
       "[QueryFailed] queryId: {}, sql: {}";
-
 }

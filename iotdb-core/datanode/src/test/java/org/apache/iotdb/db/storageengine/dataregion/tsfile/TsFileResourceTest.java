@@ -192,6 +192,7 @@ public class TsFileResourceTest {
 
     // upgrade asynchronously
     ExecutorService threadPool = Executors.newSingleThreadExecutor();
+    long metadataBeforeUpgrade = tsFileResource.calculateMetadataRamSize();
     tsFileResource.upgradeModFile(threadPool);
 
     // entries should be upgraded
@@ -212,6 +213,9 @@ public class TsFileResourceTest {
       fail("Mod file upgrade takes too long");
     }
 
+    assertEquals(
+        metadataBeforeUpgrade + tsFileResource.getExclusiveModFile().ramBytesUsed(),
+        tsFileResource.calculateMetadataRamSize());
     // writable after upgrade
     try (ModificationFile modFileForWrite = tsFileResource.getModFileForWrite()) {
       TreeDeletionEntry newDeletionEntry =
@@ -237,7 +241,15 @@ public class TsFileResourceTest {
     }
 
     // upgrade synchronously
+    long metadataBeforeUpgrade = tsFileResource.calculateMetadataRamSize();
     tsFileResource.upgradeModFile(null);
+    // Local LOAD publishes its own handle after converting a legacy mods file.
+    ModificationFile published =
+        new ModificationFile(ModificationFile.getExclusiveMods(file), false);
+    tsFileResource.setExclusiveModFile(published);
+    assertEquals(
+        metadataBeforeUpgrade + published.ramBytesUsed(),
+        tsFileResource.calculateMetadataRamSize());
 
     // entries should be upgraded
     List<TreeDeletionEntry> newDeletionEntriesExpected =
@@ -260,6 +272,25 @@ public class TsFileResourceTest {
       modFileForWrite.write(newDeletionEntry);
     }
     assertEquals(newDeletionEntriesExpected, tsFileResource.getAllModEntries());
+  }
+
+  @Test
+  public void testResetCompletedModUpgradeBeforeFirstRead() throws Exception {
+    try (ModificationFileV1 legacy = ModificationFileV1.getNormalMods(tsFileResource)) {
+      legacy.write(new Deletion(new MeasurementPath("root.db1.d1.s1"), 0, 100));
+    }
+    long beforeUpgrade = tsFileResource.calculateMetadataRamSize();
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try {
+      tsFileResource.upgradeModFile(pool);
+      pool.shutdown();
+      assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS));
+      tsFileResource.resetModFile();
+      assertEquals(beforeUpgrade, tsFileResource.calculateMetadataRamSize());
+      assertEquals(1, tsFileResource.getAllModEntries().size());
+    } finally {
+      pool.shutdownNow();
+    }
   }
 
   @Test
