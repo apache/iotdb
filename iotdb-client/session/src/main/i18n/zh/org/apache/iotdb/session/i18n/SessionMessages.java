@@ -90,6 +90,17 @@ public final class SessionMessages {
   public static final String INTERRUPTED = "被中断！";
   public static final String CLOSING_SESSION_POOL = "正在关闭 Session 连接池，清理队列...";
 
+  // SessionPool - configuration
+  public static final String SESSION_POOL_MAX_SIZE_ARG_ILLEGAL =
+      "maxSize %d 必须为正数";
+  public static final String SESSION_POOL_CORE_SIZE_ARG_ILLEGAL =
+      "coreSize %d 必须位于 [0, maxSize(%d)] 范围内";
+  public static final String SESSION_POOL_MAX_IDLE_TIME_ARG_ILLEGAL =
+      "maxIdleTimeInMs %d 不能为负数";
+  public static final String EVICT_IDLE_SESSIONS =
+      "回收了 {} 个空闲 Session，剩余 Session 数：{}，coreSize：{}";
+  public static final String EVICT_IDLE_SESSIONS_FAILED = "回收空闲 Session 失败";
+
   // SessionPool - operation failed (warn)
   public static final String INSERT_TABLET_FAILED = "insertTablet 失败";
   public static final String INSERT_ALIGNED_TABLET_FAILED = "insertAlignedTablet 失败";

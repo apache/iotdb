@@ -46,6 +46,11 @@ public class SessionConfig {
 
   public static final int DEFAULT_SESSION_POOL_MAX_SIZE = 5;
 
+  public static final int DEFAULT_SESSION_POOL_CORE_SIZE = 0;
+
+  /** 0 means idle sessions are never evicted. */
+  public static final long DEFAULT_SESSION_POOL_MAX_IDLE_TIME_IN_MS = 0;
+
   public static final Version DEFAULT_VERSION = Version.V_1_0;
 
   public static final boolean DEFAULT_ENABLE_AUTO_FETCH = true;

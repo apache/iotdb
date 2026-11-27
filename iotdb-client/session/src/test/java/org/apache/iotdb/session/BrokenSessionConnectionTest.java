@@ -20,7 +20,6 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -162,8 +161,8 @@ public class BrokenSessionConnectionTest {
             .enableAutoFetch(false)
             .build();
     try {
-      ConcurrentLinkedDeque<ISession> queue = Whitebox.getInternalState(pool, "queue");
-      queue.add(brokenSession);
+      ConcurrentLinkedDeque<?> queue = Whitebox.getInternalState(pool, "queue");
+      Whitebox.invokeMethod(pool, "putBack", brokenSession);
       Whitebox.setInternalState(pool, "size", 1);
 
       // Each call fails, but with a connection error, and the broken session must not be reused.
@@ -178,16 +177,25 @@ public class BrokenSessionConnectionTest {
               "call "
                   + call
                   + ": the pool reused the broken session"
-                  + (queue.contains(brokenSession) ? " (still queued)" : ""),
+                  + (containsSession(queue, brokenSession) ? " (still queued)" : ""),
               e);
         }
         assertFalse(
             "call " + call + ": broken session was put back into the pool",
-            queue.contains(brokenSession));
+            containsSession(queue, brokenSession));
       }
     } finally {
       pool.close();
     }
+  }
+
+  private static boolean containsSession(ConcurrentLinkedDeque<?> queue, Object session) {
+    for (Object idleSession : queue) {
+      if (Whitebox.getInternalState(idleSession, "session") == session) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private Session newSession() {

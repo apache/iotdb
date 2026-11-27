@@ -91,6 +91,17 @@ public final class SessionMessages {
   public static final String INTERRUPTED = "Interrupted!";
   public static final String CLOSING_SESSION_POOL = "closing the session pool, cleaning queues...";
 
+  // SessionPool - configuration
+  public static final String SESSION_POOL_MAX_SIZE_ARG_ILLEGAL =
+      "the maxSize %d must be positive";
+  public static final String SESSION_POOL_CORE_SIZE_ARG_ILLEGAL =
+      "the coreSize %d must be in [0, maxSize(%d)]";
+  public static final String SESSION_POOL_MAX_IDLE_TIME_ARG_ILLEGAL =
+      "the maxIdleTimeInMs %d must not be negative";
+  public static final String EVICT_IDLE_SESSIONS =
+      "evicted {} idle sessions, remaining session count: {}, coreSize: {}";
+  public static final String EVICT_IDLE_SESSIONS_FAILED = "failed to evict idle sessions";
+
   // SessionPool - operation failed (warn)
   public static final String INSERT_TABLET_FAILED = "insertTablet failed";
   public static final String INSERT_ALIGNED_TABLET_FAILED = "insertAlignedTablet failed";
