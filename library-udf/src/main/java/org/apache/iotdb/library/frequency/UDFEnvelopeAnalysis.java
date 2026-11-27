@@ -44,6 +44,7 @@ import java.util.Map;
 
 public class UDFEnvelopeAnalysis implements UDTF {
   private double frequency;
+  private boolean hasFrequency;
   private int amplification;
   private String timestampPrecision;
   private final DoubleArrayList signals = new DoubleArrayList();
@@ -62,9 +63,9 @@ public class UDFEnvelopeAnalysis implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
-            x -> (double) x > 0,
+            x -> Double.isFinite((double) x) && (double) x > 0,
             LibraryUdfMessages.EXCEPTION_THE_PARAM_FREQUENCY_MUST_BE_GREATER_THAN_0_45820CF9,
-            validator.getParameters().getDoubleOrDefault(FREQUENCY, Double.MAX_VALUE))
+            validator.getParameters().getDoubleOrDefault(FREQUENCY, 1.0d))
         .validate(
             x -> (int) x >= 1,
             LibraryUdfMessages
@@ -76,7 +77,10 @@ public class UDFEnvelopeAnalysis implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    frequency = parameters.getDoubleOrDefault(FREQUENCY, Double.MAX_VALUE);
+    signals.clear();
+    timestamps.clear();
+    hasFrequency = parameters.hasAttribute(FREQUENCY);
+    frequency = parameters.getDoubleOrDefault(FREQUENCY, 0.0d);
     amplification = parameters.getIntOrDefault(AMPLIFICATION, 1);
     timestampPrecision = parameters.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
     valueReader =
@@ -86,24 +90,45 @@ public class UDFEnvelopeAnalysis implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    signals.add(valueReader.read(row));
-    if (timestamps.size() < 10) {
-      timestamps.add(row.getTime());
+    if (row.isNull(0)) {
+      return;
+    }
+    double value = valueReader.read(row);
+    if (Double.isFinite(value)) {
+      signals.add(value);
+      if (timestamps.size() < 10) {
+        timestamps.add(row.getTime());
+      }
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (signals.isEmpty()) {
+      return;
+    }
     double[] envelopeValues = envelopeAnalyze(signals.toArray());
-    frequency = frequency != Double.MAX_VALUE ? frequency : calculateFrequency(timestamps);
+    frequency = hasFrequency ? frequency : calculateFrequency(timestamps);
+    if (!Double.isFinite(frequency) || frequency <= 0) {
+      return;
+    }
     int signalSize = signals.size();
     double[] frequencies = new double[signalSize / 2];
+    double frequencyStep = frequency * amplification / signalSize;
+    if (!Double.isFinite(frequencyStep)) {
+      return;
+    }
     for (int i = 0; i < signalSize / 2; i++) {
-      frequencies[i] = i * (frequency * amplification / signalSize);
+      frequencies[i] = i * frequencyStep;
     }
 
     for (int i = 0; i < envelopeValues.length; i++) {
-      collector.putDouble((long) frequencies[i], envelopeValues[i]);
+      if (Double.isFinite(frequencies[i])
+          && Double.isFinite(envelopeValues[i])
+          && frequencies[i] >= 0
+          && frequencies[i] <= Long.MAX_VALUE) {
+        collector.putDouble((long) frequencies[i], envelopeValues[i]);
+      }
     }
   }
 
@@ -231,6 +256,9 @@ public class UDFEnvelopeAnalysis implements UDTF {
   }
 
   public static double calculateFrequencyByTimeUnit(long time, String timeUnit) {
+    if (time <= 0) {
+      return Double.NaN;
+    }
     switch (timeUnit) {
       case MS_PRECISION:
         return 1000.0 / time;

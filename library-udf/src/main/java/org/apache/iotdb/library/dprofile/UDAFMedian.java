@@ -68,10 +68,16 @@ public class UDAFMedian implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (exact) {
       statistics.insert(row);
     } else {
-      sketch.insert(Util.getValueAsDouble(row));
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        sketch.insert(v);
+      }
     }
   }
 
@@ -83,8 +89,8 @@ public class UDAFMedian implements UDTF {
       } else {
         collector.putDouble(0, sketch.query(0.5));
       }
-    } catch (NoSuchElementException e) {
-      // just ignore it
+    } catch (NoSuchElementException | ArithmeticException e) {
+      // Empty inputs have no median to emit.
     }
   }
 }

@@ -41,12 +41,12 @@ public class WindowDetect {
     ArrayList<Double> originList = new ArrayList<>();
     while (dataIterator.hasNextRow()) {
       Row row = dataIterator.next();
-      Double v = Util.getValueAsDouble(row);
       timeList.add(row.getTime());
-      if (v == null || !Double.isFinite(v)) {
+      if (row.isNull(0)) {
         originList.add(Double.NaN);
       } else {
-        originList.add(v);
+        double v = Util.getValueAsDouble(row);
+        originList.add(Double.isFinite(v) ? v : Double.NaN);
       }
     }
     time = Util.toLongArray(timeList);

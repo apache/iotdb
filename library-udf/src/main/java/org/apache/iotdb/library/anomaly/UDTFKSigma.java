@@ -32,16 +32,25 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
+  private static final int DEFAULT_WINDOW_SIZE = 10000;
+
   private double mean = 0.0;
-  private double variance = 0.0;
-  private double sumX2 = 0.0;
-  private double sumX1 = 0.0;
+  private double sumSquaredDeviation = 0.0;
+  private double safeMomentMagnitude;
+  private double statisticScale;
   private double multipleK;
+  private boolean usesScaledStatistics;
+  private final Deque<MagnitudeEntry> maximumMagnitudes = new ArrayDeque<>();
+  private long nextValueSequence;
   private int windowSize = 0;
   private CircularQueue<Object> v;
   private LongCircularQueue t;
+  private LongCircularQueue valueSequences;
   private Type dataType;
   private TypeServices.RowValueReader valueReader;
   private TypeServices.NumericRowReader numericReader;
@@ -55,10 +64,10 @@ public class UDTFKSigma implements UDTF {
         .validate(
             x -> (int) x > 0,
             LibraryUdfMessages.EXCEPTION_WINDOW_SIZE_SHOULD_BE_LARGER_THAN_0_F4C2184C,
-            validator.getParameters().getIntOrDefault("window", 10))
+            validator.getParameters().getIntOrDefault("window", DEFAULT_WINDOW_SIZE))
         .validate(
-            x -> (double) x > 0,
-            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_LARGER_THAN_0_9F12BFC9,
+            x -> Double.isFinite((double) x) && (double) x > 0,
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_FINITE_AND_LARGER_THAN_0_ECE1B163,
             validator.getParameters().getDoubleOrDefault("k", 3));
   }
 
@@ -73,43 +82,52 @@ public class UDTFKSigma implements UDTF {
     valueReader = TypeServices.ROW_VALUE_READER_SERVICE.call(TypeServices.toReadType(dataType));
     numericReader = TypeServices.NUMERIC_ROW_READER_SERVICE.call(TypeServices.toReadType(dataType));
     valueWriter = TypeServices.rowValueWriter(dataType);
-    this.windowSize = udfParameters.getIntOrDefault("window", 10000);
+    this.windowSize = udfParameters.getIntOrDefault("window", DEFAULT_WINDOW_SIZE);
+    this.mean = 0.0;
+    this.sumSquaredDeviation = 0.0;
+    this.safeMomentMagnitude = Math.sqrt(Double.MAX_VALUE / (8.0 * windowSize));
+    this.statisticScale = 0.0;
+    this.usesScaledStatistics = false;
+    this.maximumMagnitudes.clear();
+    this.nextValueSequence = 0;
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
+    this.valueSequences = new LongCircularQueue(windowSize);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = numericReader.read(row);
     long timestamp = row.getTime();
     if (Double.isFinite(value) && !Double.isNaN(value)) {
+      long sequence = nextValueSequence++;
       if (v.isFull()) {
-        final double frontValue = Double.parseDouble(v.pop().toString());
-        v.push(valueReader.read(row));
+        final double frontValue = ((Number) v.pop()).doubleValue();
         t.pop();
+        removeValue(frontValue, valueSequences.pop());
+        Object storedValue = valueReader.read(row);
+        v.push(storedValue);
         t.push(timestamp);
-        this.sumX1 = this.sumX1 - frontValue + value;
-        this.sumX2 = this.sumX2 - frontValue * frontValue + value * value;
-        this.mean = this.sumX1 / v.getSize();
-        this.variance = this.sumX2 / v.getSize() - this.mean * this.mean;
-        if (Math.abs(value - mean)
-            > multipleK * Math.sqrt(this.variance * v.getSize() / (v.getSize() - 1))) {
-          valueWriter.write(collector, timestamp, valueReader.read(row));
+        valueSequences.push(sequence);
+        addValue(value, sequence);
+        if (v.getSize() > 1 && isOutlier(value)) {
+          valueWriter.write(collector, timestamp, storedValue);
         }
       } else {
-        v.push(valueReader.read(row));
+        Object storedValue = valueReader.read(row);
+        v.push(storedValue);
         t.push(timestamp);
-        this.sumX1 = this.sumX1 + value;
-        this.sumX2 = this.sumX2 + value * value;
-        this.mean = this.sumX1 / v.getSize();
-        this.variance = this.sumX2 / v.getSize() - this.mean * this.mean;
+        valueSequences.push(sequence);
+        addValue(value, sequence);
         if (v.getSize() == this.windowSize) {
-          double stddev = Math.sqrt(this.variance * v.getSize() / (v.getSize() - 1));
           for (int i = 0; i < v.getSize(); i++) {
-            Object vi = this.v.get(i);
+            Object windowValue = this.v.get(i);
             timestamp = this.t.get(i);
-            if (Math.abs(Double.parseDouble(vi.toString()) - mean) > multipleK * stddev) {
-              valueWriter.write(collector, timestamp, vi);
+            if (isOutlier(((Number) windowValue).doubleValue())) {
+              valueWriter.write(collector, timestamp, windowValue);
             }
           }
         }
@@ -120,14 +138,158 @@ public class UDTFKSigma implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (!v.isFull() && v.getSize() > 1) {
-      double stddev = Math.sqrt(this.variance * v.getSize() / (v.getSize() - 1));
       for (int i = 0; i < v.getSize(); i++) {
-        Object vi = this.v.get(i);
+        Object windowValue = this.v.get(i);
         long timestamp = this.t.get(i);
-        if (Math.abs(Double.parseDouble(vi.toString()) - mean) > multipleK * stddev) {
-          valueWriter.write(collector, timestamp, vi);
+        if (isOutlier(((Number) windowValue).doubleValue())) {
+          valueWriter.write(collector, timestamp, windowValue);
         }
       }
     }
+  }
+
+  private void addValue(double value, long sequence) {
+    double magnitude = Math.abs(value);
+    while (!maximumMagnitudes.isEmpty() && maximumMagnitudes.peekLast().magnitude <= magnitude) {
+      maximumMagnitudes.removeLast();
+    }
+    maximumMagnitudes.addLast(new MagnitudeEntry(sequence, magnitude));
+    if (usesScaledStatistics) {
+      double newScale = maximumMagnitudes.peekFirst().magnitude;
+      if (newScale <= safeMomentMagnitude) {
+        recomputeStatistics();
+        return;
+      }
+      rescaleStatistics(newScale);
+      addScaledValue(value / statisticScale);
+      return;
+    }
+    if (magnitude > safeMomentMagnitude) {
+      recomputeScaledStatistics(magnitude);
+      return;
+    }
+    int newCount = v.getSize();
+    double delta = value - mean;
+    mean += delta / newCount;
+    sumSquaredDeviation += delta * (value - mean);
+    if (!Double.isFinite(mean) || !Double.isFinite(sumSquaredDeviation)) {
+      recomputeStatistics();
+    }
+  }
+
+  private void removeValue(double value, long sequence) {
+    if (!maximumMagnitudes.isEmpty() && maximumMagnitudes.peekFirst().sequence == sequence) {
+      maximumMagnitudes.removeFirst();
+    }
+    if (usesScaledStatistics) {
+      int remainingCount = v.getSize();
+      if (remainingCount == 0) {
+        mean = 0;
+        sumSquaredDeviation = 0;
+        statisticScale = 0;
+        usesScaledStatistics = false;
+        return;
+      }
+      double comparedValue = value / statisticScale;
+      double updatedMean = mean - (comparedValue - mean) / remainingCount;
+      sumSquaredDeviation -= (comparedValue - mean) * (comparedValue - updatedMean);
+      mean = updatedMean;
+      if (sumSquaredDeviation < 0 || !Double.isFinite(sumSquaredDeviation)) {
+        recomputeStatistics();
+      }
+      return;
+    }
+    int remainingCount = v.getSize();
+    if (remainingCount == 0) {
+      mean = 0;
+      sumSquaredDeviation = 0;
+      statisticScale = 0;
+      return;
+    }
+    double delta = value - mean;
+    double updatedMean = mean - delta / remainingCount;
+    sumSquaredDeviation -= delta * (value - updatedMean);
+    mean = updatedMean;
+    if (sumSquaredDeviation < 0 || !Double.isFinite(sumSquaredDeviation)) {
+      recomputeStatistics();
+    }
+  }
+
+  private void recomputeStatistics() {
+    double maxMagnitude = maximumMagnitudes.isEmpty() ? 0 : maximumMagnitudes.peekFirst().magnitude;
+    if (maxMagnitude > safeMomentMagnitude) {
+      recomputeScaledStatistics(maxMagnitude);
+      return;
+    }
+
+    usesScaledStatistics = false;
+    statisticScale = 0;
+    mean = 0;
+    sumSquaredDeviation = 0;
+    for (int i = 0; i < v.getSize(); i++) {
+      double value = ((Number) v.get(i)).doubleValue();
+      int count = i + 1;
+      double delta = value - mean;
+      mean += delta / count;
+      sumSquaredDeviation += delta * (value - mean);
+      if (!Double.isFinite(mean) || !Double.isFinite(sumSquaredDeviation)) {
+        recomputeScaledStatistics(maxMagnitude);
+        return;
+      }
+    }
+  }
+
+  private void recomputeScaledStatistics(double scale) {
+    mean = 0;
+    sumSquaredDeviation = 0;
+    statisticScale = scale;
+    usesScaledStatistics = scale > 0;
+    if (!usesScaledStatistics) {
+      return;
+    }
+
+    for (int i = 0; i < v.getSize(); i++) {
+      double value = ((Number) v.get(i)).doubleValue() / scale;
+      int count = i + 1;
+      double delta = value - mean;
+      mean += delta / count;
+      sumSquaredDeviation += delta * (value - mean);
+    }
+  }
+
+  private void addScaledValue(double value) {
+    int newCount = v.getSize();
+    double delta = value - mean;
+    mean += delta / newCount;
+    sumSquaredDeviation += delta * (value - mean);
+  }
+
+  private void rescaleStatistics(double newScale) {
+    if (newScale == statisticScale) {
+      return;
+    }
+    double ratio = statisticScale / newScale;
+    mean *= ratio;
+    sumSquaredDeviation *= ratio * ratio;
+    statisticScale = newScale;
+  }
+
+  private static class MagnitudeEntry {
+    private final long sequence;
+    private final double magnitude;
+
+    private MagnitudeEntry(long sequence, double magnitude) {
+      this.sequence = sequence;
+      this.magnitude = magnitude;
+    }
+  }
+
+  private boolean isOutlier(double value) {
+    double comparedValue = usesScaledStatistics ? value / statisticScale : value;
+    return Math.abs(comparedValue - mean) > multipleK * sampleStandardDeviation();
+  }
+
+  private double sampleStandardDeviation() {
+    return Math.sqrt(Math.max(0, sumSquaredDeviation) / (v.getSize() - 1));
   }
 }

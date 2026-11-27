@@ -34,6 +34,8 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.util.NoSuchElementException;
+
 /** calculate the exact or approximate median absolute deviation (mad). */
 public class UDAFMad implements UDTF {
 
@@ -68,25 +70,35 @@ public class UDAFMad implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (exact) {
       statistics.insert(row);
     } else {
-      sketch.insert(Util.getValueAsDouble(row));
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        sketch.insert(v);
+      }
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (exact) {
-      collector.putDouble(0, statistics.getMad());
-    } else {
-      Mad mad = sketch.getMad();
-      if (mad.errorBound == Double.MAX_VALUE) {
-        throw new UDFException(
-            LibraryUdfMessages
-                .EXCEPTION_MAD_SKETCH_CANNOT_PRODUCE_A_RESULT_WITH_THE_GIVEN_ERROR_PLEASE_RETRY_WITH_A_SMALLER_ERROR_OR_USE_ERROR_0_FOR_THE_EXACT_RESULT_E168B5FE);
+    try {
+      if (exact) {
+        collector.putDouble(0, statistics.getMad());
+      } else {
+        Mad mad = sketch.getMad();
+        if (mad.errorBound == Double.MAX_VALUE) {
+          throw new UDFException(
+              LibraryUdfMessages
+                  .EXCEPTION_MAD_SKETCH_CANNOT_PRODUCE_A_RESULT_WITH_THE_GIVEN_ERROR_PLEASE_RETRY_WITH_A_SMALLER_ERROR_OR_USE_ERROR_0_FOR_THE_EXACT_RESULT_E168B5FE);
+        }
+        collector.putDouble(0, mad.result);
       }
-      collector.putDouble(0, mad.result);
+    } catch (NoSuchElementException e) {
+      // Empty inputs have no MAD to emit.
     }
   }
 }

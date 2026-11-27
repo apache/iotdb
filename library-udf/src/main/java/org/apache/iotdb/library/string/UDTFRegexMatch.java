@@ -36,6 +36,7 @@ import org.apache.tsfile.utils.Binary;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /** This function matches substring according to given regex from an input series. */
 public class UDTFRegexMatch implements UDTF {
@@ -47,14 +48,24 @@ public class UDTFRegexMatch implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.TEXT)
+        .validateRequiredAttribute("regex")
         .validate(
-            regex -> ((String) regex).length() > 0,
+            regex -> ((String) regex).length() > 0 && isValidRegex((String) regex),
             LibraryUdfMessages.EXCEPTION_REGEXP_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_FA012C63,
-            validator.getParameters().getStringOrDefault("regex", ""))
+            validator.getParameters().getString("regex"))
         .validate(
             group -> (int) group >= 0,
             LibraryUdfMessages.EXCEPTION_GROUP_INDEX_HAS_TO_BE_A_NON_NEGATIVE_INTEGER_A1B9B0F2,
             validator.getParameters().getIntOrDefault("group", 0));
+  }
+
+  private static boolean isValidRegex(String regex) {
+    try {
+      Pattern.compile(regex);
+      return true;
+    } catch (PatternSyntaxException e) {
+      return false;
+    }
   }
 
   @Override
@@ -69,9 +80,12 @@ public class UDTFRegexMatch implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    Matcher matcher = pattern.matcher(row.getString(0));
-    if (matcher.find() && matcher.groupCount() >= group) {
-      collector.putString(row.getTime(), matcher.group(group));
+    if (row.isNull(0)) {
+      return;
+    }
+    String matchedGroup = findGroup(row.getString(0));
+    if (matchedGroup != null) {
+      collector.putString(row.getTime(), matchedGroup);
     }
   }
 
@@ -80,12 +94,7 @@ public class UDTFRegexMatch implements UDTF {
     if (row.isNull(0)) {
       return null;
     }
-    Matcher matcher = pattern.matcher(row.getString(0));
-    if (matcher.find() && matcher.groupCount() >= group) {
-      return matcher.group(group);
-    }
-
-    return null;
+    return findGroup(row.getString(0));
   }
 
   @Override
@@ -99,13 +108,21 @@ public class UDTFRegexMatch implements UDTF {
         builder.appendNull();
       } else {
         String str = inputs[i].toString();
-        Matcher matcher = pattern.matcher(str);
-        if (matcher.find() && matcher.groupCount() >= group) {
-          builder.writeBinary(new Binary(matcher.group(group).getBytes()));
+        String matchedGroup = findGroup(str);
+        if (matchedGroup != null) {
+          builder.writeBinary(new Binary(matchedGroup.getBytes()));
         } else {
           builder.appendNull();
         }
       }
     }
+  }
+
+  private String findGroup(String value) {
+    Matcher matcher = pattern.matcher(value);
+    if (!matcher.find() || matcher.groupCount() < group) {
+      return null;
+    }
+    return matcher.group(group);
   }
 }

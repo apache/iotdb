@@ -33,6 +33,10 @@ public class LongCircularQueue {
   private long[] data;
 
   public LongCircularQueue(int capacity) {
+    if (capacity <= 0) {
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.EXCEPTION_CAPACITY_SHOULD_BE_LARGER_THAN_0_055372C7);
+    }
     head = tail = size = 0;
     data = new long[capacity];
     minLen = Math.max(INIT_CAP, capacity);

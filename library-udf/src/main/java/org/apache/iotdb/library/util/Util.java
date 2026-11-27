@@ -30,11 +30,18 @@ import org.eclipse.collections.api.tuple.primitive.LongIntPair;
 import org.eclipse.collections.impl.map.mutable.primitive.LongIntHashMap;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.ParseException;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 /** This class offers functions of getting and putting values from iotdb interface. */
 public class Util {
   private static final String TIMESTAMP_PRECISION = "timestampPrecision";
+  private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
   public static final String MS_PRECISION = "ms";
 
   private Util() {
@@ -300,15 +307,59 @@ public class Util {
         unit = 60 * 1000 * 1000 * 1000L;
         s = s.substring(0, s.length() - 1);
       } else if (s.endsWith("h")) {
-        unit = 60 * 60 * 1000 * 1000 * 1000L;
+        unit = 60L * 60 * 1000 * 1000 * 1000;
         s = s.substring(0, s.length() - 1);
       } else if (s.endsWith("d")) {
-        unit = 24 * 60 * 60 * 1000 * 1000 * 1000L;
+        unit = 24L * 60 * 60 * 1000 * 1000 * 1000;
         s = s.substring(0, s.length() - 1);
       }
     }
 
     double v = Double.parseDouble(s);
-    return (long) (unit * v);
+    if (!Double.isFinite(v)) {
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0);
+    }
+    BigDecimal value;
+    try {
+      value = new BigDecimal(s);
+    } catch (NumberFormatException e) {
+      value = new BigDecimal(v);
+    }
+    BigDecimal duration = value.multiply(BigDecimal.valueOf(unit)).setScale(0, RoundingMode.DOWN);
+    if (duration.compareTo(BigDecimal.valueOf(Long.MAX_VALUE)) > 0
+        || duration.compareTo(BigDecimal.valueOf(Long.MIN_VALUE)) < 0) {
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0);
+    }
+    return duration.longValueExact();
+  }
+
+  public static boolean isPositiveTime(String s, UDFParameters parameters) {
+    try {
+      return parseTime(s, parameters) > 0;
+    } catch (RuntimeException e) {
+      return false;
+    }
+  }
+
+  public static boolean isPositiveDateTime(String s) {
+    try {
+      return parseDateTime(s) > 0;
+    } catch (ParseException e) {
+      return false;
+    }
+  }
+
+  public static long parseDateTime(String s) throws ParseException {
+    SimpleDateFormat format = new SimpleDateFormat(DATE_TIME_FORMAT);
+    format.setLenient(false);
+    ParsePosition position = new ParsePosition(0);
+    Date date = format.parse(s, position);
+    if (date == null || position.getIndex() != s.length()) {
+      throw new ParseException(
+          LibraryUdfMessages.EXCEPTION_INVALID_DATETIME_FORMAT_A3DC435A, position.getErrorIndex());
+    }
+    return date.getTime();
   }
 }

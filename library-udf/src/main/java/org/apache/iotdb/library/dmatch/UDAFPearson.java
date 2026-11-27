@@ -33,11 +33,13 @@ import org.apache.iotdb.udf.api.type.Type;
 public class UDAFPearson implements UDTF {
 
   private long count = 0;
-  private double sumX = 0.0;
-  private double sumY = 0.0;
-  private double sumXY = 0.0;
-  private double sumXX = 0.0;
-  private double sumYY = 0.0;
+  private int scaleExponentX = Integer.MIN_VALUE;
+  private int scaleExponentY = Integer.MIN_VALUE;
+  private double meanX = 0.0;
+  private double meanY = 0.0;
+  private double coMoment = 0.0;
+  private double sumSquaredDeviationX = 0.0;
+  private double sumSquaredDeviationY = 0.0;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -52,11 +54,13 @@ public class UDAFPearson implements UDTF {
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     count = 0;
-    sumX = 0.0;
-    sumY = 0.0;
-    sumXY = 0.0;
-    sumXX = 0.0;
-    sumYY = 0.0;
+    scaleExponentX = Integer.MIN_VALUE;
+    scaleExponentY = Integer.MIN_VALUE;
+    meanX = 0.0;
+    meanY = 0.0;
+    coMoment = 0.0;
+    sumSquaredDeviationX = 0.0;
+    sumSquaredDeviationY = 0.0;
   }
 
   @Override
@@ -67,25 +71,54 @@ public class UDAFPearson implements UDTF {
     double x = Util.getValueAsDouble(row, 0);
     double y = Util.getValueAsDouble(row, 1);
     if (Double.isFinite(x) && Double.isFinite(y)) { // skip NaN rows
+      int valueExponentX = x == 0.0 ? Integer.MIN_VALUE : Math.getExponent(Math.abs(x));
+      int valueExponentY = y == 0.0 ? Integer.MIN_VALUE : Math.getExponent(Math.abs(y));
+      int nextScaleExponentX = Math.max(scaleExponentX, valueExponentX);
+      int nextScaleExponentY = Math.max(scaleExponentY, valueExponentY);
+      double ratioX =
+          scaleExponentX == Integer.MIN_VALUE
+              ? 0.0
+              : Math.scalb(1.0, scaleExponentX - nextScaleExponentX);
+      double ratioY =
+          scaleExponentY == Integer.MIN_VALUE
+              ? 0.0
+              : Math.scalb(1.0, scaleExponentY - nextScaleExponentY);
+      meanX *= ratioX;
+      meanY *= ratioY;
+      sumSquaredDeviationX *= ratioX * ratioX;
+      sumSquaredDeviationY *= ratioY * ratioY;
+      coMoment *= ratioX * ratioY;
+      scaleExponentX = nextScaleExponentX;
+      scaleExponentY = nextScaleExponentY;
+
       count++;
-      sumX += x;
-      sumY += y;
-      sumXY += x * y;
-      sumXX += x * x;
-      sumYY += y * y;
+      double scaledX = scaleExponentX == Integer.MIN_VALUE ? 0.0 : Math.scalb(x, -scaleExponentX);
+      double scaledY = scaleExponentY == Integer.MIN_VALUE ? 0.0 : Math.scalb(y, -scaleExponentY);
+      double deltaX = scaledX - meanX;
+      double deltaY = scaledY - meanY;
+      meanX += deltaX / count;
+      meanY += deltaY / count;
+      sumSquaredDeviationX += deltaX * (scaledX - meanX);
+      sumSquaredDeviationY += deltaY * (scaledY - meanY);
+      coMoment += deltaX * (scaledY - meanY);
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (count > 0) { // calculate R only when there is more than 1 point
-      double pearson =
-          (count * sumXY - sumX * sumY)
-              / Math.sqrt(count * sumXX - sumX * sumX)
-              / Math.sqrt(count * sumYY - sumY * sumY);
-      collector.putDouble(0, pearson);
-    } else {
-      collector.putDouble(0, Double.NaN);
+    if (count == 0) {
+      return;
+    }
+    if (!Double.isFinite(sumSquaredDeviationX)
+        || !Double.isFinite(sumSquaredDeviationY)
+        || !Double.isFinite(coMoment)
+        || sumSquaredDeviationX <= 0
+        || sumSquaredDeviationY <= 0) {
+      return;
+    }
+    double pearson = coMoment / Math.sqrt(sumSquaredDeviationX) / Math.sqrt(sumSquaredDeviationY);
+    if (Double.isFinite(pearson)) {
+      collector.putDouble(0, Math.max(-1.0, Math.min(1.0, pearson)));
     }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.match;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.DTWState;
 import org.apache.iotdb.library.util.TypeServices;
@@ -27,6 +28,7 @@ import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
@@ -40,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 
 public class UDAFDTWMatch implements UDAF {
+  public static final int MAX_INPUT_POINTS = 100_000;
+
   //    private static final Logger LOGGER = Logger.getLogger(DTWMatch.class);
   private Double[] pattern;
   private float threshold;
@@ -83,16 +87,19 @@ public class UDAFDTWMatch implements UDAF {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!columns[1].isNull(i)) {
-        long timestamp = columns[1].getLong(i);
+      if (!columns[0].isNull(i) && !columns[1].isNull(i)) {
         double value = valueReader.read(columns[0], i);
+        if (!Double.isFinite(value)) {
+          continue;
+        }
+        long timestamp = columns[1].getLong(i);
+        ensureInputCapacity(DTWState, timestamp);
         DTWState.updateBuffer(timestamp, value);
-        if (DTWState.getValueBuffer().length == pattern.length) {
+        if (!DTWState.needsRebuild() && DTWState.getValueBuffer().length == pattern.length) {
           float dtw = calculateDTW(DTWState.getValueBuffer(), pattern);
           if (dtw <= threshold) {
-            ((DTWState) state)
-                .addMatchResult(
-                    new DTWMatchResult(dtw, DTWState.getFirstTime(), DTWState.getLastTime()));
+            DTWState.addMatchResult(
+                new DTWMatchResult(dtw, DTWState.getFirstTime(), DTWState.getLastTime()));
           }
         }
       }
@@ -101,47 +108,76 @@ public class UDAFDTWMatch implements UDAF {
 
   private float calculateDTW(Double[] series1, Double[] series2) {
     int n = series1.length;
-    double[][] dtw = new double[n][n];
-
-    // Initialize the DTW matrix
-    for (int i = 0; i < n; i++) {
-      for (int j = 0; j < n; j++) {
-        dtw[i][j] = Double.POSITIVE_INFINITY;
-      }
+    int m = series2.length;
+    if (n == 0 || m == 0) {
+      return Float.POSITIVE_INFINITY;
     }
-    dtw[0][0] = 0;
+    double[] previous = new double[m + 1];
+    double[] current = new double[m + 1];
+    Arrays.fill(previous, Double.POSITIVE_INFINITY);
+    previous[0] = 0;
 
     // Compute the DTW distance
-    for (int i = 1; i < n; i++) {
-      for (int j = 1; j < n; j++) {
-        double cost = Math.abs(series1[i] - series2[j]);
-        dtw[i][j] = cost + Math.min(Math.min(dtw[i - 1][j], dtw[i][j - 1]), dtw[i - 1][j - 1]);
+    for (int i = 1; i <= n; i++) {
+      current[0] = Double.POSITIVE_INFINITY;
+      for (int j = 1; j <= m; j++) {
+        double cost = Math.abs(series1[i - 1] - series2[j - 1]);
+        current[j] = cost + Math.min(Math.min(previous[j], current[j - 1]), previous[j - 1]);
       }
+      double[] swap = previous;
+      previous = current;
+      current = swap;
     }
 
-    return (float) dtw[n - 1][n - 1];
+    return (float) previous[m];
   }
 
   @Override
   public void combineState(State state, State state1) {
-    DTWState dtwState = (DTWState) state;
-    DTWState newDTWState = (DTWState) state1;
+    // Accumulate partitions without repeatedly recalculating every historical window.
+    DTWState target = (DTWState) state;
+    DTWState source = (DTWState) state1;
+    Map<Long, Double> targetInput = target.getInput();
+    int mergedSize = targetInput.size();
+    for (long timestamp : source.getInput().keySet()) {
+      if (!targetInput.containsKey(timestamp) && ++mergedSize > MAX_INPUT_POINTS) {
+        throw inputLimitExceeded();
+      }
+    }
+    target.mergeInput(source);
+  }
 
-    Long[] times = newDTWState.getTimeBuffer();
-    Double[] values = newDTWState.getValueBuffer();
+  private static void ensureInputCapacity(DTWState state, long timestamp) {
+    Map<Long, Double> input = state.getInput();
+    if (!input.containsKey(timestamp) && input.size() >= MAX_INPUT_POINTS) {
+      throw inputLimitExceeded();
+    }
+  }
 
-    for (int i = 0; i < times.length; i++) {
-      if (times[i] > dtwState.getFirstTime()) {
-        dtwState.updateBuffer(times[i], values[i]);
-        if (dtwState.getValueBuffer().length == pattern.length) {
-          float dtw = calculateDTW(dtwState.getValueBuffer(), pattern);
-          if (dtw <= threshold) {
-            dtwState.addMatchResult(
-                new DTWMatchResult(dtw, dtwState.getFirstTime(), dtwState.getLastTime()));
-          }
+  private static UDFException inputLimitExceeded() {
+    return new UDFException(
+        String.format(
+            LibraryUdfMessages
+                .EXCEPTION_DTW_INPUT_EXCEEDS_THE_MAXIMUM_SUPPORTED_NUMBER_OF_DISTINCT_TIMESTAMPS_ARG_8EC7ACC3,
+            MAX_INPUT_POINTS));
+  }
+
+  private void rebuildMatches(DTWState dtwState) {
+    if (!dtwState.needsRebuild()) {
+      return;
+    }
+    dtwState.clearWindowAndMatches();
+    for (Map.Entry<Long, Double> point : dtwState.getInput().entrySet()) {
+      dtwState.updateWindow(point.getKey(), point.getValue());
+      if (dtwState.getValueBuffer().length == pattern.length) {
+        float dtw = calculateDTW(dtwState.getValueBuffer(), pattern);
+        if (dtw <= threshold) {
+          dtwState.addMatchResult(
+              new DTWMatchResult(dtw, dtwState.getFirstTime(), dtwState.getLastTime()));
         }
       }
     }
+    dtwState.finishRebuild();
   }
 
   public List<DTWMatchResult> calcMatch(
@@ -151,8 +187,9 @@ public class UDAFDTWMatch implements UDAF {
     DTWState dtwState = (DTWState) this.createState();
     dtwState.reset();
     for (int i = 0; i < times.size(); i++) {
+      ensureInputCapacity(dtwState, times.get(i));
       dtwState.updateBuffer(times.get(i), values.get(i));
-      if (dtwState.getValueBuffer().length == pattern.length) {
+      if (!dtwState.needsRebuild() && dtwState.getValueBuffer().length == pattern.length) {
         float dtw = calculateDTW(dtwState.getValueBuffer(), pattern);
         if (dtw <= threshold) {
           dtwState.addMatchResult(
@@ -160,12 +197,14 @@ public class UDAFDTWMatch implements UDAF {
         }
       }
     }
+    rebuildMatches(dtwState);
     return dtwState.getMatchResults();
   }
 
   @Override
   public void outputFinal(State state, ResultValue resultValue) {
     DTWState DTWState = (DTWState) state;
+    rebuildMatches(DTWState);
     List<DTWMatchResult> matchResults = DTWState.getMatchResults();
     if (!matchResults.isEmpty()) {
       resultValue.setBinary(new Binary(matchResults.toString(), Charset.defaultCharset()));
@@ -184,6 +223,33 @@ public class UDAFDTWMatch implements UDAF {
         .validateInputSeriesDataType(
             0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.BOOLEAN)
         .validateRequiredAttribute("pattern")
-        .validateRequiredAttribute("threshold");
+        .validateRequiredAttribute("threshold")
+        .validate(
+            x -> isFiniteDoubleList((String) x),
+            LibraryUdfMessages
+                .EXCEPTION_ILLEGAL_PARAMETER_PATTERN_MUST_BE_FINITE_DOUBLE_DOUBLE_612DE434,
+            validator.getParameters().getStringOrDefault("pattern", ""))
+        .validate(
+            x -> isFiniteNonNegativeFloat((String) x),
+            LibraryUdfMessages
+                .EXCEPTION_ILLEGAL_PARAMETER_THRESHOLD_MUST_BE_A_FINITE_NON_NEGATIVE_NUMBER_1C438942,
+            validator.getParameters().getStringOrDefault("threshold", ""));
+  }
+
+  private static boolean isFiniteDoubleList(String value) {
+    try {
+      return Arrays.stream(value.split(",", -1)).map(Double::valueOf).allMatch(Double::isFinite);
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  private static boolean isFiniteNonNegativeFloat(String value) {
+    try {
+      float valueAsFloat = Float.parseFloat(value);
+      return Float.isFinite(valueAsFloat) && valueAsFloat >= 0;
+    } catch (NumberFormatException e) {
+      return false;
+    }
   }
 }

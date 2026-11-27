@@ -22,6 +22,7 @@ package org.apache.iotdb.library.anomaly;
 import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -31,182 +32,500 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrat
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
-/** This function is used to detect density anomaly of time series. */
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+
+/**
+ * This function detects density anomalies in time series. In series mode, each new vector is
+ * evaluated with at most the preceding 2k vectors and itself.
+ */
 public class UDTFLOF implements UDTF {
+  private static final long MAX_LOF_WORKING_MEMORY_BYTES = 64L * 1024 * 1024;
+  private static final long MAX_LOF_DISTANCE_COORDINATE_OPERATIONS_PER_ACCESS = 64L * 1024 * 1024;
   private int multipleK;
   private int dim;
   private static final String DEFAULT_METHOD = "default";
+  private static final String METHOD_SERIES = "series";
+  private static final int DEFAULT_ACCESS_WINDOW_SIZE = 10000;
+  private static final int DEFAULT_SERIES_WINDOW_SIZE = 5;
   private String method = DEFAULT_METHOD;
   private int window;
+  private final List<Long> seriesContextTimestamps = new ArrayList<>();
+  private final List<Double> seriesContextValues = new ArrayList<>();
+  private final Deque<SeriesVector> seriesHistory = new ArrayDeque<>();
+  private boolean hasProcessedSeriesVector;
+  private boolean hasInitializedSeries;
+  private long lastProcessedSeriesTimestamp;
 
-  int partition(Double[][] a, int left, int right) {
-    Double key = a[left][1];
-    Double key2 = a[left][0];
-    while (left < right) {
-      while (left < right && a[right][1] >= key) {
-        right--;
-      }
-      if (left < right) {
-        a[left][0] = a[right][0];
-        a[left][1] = a[right][1];
-      }
-      while (left < right && a[left][1] <= key) {
-        left++;
-      }
-      if (left < right) {
-        a[right][0] = a[left][0];
-        a[right][1] = a[left][1];
+  private double[] calculateLOFs(double[][] points, int length) throws UDFException {
+    int neighborCount = Math.min(multipleK, length - 1);
+    ensureLOFWorkingMemory(length, points[0].length);
+
+    long neighborEntries = (long) length * neighborCount;
+    int[] neighbors = new int[(int) neighborEntries];
+    double[] neighborDistances = new double[(int) neighborEntries];
+    int[] heapSizes = new int[length];
+
+    for (int i = 0; i < length; i++) {
+      for (int j = i + 1; j < length; j++) {
+        double distance = distance(points[i], points[j]);
+        int iOffset = i * neighborCount;
+        int jOffset = j * neighborCount;
+        heapSizes[i] =
+            addNearestNeighbor(
+                neighbors, neighborDistances, iOffset, neighborCount, heapSizes[i], j, distance);
+        heapSizes[j] =
+            addNearestNeighbor(
+                neighbors, neighborDistances, jOffset, neighborCount, heapSizes[j], i, distance);
       }
     }
-    a[left][0] = key2;
-    a[left][1] = key;
-    return left;
+
+    double[] kDistances = new double[length];
+    for (int i = 0; i < length; i++) {
+      kDistances[i] = neighborDistances[i * neighborCount];
+    }
+
+    double[] localDensities = new double[length];
+    for (int i = 0; i < length; i++) {
+      double reachabilityDistanceSum = 0;
+      for (int j = 0; j < neighborCount; j++) {
+        int neighborOffset = i * neighborCount + j;
+        int neighbor = neighbors[neighborOffset];
+        reachabilityDistanceSum +=
+            Math.max(kDistances[neighbor], neighborDistances[neighborOffset]);
+      }
+      localDensities[i] =
+          reachabilityDistanceSum == 0
+              ? Double.POSITIVE_INFINITY
+              : neighborCount / reachabilityDistanceSum;
+    }
+
+    double[] lof = new double[length];
+    for (int i = 0; i < length; i++) {
+      double densityRatioSum = 0;
+      for (int j = 0; j < neighborCount; j++) {
+        densityRatioSum +=
+            densityRatio(localDensities[neighbors[i * neighborCount + j]], localDensities[i]);
+      }
+      lof[i] = densityRatioSum / neighborCount;
+    }
+    return lof;
   }
 
-  Double findKthNum(Double[][] a, int left, int right, int k) {
-    int index = partition(a, left, right);
-    if (index + 1 == k) {
-      return a[index][0];
-    } else if (index + 1 < k) {
-      return findKthNum(a, index + 1, right, k);
+  private void ensureLOFWorkingMemory(int length, int dimensions) throws UDFException {
+    estimateLOFWorkingMemoryBytes(length, dimensions);
+  }
+
+  private long estimateLOFWorkingMemoryBytes(int length, int dimensions) throws UDFException {
+    long bytesPerPoint = (long) dimensions * Double.BYTES + 128L;
+    if (bytesPerPoint <= 0 || length > MAX_LOF_WORKING_MEMORY_BYTES / bytesPerPoint) {
+      throw new UDFException(
+          LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
+    }
+
+    long workingMemoryBytes = length * bytesPerPoint;
+    long neighborEntries = (long) length * Math.min(multipleK, length - 1);
+    if (neighborEntries
+        > (MAX_LOF_WORKING_MEMORY_BYTES - workingMemoryBytes)
+            / (Integer.BYTES + (long) Double.BYTES)) {
+      throw new UDFException(
+          LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
+    }
+    return workingMemoryBytes + neighborEntries * (Integer.BYTES + (long) Double.BYTES);
+  }
+
+  private void ensureSeriesHistoryMemory(int historySize) throws UDFException {
+    long bytesPerVector = (long) window * Double.BYTES + 128L;
+    if (historySize > MAX_LOF_WORKING_MEMORY_BYTES / bytesPerVector) {
+      throw new UDFException(
+          LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
+    }
+  }
+
+  private void validateSeriesBatchMemory(int incomingRowCount) throws UDFException {
+    long maximumValueCount = seriesContextValues.size() + (long) incomingRowCount;
+    long maximumVectorCount = Math.max(0, maximumValueCount - window + 1);
+    long maximumCandidateCount = estimateMaximumSeriesCandidateCount(maximumVectorCount);
+    long lofWorkingMemoryBytes;
+    if (maximumCandidateCount > 0) {
+      lofWorkingMemoryBytes = estimateLOFWorkingMemoryBytes((int) maximumCandidateCount, window);
     } else {
-      return findKthNum(a, left, index - 1, k);
+      long maximumHistorySize =
+          Math.min(
+              (long) seriesHistory.size() + maximumVectorCount,
+              hasInitializedSeries ? 2L * multipleK : multipleK);
+      long bytesPerVector = window * (long) Double.BYTES + 128L;
+      if (maximumHistorySize > MAX_LOF_WORKING_MEMORY_BYTES / bytesPerVector) {
+        throw new UDFException(
+            LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
+      }
+      lofWorkingMemoryBytes = maximumHistorySize * bytesPerVector;
+    }
+    long inputMemoryBytes = maximumValueCount * 128L;
+    if (inputMemoryBytes > MAX_LOF_WORKING_MEMORY_BYTES - lofWorkingMemoryBytes) {
+      throw new UDFException(
+          LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
     }
   }
 
-  public double getLOF(Double[][] knn, Double[] x, int length) {
-    double sum = 0;
-    for (int i = 0; i < length; i++) {
-      Double[] o = knn[i];
-      sum += getLocDens(knn, o, length) / getLocDens(knn, x, length);
+  private long estimateMaximumSeriesCandidateCount(long vectorCount) {
+    if (vectorCount == 0) {
+      return 0;
     }
-    return sum / multipleK;
+    long maximumCandidateCount;
+    if (hasInitializedSeries) {
+      maximumCandidateCount = seriesHistory.size() + vectorCount;
+    } else {
+      long vectorsUntilFirstCandidate = multipleK - (long) seriesHistory.size() + 1;
+      if (vectorCount < vectorsUntilFirstCandidate) {
+        return 0;
+      }
+      maximumCandidateCount = multipleK + 1L + vectorCount - vectorsUntilFirstCandidate;
+    }
+    return Math.min(maximumCandidateCount, Math.min(2L * multipleK, Integer.MAX_VALUE - 1L) + 1);
   }
 
-  public double getLocDens(Double[][] knn, Double[] x, int length) {
-    Double[] nnk = findKthPoint(knn, x, length);
-
-    double sum = 0;
-    for (int i = 0; i < length; i++) {
-      Double[] o = knn[i];
-      sum += reachDist(o, x, nnk);
+  private long estimateDistanceCoordinateOperations(int length, int dimensions) {
+    long pairCount = (long) length * (length - 1L) / 2;
+    long exceededLimit = MAX_LOF_DISTANCE_COORDINATE_OPERATIONS_PER_ACCESS + 1;
+    if (dimensions > 0 && pairCount > exceededLimit / dimensions) {
+      return exceededLimit;
     }
-    return sum / multipleK;
+    return pairCount * dimensions;
   }
 
-  public Double[] findKthPoint(Double[][] knn, Double[] x, int length) {
-    int index;
-    Double[][] d = new Double[length][2];
-    for (int i = 0; i < length; i++) {
-      d[i][0] = (double) i;
-      d[i][1] = dist(knn[i], x);
+  private void validateSeriesBatchWork(List<Long> timestamps, int vectorCount) throws UDFException {
+    long distanceCoordinateOperations = 0;
+    int historySize = seriesHistory.size();
+    int maximumHistorySize = (int) Math.min(2L * multipleK, Integer.MAX_VALUE);
+    boolean initialized = hasInitializedSeries;
+    boolean processed = hasProcessedSeriesVector;
+    long lastTimestamp = lastProcessedSeriesTimestamp;
+
+    for (int i = 0; i < vectorCount; i++) {
+      long timestamp = timestamps.get(i);
+      if (processed && timestamp <= lastTimestamp) {
+        continue;
+      }
+      processed = true;
+      lastTimestamp = timestamp;
+
+      int candidateCount = 0;
+      boolean wasInitialized = initialized;
+      if (!initialized) {
+        historySize++;
+        if (historySize > multipleK) {
+          candidateCount = historySize;
+          initialized = true;
+        } else {
+          ensureSeriesHistoryMemory(historySize);
+        }
+      } else {
+        candidateCount = historySize + 1;
+      }
+
+      if (candidateCount > 0) {
+        ensureLOFWorkingMemory(candidateCount, window);
+        long work = estimateDistanceCoordinateOperations(candidateCount, window);
+        if (work
+            > MAX_LOF_DISTANCE_COORDINATE_OPERATIONS_PER_ACCESS - distanceCoordinateOperations) {
+          throw new UDFException(
+              LibraryUdfMessages
+                  .EXCEPTION_LOF_SERIES_CALCULATION_EXCEEDS_THE_64_MI_DISTANCE_COORDINATE_OPERATION_LIMIT_PER_ACCESS_WINDOW_9A1E82AD);
+        }
+        distanceCoordinateOperations += work;
+      }
+
+      if (initialized && wasInitialized) {
+        historySize = Math.min(historySize + 1, maximumHistorySize);
+      }
     }
-    index = (int) (double) (findKthNum(d, 0, length - 1, multipleK + 1));
-    return knn[index];
   }
 
-  public double reachDist(Double[] o, Double[] x, Double[] nnk) {
-    return Math.max(dist(o, x), dist(nnk, x));
+  private int addNearestNeighbor(
+      int[] neighbors,
+      double[] distances,
+      int rowOffset,
+      int capacity,
+      int size,
+      int candidate,
+      double distance) {
+    if (size < capacity) {
+      int index = size++;
+      neighbors[rowOffset + index] = candidate;
+      distances[rowOffset + index] = distance;
+      while (index > 0) {
+        int parent = (index - 1) / 2;
+        if (distances[rowOffset + parent] >= distances[rowOffset + index]) {
+          break;
+        }
+        swap(neighbors, distances, rowOffset, parent, index);
+        index = parent;
+      }
+      return size;
+    }
+
+    if (distance >= distances[rowOffset]) {
+      return size;
+    }
+    neighbors[rowOffset] = candidate;
+    distances[rowOffset] = distance;
+    int index = 0;
+    while (true) {
+      int left = index * 2 + 1;
+      if (left >= size) {
+        break;
+      }
+      int farther = left;
+      int right = left + 1;
+      if (right < size && distances[rowOffset + right] > distances[rowOffset + left]) {
+        farther = right;
+      }
+      if (distances[rowOffset + index] >= distances[rowOffset + farther]) {
+        break;
+      }
+      swap(neighbors, distances, rowOffset, index, farther);
+      index = farther;
+    }
+    return size;
   }
 
-  private double dist(Double[] nnk, Double[] x) {
-    double sum = 0;
-    for (int i = 0; i < nnk.length; i++) {
-      sum += (nnk[i] - x[i]) * (nnk[i] - x[i]);
+  private static void swap(
+      int[] neighbors, double[] distances, int rowOffset, int left, int right) {
+    int leftOffset = rowOffset + left;
+    int rightOffset = rowOffset + right;
+    int neighbor = neighbors[leftOffset];
+    neighbors[leftOffset] = neighbors[rightOffset];
+    neighbors[rightOffset] = neighbor;
+    double distance = distances[leftOffset];
+    distances[leftOffset] = distances[rightOffset];
+    distances[rightOffset] = distance;
+  }
+
+  private static double densityRatio(double neighborDensity, double pointDensity) {
+    if (neighborDensity == pointDensity) {
+      return 1;
     }
-    return Math.sqrt(sum);
+    if (Double.isInfinite(pointDensity)) {
+      return 0;
+    }
+    if (pointDensity == 0) {
+      return Double.POSITIVE_INFINITY;
+    }
+    return neighborDensity / pointDensity;
+  }
+
+  private static double distance(double[] left, double[] right) {
+    if (left.length == 1) {
+      return Math.abs(left[0] - right[0]);
+    }
+    double distance = 0;
+    for (int i = 0; i < left.length; i++) {
+      distance = Math.hypot(distance, left[i] - right[i]);
+    }
+    return distance;
   }
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+    String methodName = validator.getParameters().getStringOrDefault("method", DEFAULT_METHOD);
+    int defaultWindowSize =
+        METHOD_SERIES.equalsIgnoreCase(methodName)
+            ? DEFAULT_SERIES_WINDOW_SIZE
+            : DEFAULT_ACCESS_WINDOW_SIZE;
+    validator.validateInputSeriesNumber(1, Integer.MAX_VALUE);
+    for (int i = 0; i < validator.getParameters().getChildExpressionsSize(); i++) {
+      validator.validateInputSeriesDataType(i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+    }
+    validator
+        .validate(
+            k -> (int) k > 0,
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458,
+            validator.getParameters().getIntOrDefault("k", 3))
+        .validate(
+            window -> (int) window > 0,
+            LibraryUdfMessages.EXCEPTION_PARAMETER_WINDOW_SHOULD_BE_A_POSITIVE_INTEGER_54FB7DBB,
+            validator.getParameters().getIntOrDefault("window", defaultWindowSize))
+        .validate(
+            method -> isValidMethod((String) method),
+            LibraryUdfMessages.EXCEPTION_METHOD_SHOULD_BE_DEFAULT_OR_SERIES_181EEECF,
+            validator.getParameters().getStringOrDefault("method", DEFAULT_METHOD));
+  }
+
+  private static boolean isValidMethod(String method) {
+    return DEFAULT_METHOD.equalsIgnoreCase(method) || METHOD_SERIES.equalsIgnoreCase(method);
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    configurations
-        .setAccessStrategy(
-            new SlidingSizeWindowAccessStrategy(parameters.getIntOrDefault("window", 10000)))
-        .setOutputDataType(Type.DOUBLE);
+    this.method = parameters.getStringOrDefault("method", DEFAULT_METHOD);
     this.multipleK = parameters.getIntOrDefault("k", 3);
     this.dim = parameters.getChildExpressionsSize();
-    this.method = parameters.getStringOrDefault("method", DEFAULT_METHOD);
-    this.window = parameters.getIntOrDefault("window", 5);
+    this.window = parameters.getIntOrDefault("window", DEFAULT_SERIES_WINDOW_SIZE);
+    seriesContextTimestamps.clear();
+    seriesContextValues.clear();
+    seriesHistory.clear();
+    hasProcessedSeriesVector = false;
+    hasInitializedSeries = false;
+    lastProcessedSeriesTimestamp = 0;
+    long seriesAccessWindowSize = (long) this.window + this.multipleK;
+    int accessWindowSize =
+        this.method.equalsIgnoreCase(METHOD_SERIES)
+            ? (int)
+                Math.min(
+                    Integer.MAX_VALUE, Math.max(DEFAULT_ACCESS_WINDOW_SIZE, seriesAccessWindowSize))
+            : parameters.getIntOrDefault("window", DEFAULT_ACCESS_WINDOW_SIZE);
+    configurations
+        .setAccessStrategy(new SlidingSizeWindowAccessStrategy(accessWindowSize))
+        .setOutputDataType(Type.DOUBLE);
   }
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
-    if (this.method.equals(DEFAULT_METHOD)) {
-      int size = rowWindow.windowSize();
-      Double[][] knn = new Double[size][dim];
-      long[] timestamp = new long[size];
-      int i = 0;
-      int row = 0;
-      while (row < rowWindow.windowSize()) {
-        timestamp[i] = rowWindow.getRow(row).getTime();
-        for (int j = 0; j < dim; j++) {
-          if (!rowWindow.getRow(row).isNull(j)) {
-            knn[i][j] = Util.getValueAsDouble(rowWindow.getRow(i), j);
-          } else {
-            i--;
-            size--;
-            break;
-          }
+    if (this.method.equalsIgnoreCase(DEFAULT_METHOD)) {
+      int size = 0;
+      for (int row = 0; row < rowWindow.windowSize(); row++) {
+        if (isValidPoint(rowWindow.getRow(row))) {
+          size++;
         }
-        i++;
-        row++;
       }
       if (size > multipleK) {
-        double[] lof = new double[size];
-        for (int m = 0; m < size; m++) {
+        ensureLOFWorkingMemory(size, dim);
+        if (estimateDistanceCoordinateOperations(size, dim)
+            > MAX_LOF_DISTANCE_COORDINATE_OPERATIONS_PER_ACCESS) {
+          throw new UDFException(
+              LibraryUdfMessages
+                  .EXCEPTION_LOF_CALCULATION_EXCEEDS_THE_64_MI_DISTANCE_COORDINATE_OPERATION_LIMIT_PER_ACCESS_WINDOW_551CEFC8);
+        }
+
+        double[][] knn = new double[size][];
+        long[] timestamp = new long[size];
+        int validPoint = 0;
+        for (int row = 0; row < rowWindow.windowSize(); row++) {
+          Row currentRow = rowWindow.getRow(row);
+          if (isValidPoint(currentRow)) {
+            double[] values = new double[dim];
+            for (int column = 0; column < dim; column++) {
+              values[column] = Util.getValueAsDouble(currentRow, column);
+            }
+            timestamp[validPoint] = currentRow.getTime();
+            knn[validPoint] = values;
+            validPoint++;
+          }
+        }
+
+        double[] lof = calculateLOFs(knn, size);
+        for (int m = 0; m < validPoint; m++) {
           try {
-            lof[m] = getLOF(knn, knn[m], size);
             collector.putDouble(timestamp[m], lof[m]);
           } catch (Exception e) {
             throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + m, e);
           }
         }
       }
-    } else if (this.method.equals("series")) {
-      int size = rowWindow.windowSize() - window + 1;
-      if (size > 0) {
-        Double[][] knn = new Double[size][window];
-        long[] timestamp = new long[rowWindow.windowSize()];
-        double temp;
-        int i = 0;
-        int row = 0;
-        while (row < rowWindow.windowSize()) {
-          timestamp[i] = rowWindow.getRow(row).getTime();
-          if (!rowWindow.getRow(row).isNull(0)) {
-            temp = Util.getValueAsDouble(rowWindow.getRow(row), 0);
-            for (int p = 0; p < window; p++) {
-              if (i - p < 0) {
-                break;
-              }
-              if (i - p < size) {
-                knn[i - p][p] = temp;
-              }
-            }
-          } else {
-            i--;
-            size--;
-          }
-          i++;
-          row++;
-        }
-        if (size > multipleK) {
-          double[] lof = new double[size];
-          for (int m = 0; m < size; m++) {
-            try {
-              lof[m] = getLOF(knn, knn[m], size);
-              collector.putDouble(timestamp[m], lof[m]);
-            } catch (Exception e) {
-              throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + m, e);
-            }
+    } else if (this.method.equalsIgnoreCase(METHOD_SERIES)) {
+      validateSeriesBatchMemory(rowWindow.windowSize());
+      List<Long> timestamps = new ArrayList<>(seriesContextTimestamps);
+      List<Double> values = new ArrayList<>(seriesContextValues);
+      for (int row = 0; row < rowWindow.windowSize(); row++) {
+        if (!rowWindow.getRow(row).isNull(0)) {
+          double value = Util.getValueAsDouble(rowWindow.getRow(row), 0);
+          if (Double.isFinite(value)) {
+            timestamps.add(rowWindow.getRow(row).getTime());
+            values.add(value);
           }
         }
       }
+
+      int vectorCount = values.size() - window + 1;
+      validateSeriesBatchWork(timestamps, vectorCount);
+      for (int i = 0; i < vectorCount; i++) {
+        long timestamp = timestamps.get(i);
+        if (!hasProcessedSeriesVector || timestamp > lastProcessedSeriesTimestamp) {
+          double[] vector = new double[window];
+          for (int p = 0; p < window; p++) {
+            vector[p] = values.get(i + p);
+          }
+          hasProcessedSeriesVector = true;
+          lastProcessedSeriesTimestamp = timestamp;
+          processSeriesVector(new SeriesVector(timestamp, vector), collector);
+        }
+      }
+
+      seriesContextTimestamps.clear();
+      seriesContextValues.clear();
+      int contextStart = Math.max(0, values.size() - (window - 1));
+      for (int i = contextStart; i < values.size(); i++) {
+        seriesContextTimestamps.add(timestamps.get(i));
+        seriesContextValues.add(values.get(i));
+      }
+    }
+  }
+
+  private boolean isValidPoint(Row row) throws Exception {
+    for (int column = 0; column < dim; column++) {
+      if (row.isNull(column) || !Double.isFinite(Util.getValueAsDouble(row, column))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void processSeriesVector(SeriesVector vector, PointCollector collector) throws Exception {
+    if (!hasInitializedSeries) {
+      List<SeriesVector> candidates = new ArrayList<>(seriesHistory);
+      candidates.add(vector);
+      if (seriesHistory.size() < multipleK) {
+        seriesHistory.addLast(vector);
+        return;
+      }
+
+      double[][] points = new double[candidates.size()][];
+      for (int i = 0; i < candidates.size(); i++) {
+        points[i] = candidates.get(i).values;
+      }
+      double[] lofValues = calculateLOFs(points, candidates.size());
+      try {
+        collector.putDouble(vector.timestamp, lofValues[lofValues.length - 1]);
+      } catch (Exception e) {
+        throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + vector.timestamp, e);
+      }
+
+      seriesHistory.addLast(vector);
+      hasInitializedSeries = true;
+      return;
+    }
+
+    List<SeriesVector> candidates = new ArrayList<>(seriesHistory);
+    candidates.add(vector);
+    double[][] points = new double[candidates.size()][];
+    for (int i = 0; i < candidates.size(); i++) {
+      points[i] = candidates.get(i).values;
+    }
+    double[] lofValues = calculateLOFs(points, candidates.size());
+    try {
+      collector.putDouble(vector.timestamp, lofValues[lofValues.length - 1]);
+    } catch (Exception e) {
+      throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + vector.timestamp, e);
+    }
+
+    seriesHistory.addLast(vector);
+    int maximumHistorySize = (int) Math.min(2L * multipleK, Integer.MAX_VALUE);
+    while (seriesHistory.size() > maximumHistorySize) {
+      seriesHistory.removeFirst();
+    }
+  }
+
+  private static class SeriesVector {
+    private final long timestamp;
+    private final double[] values;
+
+    private SeriesVector(long timestamp, double[] values) {
+      this.timestamp = timestamp;
+      this.values = values;
     }
   }
 
