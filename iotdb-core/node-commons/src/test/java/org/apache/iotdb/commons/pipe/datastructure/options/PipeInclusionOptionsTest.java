@@ -101,4 +101,12 @@ public class PipeInclusionOptionsTest {
         PipeInclusionOptions.getInclusionString(
             new PipeParameters(Map.of(" INCLUSION ", " data.insert "))));
   }
+
+  @Test
+  public void testBlankInclusionAttributeUsesDefault() {
+    Assert.assertEquals(
+        "data.insert",
+        PipeInclusionOptions.getInclusionString(
+            new PipeParameters(Map.of("extractor.inclusion", " "))));
+  }
 }

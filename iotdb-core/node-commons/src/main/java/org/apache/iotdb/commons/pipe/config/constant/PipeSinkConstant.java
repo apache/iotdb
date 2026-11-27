@@ -103,7 +103,8 @@ public class PipeSinkConstant {
       for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
         if (entry.getKey() != null
             && key.equalsIgnoreCase(entry.getKey().trim())
-            && entry.getValue() != null) {
+            && entry.getValue() != null
+            && !entry.getValue().trim().isEmpty()) {
           return entry.getValue().trim();
         }
       }
@@ -111,7 +112,8 @@ public class PipeSinkConstant {
       for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
         if (entry.getKey() != null
             && reducedKey.equalsIgnoreCase(entry.getKey().trim())
-            && entry.getValue() != null) {
+            && entry.getValue() != null
+            && !entry.getValue().trim().isEmpty()) {
           return entry.getValue().trim();
         }
       }

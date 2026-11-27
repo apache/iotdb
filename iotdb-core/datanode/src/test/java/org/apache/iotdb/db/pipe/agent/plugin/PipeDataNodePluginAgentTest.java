@@ -241,6 +241,10 @@ public class PipeDataNodePluginAgentTest {
         "IOTDB-THRIFT-CONNECTOR",
         PipeSinkConstant.getConnectorOrSinkNameWithDefault(
             new PipeParameters(Map.of(" CONNECTOR ", " IOTDB-THRIFT-CONNECTOR "))));
+    Assert.assertEquals(
+        BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
+        PipeSinkConstant.getConnectorOrSinkNameWithDefault(
+            new PipeParameters(Map.of(" CONNECTOR ", " "))));
     final PipeParameters replacementSourceParameters =
         PipePluginAgent.normalizeSourceParametersForUpdate(
             new PipeParameters(Map.of(" SOURCE.MODE ", " QUERY ")),
@@ -270,6 +274,12 @@ public class PipeDataNodePluginAgentTest {
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(),
         normalizedProcessorParameters.getString("processor"));
     Assert.assertEquals("on", normalizedProcessorParameters.getString("processor.mode"));
+    Assert.assertEquals(
+        "Count",
+        PipePluginAgent.normalizeProcessorParameters(
+                new PipeParameters(
+                    Map.of("PROCESSOR", "AGGREGATE-PROCESSOR", "PROCESSOR.OPERATORS", "Count")))
+            .getString(PipeProcessorConstant.PROCESSOR_OPERATORS_KEY));
     final PipeParameters normalizedSinkParameters =
         PipePluginAgent.normalizeSinkParameters(
             new PipeParameters(
@@ -305,6 +315,16 @@ public class PipeDataNodePluginAgentTest {
         normalizedSinkParameters.getString(
             PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY));
     Assert.assertEquals("true", normalizedSinkParameters.getString("connector.ssl.enable"));
+    Assert.assertEquals(
+        "No-Privileges",
+        PipePluginAgent.normalizeSinkParameters(
+                new PipeParameters(
+                    Map.of(
+                        "CONNECTOR",
+                        "IOTDB-THRIFT-CONNECTOR",
+                        PipeSinkConstant.CONNECTOR_SKIP_IF_KEY,
+                        "No-Privileges")))
+            .getString(PipeSinkConstant.CONNECTOR_SKIP_IF_KEY));
 
     final PipeParameters normalizedSubscriptionSinkParameters =
         PipePluginAgent.normalizeSinkParameters(

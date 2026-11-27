@@ -66,6 +66,8 @@ public abstract class PipePluginAgent {
           "path",
           "path.inclusion",
           "path.exclusion",
+          "operators",
+          "skipif",
           "pattern",
           "pattern.inclusion",
           "pattern.exclusion",
