@@ -63,13 +63,17 @@ public class IoTDBGapFillTableIT extends IoTDBGapFillTableViewBase {
       TSStatusCode.SEMANTIC_ERROR.getStatusCode()
           + ": could not infer startTime or endTime from WHERE clause";
 
+  static void prepareFixtures() throws Exception {
+    prepareTableData(createSqls);
+    prepareViewData();
+  }
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(createSqls);
-    prepareViewData();
+    prepareFixtures();
   }
 
   @AfterClass

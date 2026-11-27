@@ -27,7 +27,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -40,15 +39,16 @@ public class IoTDBExtractTable2IT extends IoTDBExtractTableIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecision("us");
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(createSqls);
+    IoTDBExtractTableIT.prepareExtractTableFixture();
   }
 
+  // Checks that microsecond precision retains six fractional digits and exposes the microsecond.
   @Test
   public void extractUsNsTest() {
     String[] expectedHeader = new String[] {"time", "_col1", "_col2"};
     String[] retArray =
         new String[] {
-          getTimeStrUTC("2025-07-08T01:18:51") + ",456,0,",
+          getTimeStrUTC("2025-07-08T01:18:51", decimal) + ",456,0,",
         };
     tableResultSetEqualTest(
         "SELECT time, extract(us from time),extract(ns from time)"
@@ -59,7 +59,7 @@ public class IoTDBExtractTable2IT extends IoTDBExtractTableIT {
 
     retArray =
         new String[] {
-          getTimeStrUTC8("2025-07-08T09:18:51") + ",456,0,",
+          getTimeStrUTC8("2025-07-08T09:18:51", decimal) + ",456,0,",
         };
     tableResultSetEqualTest(
         "SELECT time, extract(us from time),extract(ns from time)"

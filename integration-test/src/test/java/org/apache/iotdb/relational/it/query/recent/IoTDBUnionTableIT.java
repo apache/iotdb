@@ -98,6 +98,10 @@ public class IoTDBUnionTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
+    prepareFixtures();
+  }
+
+  static void prepareFixtures() throws Exception {
     prepareTableData(createSqls);
     prepareTableData(intersectCreateSqls);
     prepareTableData(exceptCreateSqls);

@@ -21,5 +21,37 @@ package org.apache.iotdb.relational.it.query.recent;
 
 import org.apache.iotdb.relational.it.query.recent.extract.IoTDBExtractTableIT;
 
-// Runs five isolated table-query fixtures on one cluster.
-public class IoTDBTableQueryIT extends IoTDBExtractTableIT {}
+import org.junit.Test;
+
+// Runs the inherited query and EXTRACT cases on their separately prepared databases.
+public class IoTDBTableQueryIT extends IoTDBQueryAttributeTableIT {
+  // Checks date and time extraction on the default millisecond-precision fixture.
+  @Test
+  public void extractTest() {
+    IoTDBExtractTableIT.runExtractTest("123");
+  }
+
+  // Checks microsecond and nanosecond extraction at the default timestamp precision.
+  @Test
+  public void extractUsNsTest() {
+    IoTDBExtractTableIT.runExtractUsNsTest("123");
+  }
+
+  // Checks extraction predicates on timestamp fields and expressions.
+  @Test
+  public void extractFilterPushDownTest() {
+    IoTDBExtractTableIT.runExtractFilterPushDownTest("123");
+  }
+
+  // Checks EXTRACT accepts a timestamp cast from a field value.
+  @Test
+  public void testExtractFromComplexExpression() {
+    IoTDBExtractTableIT.runExtractFromComplexExpression();
+  }
+
+  // Checks EXTRACT accepts a timestamp literal without reading table data.
+  @Test
+  public void testExtractFromConstant() {
+    IoTDBExtractTableIT.runExtractFromConstant();
+  }
+}

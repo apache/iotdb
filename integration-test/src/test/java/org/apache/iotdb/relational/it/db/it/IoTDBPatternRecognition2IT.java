@@ -37,7 +37,8 @@ public class IoTDBPatternRecognition2IT extends IoTDBPatternRecognitionIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(60_000);
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataPartitionAllocationStrategy(SHUFFLE);
     EnvFactory.getEnv().initClusterEnvironment();
-    insertData();
+    IoTDBPatternAggregationIT.prepareAggregationFixture();
+    IoTDBPatternRecognitionIT.prepareRecognitionFixture();
   }
 
   @AfterClass

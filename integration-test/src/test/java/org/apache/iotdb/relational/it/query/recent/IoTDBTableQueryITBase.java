@@ -37,6 +37,11 @@ public abstract class IoTDBTableQueryITBase {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
+    prepareFixtures();
+  }
+
+  // Precision variants override setUp and still need every inherited query fixture.
+  public static void prepareFixtures() {
     IoTDBFromFirstQueryIT.prepareFromFirstQueryFixture();
     IoTDBGroupByAllTableIT.prepareGroupByAllTableFixture();
     IoTDBPredicateConversionTableIT.preparePredicateConversionTableFixture();

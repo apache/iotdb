@@ -36,6 +36,10 @@ public class IoTDBColumnsFillNullTableIT extends IoTDBNullValueIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
+    prepareFixtures();
+  }
+
+  static void prepareFixtures() throws Exception {
     IoTDBColumnsMatchTableIT.prepareColumnsMatchFixture();
     IoTDBFillTableIT.prepareFillFixture();
     IoTDBNullValueIT.prepareNullValueFixture();

@@ -29,7 +29,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.confignode.it.partition.IoTDBPartitionShuffleStrategyIT.SHUFFLE;
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -40,6 +39,6 @@ public class IoTDBUnionTable2IT extends IoTDBUnionTableIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(2);
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataPartitionAllocationStrategy(SHUFFLE);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(createSqls);
+    IoTDBUnionTableIT.prepareFixtures();
   }
 }
