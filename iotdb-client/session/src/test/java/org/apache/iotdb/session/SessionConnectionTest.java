@@ -79,6 +79,7 @@ import java.net.ServerSocket;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -347,6 +348,45 @@ public class SessionConnectionTest {
   }
 
   @Test
+  public void testDatabaseScopedTabletCapabilityHandshake() throws Exception {
+    assertDatabaseScopedTabletCapability(false, null);
+    assertDatabaseScopedTabletCapability(false, Collections.emptyMap());
+    assertDatabaseScopedTabletCapability(
+        false,
+        Collections.singletonMap(
+            SessionConfig.SUPPORTS_DATABASE_SCOPED_TABLET, Boolean.FALSE.toString()));
+    assertDatabaseScopedTabletCapability(
+        true,
+        Collections.singletonMap(
+            SessionConfig.SUPPORTS_DATABASE_SCOPED_TABLET, Boolean.TRUE.toString()));
+  }
+
+  private void assertDatabaseScopedTabletCapability(
+      boolean expected, Map<String, String> openSessionConfiguration) throws Exception {
+    try (ForceCloseTestServer server =
+        new ForceCloseTestServer(null, null, null, null, null, openSessionConfiguration)) {
+      Session capabilitySession =
+          new Session.Builder()
+              .nodeUrls(
+                  Collections.singletonList(
+                      server.getEndpoint().getIp() + ":" + server.getEndpoint().getPort()))
+              .username("root")
+              .password("root")
+              .enableAutoFetch(false)
+              .build();
+      try {
+        capabilitySession.open(false, 1000);
+        Assert.assertEquals(
+            expected,
+            Whitebox.getInternalState(
+                capabilitySession.getDefaultSessionConnection(), "supportsDatabaseScopedTablet"));
+      } finally {
+        capabilitySession.forceClose();
+      }
+    }
+  }
+
+  @Test
   public void testSetTransportTimeoutOnUnsupportedTransport() {
     Assert.assertFalse(sessionConnection.setTransportTimeout(123));
   }
@@ -498,6 +538,35 @@ public class SessionConnectionTest {
   }
 
   @Test
+  public void testInsertDatabaseScopedTabletRequiresServerSupport()
+      throws IoTDBConnectionException, TException {
+    TSInsertTabletReq request = new TSInsertTabletReq();
+    request.setDatabase("db1");
+
+    StatementExecutionException exception =
+        Assert.assertThrows(
+            StatementExecutionException.class, () -> sessionConnection.insertTablet(request));
+
+    Assert.assertEquals(
+        TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(), exception.getStatusCode());
+    Mockito.verify(client, Mockito.never()).insertTablet(any());
+  }
+
+  @Test
+  public void testInsertDatabaseScopedTabletWithServerSupport()
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException, TException {
+    Whitebox.setInternalState(sessionConnection, "supportsDatabaseScopedTablet", true);
+    TSInsertTabletReq request = new TSInsertTabletReq();
+    request.setDatabase("db1");
+    Mockito.when(client.insertTablet(request))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
+    sessionConnection.insertTablet(request);
+
+    Mockito.verify(client).insertTablet(request);
+  }
+
+  @Test
   public void testDeleteEmptyTimeseries()
       throws IoTDBConnectionException, StatementExecutionException, TException {
     sessionConnection.deleteTimeseries(Collections.emptyList());
@@ -601,6 +670,18 @@ public class SessionConnectionTest {
         CountDownLatch rpcStarted,
         CountDownLatch continueRpc)
         throws Exception {
+      this(
+          openSessionStarted, continueOpenSession, redirectEndpoint, rpcStarted, continueRpc, null);
+    }
+
+    private ForceCloseTestServer(
+        CountDownLatch openSessionStarted,
+        CountDownLatch continueOpenSession,
+        TEndPoint redirectEndpoint,
+        CountDownLatch rpcStarted,
+        CountDownLatch continueRpc,
+        Map<String, String> openSessionConfiguration)
+        throws Exception {
       ServerSocket listener = new ServerSocket(0);
       endpoint = new TEndPoint("127.0.0.1", listener.getLocalPort());
       socket = new TServerSocket(listener);
@@ -613,10 +694,15 @@ public class SessionConnectionTest {
                   openSessionStarted.countDown();
                   continueOpenSession.await(5, TimeUnit.SECONDS);
                 }
-                return new TSOpenSessionResp(
-                        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-                        TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3)
-                    .setSessionId(1);
+                TSOpenSessionResp response =
+                    new TSOpenSessionResp(
+                            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+                            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3)
+                        .setSessionId(1);
+                if (openSessionConfiguration != null) {
+                  response.setConfiguration(openSessionConfiguration);
+                }
+                return response;
               });
       Mockito.when(handler.requestStatementId(anyLong())).thenReturn(1L);
       Mockito.when(handler.closeSession(any()))

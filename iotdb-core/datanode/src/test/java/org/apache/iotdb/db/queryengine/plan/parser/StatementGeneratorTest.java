@@ -373,6 +373,27 @@ public class StatementGeneratorTest {
   }
 
   @Test
+  public void testInsertRelationalTabletRejectsInvalidDatabase() {
+    for (String database : Arrays.asList("ROOT.x", "Root.x", "root.x", "", "a.b")) {
+      SemanticException exception =
+          assertThrows(
+              SemanticException.class,
+              () ->
+                  StatementGenerator.createStatement(
+                      createRelationalTabletRequestWithDatabase(database)));
+      assertTrue(exception.getCause() instanceof IllegalPathException);
+    }
+  }
+
+  @Test
+  public void testInsertRelationalTabletNormalizesDatabase() throws IllegalPathException {
+    InsertTabletStatement statement =
+        StatementGenerator.createStatement(createRelationalTabletRequestWithDatabase("DB1"));
+
+    assertEquals("db1", statement.getDatabaseName().orElse(null));
+  }
+
+  @Test
   public void testTabletInsertColumn() {
     final InsertTabletStatement insertTabletStatement =
         StatementTestUtils.genInsertTabletStatement(false);
@@ -1147,6 +1168,22 @@ public class StatementGeneratorTest {
     Statement stmt = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
     CreateLogicalViewStatement viewStmt = (CreateLogicalViewStatement) stmt;
     return viewStmt;
+  }
+
+  private static TSInsertTabletReq createRelationalTabletRequestWithDatabase(String database) {
+    TSInsertTabletReq request =
+        new TSInsertTabletReq(
+            101L,
+            "table1",
+            Collections.singletonList("id"),
+            ByteBuffer.wrap(new byte[128]),
+            ByteBuffer.wrap(new byte[128]),
+            Collections.singletonList((int) TSDataType.TEXT.serialize()),
+            1);
+    request.setColumnCategories(Collections.singletonList((byte) ColumnCategory.TAG.ordinal()));
+    request.setWriteToTable(true);
+    request.setDatabase(database);
+    return request;
   }
 
   @Test

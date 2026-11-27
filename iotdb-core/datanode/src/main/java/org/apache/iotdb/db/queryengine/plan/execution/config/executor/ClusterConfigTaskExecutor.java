@@ -414,13 +414,13 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
 import static org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory.getShowExternalServiceHeader;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.ShowExternalServiceTask.appendServiceEntry;
+import static org.apache.iotdb.isession.util.TableModelDatabaseUtils.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.udf.api.type.Type.OBJECT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
