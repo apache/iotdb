@@ -82,11 +82,7 @@ public abstract class AbstractSchemaTool {
   protected static String targetFile = Constants.DUMP_FILE_NAME_DEFAULT;
   protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
 
-  /**
-   * Set to {@code true} when a connection-retry failure is surfaced from an import file; checked by
-   * the entry point to produce a non-zero exit status even though the per-file reporting has
-   * already printed the failure and written the failed-record file.
-   */
+  /** Set when an imported file ran out of connection retries, so the import exits non-zero. */
   protected static volatile boolean connectionFailed = false;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
