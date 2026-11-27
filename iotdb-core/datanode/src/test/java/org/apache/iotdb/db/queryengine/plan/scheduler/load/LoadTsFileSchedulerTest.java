@@ -185,7 +185,7 @@ public class LoadTsFileSchedulerTest {
   }
 
   @Test
-  public void testPartitionClientManagerFailureSkipsTabletFallback() {
+  public void testPartitionClientManagerFailureAllowsTabletFallback() {
     final LoadSingleTsFileNode node = mock(LoadSingleTsFileNode.class);
     final TsFileResource tsFileResource = mock(TsFileResource.class);
     Mockito.when(node.getTsFileResource()).thenReturn(tsFileResource);
@@ -234,7 +234,7 @@ public class LoadTsFileSchedulerTest {
 
     Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
     Assert.assertTrue(stateMachine.getFailureMessage().contains("partition-failed.tsfile"));
-    Assert.assertTrue(stateMachine.getFailureMessage().contains("uncertain LOAD outcome"));
+    Assert.assertFalse(stateMachine.getFailureMessage().contains("uncertain LOAD outcome"));
     Mockito.verify(partitionFetcher)
         .getOrCreateDataPartition(Mockito.<DataPartitionQueryParam>anyList(), Mockito.anyString());
   }

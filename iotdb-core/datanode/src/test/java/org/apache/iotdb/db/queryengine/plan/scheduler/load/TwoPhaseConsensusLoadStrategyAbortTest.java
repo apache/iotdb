@@ -96,6 +96,50 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     verify(submitter, times(3)).submit(any(), any());
   }
 
+  @Test
+  public void testSuccessfulPreCommitAbortAllowsTabletFallbackAfterTransportRetry()
+      throws Exception {
+    final List<String> submitted = new ArrayList<>();
+    final boolean[] lastSubmissionWasRpcTransportFailure = {false};
+    final int[] pieceSubmissionAttempts = {0};
+    final LoadConsensusSubmitter submitter = mock(LoadConsensusSubmitter.class);
+    when(submitter.submit(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              final TRegionReplicaSet replicaSet = invocation.getArgument(0);
+              final LoadTsFileConsensusNode node = invocation.getArgument(1);
+              submitted.add(node.getOp().name() + "@" + replicaSet.getRegionId().getId());
+              if (node.getOp() == LoadTsFileConsensusOp.PIECE
+                  && pieceSubmissionAttempts[0]++ == 0) {
+                lastSubmissionWasRpcTransportFailure[0] = true;
+                return RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR);
+              }
+              lastSubmissionWasRpcTransportFailure[0] = false;
+              if (node.getOp() == LoadTsFileConsensusOp.PREPARE
+                  && replicaSet.getRegionId().equals(REGION_1)) {
+                return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
+              }
+              return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+            });
+    when(submitter.isLastSubmissionRpcTransportFailure())
+        .thenAnswer(invocation -> lastSubmissionWasRpcTransportFailure[0]);
+    when(submitter.resolveRoute(any(), any(Integer.class)))
+        .thenAnswer(invocation -> currentRoute(invocation.getArgument(0)));
+    final TwoPhaseConsensusLoadStrategy strategy =
+        strategy(
+            submitter,
+            new LinkedHashSet<>(Collections.singletonList(currentRoute(REGION_1))),
+            loadIds(),
+            pieceCounts());
+
+    assertEquals(TSStatusCode.SUCCESS_STATUS, submitPiece(strategy, REGION_1));
+    assertTrue(strategy.shouldSkipTabletFallback());
+    assertFalse(prepareAndCommit(strategy));
+
+    assertEquals(Arrays.asList("PIECE@1", "PIECE@1", "PREPARE@1", "ABORT@1"), submitted);
+    assertFalse(strategy.shouldSkipTabletFallback());
+  }
+
   /**
    * Fails the given operation for the given region with a permanent error, accepts the rest. The
    * route of a region stays resolvable, so a command that is retried is retried on the route the

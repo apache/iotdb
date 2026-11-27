@@ -455,6 +455,9 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
         unresolvedLoadTransaction = true;
       }
     }
+    if (allAborted) {
+      rpcTransportFailure = false;
+    }
     return allAborted;
   }
 

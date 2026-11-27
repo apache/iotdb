@@ -464,8 +464,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
       return true;
     } catch (final Exception e) {
-      if (LoadConsensusSubmitter.isPotentiallyUnstableRpcFailure(e)
-          || (strategy != null && strategy.shouldSkipTabletFallback())) {
+      if (strategy != null && strategy.shouldSkipTabletFallback()) {
         tabletFallbackBlockedNodeIndexes.add(index);
       }
       LOGGER.warn(DataNodeQueryMessages.LOADTSFILESCHEDULER_LOADS_TSFILE_ERROR, filePath, e);
