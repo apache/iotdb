@@ -844,6 +844,25 @@ public class WritingMetrics implements IMetricSet {
     if (dataRegionId == null) {
       return;
     }
+    recordFlushingMemTableStatus(dataRegionId, memSize, seriesNum, totalPointsNum, avgSeriesNum);
+  }
+
+  /**
+   * Record the flush of a memtable into the metrics of its DataRegion.
+   *
+   * <p>The flush task knows the region directly, so it does not have to encode the region id into a
+   * storage group string: every sample, including the decaying mean used as the pre-allocation
+   * hint, is then attributed to the correct region.
+   */
+  public void recordFlushingMemTableStatus(
+      DataRegionId dataRegionId,
+      long memSize,
+      long seriesNum,
+      long totalPointsNum,
+      long avgSeriesNum) {
+    if (dataRegionId == null) {
+      return;
+    }
 
     MetricService.getInstance()
         .histogram(

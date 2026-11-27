@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -73,6 +75,53 @@ public class WritingMetricsTest {
     assertEquals(10, firstRegionHistogram.takeSnapshot().getSum(), 0.001);
     assertEquals(1, secondRegionHistogram.getCount());
     assertEquals(20, secondRegionHistogram.takeSnapshot().getSum(), 0.001);
+  }
+
+  /**
+   * The decaying mean used as the pre-allocation hint is kept per DataRegion, so a dense region
+   * does not inflate the containers of a sparse one; the global mean stays available for
+   * observability.
+   */
+  @Test
+  public void testRecentAverageSeriesPointNumIsScopedToTheDataRegion() {
+    DataRegionId sparseRegion = new DataRegionId(31);
+    DataRegionId denseRegion = new DataRegionId(32);
+    WRITING_METRICS.createFlushingMemTableStatusMetrics(sparseRegion);
+    WRITING_METRICS.createFlushingMemTableStatusMetrics(denseRegion);
+    boolean originalSwitch =
+        IoTDBDescriptor.getInstance().getConfig().isEnableTVListBlockPreallocation();
+    int originalMax = IoTDBDescriptor.getInstance().getConfig().getTvListMaxPreallocatedBlocks();
+    try {
+      for (int sample = 0; sample < 5; sample++) {
+        WRITING_METRICS.recordFlushingMemTableStatus(sparseRegion, 100, 2, 20, 10);
+        WRITING_METRICS.recordFlushingMemTableStatus(denseRegion, 200, 4, 4_000, 1_000);
+      }
+
+      assertEquals(10, WRITING_METRICS.getRecentAvgSeriesPointNum(sparseRegion.getId()), 0.001);
+      assertEquals(1_000, WRITING_METRICS.getRecentAvgSeriesPointNum(denseRegion.getId()), 0.001);
+      // A region without a sample falls back to the node-wide mean.
+      assertEquals(
+          WRITING_METRICS.getRecentAvgSeriesPointNum(),
+          WRITING_METRICS.getRecentAvgSeriesPointNum(999),
+          0.001);
+
+      IoTDBDescriptor.getInstance().getConfig().setEnableTVListBlockPreallocation(true);
+      // 10 points per series is less than one primitive array, 1000 points is about 16 arrays.
+      assertEquals(1, TVList.getDefaultArrayNum(String.valueOf(sparseRegion.getId())));
+      assertEquals(16, TVList.getDefaultArrayNum(String.valueOf(denseRegion.getId())));
+
+      // Removing the region drops its decaying mean and falls back to the node-wide one.
+      WRITING_METRICS.removeFlushingMemTableStatusMetrics(denseRegion);
+      assertEquals(
+          WRITING_METRICS.getRecentAvgSeriesPointNum(),
+          WRITING_METRICS.getRecentAvgSeriesPointNum(denseRegion.getId()),
+          0.001);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTVListBlockPreallocation(originalSwitch);
+      IoTDBDescriptor.getInstance().getConfig().setTvListMaxPreallocatedBlocks(originalMax);
+      WRITING_METRICS.removeFlushingMemTableStatusMetrics(sparseRegion);
+      WRITING_METRICS.removeFlushingMemTableStatusMetrics(denseRegion);
+    }
   }
 
   private Histogram getAverageSeriesPointHistogram(DataRegionId dataRegionId) {

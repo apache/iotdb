@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -210,13 +211,25 @@ public class MemTableFlushTask {
     }
   }
 
+  /** Region of the flushed memtable, or {@code null} for a detached memtable (e.g. pipe). */
+  private DataRegionId getMetricsDataRegionId() {
+    if (dataRegionId == null) {
+      return null;
+    }
+    try {
+      return new DataRegionId(Integer.parseInt(dataRegionId));
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
   private void doSyncFlushMemTable() throws ExecutionException, InterruptedException {
     long avgSeriesPointsNum =
         memTable.getSeriesNumber() == 0
             ? 0
             : memTable.getTotalPointsNum() / memTable.getSeriesNumber();
     WRITING_METRICS.recordFlushingMemTableStatus(
-        storageGroup,
+        getMetricsDataRegionId(),
         memTable.memSize(),
         memTable.getSeriesNumber(),
         memTable.getTotalPointsNum(),
