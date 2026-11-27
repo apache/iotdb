@@ -257,6 +257,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.File;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1389,14 +1390,16 @@ public class StatementAnalyzer {
     }
 
     private Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
+      final MPPQueryContext context = insert.getContext();
+      final ZoneId insertTypeCastZone = SchemaValidator.getInsertTypeCastZone(context);
       if (insert instanceof InsertValues) {
         ((InsertValues) insert)
-            .materialize(new PlannerContext(metadata, typeManager), sessionContext);
+            .materialize(
+                new PlannerContext(metadata, typeManager), sessionContext, insertTypeCastZone);
       }
 
       final Scope ret = Scope.create();
 
-      final MPPQueryContext context = insert.getContext();
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
       innerInsert.toLowerCaseForDevicePath();
 
@@ -1404,7 +1407,9 @@ public class StatementAnalyzer {
           AnalyzeUtils.analyzeInsert(
               context,
               innerInsert,
-              () -> SchemaValidator.validate(metadata, insert, context, accessControl),
+              () ->
+                  SchemaValidator.validate(
+                      metadata, insert, context, accessControl, insertTypeCastZone),
               metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,

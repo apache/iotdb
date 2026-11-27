@@ -138,7 +138,7 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
   }
 
   protected boolean originalCheckAndCastDataType(int columnIndex, TSDataType dataType) {
-    return super.checkAndCastDataType(columnIndex, dataType);
+    return castCompatibleColumn(columnIndex, dataType);
   }
 
   @TableModel

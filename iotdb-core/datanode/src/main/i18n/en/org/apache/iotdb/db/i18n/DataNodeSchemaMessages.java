@@ -709,6 +709,8 @@ public final class DataNodeSchemaMessages {
       "Timeseries [%s] does not exist or is not represented by device template";
   public static final String VIEW_NOT_EXIST_WRONG_MESSAGE = "View [%s] does not exist";
   public static final String PATH_LIST_ELLIPSIS_SEPARATOR = " ... ";
+  public static final String EXCEPTION_ARG_CONVERSION_FAILED_DUE_TO_ARG_0F55A66E =
+      "%s Conversion failed due to %s.";
   public static final String REGISTERED_TYPE_STRING = "registered type";
   public static final String NULL_VALUE = "null";
   public static final String DATA_TYPE_MISMATCH_REGISTERED_TYPE_FMT =

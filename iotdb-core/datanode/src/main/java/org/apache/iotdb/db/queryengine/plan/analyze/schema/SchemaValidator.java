@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -43,6 +44,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -62,15 +64,27 @@ public class SchemaValidator {
         || context.getSession().isEnableAutoCreateSchema();
   }
 
+  public static ZoneId getInsertTypeCastZone(MPPQueryContext context) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableInsertTypeCast()) {
+      return null;
+    }
+    return context == null ? ZoneId.systemDefault() : context.getZoneId();
+  }
+
   public static void validate(
       ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement, MPPQueryContext context) {
     try {
+      final ZoneId insertTypeCastZone = getInsertTypeCastZone(context);
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement
           || insertStatement instanceof InsertRowsOfOneDeviceStatement) {
-        schemaFetcher.fetchAndComputeSchemaWithAutoCreate(
-            insertStatement.getSchemaValidationList(), context);
+        final List<ISchemaValidation> validations = insertStatement.getSchemaValidationList();
+        for (ISchemaValidation validation : validations) {
+          ((InsertBaseStatement) validation).setInsertTypeCastZone(insertTypeCastZone);
+        }
+        schemaFetcher.fetchAndComputeSchemaWithAutoCreate(validations, context);
       } else {
+        insertStatement.setInsertTypeCastZone(insertTypeCastZone);
         schemaFetcher.fetchAndComputeSchemaWithAutoCreate(
             insertStatement.getSchemaValidation(), context);
       }
@@ -85,6 +99,15 @@ public class SchemaValidator {
       final WrappedInsertStatement insertStatement,
       final MPPQueryContext context,
       AccessControl accessControl) {
+    validate(metadata, insertStatement, context, accessControl, getInsertTypeCastZone(context));
+  }
+
+  public static void validate(
+      final Metadata metadata,
+      final WrappedInsertStatement insertStatement,
+      final MPPQueryContext context,
+      AccessControl accessControl,
+      ZoneId insertTypeCastZone) {
     try {
       final InsertBaseStatement innerInsertStatement = insertStatement.getInnerTreeStatement();
       final boolean uniformTargets =
@@ -94,6 +117,14 @@ public class SchemaValidator {
           resolveTargetTables(insertStatement, context, uniformTargets)) {
         accessControl.checkCanInsertIntoTable(
             context.getSession().getUserName(), targetTable, context);
+      }
+      if (innerInsertStatement instanceof InsertRowsStatement) {
+        for (InsertRowStatement row :
+            ((InsertRowsStatement) innerInsertStatement).getInsertRowStatementList()) {
+          row.setInsertTypeCastZone(insertTypeCastZone);
+        }
+      } else {
+        innerInsertStatement.setInsertTypeCastZone(insertTypeCastZone);
       }
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);

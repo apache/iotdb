@@ -770,6 +770,8 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
+    loadInsertTypeCast(properties);
+
     conf.setEnable13DataInsertAdapt(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2359,6 +2361,8 @@ public class IoTDBDescriptor {
                   .map(String::trim)
                   .orElse(String.valueOf(conf.isEnablePartialInsert()))));
 
+      loadInsertTypeCast(properties);
+
       // update query_sample_throughput_bytes_per_sec
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
@@ -2508,6 +2512,13 @@ public class IoTDBDescriptor {
       pattern = commonDescriptor.getConfig().getTrustedUriPattern();
     }
     commonDescriptor.getConfig().setTrustedUriPattern(pattern);
+  }
+
+  private void loadInsertTypeCast(TrimProperties properties) {
+    conf.setEnableInsertTypeCast(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_insert_type_cast", Boolean.toString(conf.isEnableInsertTypeCast()))));
   }
 
   public synchronized void loadHotModifiedProps() throws QueryProcessException {
