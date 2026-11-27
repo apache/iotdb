@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
@@ -85,6 +86,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
@@ -156,6 +159,86 @@ public class PrimitiveMemTableTest {
       i++;
     }
     Assert.assertEquals(count, i);
+  }
+
+  @Test
+  public void testResidentSeriesWhenLastTableIsReleasedDuringCollection() {
+    Lock readLock = Mockito.mock(Lock.class);
+    ResidentSeriesCounter counter = new ResidentSeriesCounter(readLock);
+    Assert.assertEquals(0, counter.getSeriesCount());
+    Mockito.verify(readLock, Mockito.never()).lock();
+
+    PrimitiveMemTable table = new PrimitiveMemTable(counter, database, dataRegionId);
+    table.write(
+        deviceID,
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)),
+        1,
+        new Object[] {1});
+    // The last flush completes while the collector is waiting for a region writer.
+    Mockito.doAnswer(
+            invocation -> {
+              table.release();
+              return null;
+            })
+        .when(readLock)
+        .lock();
+    Assert.assertEquals(0, counter.getSeriesCount());
+    Mockito.verify(readLock).unlock();
+  }
+
+  @Test
+  public void testResidentSeriesAcrossWorkingAndFlushingTables() throws IllegalPathException {
+    ResidentSeriesCounter counter =
+        new ResidentSeriesCounter(new ReentrantReadWriteLock().readLock());
+    PrimitiveMemTable first = new PrimitiveMemTable(counter, database, dataRegionId);
+    PrimitiveMemTable second = new PrimitiveMemTable(counter, database, dataRegionId);
+    IDeviceID device = new StringArrayDeviceID("root.test.d1");
+    IDeviceID other = new StringArrayDeviceID("root.test.d2");
+    List<IMeasurementSchema> s1 =
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32));
+    List<IMeasurementSchema> s2 =
+        Collections.singletonList(new MeasurementSchema("s2", TSDataType.INT32));
+    first.writeAlignedRow(device, s1, 1, new Object[] {1});
+    first.writeAlignedRow(device, s2, 2, new Object[] {2});
+    first.setFlushStatus(FlushStatus.FLUSHING);
+    second.writeAlignedRow(device, s1, 3, new Object[] {3});
+    second.write(other, s1, 1, new Object[] {1});
+    second.write(other, s1, 2, new Object[] {2});
+    Assert.assertEquals(3, counter.getSeriesCount());
+
+    TreeDeletionEntry deletion =
+        new TreeDeletionEntry(new MeasurementPath("root.test.d2.s1", TSDataType.INT32), 1, 1);
+    second.delete(deletion, true);
+    Assert.assertEquals(3, counter.getSeriesCount());
+    second.delete(
+        new TreeDeletionEntry(
+            new MeasurementPath("root.test.d2.s1", TSDataType.INT32),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE),
+        true);
+    Assert.assertEquals(2, counter.getSeriesCount());
+    second.write(other, s1, 3, new Object[] {3});
+    PrimitiveMemTable third = new PrimitiveMemTable(counter, database, dataRegionId);
+    List<IMeasurementSchema> s3 =
+        Collections.singletonList(new MeasurementSchema("s3", TSDataType.INT32));
+    second.writeAlignedRow(device, s3, 4, new Object[] {4});
+    third.writeAlignedRow(device, s2, 4, new Object[] {4});
+    third.writeAlignedRow(device, s3, 4, new Object[] {4});
+    Assert.assertEquals(4, counter.getSeriesCount());
+    third.release();
+    first.release();
+    Assert.assertEquals(3, counter.getSeriesCount());
+    first.release();
+    Assert.assertEquals(3, counter.getSeriesCount());
+    second.delete(
+        new TreeDeletionEntry(
+            new MeasurementPath("root.test.d1.s1", TSDataType.INT32),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE),
+        true);
+    Assert.assertEquals(2, counter.getSeriesCount());
+    second.release();
+    Assert.assertEquals(0, counter.getSeriesCount());
   }
 
   /**

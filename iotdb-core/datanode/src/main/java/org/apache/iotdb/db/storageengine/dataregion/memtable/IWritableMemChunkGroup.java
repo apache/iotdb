@@ -31,6 +31,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface IWritableMemChunkGroup extends WALEntryValue {
 
@@ -50,6 +51,8 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
   long count(boolean ignoreAllNullRows);
 
   boolean contains(String measurement);
+
+  Set<String> getMeasurements();
 
   Map<String, IWritableMemChunk> getMemChunkMap(boolean ignoreAllNullRows);
 

@@ -553,7 +553,8 @@ public class TsFileProcessor {
         MemTableManager.getInstance()
             .getAvailableMemTable(
                 dataRegionInfo.getDataRegion().getDatabaseName(),
-                dataRegionInfo.getDataRegion().getDataRegionIdString());
+                dataRegionInfo.getDataRegion().getDataRegionIdString(),
+                dataRegionInfo.getDataRegion().getResidentSeriesCounter());
     workMemTable.setWriteMemoryManager(dataRegionInfo.getWriteMemoryManager());
     workMemTable.setEncryptParameter(
         EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));

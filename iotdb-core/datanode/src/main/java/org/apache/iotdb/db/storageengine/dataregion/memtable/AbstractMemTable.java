@@ -142,6 +142,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private String dataRegionId;
   private EncryptParameter encryptParameter;
 
+  protected ResidentSeriesCounter residentSeriesCounter;
+
   protected AbstractMemTable() {
     this.database = null;
     this.dataRegionId = null;
@@ -1037,6 +1039,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       entry.getValue().release();
+    }
+    if (residentSeriesCounter != null) {
+      residentSeriesCounter.remove(this);
+      residentSeriesCounter = null;
     }
     // Preserve the existing write-accounting release point. Query-held TVLists and the array
     // pool retain their existing resource ownership; this is not a measurement of heap liveness.

@@ -34,6 +34,14 @@ public class PrimitiveMemTable extends AbstractMemTable {
     super(database, dataRegionId);
   }
 
+  public PrimitiveMemTable(ResidentSeriesCounter counter, String database, String dataRegionId) {
+    super(database, dataRegionId);
+    residentSeriesCounter = counter;
+    if (counter != null) {
+      counter.add(this);
+    }
+  }
+
   public PrimitiveMemTable(
       String database, String dataRegionId, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
     super(database, dataRegionId, memTableMap);

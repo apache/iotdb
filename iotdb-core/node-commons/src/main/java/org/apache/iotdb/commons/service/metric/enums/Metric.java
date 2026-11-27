@@ -86,6 +86,7 @@ public enum Metric {
   FLUSH_SUB_TASK_COST("flush_sub_task_cost"),
   MEMTABLE_THRESHOLD("memtable_threshold"),
   FLUSH_MEMTABLE_COUNT("flush_memtable_count"),
+  RESIDENT_MEMTABLE_SERIES_COUNT("resident_memtable_series_count"),
   ACTIVE_MEMTABLE_COUNT("active_memtable_count"),
   ACTIVE_TIME_PARTITION_COUNT("active_time_partition_count"),
   MEMTABLE_LIVE_DURATION("memtable_live_duration"),

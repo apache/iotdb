@@ -40,6 +40,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
@@ -90,6 +91,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     for (IWritableMemChunk memChunk : memChunkMap.values()) {
       memChunk.release();
     }
+  }
+
+  @Override
+  public Set<String> getMeasurements() {
+    return memChunkMap.keySet();
   }
 
   @Override

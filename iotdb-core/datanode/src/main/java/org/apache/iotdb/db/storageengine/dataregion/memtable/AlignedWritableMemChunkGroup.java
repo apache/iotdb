@@ -84,6 +84,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public Set<String> getMeasurements() {
+    return memChunk.getAllMeasurements();
+  }
+
+  @Override
   public long count(boolean ignoreAllNullRows) {
     return memChunk.count(ignoreAllNullRows);
   }
