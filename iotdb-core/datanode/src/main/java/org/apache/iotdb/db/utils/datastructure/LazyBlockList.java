@@ -40,7 +40,9 @@ import java.util.RandomAccess;
  *   <li>the array only has to cover the blocks that were written: the slots above it stay implicit
  *       nulls, so a column that is never written allocates nothing and a null block costs nothing.
  *       {@link #size()} still reports every opened block, so readers address the column exactly
- *       like a dense list.
+ *       like a dense list;
+ *   <li>the all-null state is tracked explicitly: while no non-null block exists the container
+ *       keeps no array, and the array is released again if every block becomes null.
  * </ul>
  */
 final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
@@ -51,11 +53,16 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
   /** Longest array the JVM can allocate in practice; the growth arithmetic is capped below it. */
   private static final int MAX_BLOCK_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
 
-  /** Slots backed by the array; the remaining blocks are implicit nulls. */
+  /** Slot storage; {@code null} while the column is all null or has no block at all. */
   private Object[] blocks;
 
-  /** Number of blocks this column covers, including the implicit nulls before and after them. */
+  /** Number of blocks this column covers, i.e. the length of its implicit null prefix and tail. */
   private int blockCount;
+
+  /**
+   * Number of non-null blocks stored, so the array is released when the column is all null again.
+   */
+  private int nonNullBlocks;
 
   /**
    * Slots reserved when this column is written for the first time. A column that is never written
@@ -78,7 +85,11 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
   @SuppressWarnings("unchecked")
   public T get(int index) {
     Objects.checkIndex(index, blockCount);
-    return index < materializedLength() ? (T) blocks[index] : null;
+    // While the column is all null there is no array: every block inside the range reads as null.
+    if (blocks == null || index >= blocks.length) {
+      return null;
+    }
+    return (T) blocks[index];
   }
 
   @Override
@@ -86,16 +97,14 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
   public T set(int index, T element) {
     Objects.checkIndex(index, blockCount);
     if (element == null) {
-      if (index >= materializedLength()) {
-        return null;
-      }
-      T previous = (T) blocks[index];
-      blocks[index] = null;
-      return previous;
+      return clearSlot(index);
     }
     Object[] arrays = ensureCapacity(index + 1);
     T previous = (T) arrays[index];
     arrays[index] = element;
+    if (previous == null) {
+      nonNullBlocks++;
+    }
     return previous;
   }
 
@@ -103,23 +112,28 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
   public void add(int index, T element) {
     Objects.checkIndex(index, blockCount + 1);
     if (index == blockCount) {
-      // A null tail slot stays implicit, so appending a block does not allocate.
-      if (element != null) {
-        ensureCapacity(blockCount + 1)[blockCount] = element;
-      }
+      // A null tail slot stays implicit, so appending a null block does not allocate.
       blockCount++;
+      if (element != null) {
+        ensureCapacity(blockCount)[blockCount - 1] = element;
+        nonNullBlocks++;
+      }
       return;
     }
     Object[] arrays = ensureCapacity(blockCount + 1);
     System.arraycopy(arrays, index, arrays, index + 1, blockCount - index);
     arrays[index] = element;
     blockCount++;
+    if (element != null) {
+      nonNullBlocks++;
+    }
   }
 
   @Override
   public void clear() {
     blocks = null;
     blockCount = 0;
+    nonNullBlocks = 0;
   }
 
   /** Memory retained by this container, excluding the values it points to. */
@@ -138,7 +152,12 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
     return blocks == null ? 0 : blocks.length;
   }
 
-  /** Copy the block count and the allocated capacity, leaving the slots empty. */
+  /**
+   * Copy the block count, the all-null state and the allocated capacity, leaving the slots empty.
+   *
+   * <p>The copy starts with no non-null block: the caller fills the values it wants to keep, which
+   * keeps {@link #ramCost()} identical to the source.
+   */
   LazyBlockList<T> copyStructure() {
     LazyBlockList<T> copy = new LazyBlockList<>(blockCount, initialCapacity);
     if (blocks != null) {
@@ -160,6 +179,25 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
     long grownLength = currentLength + (long) (currentLength >> 1);
     int capacity = (int) Math.min(Math.max(grownLength, (long) minLength), MAX_BLOCK_ARRAY_LENGTH);
     return capacity < minLength ? minLength : capacity;
+  }
+
+  /** Store a null in a slot; the array is released once every block became null again. */
+  @SuppressWarnings("unchecked")
+  private T clearSlot(int index) {
+    if (blocks == null || index >= blocks.length) {
+      // The slot is already an implicit null.
+      return null;
+    }
+    T previous = (T) blocks[index];
+    if (previous == null) {
+      return null;
+    }
+    blocks[index] = null;
+    if (--nonNullBlocks == 0) {
+      // The column is all null again: drop the array instead of keeping a table of null slots.
+      blocks = null;
+    }
+    return previous;
   }
 
   private Object[] ensureCapacity(int minLength) {

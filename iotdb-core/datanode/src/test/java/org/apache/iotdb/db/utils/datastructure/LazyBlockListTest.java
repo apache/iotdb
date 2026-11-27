@@ -41,6 +41,48 @@ public class LazyBlockListTest {
   }
 
   @Test
+  public void testAllNullColumnKeepsNoArray() {
+    LazyBlockList<Object> container = new LazyBlockList<>(0, 0);
+    for (int block = 0; block < 100; block++) {
+      container.add(null);
+    }
+
+    Assert.assertEquals(100, container.size());
+    Assert.assertEquals(0, container.materializedLength());
+    Assert.assertEquals(LazyBlockList.instanceRamCost(), container.ramCost());
+    for (int block = 0; block < 100; block++) {
+      Assert.assertNull(container.get(block));
+    }
+    // The range is still enforced even though no slot is stored.
+    Assert.assertThrows(IndexOutOfBoundsException.class, () -> container.get(-1));
+    Assert.assertThrows(IndexOutOfBoundsException.class, () -> container.get(100));
+  }
+
+  @Test
+  public void testArrayIsReleasedWhenTheColumnBecomesAllNullAgain() {
+    LazyBlockList<Object> container = new LazyBlockList(10, 0);
+    container.set(3, "value");
+    Assert.assertTrue(container.ramCost() > LazyBlockList.instanceRamCost());
+
+    Assert.assertEquals("value", container.set(3, null));
+    // The column is all null again, so the slot table is dropped instead of keeping null entries.
+    Assert.assertEquals(LazyBlockList.instanceRamCost(), container.ramCost());
+    Assert.assertEquals(0, container.materializedLength());
+    Assert.assertNull(container.get(3));
+  }
+
+  @Test
+  public void testNonNullCounterSurvivesReplacement() {
+    LazyBlockList<Object> container = new LazyBlockList(10, 0);
+    container.set(1, "a");
+    container.set(1, "b");
+    container.set(1, null);
+
+    Assert.assertEquals(LazyBlockList.instanceRamCost(), container.ramCost());
+    Assert.assertNull(container.get(1));
+  }
+
+  @Test
   public void testGeometricGrowthKeepsEverySlot() {
     LazyBlockList<Object> container = new LazyBlockList<>(0, 0);
     int lastCapacity = 0;
