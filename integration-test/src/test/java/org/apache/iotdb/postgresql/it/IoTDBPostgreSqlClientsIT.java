@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.postgresql.it;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -56,6 +57,9 @@ public class IoTDBPostgreSqlClientsIT {
 
   private static final long START = 1_767_225_600_000L; // 2026-01-01T00:00:00Z
   private static int port;
+  // a user of its own, so that connections of other tests don't change the count
+  private static final String CONN_USER = "pgconn";
+  private static final String CONN_PASSWORD = "Pg-Conn-2026a";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -69,6 +73,9 @@ public class IoTDBPostgreSqlClientsIT {
         .setPostgreSqlServicePort(port);
     EnvFactory.getEnv().initClusterEnvironment();
     PgItSupport.awaitListening(port);
+    try (ISession admin = EnvFactory.getEnv().getSessionConnection()) {
+      admin.executeNonQueryStatement("CREATE USER " + CONN_USER + " '" + CONN_PASSWORD + "'");
+    }
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE plant");
       session.executeNonQueryStatement("USE plant");
@@ -114,11 +121,11 @@ public class IoTDBPostgreSqlClientsIT {
 
   private static Connection connect(String mode, Properties extra) throws SQLException {
     Properties props = new Properties();
-    props.putAll(extra);
     props.setProperty("user", SessionConfig.DEFAULT_USER);
     props.setProperty("password", SessionConfig.DEFAULT_PASSWORD);
     props.setProperty("sslmode", "disable");
     props.setProperty("preferQueryMode", mode);
+    props.putAll(extra);
     return DriverManager.getConnection("jdbc:postgresql://127.0.0.1:" + port + "/any", props);
   }
 
@@ -272,27 +279,33 @@ public class IoTDBPostgreSqlClientsIT {
 
   @Test
   public void closedConnectionsAreNoLongerListed() throws Exception {
-    long before = connections();
-    try (Connection c = connect("extended");
+    assertEquals(0, connections());
+    Properties user = new Properties();
+    user.setProperty("user", CONN_USER);
+    user.setProperty("password", CONN_PASSWORD);
+    try (Connection c = connect("extended", user);
         Statement s = c.createStatement();
-        ResultSet rs = s.executeQuery("SELECT count(*) FROM plant.sensors")) {
+        ResultSet rs = s.executeQuery("SELECT 1")) {
       assertTrue(rs.next());
-      assertEquals(before + 1, connections());
+      assertEquals(1, connections());
     }
     // the release runs on the connection's worker after the socket is closed
     long deadline = System.currentTimeMillis() + 10_000;
     long now = connections();
-    while (now != before && System.currentTimeMillis() < deadline) {
+    while (now != 0 && System.currentTimeMillis() < deadline) {
       Thread.sleep(100);
       now = connections();
     }
-    assertEquals("the closed connection is gone", before, now);
+    assertEquals("the closed connection is gone", 0, now);
   }
 
   private static long connections() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
         org.apache.iotdb.isession.SessionDataSet rows =
-            session.executeQueryStatement("SELECT count(*) FROM information_schema.connections")) {
+            session.executeQueryStatement(
+                "SELECT count(*) FROM information_schema.connections WHERE user_name = '"
+                    + CONN_USER
+                    + "'")) {
       return rows.next().getFields().get(0).getLongV();
     }
   }
