@@ -48,8 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.DoubleAdder;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 
 public class WritingMetrics implements IMetricSet {
@@ -480,10 +478,6 @@ public class WritingMetrics implements IMetricSet {
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
-  // TVList preallocation needs a process-lifetime, node-wide mean independent of metric lifecycle.
-  private final DoubleAdder avgSeriesPointNumSum = new DoubleAdder();
-  private final LongAdder flushedMemTableCount = new LongAdder();
-
   private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
       DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
 
@@ -870,8 +864,6 @@ public class WritingMetrics implements IMetricSet {
             AVG_SERIES_POINT_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
-    avgSeriesPointNumSum.add(avgSeriesNum);
-    flushedMemTableCount.increment();
   }
 
   public void recordFlushTsFileSize(String storageGroup, long size) {
@@ -1107,10 +1099,5 @@ public class WritingMetrics implements IMetricSet {
 
   public static WritingMetrics getInstance() {
     return INSTANCE;
-  }
-
-  public double getGlobalAvgSeriesPointNum() {
-    long count = flushedMemTableCount.sum();
-    return count == 0 ? 0 : avgSeriesPointNumSum.sum() / count;
   }
 }

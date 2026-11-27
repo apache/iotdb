@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -27,6 +28,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -414,10 +416,13 @@ public class AlignedTVListTest {
     Assert.assertTrue(tvList.isNullValue(0, 2));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(2, tvList.getIntByValueIndex(ARRAY_SIZE + 2, 2));
-    // Materializing the extended column charges its primitive array, the lazily created bitmap
-    // (slot references + bitmap) and the container of the new bitmap structure.
+    // Materializing the extended column charges its primitive array, the block slot of the value
+    // container, the lazily created bitmap (slot references + bitmap) and the container of the new
+    // bitmap structure.
     Assert.assertEquals(
         AlignedTVList.primitiveArrayMemCost(TSDataType.INT32)
+            + NUM_BYTES_ARRAY_HEADER
+            + 2L * NUM_BYTES_OBJECT_REF
             + 2L * AlignedTVList.bitmapReferenceRamCost()
             + AlignedTVList.bitmapRamCost()
             + AlignedTVList.listRamCostWithoutReferences(tvList.getBitMaps().get(2)),
@@ -435,10 +440,13 @@ public class AlignedTVListTest {
     long ramSizeBeforeMaterialization = tvList.calculateRamSize().getRamSize();
     tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {1L, 1L});
 
-    // Materializing the second column charges its primitive array, the lazily created bitmap
-    // (slot references + bitmap) and the container of the new bitmap structure.
+    // Materializing the second column charges its primitive array, the block slot of the value
+    // container, the lazily created bitmap (slot references + bitmap) and the container of the new
+    // bitmap structure.
     Assert.assertEquals(
         AlignedTVList.primitiveArrayMemCost(TSDataType.INT64)
+            + NUM_BYTES_ARRAY_HEADER
+            + 2L * NUM_BYTES_OBJECT_REF
             + 2L * AlignedTVList.bitmapReferenceRamCost()
             + AlignedTVList.bitmapRamCost()
             + AlignedTVList.listRamCostWithReferences(tvList.getBitMaps())
@@ -965,6 +973,144 @@ public class AlignedTVListTest {
     for (int i = 0; i < 100; i++) {
       Assert.assertEquals((long) i, tvList.getLongByValueIndex(i, 0));
       Assert.assertEquals((long) (i * 100), tvList.getLongByValueIndex(i, 2));
+    }
+  }
+
+  @Test
+  public void testUnwrittenColumnsRetainNoBlockStorage() {
+    int wideColumns = 20_000;
+    AlignedTVList emptyList = AlignedTVList.newAlignedList(new ArrayList<>());
+    AlignedTVList wideList =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Collections.nCopies(wideColumns, TSDataType.INT64)));
+
+    for (int column = 0; column < wideColumns; column += 997) {
+      List<Object> columnValues = wideList.getValues().get(column);
+      Assert.assertTrue(columnValues instanceof LazyValueColumn);
+      Assert.assertTrue(columnValues.isEmpty());
+      // The container of a column that holds no block must not retain block slots sized by the
+      // global average series length.
+      long retained = ((LazyValueColumn) columnValues).ramCost();
+      Assert.assertTrue(
+          "unwritten column " + column + " retains " + retained + " bytes", retained <= 64);
+    }
+
+    // The reported structure cost charges those containers, so the memtable accounting sees the
+    // same order of magnitude as the memory it retains.
+    long perColumnCost =
+        (wideList.calculateContainerRamCost(null) - emptyList.calculateContainerRamCost(null))
+            / wideColumns;
+    Assert.assertTrue(
+        "reported per-column container cost of an empty "
+            + wideColumns
+            + "-column list: "
+            + perColumnCost,
+        perColumnCost <= 64);
+    emptyList.clear();
+    wideList.clear();
+  }
+
+  @Test
+  public void testUnwrittenColumnKeepsBlockSlotsImplicit() {
+    AlignedTVList list =
+        AlignedTVList.newAlignedList(
+            Arrays.asList(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64));
+    for (int row = 0; row < ARRAY_SIZE * 3; row++) {
+      list.putAlignedValue(row, new Object[] {(long) row, null, null});
+    }
+
+    for (int column = 1; column < 3; column++) {
+      Assert.assertEquals(3, list.getValues().get(column).size());
+      for (int block = 0; block < 3; block++) {
+        Assert.assertNull(list.getValues().get(column).get(block));
+      }
+    }
+    Assert.assertTrue(list.isNullValue(ARRAY_SIZE * 2 + 5, 1));
+    Assert.assertFalse(list.isNullValue(ARRAY_SIZE * 2 + 5, 0));
+
+    // Writing a column materializes only that column's block slot.
+    list.putAlignedValue(ARRAY_SIZE * 3L, new Object[] {1L, 2L, null});
+    Assert.assertNotNull(list.getValues().get(1).get(3));
+    Assert.assertNull(list.getValues().get(2).get(3));
+    Assert.assertEquals(2L, list.getLongByValueIndex(ARRAY_SIZE * 3, 1));
+    Assert.assertTrue(list.isNullValue(ARRAY_SIZE * 3, 2));
+
+    Assert.assertEquals(list.getRamSize(null), list.getRamSize());
+    Assert.assertEquals(list.getRamSize(), list.clone().getRamSize());
+    list.clear();
+    Assert.assertEquals(0, list.getValues().get(0).size());
+  }
+
+  @Test
+  public void testExtendColumnsDoesNotAllocatePerBlockSlots() {
+    AlignedTVList list =
+        AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+    for (int row = 0; row < ARRAY_SIZE * 3; row++) {
+      list.putAlignedValue(row, new Object[] {(long) row});
+    }
+
+    int addedColumns = 50;
+    long costBefore = list.calculateContainerRamCost(null);
+    List<TSDataType> newTypes = new ArrayList<>(addedColumns);
+    for (int column = 0; column < addedColumns; column++) {
+      newTypes.add(TSDataType.INT32);
+    }
+    list.extendColumns(newTypes);
+
+    long perColumnCost = (list.calculateContainerRamCost(null) - costBefore) / addedColumns;
+    Assert.assertTrue(
+        "per-column container cost of a column added over 3 blocks: " + perColumnCost,
+        perColumnCost <= 64);
+    for (int column = 1; column <= addedColumns; column++) {
+      Assert.assertEquals(3, list.getValues().get(column).size());
+      Assert.assertTrue(list.isNullValue(0, column));
+      Assert.assertTrue(list.isNullValue(2 * ARRAY_SIZE, column));
+    }
+
+    Object[] write = new Object[addedColumns + 1];
+    write[2] = 7;
+    list.putAlignedValue(ARRAY_SIZE * 3L, write);
+    Assert.assertEquals(7, list.getIntByValueIndex(ARRAY_SIZE * 3, 2));
+    Assert.assertTrue(list.isNullValue(ARRAY_SIZE * 3, 3));
+    list.clear();
+  }
+
+  @Test
+  public void testBlockPreallocationSwitch() {
+    final boolean originalValue =
+        IoTDBDescriptor.getInstance().getConfig().isEnableTVListBlockPreallocation();
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTVListBlockPreallocation(false);
+      AlignedTVList lazyList =
+          AlignedTVList.newAlignedList(
+              new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+      Assert.assertEquals(0, lazyList.getValues().get(0).size());
+      long lazyCost = ((LazyValueColumn) lazyList.getValues().get(0)).ramCost();
+
+      IoTDBDescriptor.getInstance().getConfig().setEnableTVListBlockPreallocation(true);
+      AlignedTVList preallocatedList =
+          AlignedTVList.newAlignedList(
+              new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+      // The switch only reserves block slots: the visible content is unchanged.
+      Assert.assertEquals(0, preallocatedList.getValues().get(0).size());
+      long preallocatedCost = ((LazyValueColumn) preallocatedList.getValues().get(0)).ramCost();
+      Assert.assertEquals(
+          lazyCost + RamUsageEstimator.sizeOfObjectArray(TVList.PREALLOCATED_BLOCK_NUM),
+          preallocatedCost);
+
+      preallocatedList.putAlignedValue(0, new Object[] {null});
+      Assert.assertTrue(preallocatedList.isNullValue(0, 0));
+      // A null block stays implicit, so the reserved slots are reused instead of reallocated.
+      Assert.assertEquals(
+          preallocatedCost, ((LazyValueColumn) preallocatedList.getValues().get(0)).ramCost());
+      preallocatedList.putAlignedValue(1, new Object[] {1L});
+      Assert.assertEquals(1L, preallocatedList.getLongByValueIndex(1, 0));
+      Assert.assertEquals(preallocatedList.getRamSize(null), preallocatedList.getRamSize());
+
+      lazyList.clear();
+      preallocatedList.clear();
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTVListBlockPreallocation(originalValue);
     }
   }
 }

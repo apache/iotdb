@@ -169,7 +169,11 @@ public abstract class AlignedTVList extends TVList {
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
-      values.add(initializeValueColumns ? new ArrayList<>(getDefaultArrayNum()) : null);
+      // A wide device owns hundreds of columns but writes only a few of them, and a memtable column
+      // holds only a small number of blocks, so the container stays empty until a block of that
+      // column receives a value array. Any pre-allocation is opt-in and comes from
+      // getDefaultArrayNum().
+      values.add(initializeValueColumns ? new LazyValueColumn(0, getDefaultArrayNum()) : null);
     }
     // arrayMemCostWithoutPrimitiveArrays depends on per-column value arrays, so values must be
     // initialized before computing it
@@ -615,11 +619,9 @@ public abstract class AlignedTVList extends TVList {
       return;
     }
     for (TSDataType dataType : newDataTypes) {
-      List<Object> columnValue = new ArrayList<>(timestamps.size());
-      for (int i = 0; i < timestamps.size(); i++) {
-        // New columns contain only implicit nulls until their first non-null write.
-        columnValue.add(null);
-      }
+      // The blocks that are already open are all null for the new column; keep them implicit
+      // instead of materializing one null reference per open block.
+      List<Object> columnValue = new LazyValueColumn(timestamps.size(), getDefaultArrayNum());
       if (bitMaps != null) {
         bitMaps.add(null);
       }
@@ -1456,10 +1458,12 @@ public abstract class AlignedTVList extends TVList {
    *
    * <p>For a retained column, the inner value list is charged with the references of all its slots
    * (including null placeholders for blocks that were never materialized), so each slot reference
-   * is counted exactly once; the materialized primitive array payload and header are charged once
-   * per materialized block by {@code materializedValueArrayMemCost}. The timestamps/indices inner
-   * lists only contribute their list object and backing-array header here, since their primitive
-   * arrays are already charged per block by {@code
+   * is counted exactly once; a {@link LazyValueColumn} keeps the null block placeholders implicit
+   * and is charged for the blocks it actually materialized, so its cost matches the memory it
+   * retains instead of counting slots that do not exist. The materialized primitive array payload
+   * and header are charged once per materialized block by {@code materializedValueArrayMemCost}.
+   * The timestamps/indices inner lists only contribute their list object and backing-array header
+   * here, since their primitive arrays are already charged per block by {@code
    * alignedTvListArrayMemCostWithoutPrimitiveArrays}.
    */
   long calculateContainerRamCost(Set<Integer> retainedColumns) {
@@ -1479,7 +1483,9 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
       List<Object> columnValues = values.get(i);
-      if (columnValues != null) {
+      if (columnValues instanceof LazyValueColumn) {
+        size += ((LazyValueColumn) columnValues).ramCost();
+      } else if (columnValues != null) {
         size += listRamCostWithReferences(columnValues);
       }
     }
