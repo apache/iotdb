@@ -162,49 +162,55 @@ public class LoadFallbackHandler {
                 filePath);
         failureDetails.add(message);
         LOGGER.warn(message);
-        continue;
-      }
-
-      try {
-        final TSStatus status =
-            convertTsFileToTablets(
-                converter, failedNode, isGeneratedByPipe, failedNode.isDeleteAfterLoad());
-
-        if (converter.isSuccessful(status)) {
-          iterator.remove();
-          LOGGER.info(
-              DataNodeQueryMessages
-                  .LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED,
-              filePath);
-        } else {
-          final String message =
-              status == null
-                  ? String.format(
-                      DataNodeQueryMessages
-                          .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
-                      filePath,
-                      DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3)
-                  : String.format(
-                      DataNodeQueryMessages
-                          .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
-                      filePath,
-                      status);
-          failureDetails.add(message);
-          LOGGER.warn(message);
-        }
-      } catch (final Exception e) {
-        final String message =
-            String.format(
-                DataNodeQueryMessages
-                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
-                filePath,
-                e);
-        failureDetails.add(message);
-        LOGGER.warn(message, e);
+      } else {
+        convertFailedTsFileToTablets(converter, failedNode, iterator, failureDetails);
       }
     }
 
     resolveFinalState(failureDetails);
+  }
+
+  private void convertFailedTsFileToTablets(
+      final LoadTsFileDataTypeConverter converter,
+      final LoadSingleTsFileNode failedNode,
+      final Iterator<Integer> iterator,
+      final List<String> failureDetails) {
+    final String filePath = failedNode.getTsFileResource().getTsFilePath();
+    try {
+      final TSStatus status =
+          convertTsFileToTablets(
+              converter, failedNode, isGeneratedByPipe, failedNode.isDeleteAfterLoad());
+
+      if (converter.isSuccessful(status)) {
+        iterator.remove();
+        LOGGER.info(
+            DataNodeQueryMessages.LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED,
+            filePath);
+      } else {
+        final String message =
+            status == null
+                ? String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                    filePath,
+                    DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3)
+                : String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
+                    filePath,
+                    status);
+        failureDetails.add(message);
+        LOGGER.warn(message);
+      }
+    } catch (final Exception e) {
+      final String message =
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+              filePath,
+              e);
+      failureDetails.add(message);
+      LOGGER.warn(message, e);
+    }
   }
 
   static TSStatus convertTsFileToTablets(
