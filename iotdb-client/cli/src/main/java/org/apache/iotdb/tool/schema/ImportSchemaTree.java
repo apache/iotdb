@@ -125,6 +125,13 @@ public class ImportSchemaTree extends AbstractImportSchema {
       }
       writeScheme(file.getName(), headerNames, records, failedFilePath);
       processSuccessFile();
+    } catch (ConnectionRetriesExhaustedException e) {
+      // The failed rows are already in the failed-record file; keep importing the remaining files
+      // and let the entry point turn the flag into a non-zero exit status.
+      connectionFailed = true;
+      ioTPrinter.println(
+          String.format(
+              CliMessages.MESSAGE_IMPORT_SCHEMA_FAIL_ARG_609A6D30, String.valueOf(e.getMessage())));
     } catch (IOException | IllegalPathException e) {
       ioTPrinter.println(
           String.format(
@@ -571,7 +578,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
     if (connectionFailures.get() != null) {
       // The failed rows are already in the failed-record file; surface the error so that the
       // command exits with a non-zero status instead of reporting success.
-      throw new IllegalStateException(connectionFailures.get());
+      throw new ConnectionRetriesExhaustedException(connectionFailures.get());
     }
   }
 
@@ -775,6 +782,15 @@ public class ImportSchemaTree extends AbstractImportSchema {
       ;
     }
     return null;
+  }
+
+  /**
+   * Raised by {@link #writeScheme} after the rows hit by exhausted connection retries are saved.
+   */
+  static class ConnectionRetriesExhaustedException extends IllegalStateException {
+    ConnectionRetriesExhaustedException(String message) {
+      super(message);
+    }
   }
 
   private static void writeFailedLinesFile(

@@ -73,6 +73,8 @@ public class SchemaTagsImportTest {
     ImportSchemaTree.sessionPool = null;
     ImportSchemaTree.aligned = false;
     ImportSchemaTree.batchPointSize = Constants.BATCH_POINT_SIZE;
+    ImportSchemaTree.failedFileDirectory = null;
+    AbstractSchemaTool.connectionFailed = false;
   }
 
   @Test
@@ -607,6 +609,64 @@ public class SchemaTagsImportTest {
     assertTrue(error.getMessage(), error.getMessage().contains("could not be re-established"));
     String failed = readFailedFile();
     assertTrue(failed, failed.contains("root.sg.d.s1"));
+  }
+
+  /**
+   * The exhausted retry must survive the per-file handler: {@code run()} swallows every exception,
+   * so the flag is the only way the entry point learns that it has to exit non-zero.
+   */
+  @Test
+  public void exhaustedConnectionRetriesMarkTheImportAsFailed() throws Exception {
+    for (boolean useAligned : new boolean[] {false, true}) {
+      AbstractSchemaTool.connectionFailed = false;
+      ImportSchemaTree.aligned = useAligned;
+      SessionPool pool = mock(SessionPool.class);
+      ImportSchemaTree.sessionPool = pool;
+      IoTDBConnectionException down =
+          new IoTDBConnectionException(new IllegalStateException("down"));
+      doThrow(down)
+          .when(pool)
+          .createMultiTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
+      doThrow(down)
+          .when(pool)
+          .createAlignedTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
+      doThrow(down).when(pool).createAlignedTimeseries(any(), any(), any(), any(), any(), any());
+
+      File directory = temporaryFolder.newFolder("exhausted_" + useAligned);
+      File csv = new File(directory, "schema.csv");
+      Files.write(
+          csv.toPath(),
+          (Constants.HEAD_COLUMNS_V2.stream().collect(Collectors.joining(","))
+                  + "\nroot.sg.d.s1,,INT64,TS_2DIFF,SNAPPY,,\n")
+              .getBytes(StandardCharsets.UTF_8));
+      ImportSchemaTree.failedFileDirectory = directory.getAbsolutePath() + File.separator;
+
+      new ImportSchemaTree().importSchemaFromCsvFile(csv);
+
+      assertTrue("aligned=" + useAligned, AbstractSchemaTool.connectionFailed);
+      File[] failedFiles = directory.listFiles((dir, name) -> name.startsWith("schema.csv.failed"));
+      assertTrue("aligned=" + useAligned, failedFiles != null && failedFiles.length == 1);
+      String failed =
+          new String(Files.readAllBytes(failedFiles[0].toPath()), StandardCharsets.UTF_8);
+      assertTrue(failed, failed.contains("root.sg.d.s1"));
+    }
+  }
+
+  @Test
+  public void successfulImportDoesNotMarkTheImportAsFailed() throws Exception {
+    ImportSchemaTree.sessionPool = mock(SessionPool.class);
+    File directory = temporaryFolder.newFolder("ok");
+    File csv = new File(directory, "schema.csv");
+    Files.write(
+        csv.toPath(),
+        (Constants.HEAD_COLUMNS_V2.stream().collect(Collectors.joining(","))
+                + "\nroot.sg.d.s1,,INT64,TS_2DIFF,SNAPPY,,\n")
+            .getBytes(StandardCharsets.UTF_8));
+    ImportSchemaTree.failedFileDirectory = directory.getAbsolutePath() + File.separator;
+
+    new ImportSchemaTree().importSchemaFromCsvFile(csv);
+
+    assertFalse(AbstractSchemaTool.connectionFailed);
   }
 
   private String readFailedFile() throws Exception {

@@ -82,6 +82,9 @@ public abstract class AbstractSchemaTool {
   protected static String targetFile = Constants.DUMP_FILE_NAME_DEFAULT;
   protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
 
+  /** Set when an imported file ran out of connection retries, so the import exits non-zero. */
+  protected static volatile boolean connectionFailed = false;
+
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSchemaTool.class);
 
