@@ -253,11 +253,12 @@ public class SessionPoolTest {
             .maxIdleTimeInMs(5_000L)
             .enableAutoFetch(false)
             .build();
-    int coreSize = Whitebox.getInternalState(pool, "coreSize");
-    long maxIdleTimeInMs = Whitebox.getInternalState(pool, "maxIdleTimeInMs");
-    assertEquals(3, coreSize);
-    assertEquals(5_000L, maxIdleTimeInMs);
-    pool.close();
+    try {
+      assertEquals(3, pool.getCoreSize());
+      assertEquals(5_000L, pool.getMaxIdleTimeInMs());
+    } finally {
+      pool.close();
+    }
   }
 
   @Test
@@ -269,13 +270,33 @@ public class SessionPoolTest {
             .maxSize(5)
             .enableAutoFetch(false)
             .build();
-    int coreSize = Whitebox.getInternalState(pool, "coreSize");
-    long maxIdleTimeInMs = Whitebox.getInternalState(pool, "maxIdleTimeInMs");
-    assertEquals(0, coreSize);
-    assertEquals(0L, maxIdleTimeInMs);
-    // no eviction task is registered when maxIdleTimeInMs is 0
-    assertNull(Whitebox.getInternalState(pool, "executorService"));
-    pool.close();
+    try {
+      assertEquals(0, pool.getCoreSize());
+      assertEquals(0L, pool.getMaxIdleTimeInMs());
+      // no eviction task is registered when maxIdleTimeInMs is 0
+      assertNull(Whitebox.getInternalState(pool, "idleEvictor"));
+    } finally {
+      pool.close();
+    }
+  }
+
+  @Test
+  public void testNoEvictorWhenPoolCannotShrink() {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .maxSize(5)
+            .coreSize(5)
+            .maxIdleTimeInMs(1_000L)
+            .enableAutoFetch(false)
+            .build();
+    try {
+      // coreSize == maxSize means size can never exceed coreSize, so eviction would be a no-op
+      assertNull(Whitebox.getInternalState(pool, "idleEvictor"));
+    } finally {
+      pool.close();
+    }
   }
 
   @Test
@@ -288,12 +309,13 @@ public class SessionPoolTest {
             .maxIdleTimeInMs(1_000L)
             .enableAutoFetch(false)
             .build();
-    SessionPool pool = Whitebox.getInternalState(tableSessionPool, "sessionPool");
-    int coreSize = Whitebox.getInternalState(pool, "coreSize");
-    long maxIdleTimeInMs = Whitebox.getInternalState(pool, "maxIdleTimeInMs");
-    assertEquals(2, coreSize);
-    assertEquals(1_000L, maxIdleTimeInMs);
-    tableSessionPool.close();
+    try {
+      SessionPool pool = Whitebox.getInternalState(tableSessionPool, "sessionPool");
+      assertEquals(2, pool.getCoreSize());
+      assertEquals(1_000L, pool.getMaxIdleTimeInMs());
+    } finally {
+      tableSessionPool.close();
+    }
   }
 
   @Test
@@ -315,34 +337,62 @@ public class SessionPoolTest {
   }
 
   @Test
+  public void testIllegalMaxSize() {
+    IllegalArgumentException zeroMaxSize =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new SessionPool.Builder().host("localhost").port(1234).maxSize(0).build());
+    assertTrue(zeroMaxSize.getMessage().contains("maxSize"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new SessionPool.Builder().host("localhost").port(1234).maxSize(-1).build());
+  }
+
+  @Test
+  public void testIllegalArgumentsForTableSessionPoolBuilder() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TableSessionPoolBuilder()
+                .nodeUrls(Collections.singletonList("127.0.0.1:6667"))
+                .maxSize(5)
+                .coreSize(6)
+                .build());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TableSessionPoolBuilder()
+                .nodeUrls(Collections.singletonList("127.0.0.1:6667"))
+                .maxSize(5)
+                .maxIdleTimeInMs(-1)
+                .build());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TableSessionPoolBuilder()
+                .nodeUrls(Collections.singletonList("127.0.0.1:6667"))
+                .maxSize(0)
+                .build());
+  }
+
+  @Test
   public void testEvictIdleSessions() throws Exception {
-    SessionPool pool =
-        new SessionPool.Builder()
-            .host("localhost")
-            .port(1234)
-            .maxSize(10)
-            .coreSize(2)
-            .maxIdleTimeInMs(5_000L)
-            .enableAutoFetch(false)
-            .build();
+    SessionPool pool = newEvictionPool(10, 2);
     try {
       List<ISession> sessions = new ArrayList<>();
       for (int i = 0; i < 5; i++) {
         sessions.add(Mockito.mock(ISession.class));
       }
       // push puts a session at the head, so sessions.get(0) ends up at the tail (earliest idle)
-      long idleSince = System.currentTimeMillis() - 20_000L;
       for (ISession s : sessions) {
-        pool.putBack(s);
-        Whitebox.setInternalState(idleQueueOf(pool).peekFirst(), "idleSince", idleSince);
+        putBackExpired(pool, s, 120_000L);
       }
       Whitebox.setInternalState(pool, "size", 5);
 
       Whitebox.invokeMethod(pool, "evictIdleSessions");
 
       assertEquals(2, idleQueueOf(pool).size());
-      int size = Whitebox.getInternalState(pool, "size");
-      assertEquals(2, size);
+      assertEquals(2, ((Integer) Whitebox.getInternalState(pool, "size")).intValue());
       // the 3 earliest idle sessions are evicted, the 2 most recently returned ones are kept
       Mockito.verify(sessions.get(0)).close();
       Mockito.verify(sessions.get(1)).close();
@@ -355,36 +405,155 @@ public class SessionPoolTest {
   }
 
   @Test
-  public void testEvictIdleSessionsDoesNotGoBelowCoreSize() throws Exception {
+  public void testEvictIdleSessionsStopsAtFirstNonExpired() throws Exception {
+    // a fresh session at the head must stop the tail-to-head scan even when size > coreSize
+    SessionPool pool = newEvictionPool(10, 0);
+    try {
+      ISession oldest = Mockito.mock(ISession.class);
+      ISession middle = Mockito.mock(ISession.class);
+      ISession fresh = Mockito.mock(ISession.class);
+      putBackExpired(pool, oldest, 120_000L);
+      putBackExpired(pool, middle, 120_000L);
+      pool.putBack(fresh);
+      Whitebox.setInternalState(pool, "size", 3);
+
+      Whitebox.invokeMethod(pool, "evictIdleSessions");
+
+      assertEquals(1, idleQueueOf(pool).size());
+      assertEquals(1, ((Integer) Whitebox.getInternalState(pool, "size")).intValue());
+      Mockito.verify(oldest).close();
+      Mockito.verify(middle).close();
+      Mockito.verify(fresh, Mockito.never()).close();
+    } finally {
+      pool.close();
+    }
+  }
+
+  @Test
+  public void testEvictIdleSessionsWithCoreSizeZeroEvictsAll() throws Exception {
+    SessionPool pool = newEvictionPool(10, 0);
+    try {
+      for (int i = 0; i < 3; i++) {
+        putBackExpired(pool, Mockito.mock(ISession.class), 120_000L);
+      }
+      Whitebox.setInternalState(pool, "size", 3);
+
+      Whitebox.invokeMethod(pool, "evictIdleSessions");
+
+      assertEquals(0, idleQueueOf(pool).size());
+      assertEquals(0, ((Integer) Whitebox.getInternalState(pool, "size")).intValue());
+    } finally {
+      pool.close();
+    }
+  }
+
+  @Test
+  public void testEvictIdleSessionsCountsBorrowedSessionsTowardsCoreSize() throws Exception {
+    // coreSize bounds the total number of sessions (borrowed + idle), not just idle ones
+    SessionPool pool = newEvictionPool(10, 2);
+    try {
+      ISession borrowed = Mockito.mock(ISession.class);
+      Whitebox.invokeMethod(pool, "occupy", borrowed);
+      ISession idle1 = Mockito.mock(ISession.class);
+      ISession idle2 = Mockito.mock(ISession.class);
+      putBackExpired(pool, idle1, 120_000L);
+      putBackExpired(pool, idle2, 120_000L);
+      Whitebox.setInternalState(pool, "size", 3);
+
+      Whitebox.invokeMethod(pool, "evictIdleSessions");
+
+      // size 3 -> 2: only one idle session may be evicted although both are expired
+      assertEquals(1, idleQueueOf(pool).size());
+      assertEquals(2, ((Integer) Whitebox.getInternalState(pool, "size")).intValue());
+      assertEquals(1, pool.currentOccupiedSize());
+      Mockito.verify(borrowed, Mockito.never()).close();
+    } finally {
+      pool.close();
+    }
+  }
+
+  @Test
+  public void testEvictIdleSessionsWithEmptyQueueIsNoOp() throws Exception {
+    // all sessions are borrowed: the queue is empty, eviction must not touch occupied sessions
+    SessionPool pool = newEvictionPool(10, 0);
+    try {
+      ISession borrowed = Mockito.mock(ISession.class);
+      Whitebox.invokeMethod(pool, "occupy", borrowed);
+      Whitebox.setInternalState(pool, "size", 1);
+
+      Whitebox.invokeMethod(pool, "evictIdleSessions");
+
+      assertEquals(0, idleQueueOf(pool).size());
+      assertEquals(1, ((Integer) Whitebox.getInternalState(pool, "size")).intValue());
+      Mockito.verify(borrowed, Mockito.never()).close();
+    } finally {
+      pool.close();
+    }
+  }
+
+  @Test
+  public void testEvictIdleSessionsIsNoOpAfterClose() throws Exception {
+    SessionPool pool = newEvictionPool(10, 0);
+    pool.close();
+
+    Whitebox.invokeMethod(pool, "evictIdleSessions");
+
+    assertEquals(0, idleQueueOf(pool).size());
+    assertEquals(0, ((Integer) Whitebox.getInternalState(pool, "size")).intValue());
+  }
+
+  @Test(timeout = 15_000)
+  public void testScheduledEvictionRunsAndStopsOnClose() throws Exception {
     SessionPool pool =
         new SessionPool.Builder()
             .host("localhost")
             .port(1234)
-            .maxSize(10)
-            .coreSize(3)
-            .maxIdleTimeInMs(5_000L)
+            .maxSize(5)
+            .coreSize(0)
+            .maxIdleTimeInMs(1_000L)
             .enableAutoFetch(false)
             .build();
     try {
-      long idleSince = System.currentTimeMillis() - 20_000L;
+      assertNotNull(Whitebox.getInternalState(pool, "idleEvictor"));
       ISession session1 = Mockito.mock(ISession.class);
       ISession session2 = Mockito.mock(ISession.class);
-      pool.putBack(session1);
-      Whitebox.setInternalState(idleQueueOf(pool).peekFirst(), "idleSince", idleSince);
-      pool.putBack(session2);
-      Whitebox.setInternalState(idleQueueOf(pool).peekFirst(), "idleSince", idleSince);
+      putBackExpired(pool, session1, 20_000L);
+      putBackExpired(pool, session2, 20_000L);
       Whitebox.setInternalState(pool, "size", 2);
 
-      Whitebox.invokeMethod(pool, "evictIdleSessions");
+      // the check interval is 1s, so eviction should happen well within the timeout
+      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+      while (pool.currentAvailableSize() > 0 && System.nanoTime() < deadline) {
+        Thread.sleep(50L);
+      }
 
-      assertEquals(2, idleQueueOf(pool).size());
-      int size = Whitebox.getInternalState(pool, "size");
-      assertEquals(2, size);
-      Mockito.verify(session1, Mockito.never()).close();
-      Mockito.verify(session2, Mockito.never()).close();
+      assertEquals(0, pool.currentAvailableSize());
+      assertEquals(0, ((Integer) Whitebox.getInternalState(pool, "size")).intValue());
     } finally {
       pool.close();
     }
+    assertNull(Whitebox.getInternalState(pool, "idleEvictor"));
+  }
+
+  private static SessionPool newEvictionPool(int maxSize, int coreSize) {
+    return new SessionPool.Builder()
+        .host("localhost")
+        .port(1234)
+        .maxSize(maxSize)
+        .coreSize(coreSize)
+        // a long threshold keeps the background evictor (interval = max(1s, threshold / 2))
+        // from racing with the manually triggered eviction in these tests
+        .maxIdleTimeInMs(60_000L)
+        .enableAutoFetch(false)
+        .build();
+  }
+
+  private static void putBackExpired(SessionPool pool, ISession session, long idleForMs) {
+    pool.putBack(session);
+    Whitebox.setInternalState(
+        idleQueueOf(pool).peekFirst(),
+        "idleSinceNanos",
+        System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(idleForMs));
   }
 
   @SuppressWarnings("unchecked")

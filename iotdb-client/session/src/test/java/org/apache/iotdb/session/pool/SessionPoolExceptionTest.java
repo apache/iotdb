@@ -251,7 +251,6 @@ public class SessionPoolExceptionTest {
 
   @Test
   public void testInsertRecords2() throws Exception {
-    ((SessionPool) sessionPool).putBack(session);
     List<String> deviceIds = Arrays.asList("device1", "device2");
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =

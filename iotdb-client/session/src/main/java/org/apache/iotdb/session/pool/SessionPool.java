@@ -175,6 +175,11 @@ public class SessionPool implements ISessionPool {
   @SuppressWarnings("java:S3077")
   private volatile ScheduledExecutorService executorService;
 
+  // dedicated single-thread scheduler for idle session eviction, so that a slow session.close()
+  // cannot block the datanode-list updater above (and vice versa)
+  @SuppressWarnings("java:S3077")
+  private volatile ScheduledExecutorService idleEvictor;
+
   private INodeSupplier availableNodes;
 
   // set to true, means that we will start a background thread to fetch all available (Status is
@@ -529,12 +534,11 @@ public class SessionPool implements ISessionPool {
     initAvailableNodes(SessionUtils.parseSeedNodeUrls(this.nodeUrls));
   }
 
-  @SuppressWarnings("unsafeThreadSchedule")
   public SessionPool(AbstractSessionPoolBuilder builder) {
     this.maxSize = builder.maxSize;
     this.coreSize = builder.coreSize;
     this.maxIdleTimeInMs = builder.maxIdleTimeInMs;
-    validateIdleConfig(coreSize, maxSize, maxIdleTimeInMs);
+    validatePoolConfig(maxSize, coreSize, maxIdleTimeInMs);
     this.user = builder.username;
     this.password = builder.pw;
     this.fetchSize = builder.fetchSize;
@@ -597,13 +601,41 @@ public class SessionPool implements ISessionPool {
       this.availableNodes = new DummyNodesSupplier(endPointList);
     }
 
-    if (maxIdleTimeInMs > 0) {
-      if (executorService == null) {
-        initThreadPool();
-      }
-      long checkIntervalInMs = Math.max(1_000L, Math.min(maxIdleTimeInMs, 60_000L));
-      executorService.scheduleWithFixedDelay(
-          this::evictIdleSessions, checkIntervalInMs, checkIntervalInMs, TimeUnit.MILLISECONDS);
+    if (maxIdleTimeInMs > 0 && coreSize < maxSize) {
+      // The eviction task only reads fields declared in this class, all of which are assigned
+      // above, so scheduling in the constructor cannot observe a partially initialized subclass.
+      // The first run is also delayed by at least one check interval.
+      scheduleIdleEviction();
+    }
+  }
+
+  private void scheduleIdleEviction() {
+    long checkIntervalInMs = Math.max(1_000L, Math.min(maxIdleTimeInMs / 2, 60_000L));
+    ScheduledExecutorService evictor =
+        Executors.newSingleThreadScheduledExecutor(
+            r -> {
+              Thread t =
+                  new Thread(
+                      Thread.currentThread().getThreadGroup(), r, "SessionPoolIdleEvictor", 0);
+              t.setDaemon(true);
+              return t;
+            });
+    idleEvictor = evictor;
+    scheduleEvictionTask(evictor, this::runIdleEviction, checkIntervalInMs);
+  }
+
+  @SuppressWarnings("unsafeThreadSchedule")
+  private static void scheduleEvictionTask(
+      ScheduledExecutorService executor, Runnable task, long intervalInMs) {
+    executor.scheduleWithFixedDelay(task, intervalInMs, intervalInMs, TimeUnit.MILLISECONDS);
+  }
+
+  private void runIdleEviction() {
+    try {
+      evictIdleSessions();
+    } catch (Throwable t) {
+      // an uncaught Throwable would silently cancel all subsequent runs of a periodic task
+      LOGGER.warn(SessionMessages.EVICT_IDLE_SESSIONS_FAILED, t);
     }
   }
 
@@ -780,11 +812,23 @@ public class SessionPool implements ISessionPool {
           // wake up from this.wait(1000) by this.notify()
         }
 
+        // closed may have been set while waiting; check before taking a session from the queue
+        if (closed) {
+          throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+        }
+
         IdleSession idleSession = queue.poll();
         session = idleSession == null ? null : idleSession.session;
 
         // for putBack or size--
         this.notify();
+
+        // poll may have released the monitor, so re-check: never hand out a session from a
+        // closed pool, and never leak the session that has just been taken out of the queue
+        if (closed) {
+          closeSession(session);
+          throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+        }
       }
     }
 
@@ -849,7 +893,7 @@ public class SessionPool implements ISessionPool {
   protected void putBack(ISession session) {
     synchronized (this) {
       if (!closed) {
-        queue.push(new IdleSession(session, System.currentTimeMillis()));
+        queue.push(new IdleSession(session, System.nanoTime()));
         // we do not need to notifyAll as any waited thread can continue to work after waked up.
         this.notify();
         // comment the following codes as putBack is too frequently called.
@@ -911,6 +955,7 @@ public class SessionPool implements ISessionPool {
     final List<ISession> idleSessions;
     final List<ISession> borrowedSessions;
     final ScheduledExecutorService executorToShutdown;
+    final ScheduledExecutorService idleEvictorToShutdown;
     final INodeSupplier nodesToClose;
     synchronized (this) {
       if (closed) {
@@ -926,6 +971,8 @@ public class SessionPool implements ISessionPool {
       occupied.clear();
       executorToShutdown = this.executorService;
       this.executorService = null;
+      idleEvictorToShutdown = this.idleEvictor;
+      this.idleEvictor = null;
       nodesToClose = availableNodes;
       availableNodes = null;
       this.notifyAll();
@@ -939,6 +986,9 @@ public class SessionPool implements ISessionPool {
     }
     if (executorToShutdown != null) {
       executorToShutdown.shutdown();
+    }
+    if (idleEvictorToShutdown != null) {
+      idleEvictorToShutdown.shutdown();
     }
     if (nodesToClose != null && !nodesToClose.isCallerManaged()) {
       nodesToClose.close();
@@ -991,7 +1041,7 @@ public class SessionPool implements ISessionPool {
           session.close();
           throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
         }
-        queue.push(new IdleSession(session, System.currentTimeMillis()));
+        queue.push(new IdleSession(session, System.nanoTime()));
         this.notify();
       }
     } catch (IoTDBConnectionException e) {
@@ -1003,7 +1053,11 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  private static void validateIdleConfig(int coreSize, int maxSize, long maxIdleTimeInMs) {
+  private static void validatePoolConfig(int maxSize, int coreSize, long maxIdleTimeInMs) {
+    if (maxSize <= 0) {
+      throw new IllegalArgumentException(
+          String.format(SessionMessages.SESSION_POOL_MAX_SIZE_ARG_ILLEGAL, maxSize));
+    }
     if (coreSize < 0 || coreSize > maxSize) {
       throw new IllegalArgumentException(
           String.format(SessionMessages.SESSION_POOL_CORE_SIZE_ARG_ILLEGAL, coreSize, maxSize));
@@ -1026,10 +1080,11 @@ public class SessionPool implements ISessionPool {
       if (closed) {
         return;
       }
-      long now = System.currentTimeMillis();
+      long nowNanos = System.nanoTime();
+      long maxIdleNanos = TimeUnit.MILLISECONDS.toNanos(maxIdleTimeInMs);
       while (size > coreSize) {
         IdleSession idleSession = queue.peekLast();
-        if (idleSession == null || now - idleSession.idleSince <= maxIdleTimeInMs) {
+        if (idleSession == null || nowNanos - idleSession.idleSinceNanos <= maxIdleNanos) {
           break;
         }
         queue.pollLast();
@@ -3625,6 +3680,14 @@ public class SessionPool implements ISessionPool {
     return maxSize;
   }
 
+  public int getCoreSize() {
+    return coreSize;
+  }
+
+  public long getMaxIdleTimeInMs() {
+    return maxIdleTimeInMs;
+  }
+
   @Override
   public String getHost() {
     return host;
@@ -3818,11 +3881,12 @@ public class SessionPool implements ISessionPool {
 
   private static final class IdleSession {
     private final ISession session;
-    private final long idleSince;
+    // monotonic timestamp (System.nanoTime) of the moment this session was returned to the pool
+    private final long idleSinceNanos;
 
-    private IdleSession(ISession session, long idleSince) {
+    private IdleSession(ISession session, long idleSinceNanos) {
       this.session = session;
-      this.idleSince = idleSince;
+      this.idleSinceNanos = idleSinceNanos;
     }
   }
 
@@ -3885,6 +3949,11 @@ public class SessionPool implements ISessionPool {
     /**
      * Sets the minimum number of sessions kept in the pool. Idle sessions will not be evicted when
      * the total number of sessions reaches this value.
+     *
+     * <p>Note that sessions are still created lazily on demand: the pool never pre-warms {@code
+     * coreSize} sessions at construction time. This value only takes effect when {@link
+     * #maxIdleTimeInMs(long)} is positive, and it bounds the total number of sessions (borrowed and
+     * idle), not the number of idle sessions alone.
      *
      * @param coreSize the minimum number of sessions, must be in [0, maxSize]
      * @return this builder

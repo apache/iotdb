@@ -67,6 +67,11 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
    * Sets the minimum number of sessions kept in the pool. Idle sessions will not be evicted when
    * the total number of sessions reaches this value.
    *
+   * <p>Note that sessions are still created lazily on demand: the pool never pre-warms {@code
+   * coreSize} sessions at construction time. This value only takes effect when {@link
+   * #maxIdleTimeInMs(long)} is positive, and it bounds the total number of sessions (borrowed and
+   * idle), not the number of idle sessions alone.
+   *
    * @param coreSize the minimum number of sessions, must be in [0, maxSize].
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue 0
