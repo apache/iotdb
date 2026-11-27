@@ -1186,6 +1186,20 @@ public class TableFunctionTest {
   }
 
   @Test
+  public void testLTTBQualifiedInputColumns() {
+    String prefix = "SELECT * FROM LTTB(DATA => table1 PARTITION BY (";
+    String suffix = ", TIMECOL => 'time', N => 4)";
+    analyzeSQL(
+        prefix + "tag1, tag2, tag3, attr1, attr2) ORDER BY \"table1\".\"time\"" + suffix,
+        TEST_MATADATA,
+        QUERY_CONTEXT);
+    analyzeSQL(
+        prefix + "\"table1\".\"tag1\", tag2, tag3, attr1, attr2) ORDER BY time" + suffix,
+        TEST_MATADATA,
+        QUERY_CONTEXT);
+  }
+
+  @Test
   public void testLTTBDateTimeLiteralsRetainTheirType() {
     String prefix = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', ";
     String timestamp = "1970-01-01T00:00:00.004+00:00";

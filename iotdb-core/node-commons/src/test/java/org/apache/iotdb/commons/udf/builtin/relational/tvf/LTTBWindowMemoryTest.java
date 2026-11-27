@@ -489,70 +489,98 @@ public class LTTBWindowMemoryTest {
 
   @Test
   public void testSharedNonFiniteEndpointAllowsEarlierWindowToStream() {
-    for (boolean timeWindow : new boolean[] {false, true}) {
-      for (boolean sparseColumnResumes : new boolean[] {false, true}) {
-        TableFunctionDataProcessor processor =
-            processor(timeWindow, 3, 2, Type.DOUBLE, Type.DOUBLE);
-        List<ColumnBuilder> builders = new ArrayList<>(builders(timeWindow));
-        builders.add(new LongColumnBuilder(null, 16));
-        builders.add(new DoubleColumnBuilder(null, 16));
-        try {
-          processor.process(record(0, 0.0, 0.0), builders, null);
-          processor.process(record(1, 1.0, 1.0), builders, null);
-          processor.process(record(2, Double.NaN, 2.0), builders, null);
-          for (int t = 3; t < 13; t++) {
-            processor.process(record(t, null, (double) t), builders, null);
-          }
-          // [0,3) picks t=1 whether the NaN in [2,5) is the endpoint or a later value arrives.
-          // The dense column must already have produced rows beyond these two windows.
-          assertTrue(builders.get(0).getPositionCount() > 3);
-          if (sparseColumnResumes) {
-            processor.process(record(13, 13.0, 13.0), builders, null);
-          }
-          processor.finish(builders, null);
-
-          int timeIndex = timeWindow ? 2 : 1;
-          Column times = builders.get(timeIndex).build();
-          Column windows = builders.get(0).build();
-          List<Long> sparseTimes = new ArrayList<>();
-          for (int i = 0; i < times.getPositionCount(); i++) {
-            if (!times.isNull(i)) {
-              long time = times.getLong(i);
-              sparseTimes.add(time);
-              if (time == 2) {
-                assertEquals(timeWindow ? 2 : 1, windows.getLong(i));
-                assertTrue(Double.isNaN(builders.get(timeIndex + 1).build().getDouble(i)));
-              }
-            }
-          }
-          assertEquals(
-              sparseColumnResumes ? Arrays.asList(0L, 1L, 2L, 13L) : Arrays.asList(0L, 1L, 2L),
-              sparseTimes);
-        } finally {
-          processor.beforeDestroy();
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    long previousBudget = config.getLttbBufferSize();
+    try {
+      config.setLttbBufferSize(32 * 1024);
+      for (boolean timeWindow : new boolean[] {false, true}) {
+        for (boolean sparseColumnResumes : new boolean[] {false, true}) {
+          assertSharedNonFiniteEndpointStreams(timeWindow, sparseColumnResumes);
         }
       }
+    } finally {
+      config.setLttbBufferSize(previousBudget);
+    }
+  }
+
+  private static void assertSharedNonFiniteEndpointStreams(
+      boolean timeWindow, boolean sparseColumnResumes) {
+    TableFunctionDataProcessor processor = processor(timeWindow, 3, 2, Type.DOUBLE, Type.DOUBLE);
+    List<ColumnBuilder> builders = new ArrayList<>(builders(timeWindow));
+    builders.add(new LongColumnBuilder(null, 16));
+    builders.add(new DoubleColumnBuilder(null, 16));
+    try {
+      processor.process(record(0, 0.0, 0.0), builders, null);
+      processor.process(record(1, 1.0, 1.0), builders, null);
+      processor.process(record(2, Double.NaN, 2.0), builders, null);
+      for (int t = 3; t < 120; t++) {
+        processor.process(record(t, null, (double) t), builders, null);
+      }
+      // [0,3) picks t=1; [2,5) reports t=2 whether or not another sparse point arrives.
+      // Only the final dense windows may still be waiting for lookahead.
+      int timeIndex = timeWindow ? 2 : 1;
+      Column denseTimes = builders.get(timeIndex + 2).build();
+      assertTrue(denseTimes.getPositionCount() > 0);
+      assertTrue(denseTimes.getLong(denseTimes.getPositionCount() - 1) >= 114);
+      if (sparseColumnResumes) {
+        processor.process(record(120, 120.0, 120.0), builders, null);
+      }
+      processor.finish(builders, null);
+
+      Column times = builders.get(timeIndex).build();
+      Column values = builders.get(timeIndex + 1).build();
+      Column windows = builders.get(0).build();
+      List<Long> sparseTimes = new ArrayList<>();
+      for (int i = 0; i < times.getPositionCount(); i++) {
+        if (!times.isNull(i)) {
+          long time = times.getLong(i);
+          sparseTimes.add(time);
+          if (time == 2) {
+            assertEquals(timeWindow ? 2 : 1, windows.getLong(i));
+            assertTrue(Double.isNaN(values.getDouble(i)));
+          }
+        }
+      }
+      assertEquals(
+          sparseColumnResumes ? Arrays.asList(0L, 1L, 2L, 120L) : Arrays.asList(0L, 1L, 2L),
+          sparseTimes);
+    } finally {
+      processor.beforeDestroy();
     }
   }
 
   @Test
-  public void testSharedSingletonEndpointIsEmittedOnlyByItsLastWindow() {
+  public void testSharedSingletonWaitsUntilItsEndpointStatusIsKnown() {
     for (boolean timeWindow : new boolean[] {false, true}) {
-      TableFunctionDataProcessor processor = processor(timeWindow, 3, 2, Type.DOUBLE);
-      List<ColumnBuilder> builders = builders(timeWindow);
-      try {
-        for (int t = 0; t < 6; t++) {
-          processor.process(record(t, t == 0 || t == 2 ? (double) t : null), builders, null);
+      for (boolean hasLaterPoint : new boolean[] {false, true}) {
+        TableFunctionDataProcessor processor = processor(timeWindow, 3, 2, Type.DOUBLE);
+        List<ColumnBuilder> builders = builders(timeWindow);
+        try {
+          for (int t = 0; t < 6; t++) {
+            processor.process(record(t, t == 0 || t == 2 ? (double) t : null), builders, null);
+          }
+          if (hasLaterPoint) {
+            processor.process(record(6, 6.0), builders, null);
+          }
+          processor.finish(builders, null);
+          Column times = builders.get(timeWindow ? 2 : 1).build();
+          Column windows = builders.get(0).build();
+          assertEquals(hasLaterPoint ? 4 : 2, times.getPositionCount());
+          assertEquals(0, times.getLong(0));
+          assertEquals(2, times.getLong(1));
+          if (hasLaterPoint) {
+            // Both [0,3) and [2,5) select t=2 as their only candidate.
+            assertEquals(0, windows.getLong(1));
+            assertEquals(2, times.getLong(2));
+            assertEquals(timeWindow ? 2 : 1, windows.getLong(2));
+            assertEquals(6, times.getLong(3));
+          } else {
+            // Only [2,5) owns the final endpoint.
+            assertEquals(timeWindow ? 2 : 1, windows.getLong(1));
+          }
+        } finally {
+          processor.beforeDestroy();
         }
-        processor.finish(builders, null);
-        Column times = builders.get(timeWindow ? 2 : 1).build();
-        assertEquals(2, times.getPositionCount());
-        assertEquals(0, times.getLong(0));
-        assertEquals(2, times.getLong(1));
-        // t=2 belongs to [0,3) and [2,5). The latter owns the final endpoint.
-        assertEquals(timeWindow ? 2 : 1, builders.get(0).build().getLong(1));
-      } finally {
-        processor.beforeDestroy();
       }
     }
   }
