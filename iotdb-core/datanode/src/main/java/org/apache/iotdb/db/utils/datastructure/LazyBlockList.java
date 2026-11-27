@@ -42,6 +42,9 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LazyBlockList.class);
 
+  /** Longest array the JVM can allocate in practice; the growth arithmetic is capped below it. */
+  private static final int MAX_BLOCK_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
+
   /** Slots backed by the array; the remaining blocks are implicit nulls. */
   private Object[] blocks;
 
@@ -137,8 +140,18 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
     if (blocks == null) {
       blocks = new Object[minLength];
     } else if (blocks.length < minLength) {
-      // Grow geometrically so that appending one block stays amortized O(1).
-      blocks = Arrays.copyOf(blocks, Math.max(minLength, blocks.length + (blocks.length >> 1)));
+      // Grow geometrically so that appending one block stays amortized O(1). The product and the
+      // sum are computed in long arithmetic: an almost full array would otherwise overflow int, and
+      // the result must never be shorter than the slots the container already holds.
+      long grownLength = blocks.length + (long) (blocks.length >> 1);
+      int newLength =
+          (int) Math.min(Math.max(grownLength, (long) minLength), MAX_BLOCK_ARRAY_LENGTH);
+      if (newLength < minLength) {
+        // Already at the array length limit: request the exact length so that the allocation fails
+        // instead of silently dropping slots.
+        newLength = minLength;
+      }
+      blocks = Arrays.copyOf(blocks, newLength);
     }
     return blocks;
   }
