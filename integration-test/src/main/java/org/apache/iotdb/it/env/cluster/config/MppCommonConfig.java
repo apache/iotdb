@@ -448,6 +448,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setLttbBufferSize(long lttbBufferSize) {
+    setProperty("lttb_buffer_size_in_bytes", String.valueOf(lttbBufferSize));
+    return this;
+  }
+
+  @Override
   public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
     setProperty("max_tsblock_size_in_bytes", String.valueOf(maxTsBlockSizeInByte));
     return this;

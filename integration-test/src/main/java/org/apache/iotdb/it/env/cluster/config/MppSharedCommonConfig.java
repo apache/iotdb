@@ -457,6 +457,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setLttbBufferSize(long lttbBufferSize) {
+    dnConfig.setLttbBufferSize(lttbBufferSize);
+    cnConfig.setLttbBufferSize(lttbBufferSize);
+    return this;
+  }
+
+  @Override
   public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
     dnConfig.setMaxTsBlockSizeInByte(maxTsBlockSizeInByte);
     cnConfig.setMaxTsBlockSizeInByte(maxTsBlockSizeInByte);

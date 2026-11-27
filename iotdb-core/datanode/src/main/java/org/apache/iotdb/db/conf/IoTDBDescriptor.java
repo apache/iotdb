@@ -1122,6 +1122,15 @@ public class IoTDBDescriptor {
       commonConfig.setCteBufferSize(cteBufferSizeInBytes);
     }
 
+    // The per-processor buffer budget of the LTTB table function. The budget is reserved in both
+    // the peak and the retained size, and a sort above LTTB adds those two on top of its own
+    // buffer. The non-positive default therefore takes one eighth of one query thread's operator
+    // memory, which keeps 2 * lttb + sort within that thread. Half, which is what
+    // sort_buffer_size_in_bytes uses, makes the sum larger than the free operator memory on the
+    // 1C1D integration-test heap and the fragment is rejected with error 719.
+    loadFixedSizeLimitForQuery(
+        properties, "lttb_buffer_size_in_bytes", commonConfig::setLttbBufferSize, 8);
+
     // max number of rows for cte materialization
     int maxRowsInCteBuffer =
         Integer.parseInt(
@@ -1298,12 +1307,23 @@ public class IoTDBDescriptor {
 
   private void loadFixedSizeLimitForQuery(
       TrimProperties properties, String name, LongConsumer setFunction) {
+    loadFixedSizeLimitForQuery(properties, name, setFunction, 2);
+  }
+
+  /**
+   * Resolves a per-fragment byte budget. A non-positive configured value becomes {@code min(32 MiB,
+   * operator memory / query_thread_count / threadDivisor)}. Sort and the mods cache split one query
+   * thread's operator memory in two. LTTB splits it in eight: its budget is counted in the peak and
+   * again in the retained size, and the sort buffer is reserved beside those two.
+   */
+  private void loadFixedSizeLimitForQuery(
+      TrimProperties properties, String name, LongConsumer setFunction, int threadDivisor) {
     long defaultValue =
         Math.min(
             32 * 1024 * 1024L,
             memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
                 / memoryConfig.getQueryThreadCount()
-                / 2);
+                / threadDivisor);
     long size = Long.parseLong(properties.getProperty(name, Long.toString(defaultValue)));
     if (size <= 0) {
       size = defaultValue;
@@ -2405,6 +2425,14 @@ public class IoTDBDescriptor {
       if (cteBufferSizeInBytes > 0) {
         commonConfig.setCteBufferSize(cteBufferSizeInBytes);
       }
+      // The per-processor buffer budget of the LTTB table function. The budget is reserved in both
+      // the peak and the retained size, and a sort above LTTB adds those two on top of its own
+      // buffer. The non-positive default therefore takes one eighth of one query thread's operator
+      // memory, which keeps 2 * lttb + sort within that thread. Half, which is what
+      // sort_buffer_size_in_bytes uses, makes the sum larger than the free operator memory on the
+      // 1C1D integration-test heap and the fragment is rejected with error 719.
+      loadFixedSizeLimitForQuery(
+          properties, "lttb_buffer_size_in_bytes", commonConfig::setLttbBufferSize, 8);
       // max number of rows for cte materialization
       int maxRowsInCteBuffer =
           Integer.parseInt(
@@ -2452,6 +2480,8 @@ public class IoTDBDescriptor {
   private void overlayEffectiveConfigurationValues() {
     ConfigurationFileUtils.updateAppliedProperties(
         "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "lttb_buffer_size_in_bytes", Long.toString(commonConfig.getLttbBufferSize()));
     ConfigurationFileUtils.updateAppliedProperties(
         "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer()));
     ConfigurationFileUtils.updateAppliedProperties(

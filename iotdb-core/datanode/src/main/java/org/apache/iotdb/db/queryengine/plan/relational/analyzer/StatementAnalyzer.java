@@ -126,6 +126,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.LTTBTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -138,6 +139,7 @@ import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
@@ -148,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
@@ -319,6 +322,8 @@ import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet
 import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getLast;
 import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public class StatementAnalyzer {
 
@@ -6074,7 +6079,7 @@ public class StatementAnalyzer {
           ParameterSpecification parameterSpecification =
               argumentSpecificationsByName.remove(argumentName);
           ArgumentAnalysis argumentAnalysis =
-              analyzeArgument(parameterSpecification, argument, scope);
+              analyzeArgument(functionName, parameterSpecification, argument, scope);
           passedArguments.put(argumentName, argumentAnalysis.getArgument());
           argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
         }
@@ -6094,7 +6099,7 @@ public class StatementAnalyzer {
           TableFunctionArgument argument = arguments.get(i);
           ParameterSpecification parameterSpecification = parameterSpecifications.get(i);
           ArgumentAnalysis argumentAnalysis =
-              analyzeArgument(parameterSpecification, argument, scope);
+              analyzeArgument(functionName, parameterSpecification, argument, scope);
           passedArguments.put(parameterSpecification.getName(), argumentAnalysis.getArgument());
           argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
         }
@@ -6107,6 +6112,7 @@ public class StatementAnalyzer {
         }
       }
       tryAppendM4ModeArgument(functionName, arguments, parameterSpecifications, passedArguments);
+      tryAppendLTTBModeArgument(functionName, arguments, parameterSpecifications, passedArguments);
       tryAppendFFTInternalArguments(
           functionName, arguments, parameterSpecifications, passedArguments);
       return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
@@ -6114,6 +6120,7 @@ public class StatementAnalyzer {
 
     private boolean isPartitionColumnsProvidedByProperSchema(String functionName) {
       return TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+          || TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.LOWPASS.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.HIGHPASS.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.XCORR.getFunctionName().equalsIgnoreCase(functionName)
@@ -6199,6 +6206,86 @@ public class StatementAnalyzer {
       passedArguments.put(
           M4TableFunction.WINDOW_MODE_PARAMETER_NAME,
           new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, isTimeWindow));
+    }
+
+    /**
+     * Resolves the LTTB execution mode from the SQL literals. The mode (target-count vs. time
+     * window vs. count window) depends on whether {@code SIZE} is a duration literal, which is only
+     * visible at this level, so it is injected as the internal boolean argument {@link
+     * LTTBTableFunction#WINDOW_MODE_PARAMETER_NAME}. Parameter-combination checks that only need
+     * the presence of arguments are also performed here so they fail before analysis.
+     */
+    private void tryAppendLTTBModeArgument(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        ImmutableMap.Builder<String, Argument> passedArguments) {
+      if (!TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName)) {
+        return;
+      }
+
+      Optional<TableFunctionArgument> nArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, LTTBTableFunction.N_PARAMETER_NAME);
+      Optional<TableFunctionArgument> sizeArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, LTTBTableFunction.SIZE_PARAMETER_NAME);
+      Optional<TableFunctionArgument> slideArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, LTTBTableFunction.SLIDE_PARAMETER_NAME);
+      boolean originSpecified =
+          containsTableFunctionArgument(
+              arguments, parameterSpecifications, LTTBTableFunction.ORIGIN_PARAMETER_NAME);
+
+      if (nArgument.isPresent() == sizeArgument.isPresent()) {
+        throw new SemanticException(
+            CommonMessages
+                .EXCEPTION_EXACTLY_ONE_OF_THE_N_AND_SIZE_ARGUMENTS_MUST_BE_SPECIFIED_FOR_LTTB_54AF0733);
+      }
+
+      boolean isTimeWindow = false;
+      if (nArgument.isPresent()) {
+        if (slideArgument.isPresent() || originSpecified) {
+          throw new SemanticException(
+              CommonMessages
+                  .EXCEPTION_THE_N_ARGUMENT_OF_LTTB_CANNOT_BE_COMBINED_WITH_THE_SLIDE_OR_ORIGIN_ARGUMENTS_C2FF1FE1);
+        }
+      } else {
+        if (!(sizeArgument.get().getValue() instanceof Expression)) {
+          throw new SemanticException(
+              String.format(
+                  QueryMessages.EXCEPTION_INVALID_ARGUMENT_ARG_EXPECTED_SCALAR_ARGUMENT_4AD4E32F,
+                  LTTBTableFunction.SIZE_PARAMETER_NAME));
+        }
+        isTimeWindow = sizeArgument.get().getValue() instanceof TimeDurationLiteral;
+        if (slideArgument.isPresent()) {
+          if (!(slideArgument.get().getValue() instanceof Expression)) {
+            throw new SemanticException(
+                String.format(
+                    QueryMessages.EXCEPTION_INVALID_ARGUMENT_ARG_EXPECTED_SCALAR_ARGUMENT_4AD4E32F,
+                    LTTBTableFunction.SLIDE_PARAMETER_NAME));
+          }
+          boolean isTimeSlide = slideArgument.get().getValue() instanceof TimeDurationLiteral;
+          if (isTimeWindow != isTimeSlide) {
+            throw new SemanticException(
+                QueryMessages
+                    .EXCEPTION_THE_SLIDE_ARGUMENT_MUST_HAVE_THE_SAME_WINDOW_MODE_AS_THE_SIZE_ARGUMENT_419C9844);
+          }
+        }
+        if (!isTimeWindow && originSpecified) {
+          throw new SemanticException(
+              QueryMessages
+                  .EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9);
+        }
+      }
+      passedArguments.put(
+          LTTBTableFunction.WINDOW_MODE_PARAMETER_NAME,
+          new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, isTimeWindow));
+      // Presence, not value: Long.MIN_VALUE is a legal timestamp, so the value alone cannot tell
+      // an explicit ORIGIN from the injected default.
+      passedArguments.put(
+          LTTBTableFunction.ORIGIN_SPECIFIED_PARAMETER_NAME,
+          new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, originSpecified));
     }
 
     private boolean containsTableFunctionArgument(
@@ -6346,6 +6433,7 @@ public class StatementAnalyzer {
     }
 
     private ArgumentAnalysis analyzeArgument(
+        String functionName,
         ParameterSpecification parameterSpecification,
         TableFunctionArgument argument,
         Optional<Scope> scope) {
@@ -6383,7 +6471,8 @@ public class StatementAnalyzer {
         }
         return analyzeScalarArgument(
             (Expression) argument.getValue(),
-            (ScalarParameterSpecification) parameterSpecification);
+            (ScalarParameterSpecification) parameterSpecification,
+            TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName));
       } else {
         throw new IllegalStateException(
             String.format(
@@ -6558,22 +6647,54 @@ public class StatementAnalyzer {
     }
 
     private ArgumentAnalysis analyzeScalarArgument(
-        Expression expression, ScalarParameterSpecification argumentSpecification) {
+        Expression expression, ScalarParameterSpecification argumentSpecification, boolean isLttb) {
       if (expression instanceof TimeDurationLiteral) {
+        if (isLttb
+            && LTTBTableFunction.ORIGIN_PARAMETER_NAME.equals(argumentSpecification.getName())) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S,
+                  argumentSpecification.getName(),
+                  argumentSpecification.getType(),
+                  "DURATION"));
+        }
         if (((TimeDurationLiteral) expression).getValue().monthDuration != 0) {
           throw new SemanticException(
               DataNodeQueryMessages.SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);
         }
       }
       // currently, only constant arguments are supported
-      Object constantValue =
-          evaluateConstantExpression(
-              expression, new PlannerContext(metadata, typeManager), sessionContext);
+      PlannerContext plannerContext = new PlannerContext(metadata, typeManager);
+      Object constantValue = evaluateConstantExpression(expression, plannerContext, sessionContext);
       if (constantValue == null) {
         throw new SemanticException(
             String.format(
                 DataNodeQueryMessages.THE_ARGUMENT_CANNOT_BE_NULL,
                 argumentSpecification.getName()));
+      }
+      if (isLttb && argumentSpecification.getType() == org.apache.iotdb.udf.api.type.Type.INT64) {
+        // TIMESTAMP and INT64 constants share the same Java representation.
+        Type type =
+            new IrTypeAnalyzer(plannerContext)
+                .getType(sessionContext, TypeProvider.empty(), expression);
+        boolean targetCount =
+            LTTBTableFunction.N_PARAMETER_NAME.equals(argumentSpecification.getName());
+        boolean validType =
+            expression instanceof TimeDurationLiteral
+                ? !targetCount
+                : INT32.equals(type) || INT64.equals(type);
+        if (!validType) {
+          throw new SemanticException(
+              targetCount
+                  ? CommonMessages
+                      .EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E
+                  : String.format(
+                      DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S,
+                      argumentSpecification.getName(),
+                      argumentSpecification.getType(),
+                      type.getDisplayName()));
+        }
+        constantValue = ((Number) constantValue).longValue();
       }
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
         if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)

@@ -3410,9 +3410,10 @@ public class TableDistributedPlanGenerator
     // A partitioned GroupNode only guarantees that its children are partitioned, not that one
     // logical partition lives in one child. SAMPLE has to draw N rows for the whole partition and
     // DERIVATIVE needs the adjacent pairs crossing fragment boundaries, so neither may run once
-    // per child.
+    // per child. LTTB also needs the whole partition to select representative points.
     String functionName = node.getName();
     return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName)
         && !TableBuiltinTableFunction.SAMPLE.getFunctionName().equalsIgnoreCase(functionName)
         && !TableBuiltinTableFunction.DERIVATIVE.getFunctionName().equalsIgnoreCase(functionName);
   }

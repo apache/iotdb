@@ -29,6 +29,7 @@ import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
@@ -73,8 +74,16 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   private final boolean isDeclaredAsPassThrough;
   private final IoTDBLocal ioTDBLocal;
 
+  /**
+   * Bytes the data processors may buffer internally while a partition is processed. It is resolved
+   * once from the provider, which also gives the same value to every processor it creates, so the
+   * reservation and the enforced limit cannot diverge.
+   */
+  private final long estimatedMaxBufferedBytes;
+
   private TableFunctionDataProcessor processor;
   private PartitionState partitionState;
+  private Iterator<Record> batchedInput;
   private ListenableFuture<?> isBlocked;
   private boolean finished = false;
 
@@ -83,6 +92,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   public TableFunctionOperator(
       CommonOperatorContext operatorContext,
       TableFunctionProcessorProvider processorProvider,
+      long estimatedMaxBufferedBytes,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
       List<TSDataType> outputDataTypes,
@@ -104,6 +114,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
         new PartitionRecognizer(
             partitionChannels, requiredChannels, passThroughChannels, inputDataTypes);
     this.isDeclaredAsPassThrough = isDeclaredAsPassThrough;
+    this.estimatedMaxBufferedBytes = estimatedMaxBufferedBytes;
     this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
     this.properBlockBuilder = new TsBlockBuilder(outputDataTypes.subList(0, properChannelCount));
@@ -144,6 +155,9 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     if (retainedTsBlock != null || !resultTsBlocks.isEmpty()) {
       return getNextResultTsBlock();
     }
+    if (batchedInput != null) {
+      return processInputBatch();
+    }
     if (partitionState == null) {
       partitionState = partitionRecognizer.nextState();
     }
@@ -157,29 +171,25 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     } else {
       List<ColumnBuilder> properColumnBuilders = getProperColumnBuilders();
       ColumnBuilder passThroughIndexBuilder = getPassThroughIndexBuilder();
-      if (stateType == PartitionState.StateType.FINISHED) {
-        if (processor != null) {
-          processor.finish(properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
-        }
-        finished = true;
+      if (stateType == PartitionState.StateType.FINISHED
+          || (stateType == PartitionState.StateType.NEW_PARTITION && processor != null)) {
+        boolean drained = finishPartition(properColumnBuilders, passThroughIndexBuilder);
         resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
-        partitionCache.clear();
-        consumeCurrentPartitionState();
+        if (drained) {
+          partitionCache.clear();
+          if (stateType == PartitionState.StateType.FINISHED) {
+            finished = true;
+            consumeCurrentPartitionState();
+          } else {
+            destroyProcessor(processor);
+            processor = null;
+          }
+        }
         return getNextResultTsBlock();
       }
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
-        if (processor != null) {
-          // previous partition state has not finished consuming yet
-          processor.finish(properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
-          resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
-          partitionCache.clear();
-          destroyProcessor(processor);
-          processor = null;
-          return getNextResultTsBlock();
-        } else {
-          processor = processorProvider.getDataProcessor();
-          processor.beforeStart(ioTDBLocal);
-        }
+        processor = processorProvider.getDataProcessor();
+        processor.beforeStart(ioTDBLocal);
       }
       // the cached slices are only needed when the output has
       // columns declared as pass-through. Without them every output column is written by the
@@ -188,6 +198,10 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
         partitionCache.addSlice(slice);
       }
       Iterator<Record> recordIterator = slice.getRequiredRecordIterator(requireRecordSnapshot);
+      if (processor instanceof BatchedTableFunctionDataProcessor) {
+        batchedInput = recordIterator;
+        return processInputBatch();
+      }
       while (recordIterator.hasNext()) {
         processor.process(
             recordIterator.next(), properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
@@ -213,6 +227,39 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   private List<ColumnBuilder> getProperColumnBuilders() {
     return Arrays.asList(properBlockBuilder.getValueColumnBuilders());
+  }
+
+  private TsBlock processInputBatch() {
+    BatchedTableFunctionDataProcessor batched = (BatchedTableFunctionDataProcessor) processor;
+    List<ColumnBuilder> builders = getProperColumnBuilders();
+    while (batched.drainOutput(builders, this::isOutputBlockFull) && !isOutputBlockFull()) {
+      if (!batchedInput.hasNext()) {
+        batchedInput = null;
+        consumeCurrentPartitionState();
+        break;
+      }
+      batched.processInput(batchedInput.next(), builders, ioTDBLocal);
+    }
+    resultTsBlocks.addAll(buildTsBlock(builders, null));
+    return getNextResultTsBlock();
+  }
+
+  private boolean isOutputBlockFull() {
+    // Positions are declared in buildTsBlock, after the processor finishes writing this batch.
+    return properBlockBuilder.isFull()
+        || properBlockBuilder.getColumnBuilder(0).getPositionCount()
+            >= properBlockBuilder.getMaxTsBlockLineNumber();
+  }
+
+  private boolean finishPartition(List<ColumnBuilder> builders, ColumnBuilder passThroughIndex) {
+    if (processor instanceof BatchedTableFunctionDataProcessor) {
+      return ((BatchedTableFunctionDataProcessor) processor)
+          .finishBatch(builders, this::isOutputBlockFull);
+    }
+    if (processor != null) {
+      processor.finish(builders, passThroughIndex, ioTDBLocal);
+    }
+    return true;
   }
 
   private ColumnBuilder getPassThroughIndexBuilder() {
@@ -282,6 +329,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   public void close() throws Exception {
     partitionCache.close();
     resultTsBlocks.clear();
+    batchedInput = null;
     resultTsBlock = null;
     retainedTsBlock = null;
     inputOperator.close();
@@ -299,7 +347,10 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public long calculateMaxPeekMemory() {
+    // A processor that buffers its input (LTTB) holds up to estimatedMaxBufferedBytes while the
+    // partition is processed, in addition to the input it reads and the block it builds.
     return inputOperator.calculateMaxPeekMemory()
+        + estimatedMaxBufferedBytes
         + Math.max(maxReturnSize, properBlockBuilder.getRetainedSizeInBytes());
   }
 
@@ -310,7 +361,12 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return inputOperator.calculateRetainedSizeAfterCallingNext();
+    // The buffers survive across next() calls until the partition completes, so they belong to the
+    // retained size as well as the peak. Parents read one or the other (FilterAndProjectOperator
+    // adds the child's retained size and never reads the child's peak; sinks and LimitOperator
+    // take the child's peak), so keep both. Sort adds the two together; the LTTB default budget is
+    // sized so that sum still fits one query thread.
+    return inputOperator.calculateRetainedSizeAfterCallingNext() + estimatedMaxBufferedBytes;
   }
 
   @Override

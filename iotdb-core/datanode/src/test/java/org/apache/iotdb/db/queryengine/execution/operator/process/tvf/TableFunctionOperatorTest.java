@@ -25,7 +25,11 @@ import org.apache.iotdb.calc.execution.operator.process.function.TableFunctionOp
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.LTTBTableFunction;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -33,8 +37,10 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 
@@ -50,6 +56,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -61,9 +68,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class TableFunctionOperatorTest {
   private static final ExecutorService instanceNotificationExecutor =
@@ -371,6 +384,7 @@ public class TableFunctionOperatorTest {
           new TableFunctionOperator(
               operatorContext,
               provider,
+              0L,
               singleRowChild,
               Collections.singletonList(TSDataType.INT64),
               withPassThrough
@@ -444,6 +458,7 @@ public class TableFunctionOperatorTest {
           new TableFunctionOperator(
               operatorContext,
               provider,
+              0L,
               twoPartitionChild,
               Collections.singletonList(TSDataType.INT64),
               Collections.singletonList(TSDataType.INT64),
@@ -472,6 +487,255 @@ public class TableFunctionOperatorTest {
       Assert.assertTrue("Returned block count: " + returnedBlocks, returnedBlocks > 2);
     } finally {
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(originalMaxBlockSize);
+    }
+  }
+
+  @Test
+  public void testLttbDrainsEachPartitionInBoundedBatches() throws Exception {
+    assertLttbTargetCountBatches(16, 1024);
+    assertLttbTargetCountBatches(1024 * 1024, 1);
+  }
+
+  private void assertLttbTargetCountBatches(int maxBytes, int maxRows) throws Exception {
+    OperatorContext context = createOperatorContext("lttb_partition_batches");
+    TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+    int previousSize = config.getMaxTsBlockSizeInBytes();
+    int previousRows = config.getMaxTsBlockLineNumber();
+    try {
+      config.setMaxTsBlockSizeInBytes(maxBytes);
+      config.setMaxTsBlockLineNumber(maxRows);
+      TableFunctionProcessorProvider lttb =
+          new LTTBTableFunction()
+              .getProcessorProvider(
+                  new MapTableFunctionHandle.Builder()
+                      .addProperty(LTTBTableFunction.MODE_PROPERTY, "TARGET_COUNT")
+                      .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "STRING")
+                      .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "INT32")
+                      .addProperty(LTTBTableFunction.N_PARAMETER_NAME, 3L)
+                      .build());
+      List<BatchedTableFunctionDataProcessor> processors = new ArrayList<>();
+      TableFunctionProcessorProvider provider =
+          new TableFunctionProcessorProvider() {
+            @Override
+            public TableFunctionDataProcessor getDataProcessor() {
+              BatchedTableFunctionDataProcessor processor =
+                  mock(
+                      BatchedTableFunctionDataProcessor.class,
+                      delegatesTo(lttb.getDataProcessor()));
+              processors.add(processor);
+              return processor;
+            }
+          };
+      List<TSDataType> input =
+          Arrays.asList(
+              TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.DOUBLE, TSDataType.INT32);
+      List<TSDataType> output =
+          Arrays.asList(
+              TSDataType.INT64, TSDataType.STRING, TSDataType.TIMESTAMP, TSDataType.INT32);
+      List<Binary> keys =
+          Arrays.asList(
+              D1_BINARY, D1_BINARY, D1_BINARY, D2_BINARY, D2_BINARY, D2_BINARY, D3_BINARY,
+              D3_BINARY, D5_BINARY, D5_BINARY, D5_BINARY);
+      long[] timestamps = {
+        1717171200000L,
+        1719763200000L,
+        1722441600000L,
+        1725120000000L,
+        1725130000000L,
+        1725140000000L,
+        1722441600000L,
+        1722441800000L,
+        1722551600000L,
+        1722552800000L,
+        1722553000000L
+      };
+      int[] values = {60, 60, 61, 62, 62, 63, 63, 64, 64, 65, 65};
+      int row = 0;
+      try (TableFunctionOperator operator =
+          new TableFunctionOperator(
+              context,
+              provider,
+              0L,
+              constructChildOperator(context.getDriverContext()),
+              input,
+              output,
+              4,
+              Arrays.asList(0, 1, 3),
+              Collections.emptyList(),
+              false,
+              Collections.singletonList(1),
+              false,
+              mock(IoTDBLocal.class))) {
+        while (!operator.isFinished()) {
+          operator.isBlocked();
+          TsBlock block = operator.next();
+          if (block != null) {
+            assertEquals(1, block.getPositionCount());
+            assertEquals(0L, block.getColumn(0).getLong(0));
+            assertEquals(keys.get(row), block.getColumn(1).getBinary(0));
+            assertEquals(timestamps[row], block.getColumn(2).getLong(0));
+            assertEquals(values[row++], block.getColumn(3).getInt(0));
+          }
+        }
+      }
+      assertEquals(keys.size(), row);
+      assertEquals(4, processors.size());
+      for (int i = 0; i < processors.size(); i++) {
+        verify(processors.get(i), times(i == 2 ? 2 : 3)).finishBatch(any(), any());
+      }
+    } finally {
+      config.setMaxTsBlockSizeInBytes(previousSize);
+      config.setMaxTsBlockLineNumber(previousRows);
+    }
+  }
+
+  @Test
+  public void testLttbDuplicateTimestampsAcrossInputBlocks() throws Exception {
+    SemanticException duplicate =
+        assertThrows(SemanticException.class, () -> readLttbPartitionsAcrossBlocks(1));
+    assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), duplicate.getErrorCode());
+    assertEquals(
+        String.format(
+            CommonMessages
+                .EXCEPTION_LTTB_DOES_NOT_SUPPORT_DUPLICATE_TIMESTAMPS_BUT_TIMESTAMP_ARG_APPEARS_MORE_THAN_ONCE_IN_THE_SAME_PARTITION_7713FEDD,
+            7L),
+        duplicate.getMessage());
+    assertEquals(Arrays.asList(1, 2), readLttbPartitionsAcrossBlocks(2));
+  }
+
+  private List<Integer> readLttbPartitionsAcrossBlocks(int secondPartition) throws Exception {
+    List<TSDataType> input =
+        Arrays.asList(TSDataType.TIMESTAMP, TSDataType.INT32, TSDataType.INT32);
+    TsBlockBuilder rows = new TsBlockBuilder(input);
+    for (int partition : new int[] {1, secondPartition}) {
+      rows.getColumnBuilder(0).writeLong(7L);
+      rows.getColumnBuilder(1).writeInt(partition);
+      rows.getColumnBuilder(2).writeInt(42);
+      rows.declarePosition();
+    }
+    TsBlock data = rows.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 2));
+    TableFunctionProcessorProvider lttb =
+        new LTTBTableFunction()
+            .getProcessorProvider(
+                new MapTableFunctionHandle.Builder()
+                    .addProperty(LTTBTableFunction.MODE_PROPERTY, "TARGET_COUNT")
+                    .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "INT32")
+                    .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "INT32")
+                    .addProperty(LTTBTableFunction.N_PARAMETER_NAME, 3L)
+                    .build());
+    List<Integer> partitions = new ArrayList<>();
+    try (TableFunctionOperator operator =
+        new TableFunctionOperator(
+            createOperatorContext("lttb_duplicate_across_blocks"),
+            lttb,
+            0L,
+            childWithBlocks(Arrays.asList(data.getRegion(0, 1), data.getRegion(1, 1)).iterator()),
+            input,
+            Arrays.asList(
+                TSDataType.INT64, TSDataType.INT32, TSDataType.TIMESTAMP, TSDataType.INT32),
+            4,
+            Arrays.asList(0, 1, 2),
+            Collections.emptyList(),
+            false,
+            Collections.singletonList(1),
+            false,
+            mock(IoTDBLocal.class))) {
+      while (!operator.isFinished()) {
+        operator.isBlocked();
+        TsBlock block = operator.next();
+        if (block != null) {
+          for (int i = 0; i < block.getPositionCount(); i++) {
+            partitions.add(block.getColumn(1).getInt(i));
+            assertEquals(7L, block.getColumn(2).getLong(i));
+            assertEquals(42, block.getColumn(3).getInt(i));
+          }
+        }
+      }
+    }
+    return partitions;
+  }
+
+  @Test
+  public void testLttbWindowBatchesDuringInputAndAtPartitionEnd() throws Exception {
+    OperatorContext context = createOperatorContext("lttb_window_batches");
+    List<TSDataType> input =
+        Arrays.asList(TSDataType.TIMESTAMP, TSDataType.INT32, TSDataType.DOUBLE);
+    TsBlockBuilder rows = new TsBlockBuilder(input);
+    for (int t = 0; t < 18; t++) {
+      rows.getColumnBuilder(0).writeLong(t);
+      rows.getColumnBuilder(1).writeInt(t < 15 ? 1 : 2);
+      rows.getColumnBuilder(2).writeDouble(t >= 3 && t < 9 ? Double.NaN : t);
+      rows.declarePosition();
+    }
+    TsBlock data = rows.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 18));
+    Iterator<TsBlock> blocks =
+        Arrays.asList(data.getRegion(0, 14), data.getRegion(14, 4)).iterator();
+    Operator child = childWithBlocks(blocks);
+    TableFunctionProcessorProvider provider =
+        new LTTBTableFunction()
+            .getProcessorProvider(
+                new MapTableFunctionHandle.Builder()
+                    .addProperty(LTTBTableFunction.MODE_PROPERTY, "COUNT_WINDOW")
+                    .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "INT32")
+                    .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "DOUBLE")
+                    .addProperty(LTTBTableFunction.SIZE_PARAMETER_NAME, 3L)
+                    .addProperty(LTTBTableFunction.SLIDE_PARAMETER_NAME, 3L)
+                    .build());
+
+    TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+    int previousSize = config.getMaxTsBlockSizeInBytes();
+    int previousRows = config.getMaxTsBlockLineNumber();
+    try {
+      config.setMaxTsBlockSizeInBytes(1024 * 1024);
+      config.setMaxTsBlockLineNumber(1);
+      try (TableFunctionOperator operator =
+          new TableFunctionOperator(
+              context,
+              provider,
+              0L,
+              child,
+              input,
+              Arrays.asList(
+                  TSDataType.INT64, TSDataType.INT32, TSDataType.TIMESTAMP, TSDataType.DOUBLE),
+              4,
+              Arrays.asList(0, 1, 2),
+              Collections.emptyList(),
+              false,
+              Collections.singletonList(1),
+              false,
+              mock(IoTDBLocal.class)) {
+            @Override
+            public TsBlock checkTsBlockSizeAndGetResult() {
+              // Check the materialized block before AbstractOperator has a chance to split it.
+              assertEquals(1, resultTsBlock.getPositionCount());
+              return super.checkTsBlockSizeAndGetResult();
+            }
+          }) {
+        // Closing the first finite lookahead after the NaNs releases three pending windows.
+        // The second partition has just one window and must emit F, its interior pick, then L.
+        int[] times = {0, 1, 3, 6, 9, 12, 14, 15, 16, 17};
+        int output = 0;
+        while (!operator.isFinished()) {
+          operator.isBlocked();
+          TsBlock block = operator.next();
+          if (block == null) {
+            continue;
+          }
+          int t = times[output++];
+          if (t <= 6) {
+            assertTrue(
+                "Ready windows should drain before reading the next input block", blocks.hasNext());
+          }
+          assertEquals(t < 15 ? t / 3 : 0, block.getColumn(0).getLong(0));
+          assertEquals(t < 15 ? 1 : 2, block.getColumn(1).getInt(0));
+          assertEquals(t, block.getColumn(2).getLong(0));
+          assertEquals(t >= 3 && t < 9 ? Double.NaN : t, block.getColumn(3).getDouble(0), 0.0);
+        }
+        assertEquals(times.length, output);
+      }
+    } finally {
+      config.setMaxTsBlockSizeInBytes(previousSize);
+      config.setMaxTsBlockLineNumber(previousRows);
     }
   }
 
@@ -516,6 +780,7 @@ public class TableFunctionOperatorTest {
           new TableFunctionOperator(
               operatorContext,
               provider,
+              0L,
               child,
               Collections.singletonList(TSDataType.INT64),
               // the extra output column is a pass-through column, which makes the operator cache
@@ -604,8 +869,59 @@ public class TableFunctionOperatorTest {
     };
   }
 
+  /**
+   * The processor buffers survive until a partition completes, so the operator charges them to both
+   * the peak and the retained size. FilterAndProjectOperator reserves only the retained size, while
+   * sinks and LimitOperator reserve only the peak.
+   */
+  @Test
+  public void testBufferedBytesAreChargedToPeakAndRetainedSize() throws Exception {
+    long budget = 4096L;
+    OperatorContext operatorContext = createOperatorContext("lttb_buffer_estimate");
+    Operator child = constructLongChildOperator(operatorContext, new long[] {1});
+    try (TableFunctionOperator operator =
+        new TableFunctionOperator(
+            operatorContext,
+            new TableFunctionProcessorProvider() {
+              @Override
+              public TableFunctionDataProcessor getDataProcessor() {
+                return new TableFunctionDataProcessor() {
+                  @Override
+                  public void process(
+                      Record input,
+                      List<ColumnBuilder> properColumnBuilders,
+                      ColumnBuilder passThroughIndexBuilder) {}
+                };
+              }
+            },
+            budget,
+            child,
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(TSDataType.INT64),
+            1,
+            Collections.singletonList(0),
+            Collections.emptyList(),
+            false,
+            Collections.emptyList(),
+            false,
+            mock(IoTDBLocal.class))) {
+      assertEquals(budget, operator.calculateRetainedSizeAfterCallingNext());
+      // peek = child peak (0) + budget + max(return size, block builder retained)
+      assertTrue(operator.calculateMaxPeekMemory() >= budget + operator.calculateMaxReturnSize());
+    }
+  }
+
   private Operator constructLongChildOperator(OperatorContext operatorContext, long[] values) {
     return constructLongChildOperator(operatorContext, values, new AtomicBoolean());
+  }
+
+  private Operator childWithBlocks(Iterator<TsBlock> blocks) throws Exception {
+    Operator child = mock(Operator.class);
+    when(child.isBlocked()).thenAnswer(call -> Operator.NOT_BLOCKED);
+    when(child.isFinished()).thenAnswer(call -> !blocks.hasNext());
+    when(child.hasNextWithTimer()).thenAnswer(call -> blocks.hasNext());
+    when(child.nextWithTimer()).thenAnswer(call -> blocks.next());
+    return child;
   }
 
   private OperatorContext createOperatorContext(String queryName) {
