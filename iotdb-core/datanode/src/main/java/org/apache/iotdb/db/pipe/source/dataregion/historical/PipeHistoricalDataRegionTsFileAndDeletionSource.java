@@ -848,18 +848,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             currentResult.snapshotInvalid = true;
           }
           if (currentResult.snapshotInvalid) {
-            final Exception retryUnpinException = unpinTsFilesInPartition(currentResult);
-            currentResult = null;
-            if (retryUnpinException != null) {
-              throw new PipeException(retryUnpinException.getMessage(), retryUnpinException);
-            }
-            throw new PipeException(
+            final String snapshotChangedMessage =
                 String.format(
                     DataNodePipeMessages
                         .EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3,
                     pipeName,
                     creationTime,
-                    timePartition));
+                    timePartition);
+            if (currentResult.statistics.pinFailedCount > 0
+                || currentResult.statistics.skippedDeletedCount > 0) {
+              final Exception retryUnpinException = unpinTsFilesInPartition(currentResult);
+              currentResult = null;
+              if (retryUnpinException != null) {
+                throw new PipeException(retryUnpinException.getMessage(), retryUnpinException);
+              }
+              throw new PipeException(snapshotChangedMessage);
+            }
+            LOGGER.warn(snapshotChangedMessage);
           }
         }
         resultsByPartition.put(timePartition, currentResult);
@@ -988,7 +993,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         LOGGER.warn(
             DataNodePipeMessages.PIPE_FAILED_TO_PIN_TSFILERESOURCE, resource.getTsFilePath(), e);
         if (wasUnclosed) {
-          throw new PipeException(e.getMessage(), e);
+          result.filteredResources2TableNames.put(resource, tableNames);
         }
       }
     } finally {
@@ -1541,31 +1546,38 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           : supplyProgressReportEvent(resource.getMaxProgressIndex());
     }
 
+    if (!resourcesWithPinnedTsFile.contains(resource)) {
+      boolean resourceReadLockAcquired = false;
+      try {
+        resource.readLock();
+        resourceReadLockAcquired = true;
+        if (!resourcesWithPinnedTsFile.contains(resource)) {
+          final boolean modFilePinned =
+              PipeDataNodeResourceManager.tsfile()
+                  .pinTsFileResource(
+                      resource,
+                      shouldTransferModFile && !resourcesWithPinnedModFile.contains(resource),
+                      pipeNameWithCreationTime);
+          resourcesWithPinnedTsFile.add(resource);
+          if (modFilePinned) {
+            resourcesWithPinnedModFile.add(resource);
+          }
+        }
+      } catch (final IOException e) {
+        throw new PipeException(e.getMessage(), e);
+      } finally {
+        if (resourceReadLockAcquired) {
+          resource.readUnlock();
+        }
+      }
+    }
+
     boolean shouldUnpinResource = false;
     boolean shouldClearReplicateIndex = false;
+    boolean isEventReferenceAcquired = false;
+    PipeTsFileInsertionEvent event = null;
     try {
-      final PipeTsFileInsertionEvent event =
-          new PipeTsFileInsertionEvent(
-              isModelDetected ? isTableModel : null,
-              resource.getDatabaseName(),
-              resource,
-              null,
-              shouldTransferModFile,
-              false,
-              true,
-              filteredTsFileResources2TableNames.get(resource),
-              pipeName,
-              creationTime,
-              pipeTaskMeta,
-              treePattern,
-              tablePattern,
-              userId,
-              userName,
-              cliHostname,
-              skipIfNoPrivileges,
-              historicalDataExtractionStartTime,
-              historicalDataExtractionEndTime);
-      event.setTsFileParser(tsFileParser);
+      event = createTsFileInsertionEvent(resource);
 
       if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
         event.skipReportOnCommitAndGeneratedEvents();
@@ -1604,11 +1616,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                 DataNodePipeMessages.INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT,
                 event.coreReportMessage()));
       }
+      isEventReferenceAcquired = true;
       filteredTsFileResources2TableNames.remove(resource);
       shouldUnpinResource = true;
       shouldClearReplicateIndex = true;
       return event;
     } finally {
+      if (event != null && !isEventReferenceAcquired) {
+        event.close();
+      }
       if (shouldClearReplicateIndex) {
         clearReplicateIndexForResource(resource);
       }
@@ -1624,6 +1640,32 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         }
       }
     }
+  }
+
+  PipeTsFileInsertionEvent createTsFileInsertionEvent(final TsFileResource resource) {
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            isModelDetected ? isTableModel : null,
+            resource.getDatabaseName(),
+            resource,
+            null,
+            shouldTransferModFile,
+            false,
+            true,
+            filteredTsFileResources2TableNames.get(resource),
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges,
+            historicalDataExtractionStartTime,
+            historicalDataExtractionEndTime);
+    event.setTsFileParser(tsFileParser);
+    return event;
   }
 
   private boolean shouldSkipHistoricalTsFileEvent(final TsFileResource resource) {

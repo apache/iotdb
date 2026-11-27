@@ -80,6 +80,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -592,6 +598,80 @@ public class PipeTsFileInsertionEventTest {
       sourceEvent.close();
     } finally {
       FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test(timeout = 60000)
+  public void testUnclosedRealtimeTsFileIsNotSkippedAsEmpty() throws Exception {
+    final TsFileResource resource = new TsFileResource(new File("1-1-0-0.tsfile"));
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
+    final SimpleProgressIndex progressIndex = new SimpleProgressIndex(1, 1);
+    resource.updateProgressIndex(progressIndex);
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(false, "root.db", resource, false);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    try {
+      Assert.assertTrue(resource.isEmpty());
+      Assert.assertEquals(progressIndex, event.forceGetProgressIndex());
+
+      final CountDownLatch waitingStarted = new CountDownLatch(1);
+      final Future<Boolean> closeFuture =
+          executor.submit(
+              () -> {
+                waitingStarted.countDown();
+                return event.waitForTsFileClose();
+              });
+      Assert.assertTrue(waitingStarted.await(5, TimeUnit.SECONDS));
+      Assert.assertThrows(
+          TimeoutException.class, () -> closeFuture.get(300, TimeUnit.MILLISECONDS));
+
+      final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1");
+      resource.updateStartTime(deviceID, 102);
+      resource.updateEndTime(deviceID, 102);
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+      Assert.assertTrue(closeFuture.get(5, TimeUnit.SECONDS));
+      Assert.assertFalse(resource.isEmpty());
+    } finally {
+      executor.shutdownNow();
+      event.close();
+    }
+  }
+
+  @Test(timeout = 60000)
+  public void testClosingTsFileDuringEmptyCheckDoesNotCacheTransientEmpty() throws Exception {
+    final TsFileResource resource = Mockito.spy(new TsFileResource(new File("1-1-0-0.tsfile")));
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
+    resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
+    final CountDownLatch endTimeRead = new CountDownLatch(1);
+    final CountDownLatch continueEmptyCheck = new CountDownLatch(1);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    Mockito.doAnswer(
+            invocation -> {
+              final long endTime = (long) invocation.callRealMethod();
+              endTimeRead.countDown();
+              Assert.assertTrue(continueEmptyCheck.await(5, TimeUnit.SECONDS));
+              return endTime;
+            })
+        .when(resource)
+        .getFileEndTime();
+
+    try {
+      final Future<Boolean> emptyCheck = executor.submit(resource::isEmpty);
+      Assert.assertTrue(endTimeRead.await(5, TimeUnit.SECONDS));
+
+      final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1");
+      resource.updateStartTime(deviceID, 102);
+      resource.updateEndTime(deviceID, 102);
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      continueEmptyCheck.countDown();
+
+      Assert.assertTrue(emptyCheck.get(5, TimeUnit.SECONDS));
+      Assert.assertFalse(resource.isEmpty());
+    } finally {
+      continueEmptyCheck.countDown();
+      executor.shutdownNow();
     }
   }
 
