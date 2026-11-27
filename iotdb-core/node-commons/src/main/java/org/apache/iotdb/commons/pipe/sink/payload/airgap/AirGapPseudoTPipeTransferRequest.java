@@ -24,6 +24,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {
 
   private boolean strictUnidirectional;
+  private boolean udp;
 
   public boolean isStrictUnidirectional() {
     return strictUnidirectional;
@@ -32,6 +33,15 @@ public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {
   public AirGapPseudoTPipeTransferRequest setStrictUnidirectional(
       final boolean strictUnidirectional) {
     this.strictUnidirectional = strictUnidirectional;
+    return this;
+  }
+
+  public boolean isUdp() {
+    return udp;
+  }
+
+  public AirGapPseudoTPipeTransferRequest setUdp(final boolean udp) {
+    this.udp = udp;
     return this;
   }
 }

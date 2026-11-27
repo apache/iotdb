@@ -204,6 +204,8 @@ public final class PipeMessages {
       "PipeReceiverReqDecompressedMaxLengthInBytes: {}";
   public static final String CONFIG_PIPE_AIR_GAP_RECEIVER_MAX_PAYLOAD_SIZE_IN_BYTES =
       "PipeAirGapReceiverMaxPayloadSizeInBytes: {}";
+  public static final String CONFIG_PIPE_AIR_GAP_RECEIVER_UDP_MAX_PENDING_REQUEST_COUNT =
+      "PipeAirGapReceiverUdpMaxPendingRequestCount: {}";
   public static final String CONFIG_PIPE_RECEIVER_LOAD_CONVERSION_ENABLED =
       "PipeReceiverLoadConversionEnabled: {}";
   public static final String CONFIG_PIPE_PERIODICAL_LOG_MIN_INTERVAL_SECONDS =
@@ -504,6 +506,10 @@ public final class PipeMessages {
       "Order ID mismatch: expected {}, actual {}";
   public static final String SLICE_COUNT_MISMATCH =
       "Slice count mismatch: expected {}, actual {}";
+  public static final String LOG_RECEIVED_SLICE_BODY_SIZE_ARG_EXCEEDS_ORIGIN_BODY_SIZE_ARG_12E71952 =
+      "Received slice body size {} exceeds origin body size {}";
+  public static final String LOG_RECEIVED_SLICE_BODY_SIZE_ARG_IS_NOT_EQUAL_TO_ORIGIN_BODY_SIZE_ARG_EBE1BB1E =
+      "Received slice body size {} is not equal to origin body size {}";
 
   // ===================== IoTDBSink =====================
 
@@ -835,12 +841,6 @@ public final class PipeMessages {
       LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_STATUS_ARG_2AFF0D91 =
           "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response"
               + " status: {}.";
-  public static final String
-      LOG_RECEIVED_SLICE_BODY_SIZE_ARG_EXCEEDS_ORIGIN_BODY_SIZE_ARG_12E71952 =
-          "Received slice body size {} exceeds origin body size {}";
-  public static final String
-      LOG_RECEIVED_SLICE_BODY_SIZE_ARG_IS_NOT_EQUAL_TO_ORIGIN_BODY_SIZE_ARG_EBE1BB1E =
-          "Received slice body size {} is not equal to origin body size {}";
   public static final String LOG_RECEIVING_PIPE_FILE_PIECE_6162A697 = "receiving pipe file piece";
   public static final String MESSAGE_AIR_GAP_TRANSPORT_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A32FE833 =
       "Air gap transport should be one of %s, but got %s.";

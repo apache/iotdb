@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapUdpProtocol;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
@@ -53,7 +54,10 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.function.BooleanSupplier;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.INT_LEN;
@@ -154,7 +158,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   }
 
   private boolean receive(
-      final byte[] data, final String receiverKey, final Runnable onValidRequest)
+      final byte[] data, final String receiverKey, final BooleanSupplier onValidRequest)
+      throws IOException {
+    return receive(data, receiverKey, onValidRequest, null);
+  }
+
+  private boolean receive(
+      final byte[] data,
+      final String receiverKey,
+      final BooleanSupplier onValidRequest,
+      final UdpRequestDeduplicator udpRequestDeduplicator)
       throws IOException {
     try {
       // If check sum failed, it indicates that the length we read may not be correct.
@@ -168,9 +181,30 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       }
 
       if (onValidRequest != null) {
-        onValidRequest.run();
+        if (!onValidRequest.getAsBoolean()) {
+          fail();
+          return false;
+        }
       }
-      handleReq(toTPipeTransferReq(data), System.currentTimeMillis(), receiverKey);
+      final AirGapPseudoTPipeTransferRequest req = toTPipeTransferReq(data);
+      final boolean deduplicate =
+          currentDatagramRequestId != null
+              && udpRequestDeduplicator != null
+              && req.type != PipeRequestType.TRANSFER_SLICE.getType();
+      final byte[] requestFingerprint = deduplicate ? calculateUdpRequestFingerprint(data) : null;
+      if (deduplicate
+          && udpRequestDeduplicator.isCompleted(currentDatagramRequestId, requestFingerprint)) {
+        ok();
+        return true;
+      }
+      if (handleReq(req, System.currentTimeMillis(), receiverKey)) {
+        if (deduplicate) {
+          udpRequestDeduplicator.markCompleted(currentDatagramRequestId, requestFingerprint);
+        }
+        ok();
+      } else {
+        fail();
+      }
       return true;
     } catch (final IOException e) {
       throw e;
@@ -194,6 +228,38 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       final byte[] buffer,
       final Runnable onValidRequest)
       throws IOException {
+    receiveUdpWithAdmission(
+        datagramSocket,
+        packet,
+        receiverKey,
+        buffer,
+        onValidRequest == null
+            ? null
+            : () -> {
+              onValidRequest.run();
+              return true;
+            },
+        null);
+  }
+
+  void receiveUdpWithAdmission(
+      final DatagramSocket datagramSocket,
+      final DatagramPacket packet,
+      final String receiverKey,
+      final byte[] buffer,
+      final BooleanSupplier onValidRequest)
+      throws IOException {
+    receiveUdpWithAdmission(datagramSocket, packet, receiverKey, buffer, onValidRequest, null);
+  }
+
+  void receiveUdpWithAdmission(
+      final DatagramSocket datagramSocket,
+      final DatagramPacket packet,
+      final String receiverKey,
+      final byte[] buffer,
+      final BooleanSupplier onValidRequest,
+      final UdpRequestDeduplicator udpRequestDeduplicator)
+      throws IOException {
     isELanguagePayload = false;
     currentDatagramSocket = datagramSocket;
     currentRemoteSocketAddress = packet.getSocketAddress();
@@ -212,7 +278,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
               DataNodePipeMessages.EXCEPTION_AIR_GAP_UDP_PACKET_CONTAINS_TRAILING_BYTES_2D34D418);
         }
         requestHandlingStarted = true;
-        receive(data, receiverKey, onValidRequest);
+        receive(data, receiverKey, onValidRequest, udpRequestDeduplicator);
       }
     } catch (final Exception e) {
       if (!requestHandlingStarted) {
@@ -237,12 +303,13 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
             .setStrictUnidirectional(
                 currentDatagramRequestId != null
                     && (currentDatagramRequestId & AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK) != 0)
+            .setUdp(currentDatagramRequestId != null)
             .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
             .setType(ReadWriteIOUtils.readShort(byteBuffer))
             .setBody(byteBuffer.slice());
   }
 
-  private void handleReq(
+  private boolean handleReq(
       final AirGapPseudoTPipeTransferRequest req, final long startTime, final String receiverKey)
       throws IOException {
     final TPipeTransferResp resp =
@@ -251,12 +318,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
             : agent.receive(receiverKey, duplicateReq(req));
 
     final TSStatus status = resp.getStatus();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      ok();
-    } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        || status.getCode()
-            == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
-      ok();
+    if (AirGapOneByteResponse.isSuccessStatus(status.getCode())) {
+      return true;
     } else if (status.getCode()
         == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
       try {
@@ -269,11 +332,11 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       }
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
-        handleReq(req, startTime, receiverKey);
+        return handleReq(req, startTime, receiverKey);
       } else {
         LOGGER.warn(
             DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY, receiverId);
-        fail();
+        return false;
       }
     } else {
       LOGGER.warn(
@@ -281,7 +344,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           receiverId,
           resp.getStatus(),
           req);
-      fail();
+      return false;
     }
   }
 
@@ -290,6 +353,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     return (AirGapPseudoTPipeTransferRequest)
         new AirGapPseudoTPipeTransferRequest()
             .setStrictUnidirectional(req.isStrictUnidirectional())
+            .setUdp(req.isUdp())
             .setVersion(req.getVersion())
             .setType(req.getType())
             .setBody(req.body.duplicate());
@@ -487,6 +551,21 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
     private boolean hasReadAnyByte() {
       return hasReadAnyByte;
+    }
+  }
+
+  interface UdpRequestDeduplicator {
+
+    boolean isCompleted(long requestId, byte[] fingerprint);
+
+    void markCompleted(long requestId, byte[] fingerprint);
+  }
+
+  static byte[] calculateUdpRequestFingerprint(final byte[] data) {
+    try {
+      return MessageDigest.getInstance("SHA-256").digest(data);
+    } catch (final NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
     }
   }
 }

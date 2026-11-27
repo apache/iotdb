@@ -58,6 +58,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongConsumer;
 import java.util.zip.CRC32;
 
 public class IoTDBDataRegionAirGapSinkTest {
@@ -197,14 +198,19 @@ public class IoTDBDataRegionAirGapSinkTest {
         Assert.assertTrue(sink.sendUdp(receiverSocket.getLocalPort(), request));
 
         receiverSocket.setSoTimeout(1000);
+        long firstRequestId = -1L;
         for (int i = 0; i < 3; i++) {
           final byte[] buffer = new byte[1025];
           final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
           receiverSocket.receive(packet);
           Assert.assertTrue(packet.getLength() <= 1024);
           final long requestId = ByteBuffer.wrap(buffer).getLong();
+          final long requestSequence = requestId & Long.MAX_VALUE;
           Assert.assertEquals(AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK, requestId & Long.MIN_VALUE);
-          Assert.assertEquals(i + 1, requestId & Long.MAX_VALUE);
+          if (i == 0) {
+            firstRequestId = requestSequence;
+          }
+          Assert.assertEquals((firstRequestId + i) & Long.MAX_VALUE, requestSequence);
           Assert.assertEquals(
               PipeRequestType.TRANSFER_SLICE.getType(),
               decodeAirGapDatagram(buffer, packet.getLength()).type);
@@ -223,6 +229,7 @@ public class IoTDBDataRegionAirGapSinkTest {
       parameters
           .getAttribute()
           .put(PipeSinkConstant.SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY, "true");
+      parameters.getAttribute().put(PipeSinkConstant.SINK_AIR_GAP_UDP_REQUEST_COPY_COUNT_KEY, "1");
       parameters
           .getAttribute()
           .put(
@@ -265,6 +272,7 @@ public class IoTDBDataRegionAirGapSinkTest {
       parameters
           .getAttribute()
           .put(PipeSinkConstant.SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY, "true");
+      parameters.getAttribute().put(PipeSinkConstant.SINK_AIR_GAP_UDP_REQUEST_COPY_COUNT_KEY, "1");
       parameters
           .getAttribute()
           .put(
@@ -694,7 +702,10 @@ public class IoTDBDataRegionAirGapSinkTest {
     }
 
     @Override
-    protected boolean sendBytes(final AirGapSocket socket, final byte[] bytes) throws IOException {
+    protected boolean sendBytes(
+        final AirGapSocket socket, final byte[] bytes, final LongConsumer rateLimit)
+        throws IOException {
+      rateLimit.accept(bytes.length);
       sentRequests.add(Arrays.copyOf(bytes, bytes.length));
       if (failNextSend) {
         failNextSend = false;

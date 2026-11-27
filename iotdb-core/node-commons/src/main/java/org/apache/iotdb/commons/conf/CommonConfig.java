@@ -356,6 +356,7 @@ public class CommonConfig {
           64 * 1024 * 1024,
           (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
   private int pipeAirGapReceiverUdpSocketBufferSizeInBytes = 32 * 1024 * 1024;
+  private int pipeAirGapReceiverUdpMaxPendingRequestCount = 32;
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long loggerPeriodicalLogMinIntervalSeconds = 60;
   private volatile long loggerCacheMaxSizeInBytes = 64 * MB;
@@ -2064,6 +2065,18 @@ public class CommonConfig {
 
   public int getPipeAirGapReceiverUdpSocketBufferSizeInBytes() {
     return pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+  }
+
+  public int getPipeAirGapReceiverUdpMaxPendingRequestCount() {
+    return pipeAirGapReceiverUdpMaxPendingRequestCount;
+  }
+
+  public void setPipeAirGapReceiverUdpMaxPendingRequestCount(
+      int pipeAirGapReceiverUdpMaxPendingRequestCount) {
+    if (pipeAirGapReceiverUdpMaxPendingRequestCount > 0) {
+      this.pipeAirGapReceiverUdpMaxPendingRequestCount =
+          pipeAirGapReceiverUdpMaxPendingRequestCount;
+    }
   }
 
   public void setPipeAirGapReceiverUdpSocketBufferSizeInBytes(

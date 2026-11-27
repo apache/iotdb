@@ -624,16 +624,19 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final long uncompressedSize = bytes.length;
     bytes = compressIfNeeded(bytes);
 
-    final double compressionRatio =
-        uncompressedSize == 0 ? 1 : (double) bytes.length / uncompressedSize;
-    for (final Map.Entry<Pair<String, Long>, Long> entry : pipe2BytesAccumulated.entrySet()) {
-      rateLimitIfNeeded(
-          entry.getKey().getLeft(),
-          entry.getKey().getRight(),
-          socket.getEndPoint(),
-          (long) (entry.getValue() * compressionRatio));
-    }
-    return sendBytes(socket, bytes);
+    return sendBytes(
+        socket,
+        bytes,
+        size -> {
+          final double wireRatio = uncompressedSize == 0 ? 1 : (double) size / uncompressedSize;
+          for (final Map.Entry<Pair<String, Long>, Long> entry : pipe2BytesAccumulated.entrySet()) {
+            rateLimitIfNeeded(
+                entry.getKey().getLeft(),
+                entry.getKey().getRight(),
+                socket.getEndPoint(),
+                (long) (entry.getValue() * wireRatio));
+          }
+        });
   }
 
   private boolean sendWeighted(
@@ -641,14 +644,18 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       throws IOException {
     bytes = compressIfNeeded(bytes);
 
-    for (final Map.Entry<Pair<String, Long>, Double> entry : pipe2WeightMap.entrySet()) {
-      rateLimitIfNeeded(
-          entry.getKey().getLeft(),
-          entry.getKey().getRight(),
-          socket.getEndPoint(),
-          (long) (bytes.length * entry.getValue()));
-    }
-    return sendBytes(socket, bytes);
+    return sendBytes(
+        socket,
+        bytes,
+        size -> {
+          for (final Map.Entry<Pair<String, Long>, Double> entry : pipe2WeightMap.entrySet()) {
+            rateLimitIfNeeded(
+                entry.getKey().getLeft(),
+                entry.getKey().getRight(),
+                socket.getEndPoint(),
+                (long) (size * entry.getValue()));
+          }
+        });
   }
 
   private byte[] toTPipeTransferBytes(final TPipeTransferReq req) throws IOException {

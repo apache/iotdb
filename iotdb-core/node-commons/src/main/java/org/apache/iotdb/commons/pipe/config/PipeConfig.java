@@ -383,6 +383,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverUdpSocketBufferSizeInBytes();
   }
 
+  public int getPipeAirGapReceiverUdpMaxPendingRequestCount() {
+    return COMMON_CONFIG.getPipeAirGapReceiverUdpMaxPendingRequestCount();
+  }
+
   public boolean isPipeReceiverLoadConversionEnabled() {
     return COMMON_CONFIG.isPipeReceiverLoadConversionEnabled();
   }
@@ -711,6 +715,9 @@ public class PipeConfig {
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_AIR_GAP_RECEIVER_MAX_PAYLOAD_SIZE_IN_BYTES,
         getPipeAirGapReceiverMaxPayloadSizeInBytes());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_AIR_GAP_RECEIVER_UDP_MAX_PENDING_REQUEST_COUNT,
+        getPipeAirGapReceiverUdpMaxPendingRequestCount());
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_RECEIVER_LOAD_CONVERSION_ENABLED,
         isPipeReceiverLoadConversionEnabled());

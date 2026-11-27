@@ -59,8 +59,20 @@ public final class PipeTransferSliceReqBuilder {
       final int sliceCount,
       final int bodySizeLimit)
       throws IOException {
+    return buildSliceReq(
+        originalReq, Integer.toUnsignedLong(sliceOrderId), sliceIndex, sliceCount, bodySizeLimit);
+  }
+
+  public static PipeTransferSliceReq buildSliceReq(
+      final TPipeTransferReq originalReq,
+      final long sliceOrderId,
+      final int sliceIndex,
+      final int sliceCount,
+      final int bodySizeLimit)
+      throws IOException {
     final int startIndexInBody = sliceIndex * bodySizeLimit;
-    final int endIndexInBody = Math.min((sliceIndex + 1) * bodySizeLimit, originalReq.body.limit());
+    final int endIndexInBody =
+        startIndexInBody + Math.min(bodySizeLimit, originalReq.body.limit() - startIndexInBody);
     return PipeTransferSliceReq.toTPipeTransferReq(
         sliceOrderId,
         originalReq.getType(),

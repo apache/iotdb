@@ -34,12 +34,15 @@ public class PipeDescriptorTest {
 
   private int originalRequestSliceThresholdBytes;
   private int originalAirGapUdpSocketBufferSizeInBytes;
+  private int originalAirGapUdpMaxPendingRequestCount;
 
   @Before
   public void setUp() {
     originalRequestSliceThresholdBytes = config.getPipeSinkRequestSliceThresholdBytes();
     originalAirGapUdpSocketBufferSizeInBytes =
         config.getPipeAirGapReceiverUdpSocketBufferSizeInBytes();
+    originalAirGapUdpMaxPendingRequestCount =
+        config.getPipeAirGapReceiverUdpMaxPendingRequestCount();
   }
 
   @After
@@ -47,6 +50,7 @@ public class PipeDescriptorTest {
     config.setPipeSinkRequestSliceThresholdBytes(originalRequestSliceThresholdBytes);
     config.setPipeAirGapReceiverUdpSocketBufferSizeInBytes(
         originalAirGapUdpSocketBufferSizeInBytes);
+    config.setPipeAirGapReceiverUdpMaxPendingRequestCount(originalAirGapUdpMaxPendingRequestCount);
   }
 
   @Test
@@ -77,5 +81,15 @@ public class PipeDescriptorTest {
     PipeDescriptor.loadPipeInternalConfig(config, properties);
 
     Assert.assertEquals(1048576, config.getPipeAirGapReceiverUdpSocketBufferSizeInBytes());
+  }
+
+  @Test
+  public void testAirGapReceiverUdpPendingRequestLimitIsLoadedFromGlobalProperties() {
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("pipe_air_gap_receiver_udp_max_pending_request_count", "128");
+
+    PipeDescriptor.loadPipeInternalConfig(config, properties);
+
+    Assert.assertEquals(128, config.getPipeAirGapReceiverUdpMaxPendingRequestCount());
   }
 }

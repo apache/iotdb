@@ -41,6 +41,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
@@ -57,7 +60,9 @@ public class IoTDBAirGapReceiverAgent implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapReceiverAgent.class);
   private static final int UDP_PACKET_MAX_SIZE_IN_BYTES = 65_507;
   private static final int UDP_SESSION_CLEANUP_INTERVAL_MS = 60_000;
+  private static final long UDP_SESSION_CLEANUP_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(1);
   private static final int UDP_MAX_CLIENT_SESSIONS = 1_024;
+  private static final int UDP_COMPLETED_REQUEST_CACHE_SIZE = 256;
   private static final int LISTENER_THREAD_COUNT = 3;
   private static final int UDP_REQUEST_QUEUE_CAPACITY = 4_096;
   private static final int UDP_REQUEST_QUEUE_BYTES = 32 * 1024 * 1024;
@@ -75,6 +80,8 @@ public class IoTDBAirGapReceiverAgent implements IService {
 
   private final AtomicLong receiverId = new AtomicLong(0);
   final Map<String, UdpClientSession> udpClientSessions = new ConcurrentHashMap<>();
+  private final Object udpSessionLock = new Object();
+  private final Map<String, Integer> udpPendingRequestCounts = new HashMap<>();
 
   public void listen() {
     try {
@@ -105,9 +112,13 @@ public class IoTDBAirGapReceiverAgent implements IService {
           datagramSocket.receive(packet);
           // Drain the socket independently of database/authentication work. Keep one ordered
           // consumer, and bound both queued packet count and retained payload memory.
-          udpRequestBytes.acquire(packet.getLength());
+          final String receiverKey = packet.getSocketAddress().toString();
+          markUdpRequestPending(receiverKey);
+          boolean acquiredBytes = false;
           boolean queued = false;
           try {
+            udpRequestBytes.acquire(packet.getLength());
+            acquiredBytes = true;
             udpRequests.put(
                 new DatagramPacket(
                     Arrays.copyOf(buffer, packet.getLength()),
@@ -116,7 +127,10 @@ public class IoTDBAirGapReceiverAgent implements IService {
             queued = true;
           } finally {
             if (!queued) {
-              udpRequestBytes.release(packet.getLength());
+              if (acquiredBytes) {
+                udpRequestBytes.release(packet.getLength());
+              }
+              releaseUdpRequestPending(receiverKey);
             }
           }
         } catch (final InterruptedException e) {
@@ -138,21 +152,28 @@ public class IoTDBAirGapReceiverAgent implements IService {
   }
 
   void processUdpRequests() {
+    long lastSessionCleanupTimeNanos = System.nanoTime();
     try {
       while (allowSubmitListen.get()) {
-        final DatagramPacket packet = udpRequests.poll(1, TimeUnit.SECONDS);
-        if (packet == null) {
-          removeExpiredUdpClientSessions(System.nanoTime());
-          continue;
-        }
-        try {
-          handleUdpPacket(packet);
-        } catch (final Exception e) {
-          if (allowSubmitListen.get()) {
-            LOGGER.warn(DataNodePipeMessages.UNHANDLED_EXCEPTION_DURING_PIPE_AIR_GAP_RECEIVER, e);
+        final DatagramPacket packet =
+            udpRequests.poll(UDP_SESSION_CLEANUP_INTERVAL_NANOS, TimeUnit.NANOSECONDS);
+        if (packet != null) {
+          try {
+            handleUdpPacket(packet);
+          } catch (final Exception e) {
+            if (allowSubmitListen.get()) {
+              LOGGER.warn(DataNodePipeMessages.UNHANDLED_EXCEPTION_DURING_PIPE_AIR_GAP_RECEIVER, e);
+            }
+          } finally {
+            releaseUdpPacket(packet);
           }
-        } finally {
-          udpRequestBytes.release(packet.getLength());
+        }
+
+        final long nowNanos = System.nanoTime();
+        if (packet == null
+            || nowNanos - lastSessionCleanupTimeNanos >= UDP_SESSION_CLEANUP_INTERVAL_NANOS) {
+          removeExpiredUdpClientSessions(nowNanos);
+          lastSessionCleanupTimeNanos = nowNanos;
         }
       }
     } catch (final InterruptedException e) {
@@ -166,23 +187,68 @@ public class IoTDBAirGapReceiverAgent implements IService {
   private void clearUdpRequests() {
     DatagramPacket packet;
     while ((packet = udpRequests.poll()) != null) {
-      udpRequestBytes.release(packet.getLength());
+      releaseUdpPacket(packet);
     }
   }
 
+  void markUdpRequestPending(final String receiverKey) {
+    synchronized (udpSessionLock) {
+      udpPendingRequestCounts.merge(receiverKey, 1, Integer::sum);
+    }
+  }
+
+  private void releaseUdpPacket(final DatagramPacket packet) {
+    udpRequestBytes.release(packet.getLength());
+    releaseUdpRequestPending(packet.getSocketAddress().toString());
+  }
+
+  void releaseUdpRequestPending(final String receiverKey) {
+    synchronized (udpSessionLock) {
+      final Integer pendingCount = udpPendingRequestCounts.get(receiverKey);
+      if (pendingCount == null) {
+        return;
+      }
+      if (pendingCount == 1) {
+        udpPendingRequestCounts.remove(receiverKey);
+      } else {
+        udpPendingRequestCounts.put(receiverKey, pendingCount - 1);
+      }
+    }
+  }
+
+  private boolean hasPendingUdpRequests(final String receiverKey) {
+    return udpPendingRequestCounts.getOrDefault(receiverKey, 0) > 0;
+  }
+
   void handleUdpPacket(final DatagramPacket packet) throws IOException {
-    removeExpiredUdpClientSessions(System.nanoTime());
     final IoTDBAirGapReceiver receiver =
         new IoTDBAirGapReceiver(new Socket(), receiverId.incrementAndGet());
     final String receiverKey = packet.getSocketAddress().toString();
     final boolean[] registeredSession = {false};
+    final IoTDBAirGapReceiver.UdpRequestDeduplicator deduplicator =
+        new IoTDBAirGapReceiver.UdpRequestDeduplicator() {
+          @Override
+          public boolean isCompleted(final long requestId, final byte[] fingerprint) {
+            final UdpClientSession session = udpClientSessions.get(receiverKey);
+            return session != null && session.isCompleted(requestId, fingerprint);
+          }
+
+          @Override
+          public void markCompleted(final long requestId, final byte[] fingerprint) {
+            final UdpClientSession session = udpClientSessions.get(receiverKey);
+            if (session != null) {
+              session.markCompleted(requestId, fingerprint);
+            }
+          }
+        };
     try {
-      receiver.receiveUdp(
+      receiver.receiveUdpWithAdmission(
           datagramSocket,
           packet,
           receiverKey,
           packet.getData(),
-          () -> registeredSession[0] = registerUdpSessionIfNecessary(packet));
+          () -> registerUdpSessionIfNecessary(packet, registeredSession),
+          deduplicator);
     } finally {
       if (registeredSession[0]) {
         SessionManager.getInstance().removeCurrSession();
@@ -190,14 +256,17 @@ public class IoTDBAirGapReceiverAgent implements IService {
     }
   }
 
-  boolean registerUdpSessionIfNecessary(final DatagramPacket packet) {
+  boolean registerUdpSessionIfNecessary(
+      final DatagramPacket packet, final boolean[] registeredSession) {
     final String receiverKey = packet.getSocketAddress().toString();
     final long now = System.nanoTime();
-    removeExpiredUdpClientSessions(now);
 
     UdpClientSession clientSession = udpClientSessions.get(receiverKey);
     if (clientSession == null) {
-      ensureUdpClientSessionCapacity();
+      removeExpiredUdpClientSessions(now);
+      if (!ensureUdpClientSessionCapacity()) {
+        return false;
+      }
       clientSession =
           new UdpClientSession(
               new ClientSession(new DatagramClientSocket(packet.getAddress(), packet.getPort())),
@@ -208,45 +277,65 @@ public class IoTDBAirGapReceiverAgent implements IService {
       }
     }
     clientSession.lastAccessTimeNanos = now;
-    return SessionManager.getInstance().registerSession(clientSession.session);
+    registeredSession[0] = SessionManager.getInstance().registerSession(clientSession.session);
+    return registeredSession[0];
   }
 
-  private void ensureUdpClientSessionCapacity() {
-    if (udpClientSessions.size() < UDP_MAX_CLIENT_SESSIONS) {
-      return;
-    }
-
+  private boolean ensureUdpClientSessionCapacity() {
     String leastRecentlyUsedKey = null;
     UdpClientSession leastRecentlyUsedSession = null;
-    for (final Map.Entry<String, UdpClientSession> entry : udpClientSessions.entrySet()) {
-      if (leastRecentlyUsedSession == null
-          || entry.getValue().lastAccessTimeNanos < leastRecentlyUsedSession.lastAccessTimeNanos) {
-        leastRecentlyUsedKey = entry.getKey();
-        leastRecentlyUsedSession = entry.getValue();
+    synchronized (udpSessionLock) {
+      if (udpClientSessions.size() < UDP_MAX_CLIENT_SESSIONS) {
+        return true;
+      }
+      for (final Map.Entry<String, UdpClientSession> entry : udpClientSessions.entrySet()) {
+        if (!hasPendingUdpRequests(entry.getKey())
+            && (leastRecentlyUsedSession == null
+                || entry.getValue().lastAccessTimeNanos
+                    < leastRecentlyUsedSession.lastAccessTimeNanos)) {
+          leastRecentlyUsedKey = entry.getKey();
+          leastRecentlyUsedSession = entry.getValue();
+        }
+      }
+      if (leastRecentlyUsedKey == null
+          || !udpClientSessions.remove(leastRecentlyUsedKey, leastRecentlyUsedSession)) {
+        return false;
       }
     }
-    if (leastRecentlyUsedKey != null) {
-      removeUdpClientSession(leastRecentlyUsedKey, leastRecentlyUsedSession);
-    }
+    closeUdpClientSession(leastRecentlyUsedKey, leastRecentlyUsedSession);
+    return udpClientSessions.size() < UDP_MAX_CLIENT_SESSIONS;
   }
 
   void removeExpiredUdpClientSessions(final long nowNanos) {
     final long idleTimeoutNanos =
         TimeUnit.MILLISECONDS.toNanos(
             Math.max(1, PipeConfig.getInstance().getPipeSinkTransferTimeoutMs()));
-    udpClientSessions.forEach(
-        (key, session) -> {
-          if (nowNanos - session.lastAccessTimeNanos >= idleTimeoutNanos) {
-            removeUdpClientSession(key, session);
-          }
-        });
+    for (final Map.Entry<String, UdpClientSession> entry : udpClientSessions.entrySet()) {
+      final UdpClientSession session = entry.getValue();
+      if (nowNanos - session.lastAccessTimeNanos < idleTimeoutNanos) {
+        continue;
+      }
+      final String receiverKey = entry.getKey();
+      synchronized (udpSessionLock) {
+        if (hasPendingUdpRequests(receiverKey) || !udpClientSessions.remove(receiverKey, session)) {
+          continue;
+        }
+      }
+      closeUdpClientSession(receiverKey, session);
+    }
   }
 
   private void removeUdpClientSession(final String key, final UdpClientSession session) {
-    if (!udpClientSessions.remove(key, session)) {
-      return;
+    synchronized (udpSessionLock) {
+      if (!udpClientSessions.remove(key, session)) {
+        return;
+      }
     }
 
+    closeUdpClientSession(key, session);
+  }
+
+  private void closeUdpClientSession(final String key, final UdpClientSession session) {
     final boolean registeredSession = SessionManager.getInstance().registerSession(session.session);
     try {
       PipeDataNodeAgent.receiver().thrift().handleClientExit(key);
@@ -342,14 +431,31 @@ public class IoTDBAirGapReceiverAgent implements IService {
     }
   }
 
-  static class UdpClientSession {
+  static class UdpClientSession implements IoTDBAirGapReceiver.UdpRequestDeduplicator {
 
     private final ClientSession session;
+    private final Map<Long, byte[]> completedRequestFingerprints =
+        new LinkedHashMap<>(16, 0.75f, true);
     volatile long lastAccessTimeNanos;
 
     UdpClientSession(final ClientSession session, final long lastAccessTimeNanos) {
       this.session = session;
       this.lastAccessTimeNanos = lastAccessTimeNanos;
+    }
+
+    @Override
+    public synchronized boolean isCompleted(final long requestId, final byte[] fingerprint) {
+      return Arrays.equals(completedRequestFingerprints.get(requestId), fingerprint);
+    }
+
+    @Override
+    public synchronized void markCompleted(final long requestId, final byte[] fingerprint) {
+      completedRequestFingerprints.put(requestId, Arrays.copyOf(fingerprint, fingerprint.length));
+      while (completedRequestFingerprints.size() > UDP_COMPLETED_REQUEST_CACHE_SIZE) {
+        final Iterator<Long> iterator = completedRequestFingerprints.keySet().iterator();
+        iterator.next();
+        iterator.remove();
+      }
     }
   }
 }

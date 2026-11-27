@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
@@ -150,6 +151,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -196,6 +198,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final AtomicReference<String> configPipeReceiverRuntimeSessionKey =
       new AtomicReference<>();
 
+  private static final long UDP_SLICE_REASSEMBLY_METADATA_ESTIMATE_BYTES = 96;
+
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
   private TPipeTransferReq lastSuccessfulUnidirectionalHandshake;
@@ -209,6 +213,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private PipeMemoryBlock allocatedMemoryBlock;
   private final List<PipeMemoryBlock> allocatedSliceMemoryBlocks = new ArrayList<>();
+  private final Map<Long, List<PipeMemoryBlock>> allocatedUdpSliceMemoryBlocks = new HashMap<>();
   private final Set<String> autoCreatedTreeDatabases = ConcurrentHashMap.newKeySet();
   private final Set<String> conflictedTreeDatabases = ConcurrentHashMap.newKeySet();
 
@@ -268,10 +273,19 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp receiveInternal(final TPipeTransferReq req) {
     try {
       final long startTime = System.nanoTime();
+      final boolean udp = isUdpRequest(req);
+      if (udp) {
+        sliceReqHandler.expireUdpRequests(
+            startTime,
+            TimeUnit.MILLISECONDS.toNanos(
+                Math.max(1, PipeConfig.getInstance().getPipeSinkTransferTimeoutMs())),
+            this::clearUdpSliceMemoryBlocks);
+      }
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
         if (requestType != PipeRequestType.TRANSFER_SLICE
+            && !udp
             && !(isStrictUnidirectionalRequest(req)
                 && requestType == PipeRequestType.TRANSFER_COMPRESSED)) {
           clearSliceReqHandler();
@@ -510,8 +524,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             {
               try {
                 return handleTransferSlice(
-                    PipeTransferSliceReq.fromTPipeTransferReq(req),
-                    isStrictUnidirectionalRequest(req));
+                    PipeTransferSliceReq.fromTPipeTransferReq(req, udp),
+                    isStrictUnidirectionalRequest(req),
+                    udp);
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferSliceTimer(System.nanoTime() - startTime);
@@ -527,7 +542,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
                   return receiveNestedRequest(
                       PipeTransferCompressedReq.fromTPipeTransferReq(req),
-                      isStrictUnidirectionalRequest(req));
+                      isStrictUnidirectionalRequest(req),
+                      udp);
                 }
               } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
                 return new TPipeTransferResp(
@@ -1197,12 +1213,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional();
   }
 
+  private boolean isUdpRequest(final TPipeTransferReq req) {
+    return req instanceof AirGapPseudoTPipeTransferRequest
+        && ((AirGapPseudoTPipeTransferRequest) req).isUdp();
+  }
+
   private TPipeTransferResp receiveNestedRequest(
-      final TPipeTransferReq req, final boolean strictUnidirectional) {
+      final TPipeTransferReq req, final boolean strictUnidirectional, final boolean udp) {
     return receive(
-        strictUnidirectional
+        strictUnidirectional || udp
             ? new AirGapPseudoTPipeTransferRequest()
-                .setStrictUnidirectional(true)
+                .setStrictUnidirectional(strictUnidirectional)
+                .setUdp(udp)
                 .setVersion(req.version)
                 .setType(req.type)
                 .setBody(req.body)
@@ -1210,61 +1232,121 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferSlice(
-      final PipeTransferSliceReq pipeTransferSliceReq, final boolean strictUnidirectional) {
+      final PipeTransferSliceReq pipeTransferSliceReq,
+      final boolean strictUnidirectional,
+      final boolean udp) {
     final long sliceBodySizeInBytes = getSliceBodySizeInBytes(pipeTransferSliceReq);
-    long requestedMemorySizeInBytes = sliceBodySizeInBytes;
+    final long sliceMemorySizeInBytes =
+        sliceBodySizeInBytes + (udp ? UDP_SLICE_REASSEMBLY_METADATA_ESTIMATE_BYTES : 0);
+    final long udpOrderId = pipeTransferSliceReq.getUdpOrderId();
+    long requestedMemorySizeInBytes = sliceMemorySizeInBytes;
     String memoryAction =
         DataNodePipeMessages.MESSAGE_BUFFERING_SLICED_PIPE_TRANSFER_REQUEST_5BB9367A;
     PipeMemoryBlock sliceMemoryBlock = null;
     try {
-      sliceMemoryBlock = tryAllocateReceiverMemory(sliceBodySizeInBytes);
-
-      final boolean isInorder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
-      if (!isInorder) {
-        closeMemoryBlock(sliceMemoryBlock);
-        clearSliceReqHandler();
-        return new TPipeTransferResp(
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
-                DataNodePipeMessages
-                    .MESSAGE_SLICE_REQUEST_IS_OUT_OF_ORDER_PLEASE_CHECK_THE_REQUEST_SEQUENCE_32958FCC));
+      if (udp) {
+        final PipeTransferSliceReqHandler.SliceReceiveResult result =
+            sliceReqHandler.receiveSliceWithReordering(
+                pipeTransferSliceReq,
+                () -> reserveUdpSliceMemory(udpOrderId, sliceMemorySizeInBytes),
+                this::clearUdpSliceMemoryBlocks);
+        if (result == PipeTransferSliceReqHandler.SliceReceiveResult.INVALID) {
+          clearUdpSliceMemoryBlocks(udpOrderId);
+          return sliceOutOfOrder();
+        }
+        if (result == PipeTransferSliceReqHandler.SliceReceiveResult.DROPPED) {
+          return sliceOutOfOrder();
+        }
+        if (result == PipeTransferSliceReqHandler.SliceReceiveResult.STALE) {
+          return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        }
+      } else {
+        sliceMemoryBlock = tryAllocateReceiverMemory(sliceMemorySizeInBytes);
+        if (!sliceReqHandler.receiveSlice(pipeTransferSliceReq)) {
+          closeMemoryBlock(sliceMemoryBlock);
+          sliceMemoryBlock = null;
+          clearSliceReqHandler();
+          return sliceOutOfOrder();
+        }
+        allocatedSliceMemoryBlocks.add(sliceMemoryBlock);
+        sliceMemoryBlock = null;
       }
 
-      allocatedSliceMemoryBlocks.add(sliceMemoryBlock);
-      sliceMemoryBlock = null;
-
-      if (pipeTransferSliceReq.getSliceIndex() + 1 < pipeTransferSliceReq.getSliceCount()) {
-        return new TPipeTransferResp(
-            RpcUtils.getStatus(
-                TSStatusCode.SUCCESS_STATUS,
-                DataNodePipeMessages
-                    .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
+      if (!(udp ? sliceReqHandler.isComplete(udpOrderId) : sliceReqHandler.isComplete())) {
+        if (udp
+            && !strictUnidirectional
+            && pipeTransferSliceReq.getSliceIndex() + 1 == pipeTransferSliceReq.getSliceCount()) {
+          sliceReqHandler.completeUdpRequest(udpOrderId, false);
+          clearUdpSliceMemoryBlocks(udpOrderId);
+          return sliceOutOfOrder();
+        }
+        return waitingForSlices();
       }
 
       memoryAction = DataNodePipeMessages.MESSAGE_ASSEMBLING_SLICED_PIPE_TRANSFER_REQUEST_EA6180BA;
       requestedMemorySizeInBytes = pipeTransferSliceReq.getOriginBodySize();
       try (final PipeMemoryBlock ignored = tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
-        final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
+        final Optional<TPipeTransferReq> req =
+            udp
+                ? sliceReqHandler.makeReqIfComplete(udpOrderId)
+                : sliceReqHandler.makeReqIfComplete();
         if (!req.isPresent()) {
-          return new TPipeTransferResp(
-              RpcUtils.getStatus(
-                  TSStatusCode.SUCCESS_STATUS,
-                  DataNodePipeMessages
-                      .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
+          return waitingForSlices();
         }
-        clearSliceReqHandler();
-        return receiveNestedRequest(req.get(), strictUnidirectional);
+        if (!udp) {
+          clearSliceReqHandler();
+        }
+        final TPipeTransferResp response =
+            receiveNestedRequest(req.get(), strictUnidirectional, udp);
+        if (udp
+            && response.getStatus().getCode()
+                != TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
+          sliceReqHandler.completeUdpRequest(
+              udpOrderId, AirGapOneByteResponse.isSuccessStatus(response.getStatus().getCode()));
+          clearUdpSliceMemoryBlocks(udpOrderId);
+        }
+        return response;
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       closeMemoryBlock(sliceMemoryBlock);
-      clearSliceReqHandler();
+      if (!udp) {
+        clearSliceReqHandler();
+      }
       return new TPipeTransferResp(
           getReceiverTemporaryUnavailableStatus(memoryAction, requestedMemorySizeInBytes, e));
     } catch (final RuntimeException e) {
       closeMemoryBlock(sliceMemoryBlock);
-      clearSliceReqHandler();
+      if (udp) {
+        sliceReqHandler.completeUdpRequest(udpOrderId, false);
+        clearUdpSliceMemoryBlocks(udpOrderId);
+      } else {
+        clearSliceReqHandler();
+      }
       throw e;
     }
+  }
+
+  private TPipeTransferResp sliceOutOfOrder() {
+    return new TPipeTransferResp(
+        RpcUtils.getStatus(
+            TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
+            DataNodePipeMessages
+                .MESSAGE_SLICE_REQUEST_IS_OUT_OF_ORDER_PLEASE_CHECK_THE_REQUEST_SEQUENCE_32958FCC));
+  }
+
+  private TPipeTransferResp waitingForSlices() {
+    return new TPipeTransferResp(
+        RpcUtils.getStatus(
+            TSStatusCode.SUCCESS_STATUS,
+            DataNodePipeMessages
+                .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
+  }
+
+  private void reserveUdpSliceMemory(final long orderId, final long sizeInBytes) {
+    final PipeMemoryBlock memoryBlock = tryAllocateReceiverMemory(sizeInBytes);
+    allocatedUdpSliceMemoryBlocks
+        .computeIfAbsent(orderId, key -> new ArrayList<>())
+        .add(memoryBlock);
   }
 
   private long getSliceBodySizeInBytes(final PipeTransferSliceReq pipeTransferSliceReq) {
@@ -1274,9 +1356,20 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private void clearSliceReqHandler() {
-    sliceReqHandler.clear();
+    sliceReqHandler.clearCurrentRequest();
+    clearSliceMemoryBlocks();
+  }
+
+  private void clearSliceMemoryBlocks() {
     allocatedSliceMemoryBlocks.forEach(this::closeMemoryBlock);
     allocatedSliceMemoryBlocks.clear();
+  }
+
+  private void clearUdpSliceMemoryBlocks(final long orderId) {
+    final List<PipeMemoryBlock> memoryBlocks = allocatedUdpSliceMemoryBlocks.remove(orderId);
+    if (memoryBlocks != null) {
+      memoryBlocks.forEach(this::closeMemoryBlock);
+    }
   }
 
   private void closeMemoryBlock(final PipeMemoryBlock memoryBlock) {
@@ -2060,6 +2153,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     PipeReceiverRuntimeRegistry.getInstance()
         .deregister(configPipeReceiverRuntimeSessionKey.getAndSet(null));
     clearSliceReqHandler();
+    sliceReqHandler.clear();
+    allocatedUdpSliceMemoryBlocks
+        .values()
+        .forEach(memoryBlocks -> memoryBlocks.forEach(this::closeMemoryBlock));
+    allocatedUdpSliceMemoryBlocks.clear();
     if (Objects.nonNull(configReceiverId.get())) {
       try {
         ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId.get());

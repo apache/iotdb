@@ -19,10 +19,18 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.airgap;
 
+import org.apache.iotdb.rpc.TSStatusCode;
+
 public class AirGapOneByteResponse {
 
   public static final byte[] OK = new byte[] {0};
   public static final byte[] FAIL = new byte[] {(byte) 0xFF};
+
+  public static boolean isSuccessStatus(final int statusCode) {
+    return statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || statusCode == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        || statusCode == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode();
+  }
 
   private AirGapOneByteResponse() {
     // Utility class
