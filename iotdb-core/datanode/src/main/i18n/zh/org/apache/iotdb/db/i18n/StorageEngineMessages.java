@@ -1809,4 +1809,6 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_SOURCE_FILES_ARE_CLEANED_UP_83638D68 = "源文件已清理";
 
   public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "任务已完成";
+  public static final String EXCEPTION_TSFILE_STRUCTURE_CORRUPTION_TSFILE_ARG_IS_STRUCTURALLY_CORRUPTED_AT_OFFSET_ARG_1_MEANS_UNKNOWN_SHA_256_ARG_ARG_71F6105D =
+      "[TSFILE_STRUCTURE_CORRUPTION] TsFile %s 在偏移 %d 处发生结构损坏（-1 表示未知；SHA-256: %s）：%s";
 }

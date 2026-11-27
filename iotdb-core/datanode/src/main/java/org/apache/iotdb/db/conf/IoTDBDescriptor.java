@@ -2661,6 +2661,11 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+    conf.setLoadActiveListeningFailDirMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_active_listening_fail_dir_max_size_in_bytes",
+                Long.toString(conf.getLoadActiveListeningFailDirMaxSizeInBytes()))));
     conf.setLoadActiveListeningPipeDir(
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
@@ -2834,6 +2839,11 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+    conf.setLoadActiveListeningFailDirMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_active_listening_fail_dir_max_size_in_bytes",
+                Long.toString(conf.getLoadActiveListeningFailDirMaxSizeInBytes()))));
     conf.setLoadActiveListeningPipeDir(
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));

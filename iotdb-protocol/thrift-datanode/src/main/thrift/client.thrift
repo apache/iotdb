@@ -532,6 +532,7 @@ struct TPipeTransferReq {
   1:required i8 version
   2:required i16 type
   3:required binary body
+  4:optional i64 crc32
 }
 
 struct TPipeTransferResp {

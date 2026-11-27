@@ -65,6 +65,7 @@ public class ActiveLoadTsFileLoaderTest {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private File tempDir;
   private String originalFailDir;
+  private long originalFailDirMaxSizeInBytes;
   private NodeStatus originalNodeStatus;
   private int originalDataNodeId;
 
@@ -72,6 +73,7 @@ public class ActiveLoadTsFileLoaderTest {
   public void setUp() throws Exception {
     tempDir = Files.createTempDirectory("active-load-retry").toFile();
     originalFailDir = config.getLoadActiveListeningFailDir();
+    originalFailDirMaxSizeInBytes = config.getLoadActiveListeningFailDirMaxSizeInBytes();
     originalNodeStatus = CommonDescriptor.getInstance().getConfig().getNodeStatus();
     originalDataNodeId = config.getDataNodeId();
     config.setDataNodeId(1);
@@ -82,6 +84,7 @@ public class ActiveLoadTsFileLoaderTest {
   @After
   public void tearDown() {
     config.setLoadActiveListeningFailDir(originalFailDir);
+    config.setLoadActiveListeningFailDirMaxSizeInBytes(originalFailDirMaxSizeInBytes);
     CommonDescriptor.getInstance().getConfig().setNodeStatus(originalNodeStatus);
     config.setDataNodeId(originalDataNodeId);
     deleteRecursively(tempDir);
@@ -146,6 +149,113 @@ public class ActiveLoadTsFileLoaderTest {
     Assert.assertEquals(tempDir.getAbsolutePath(), failureInfo.getProperty("pendingDir"));
     Assert.assertEquals("false", failureInfo.getProperty("generatedByPipe"));
     Assert.assertEquals("false", failureInfo.getProperty("tableModel"));
+  }
+
+  @Test
+  public void testFailureDirectoryMaxSizeKeepsNewestGroup() throws Exception {
+    final File failDir = new File(config.getLoadActiveListeningFailDir());
+    final File oldGroup = new File(failDir, "active-load-old");
+    final File newestGroup = new File(failDir, "pipe-structure-newest");
+    Files.createDirectories(oldGroup.toPath());
+    Files.createDirectories(newestGroup.toPath());
+    Files.write(new File(oldGroup, "old.tsfile").toPath(), new byte[4]);
+    Files.write(new File(newestGroup, "new.tsfile").toPath(), new byte[12]);
+    Files.setLastModifiedTime(oldGroup.toPath(), FileTime.fromMillis(1));
+    Files.setLastModifiedTime(newestGroup.toPath(), FileTime.fromMillis(2));
+    config.setLoadActiveListeningFailDirMaxSizeInBytes(10);
+
+    Assert.assertTrue(ActiveLoadTsFileLoader.enforceFailureDirectoryMaxSize(failDir, newestGroup));
+
+    Assert.assertFalse(oldGroup.exists());
+    Assert.assertTrue(newestGroup.exists());
+    Assert.assertEquals(12, Files.size(new File(newestGroup, "new.tsfile").toPath()));
+  }
+
+  @Test
+  public void testOversizedNewestFailureGroupStillDeletesSourceFiles() throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final File failDir = new File(config.getLoadActiveListeningFailDir());
+    final File oldGroup = new File(failDir, "active-load-old");
+    Files.createDirectories(oldGroup.toPath());
+    Files.write(new File(oldGroup, "old.tsfile").toPath(), new byte[4]);
+    config.setLoadActiveListeningFailDirMaxSizeInBytes(1);
+    invokeInitFailDirIfNecessary(loader);
+
+    final File tsFile = createTsFileWithCompanionFiles("oversized-failed.tsfile");
+    invokeHandleLoadFailure(
+        loader,
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            tsFile.getAbsolutePath(), tempDir.getAbsolutePath(), false, false),
+        new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage("permanent error"));
+
+    Assert.assertFalse(oldGroup.exists());
+    final File[] failedGroups = failDir.listFiles(File::isDirectory);
+    Assert.assertNotNull(failedGroups);
+    Assert.assertEquals(1, failedGroups.length);
+    Assert.assertTrue(new File(failedGroups[0], tsFile.getName()).exists());
+    for (final String suffix :
+        new String[] {
+          "",
+          TsFileResource.RESOURCE_SUFFIX,
+          ModificationFileV1.FILE_SUFFIX,
+          ModificationFile.FILE_SUFFIX
+        }) {
+      Assert.assertFalse(new File(tsFile.getAbsolutePath() + suffix).exists());
+    }
+  }
+
+  @Test
+  public void testFailureDirectoryMaxSizeIsEnforcedDuringInitialization() throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final File failDir = new File(config.getLoadActiveListeningFailDir());
+    final File oldGroup = new File(failDir, "active-load-old");
+    final File newestGroup = new File(failDir, "pipe-structure-newest");
+    Files.createDirectories(oldGroup.toPath());
+    Files.createDirectories(newestGroup.toPath());
+    Files.write(new File(oldGroup, "old.tsfile").toPath(), new byte[8]);
+    Files.write(new File(newestGroup, "new.tsfile").toPath(), new byte[8]);
+    Files.setLastModifiedTime(oldGroup.toPath(), FileTime.fromMillis(1));
+    Files.setLastModifiedTime(newestGroup.toPath(), FileTime.fromMillis(2));
+    config.setLoadActiveListeningFailDirMaxSizeInBytes(10);
+
+    invokeInitFailDirIfNecessary(loader);
+
+    Assert.assertFalse(oldGroup.exists());
+    Assert.assertTrue(newestGroup.exists());
+    Assert.assertEquals(8, Files.size(new File(newestGroup, "new.tsfile").toPath()));
+  }
+
+  @Test
+  public void testPruningFailureGroupMakesSourceEligibleForLoading() throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final File oldTsFile = createTsFileWithCompanionFiles("pruned-failed.tsfile");
+    final File oldGroup = writePublishedFailureGroup(oldTsFile, "active-load-pruned");
+    Assert.assertTrue(loader.isFilePendingOrLoading(oldTsFile));
+
+    config.setLoadActiveListeningFailDirMaxSizeInBytes(1);
+    final File newTsFile = createTsFileWithCompanionFiles("new-failed.tsfile");
+    invokeInitFailDirIfNecessary(loader);
+    invokeHandleLoadFailure(
+        loader,
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            newTsFile.getAbsolutePath(), tempDir.getAbsolutePath(), false, false),
+        new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage("permanent error"));
+
+    Assert.assertFalse(oldGroup.exists());
+    Assert.assertFalse(loader.isFilePendingOrLoading(oldTsFile));
+  }
+
+  @Test
+  public void testFailureDirectoryMaxSizeZeroIsUnlimited() throws Exception {
+    final File failDir = new File(config.getLoadActiveListeningFailDir());
+    final File newestGroup = new File(failDir, "active-load-newest");
+    Files.createDirectories(newestGroup.toPath());
+    Files.write(new File(newestGroup, "new.tsfile").toPath(), new byte[12]);
+    config.setLoadActiveListeningFailDirMaxSizeInBytes(0);
+
+    Assert.assertTrue(ActiveLoadTsFileLoader.enforceFailureDirectoryMaxSize(failDir, newestGroup));
+
+    Assert.assertTrue(newestGroup.exists());
   }
 
   @Test

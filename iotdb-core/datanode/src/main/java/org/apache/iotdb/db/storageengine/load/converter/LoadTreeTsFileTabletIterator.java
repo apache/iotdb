@@ -29,12 +29,14 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileParseFailureException;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil.ModsInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.load.TsFileStructureCorruptionUtils;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -113,6 +115,8 @@ class LoadTreeTsFileTabletIterator
   private Iterator<Pair<Tablet, Boolean>> activeIterator;
   private boolean scanInitialized;
   private boolean fallbackTriggered;
+  private long scanCorruptionOffset = -1;
+  private long unrecoverableCorruptionOffset = -1;
   private RuntimeException unrecoverableQueryFailure;
   private Boolean hasModifications;
 
@@ -190,6 +194,11 @@ class LoadTreeTsFileTabletIterator
             @Override
             public void close() {
               parser.close();
+            }
+
+            @Override
+            public long getCurrentOffset() {
+              return parser.getCurrentOffset();
             }
           };
         });
@@ -354,6 +363,15 @@ class LoadTreeTsFileTabletIterator
     }
 
     fallbackTriggered = true;
+    if (e instanceof TsFileParseFailureException) {
+      scanCorruptionOffset = ((TsFileParseFailureException) e).getOffset();
+    } else if (Objects.nonNull(scanParser)
+        && TsFileStructureCorruptionUtils.isStructureCorruption(e)) {
+      scanCorruptionOffset = scanParser.getCurrentOffset();
+    }
+    if (scanCorruptionOffset >= 0) {
+      unrecoverableCorruptionOffset = scanCorruptionOffset;
+    }
     final IDeviceID currentDevice =
         Objects.nonNull(scanParser) ? scanParser.getCurrentDevice() : null;
     closeScanParser();
@@ -366,6 +384,11 @@ class LoadTreeTsFileTabletIterator
               .MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_TSFILE_ARG_AFTER_SCAN_PARSER_FAILURE_143B6037,
           file.getAbsolutePath(),
           queryInitException);
+      if (scanCorruptionOffset >= 0
+          && TsFileStructureCorruptionUtils.isStructureCorruption(queryInitException)) {
+        unrecoverableQueryFailure = toRuntimeException(queryInitException);
+        return true;
+      }
       return false;
     }
 
@@ -953,9 +976,22 @@ class LoadTreeTsFileTabletIterator
     verifyQueryFallbackMeasurements();
     close();
     if (Objects.nonNull(unrecoverableQueryFailure)) {
+      if (unrecoverableCorruptionOffset >= 0
+          && TsFileStructureCorruptionUtils.isStructureCorruption(unrecoverableQueryFailure)
+          && !TsFileStructureCorruptionUtils.hasDiagnosticMessage(unrecoverableQueryFailure)) {
+        throw createStructureCorruptionFailure(
+            unrecoverableCorruptionOffset, unrecoverableQueryFailure);
+      }
       throw unrecoverableQueryFailure;
     }
     return false;
+  }
+
+  private RuntimeException createStructureCorruptionFailure(
+      final long corruptionOffset, final Throwable cause) {
+    return new IllegalStateException(
+        TsFileStructureCorruptionUtils.createDiagnosticMessage(file, corruptionOffset, cause),
+        cause);
   }
 
   private void verifyQueryFallbackMeasurements() {
@@ -990,6 +1026,11 @@ class LoadTreeTsFileTabletIterator
 
   private void splitOrSkipActiveQueryTask(final Exception failure) {
     final QueryTask failedTask = activeQueryTask;
+    final long queryFailureOffset =
+        TsFileStructureCorruptionUtils.isStructureCorruption(failure)
+                && Objects.nonNull(activeQueryParser)
+            ? activeQueryParser.getCurrentOffset()
+            : -1;
     closeActiveQueryParser();
     if (Objects.isNull(failedTask)) {
       return;
@@ -1000,6 +1041,7 @@ class LoadTreeTsFileTabletIterator
       // source.
       if (Objects.isNull(unrecoverableQueryFailure)) {
         unrecoverableQueryFailure = toRuntimeException(failure);
+        unrecoverableCorruptionOffset = queryFailureOffset;
       }
       return;
     }
@@ -1036,6 +1078,10 @@ class LoadTreeTsFileTabletIterator
 
   interface QueryParser extends AutoCloseable {
     Iterator<Pair<Tablet, Boolean>> iterator();
+
+    default long getCurrentOffset() {
+      return -1;
+    }
 
     @Override
     void close();

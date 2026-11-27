@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -183,10 +186,81 @@ public class PipeTransferTsFileHandlerCleanupTest {
     }
   }
 
+  @Test
+  public void testStructuralCorruptionRetriesTsFileWithCrc() throws Exception {
+    final File file = Files.createTempFile(null, null).toFile();
+    final RecordingRetryHandler handler =
+        new RecordingRetryHandler(file, Mockito.mock(PipeTsFileInsertionEvent.class));
+    try {
+      markSealSignalSent(handler);
+      final TSStatus status =
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+              .setMessage(PipeTransferIntegrityUtils.STRUCTURE_CORRUPTION_MARKER);
+      Assert.assertFalse(handler.onCompleteInternal(new TPipeTransferResp(status)));
+      Assert.assertEquals(1, handler.transferCount);
+      Assert.assertTrue(handler.isCrcEnabled());
+    } finally {
+      handler.close();
+      Files.deleteIfExists(file.toPath());
+    }
+  }
+
+  @Test
+  public void testStructuralCorruptionRetryClosesReaderAndRestartsAtBeginning() throws Exception {
+    final File file = Files.createTempFile("pipe-transfer-structural-retry", ".tsfile").toFile();
+    Files.write(file.toPath(), new byte[] {1, 2, 3});
+    final RecordingRetryHandler handler =
+        new RecordingRetryHandler(file, Mockito.mock(PipeTsFileInsertionEvent.class));
+    final RandomAccessFile staleReader = new RandomAccessFile(file, "r");
+    staleReader.seek(file.length());
+    try {
+      setHandlerField(handler, "reader", staleReader);
+      setHandlerField(handler, "transferringTsFile", true);
+      setHandlerField(handler, "position", file.length());
+      markSealSignalSent(handler);
+      final TSStatus status =
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+              .setMessage(PipeTransferIntegrityUtils.STRUCTURE_CORRUPTION_MARKER);
+
+      Assert.assertFalse(handler.onCompleteInternal(new TPipeTransferResp(status)));
+
+      Assert.assertEquals(1, handler.transferCount);
+      Assert.assertNull(getHandlerField(handler, "reader"));
+      Assert.assertEquals(0L, getHandlerField(handler, "position"));
+      Assert.assertFalse((boolean) getHandlerField(handler, "transferringTsFile"));
+      Assert.assertSame(file, getHandlerField(handler, "currentFile"));
+      Assert.assertThrows(IOException.class, staleReader::getFilePointer);
+
+      final Method openNextFile = PipeTransferTsFileHandler.class.getDeclaredMethod("openNextFile");
+      openNextFile.setAccessible(true);
+      Assert.assertTrue((Boolean) openNextFile.invoke(handler));
+      Assert.assertEquals(
+          0L, ((RandomAccessFile) getHandlerField(handler, "reader")).getFilePointer());
+    } finally {
+      handler.close();
+      Files.deleteIfExists(file.toPath());
+    }
+  }
+
   private static void markSealSignalSent(final PipeTransferTsFileHandler handler) throws Exception {
     final Field field = PipeTransferTsFileHandler.class.getDeclaredField("isSealSignalSent");
     field.setAccessible(true);
     ((AtomicBoolean) field.get(handler)).set(true);
+  }
+
+  private static Object getHandlerField(final PipeTransferTsFileHandler handler, final String name)
+      throws Exception {
+    final Field field = PipeTransferTsFileHandler.class.getDeclaredField(name);
+    field.setAccessible(true);
+    return field.get(handler);
+  }
+
+  private static void setHandlerField(
+      final PipeTransferTsFileHandler handler, final String name, final Object value)
+      throws Exception {
+    final Field field = PipeTransferTsFileHandler.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(handler, value);
   }
 
   private PipeTransferTsFileHandler createHandler(final File file, final EnrichedEvent event)
@@ -201,6 +275,38 @@ public class PipeTransferTsFileHandlerCleanupTest {
         null,
         false,
         null);
+  }
+
+  private static final class RecordingRetryHandler extends PipeTransferTsFileHandler {
+
+    private int transferCount;
+
+    private RecordingRetryHandler(final File file, final PipeTsFileInsertionEvent event)
+        throws InterruptedException {
+      super(
+          Mockito.mock(IoTDBDataRegionAsyncSink.class),
+          Collections.emptyMap(),
+          Collections.singletonList(event),
+          new AtomicInteger(1),
+          new AtomicBoolean(false),
+          file,
+          null,
+          false,
+          null);
+    }
+
+    private boolean isCrcEnabled() throws Exception {
+      final Field field = PipeTransferTsFileHandler.class.getDeclaredField("crcEnabled");
+      field.setAccessible(true);
+      return field.getBoolean(this);
+    }
+
+    @Override
+    public void transfer(
+        final IoTDBDataNodeAsyncClientManager clientManager,
+        final AsyncPipeDataTransferServiceClient client) {
+      transferCount++;
+    }
   }
 
   private static final class DisappearingFile extends File {

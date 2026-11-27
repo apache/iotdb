@@ -63,6 +63,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,6 +76,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Consumer;
 
 public class ActiveLoadTsFileLoader {
 
@@ -84,6 +87,7 @@ public class ActiveLoadTsFileLoader {
   private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final int MAX_PENDING_SIZE = 1000;
+  private static final Object FAILURE_DIRECTORY_LOCK = ActiveLoadTsFileLoader.class;
   private final ActiveLoadPendingQueue pendingQueue = new ActiveLoadPendingQueue();
 
   private final AtomicReference<WrappedThreadPoolExecutor> activeLoadExecutor =
@@ -122,6 +126,7 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void initFailDirIfNecessary() {
+    File failDirToEnforce = null;
     if (!Objects.equals(failDir.get(), IOTDB_CONFIG.getLoadActiveListeningFailDir())) {
       synchronized (failDir) {
         if (!Objects.equals(failDir.get(), IOTDB_CONFIG.getLoadActiveListeningFailDir())) {
@@ -143,8 +148,13 @@ public class ActiveLoadTsFileLoader {
 
           ActiveLoadingFilesSizeMetricsSet.getInstance().updateFailedDir(failDir.get());
           ActiveLoadingFilesNumberMetricsSet.getInstance().updateFailedDir(failDir.get());
+          failDirToEnforce = failDirFile;
         }
       }
+    }
+    if (failDirToEnforce != null) {
+      enforceFailureDirectoryMaxSize(
+          failDirToEnforce, null, this::invalidateFailedFileIndexForGroup);
     }
   }
 
@@ -237,6 +247,18 @@ public class ActiveLoadTsFileLoader {
   private void clearFailedFileIndex() {
     failedFileSnapshots.clear();
     indexedFailDir.set(null);
+  }
+
+  private void invalidateFailedFileIndexForGroup(final File deletedGroup) {
+    synchronized (indexedFailDir) {
+      for (final Map.Entry<String, FailedFileSnapshot> entry : failedFileSnapshots.entrySet()) {
+        if (entry.getValue().publishedGroup.equals(deletedGroup)
+            && failedFileSnapshots.remove(entry.getKey(), entry.getValue())) {
+          pendingQueue.clearFailedFile(entry.getKey());
+        }
+      }
+      indexedFailDir.set(null);
+    }
   }
 
   private void tryLoadPendingTsFiles() {
@@ -433,6 +455,13 @@ public class ActiveLoadTsFileLoader {
 
   private synchronized void removeFileAndResourceAndModsToFailDir(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    synchronized (FAILURE_DIRECTORY_LOCK) {
+      removeFileAndResourceAndModsToFailDirUnderLock(entry);
+    }
+  }
+
+  private void removeFileAndResourceAndModsToFailDirUnderLock(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
     final String filePath = entry.getFile();
     final File tsFile = new File(filePath);
     final List<File> sourceFiles =
@@ -496,7 +525,81 @@ public class ActiveLoadTsFileLoader {
       return;
     }
 
+    if (!enforceFailureDirectoryMaxSize(
+        failDirectory, targetDirectory, this::invalidateFailedFileIndexForGroup)) {
+      return;
+    }
     deletePublishedSourceFiles(filePath, tsFile, sourceFiles, targetDirectory);
+  }
+
+  public static boolean enforceFailureDirectoryMaxSize(
+      final File failDirectory, final File newestGroup) {
+    return enforceFailureDirectoryMaxSize(failDirectory, newestGroup, deletedGroup -> {});
+  }
+
+  private static synchronized boolean enforceFailureDirectoryMaxSize(
+      final File failDirectory, final File newestGroup, final Consumer<File> deletedGroupConsumer) {
+    final long maxSize = IOTDB_CONFIG.getLoadActiveListeningFailDirMaxSizeInBytes();
+    if (maxSize <= 0) {
+      return true;
+    }
+    if (!failDirectory.isDirectory()) {
+      return false;
+    }
+
+    final File[] directories =
+        failDirectory.listFiles(
+            file ->
+                file.isDirectory()
+                    && (file.getName().startsWith("active-load-")
+                        || file.getName().startsWith("pipe-structure-")));
+    if (directories == null) {
+      return false;
+    }
+    if (directories.length <= 1) {
+      return newestGroup == null || newestGroup.isDirectory();
+    }
+
+    final List<File> groups = new ArrayList<>(List.of(directories));
+    groups.sort(Comparator.comparingLong(File::lastModified));
+    final File groupToKeep = newestGroup == null ? groups.get(groups.size() - 1) : newestGroup;
+    long totalSize = 0;
+    try {
+      for (final File group : groups) {
+        totalSize = Math.addExact(totalSize, getDirectorySize(group));
+      }
+      for (final File group : groups) {
+        if (totalSize <= maxSize) {
+          break;
+        }
+        if (group.equals(groupToKeep)) {
+          continue;
+        }
+        totalSize -= getDirectorySize(group);
+        FileUtils.deleteDirectory(group);
+        deletedGroupConsumer.accept(group);
+      }
+      return totalSize <= maxSize
+          || (groupToKeep.isDirectory()
+              && groups.stream().allMatch(group -> group.equals(groupToKeep) || !group.exists()));
+    } catch (final IOException | ArithmeticException e) {
+      LOGGER.warn(StorageEngineMessages.ERROR_MOVING_FILE_TO_FAIL_DIR, failDirectory, e);
+      return false;
+    }
+  }
+
+  private static long getDirectorySize(final File directory) throws IOException {
+    final long[] size = {0};
+    Files.walkFileTree(
+        directory.toPath(),
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
+            size[0] = Math.addExact(size[0], attrs.size());
+            return FileVisitResult.CONTINUE;
+          }
+        });
+    return size[0];
   }
 
   private void deletePublishedSourceFiles(

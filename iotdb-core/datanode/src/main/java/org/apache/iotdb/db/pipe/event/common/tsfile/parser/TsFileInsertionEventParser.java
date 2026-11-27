@@ -78,6 +78,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   protected Iterable<TabletInsertionEvent> tabletInsertionIterable;
 
+  private long lastKnownOffset = -1;
+
   protected TsFileInsertionEventParser(
       final File tsFile,
       final String pipeName,
@@ -169,6 +171,17 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     return memoryManager.forceAllocate(name, sizeInBytes, getParentMemoryBlock(), sourceEvent);
   }
 
+  public long getCurrentOffset() {
+    if (tsFileSequenceReader != null) {
+      try {
+        return tsFileSequenceReader.position();
+      } catch (final IOException ignored) {
+        return lastKnownOffset;
+      }
+    }
+    return lastKnownOffset;
+  }
+
   /**
    * @return {@link TabletInsertionEvent} in a streaming way
    */
@@ -239,6 +252,11 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
     try {
       if (tsFileSequenceReader != null) {
+        try {
+          lastKnownOffset = tsFileSequenceReader.position();
+        } catch (final IOException ignored) {
+          lastKnownOffset = -1;
+        }
         tsFileSequenceReader.close();
       }
     } catch (final IOException e) {

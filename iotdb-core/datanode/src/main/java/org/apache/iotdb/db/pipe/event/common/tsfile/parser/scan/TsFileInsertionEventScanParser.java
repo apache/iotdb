@@ -40,8 +40,10 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletString
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryManager;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileParseFailureException;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.storageengine.load.TsFileStructureCorruptionUtils;
 import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -246,7 +248,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         close();
       }
     } catch (final Exception e) {
+      final long offset = getCurrentOffset();
       close();
+      if (offset >= 0 && TsFileStructureCorruptionUtils.isStructureCorruption(e)) {
+        throw new TsFileParseFailureException(offset, e);
+      }
       throw e;
     }
   }

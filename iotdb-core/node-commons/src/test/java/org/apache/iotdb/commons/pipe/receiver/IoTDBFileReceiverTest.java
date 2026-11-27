@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
@@ -118,6 +119,26 @@ public class IoTDBFileReceiverTest {
       Assert.assertNull(receiver.getCurrentWritingFileWriter());
       Assert.assertNotEquals(
           oldReceiverDir.getAbsolutePath(), receiver.getCurrentReceiverDir().getAbsolutePath());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testHandshakeNegotiatesCrcRetrySupport() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      final Map<String, String> params = buildHandshakeV2Params(true);
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CRC_RETRY, "true");
+
+      final TPipeTransferResp response = receiver.handshakeV2(params);
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      Assert.assertTrue(receiver.supportsCrcRetry());
+      receiver.handshake();
+      Assert.assertFalse(receiver.supportsCrcRetry());
     } finally {
       receiver.handleExit();
     }
@@ -313,6 +334,51 @@ public class IoTDBFileReceiverTest {
   }
 
   @Test
+  public void testSealFileV1StructuralFailureInvokesFailureHook() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.createWritingFile("corrupt.tsfile", true);
+      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+      receiver.setLoadFileV1Status(
+          new TSStatus(TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode())
+              .setMessage("[TSFILE_STRUCTURE_CORRUPTION] offset 12 SHA-256 abc"));
+
+      final TPipeTransferResp response = receiver.sealFileV1("corrupt.tsfile", 3L);
+
+      Assert.assertEquals(
+          TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
+      Assert.assertEquals(1, receiver.getStructureFailureCount());
+      Assert.assertEquals(
+          List.of(receiver.getWritingFileInBaseDir("corrupt.tsfile").getAbsolutePath()),
+          receiver.getStructureFailurePaths());
+      Assert.assertFalse(receiver.getWritingFileInBaseDir("corrupt.tsfile").exists());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testSealFileV1PreservesStructuralFailureWhenArchivingFails() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.setStructureFailureArchiveSucceeded(false);
+      receiver.createWritingFile("corrupt.tsfile", true);
+      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+      receiver.setLoadFileV1Status(
+          new TSStatus(TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode())
+              .setMessage("[TSFILE_STRUCTURE_CORRUPTION] offset 12 SHA-256 abc"));
+
+      receiver.sealFileV1("corrupt.tsfile", 3L);
+
+      Assert.assertTrue(receiver.getWritingFileInBaseDir("corrupt.tsfile").exists());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
   public void testFilePieceMemoryAllocationFailureReturnsTemporaryUnavailable() throws Exception {
     final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
     final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
@@ -355,6 +421,29 @@ public class IoTDBFileReceiverTest {
     }
   }
 
+  @Test
+  public void testCrcRetryAtOffsetZeroTruncatesExistingWritingFile() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.createWritingFile("normal.tsfile", true);
+      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+
+      final DummyFilePieceReq req =
+          DummyFilePieceReq.toTPipeTransferReq("normal.tsfile", 0, new byte[] {4, 5});
+      PipeTransferIntegrityUtils.setCrc32(req);
+      final TPipeTransferResp response = receiver.writeFilePiece(req);
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      Assert.assertArrayEquals(
+          new byte[] {4, 5},
+          Files.readAllBytes(receiver.getWritingFileInBaseDir("normal.tsfile").toPath()));
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
   private static class DummyFileReceiver extends IoTDBFileReceiver {
 
     private final File receiverFileBaseDir;
@@ -366,6 +455,9 @@ public class IoTDBFileReceiverTest {
     private String createAuditEntityUsername = null;
     private boolean failFilePieceMemoryAllocation = false;
     private int filePieceMemoryCloseCount = 0;
+    private int structureFailureCount;
+    private List<String> structureFailurePaths;
+    private boolean structureFailureArchiveSucceeded = true;
 
     DummyFileReceiver(final File baseDir) {
       receiverFileBaseDir = baseDir;
@@ -414,13 +506,31 @@ public class IoTDBFileReceiverTest {
       return filePieceMemoryCloseCount;
     }
 
+    boolean supportsCrcRetry() {
+      return supportsCrcRetry.get();
+    }
+
+    int getStructureFailureCount() {
+      return structureFailureCount;
+    }
+
+    List<String> getStructureFailurePaths() {
+      return structureFailurePaths;
+    }
+
+    void setStructureFailureArchiveSucceeded(final boolean structureFailureArchiveSucceeded) {
+      this.structureFailureArchiveSucceeded = structureFailureArchiveSucceeded;
+    }
+
     TPipeTransferResp writeFilePiece(
         final String fileName, final long startWritingOffset, final byte[] filePiece)
         throws IOException {
-      return handleTransferFilePiece(
-          DummyFilePieceReq.toTPipeTransferReq(fileName, startWritingOffset, filePiece),
-          false,
-          true);
+      return writeFilePiece(
+          DummyFilePieceReq.toTPipeTransferReq(fileName, startWritingOffset, filePiece));
+    }
+
+    TPipeTransferResp writeFilePiece(final PipeTransferFilePieceReq req) {
+      return handleTransferFilePiece(req, false, true);
     }
 
     TPipeTransferResp sealFileV1(final String fileName, final long fileLength) throws IOException {
@@ -537,6 +647,14 @@ public class IoTDBFileReceiverTest {
         final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
         throws IllegalPathException {
       return new TSStatus(200);
+    }
+
+    @Override
+    protected boolean onFileStructureLoadFailure(
+        final List<String> fileAbsolutePaths, final TSStatus status) {
+      structureFailureCount++;
+      structureFailurePaths = fileAbsolutePaths;
+      return structureFailureArchiveSucceeded;
     }
 
     @Override

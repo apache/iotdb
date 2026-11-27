@@ -2969,4 +2969,12 @@ public final class DataNodePipeMessages {
       "DataRegion %s 的删除资源管理器已关闭或已删除。";
   public static final String LOG_DELETION_PERSIST_ARG_TIMED_OUT_WAITING_FOR_ARG_DELETIONS_TO_FLUSH_BEFORE_SHUTDOWN_52469B0D =
       "Deletion persist-{}：关闭前等待 {} 条删除记录持久化超时。";
+  public static final String MESSAGE_PIPE_TRANSFER_CRC_MISMATCH_CRC_MISMATCH_EXPECTED_ARG_BUT_RECEIVED_ARG_AD3D3CBD =
+      "[PIPE_TRANSFER_CRC_MISMATCH] CRC 不匹配：预期值 %d，实际值 %d";
+  public static final String LOG_RECEIVER_REPORTED_STRUCTURAL_CORRUPTION_IN_TSFILE_ARG_SENDER_SHA_256_ARG_RECEIVER_STATUS_ARG_026A14BB =
+      "接收端报告 TsFile {} 结构损坏；发送端 SHA-256: {}；接收端状态：{}";
+  public static final String LOG_CRC_MISMATCH_WHILE_TRANSFERRING_TSFILE_ARG_SENDER_SHA_256_ARG_NETWORK_TRANSMISSION_CORRUPTED_THE_PAYLOAD_ARG_DE6B6FAD =
+      "传输 TsFile {} 时 CRC 不匹配（发送端 SHA-256: {}）；网络传输导致数据包损坏：{}";
+  public static final String LOG_FAILED_TO_ENFORCE_MAXIMUM_SIZE_FOR_ACTIVE_LOAD_FAILURE_DIRECTORY_ARG_D2F9631D =
+      "无法限制 Active LOAD 失败目录 {} 的最大大小。";
 }

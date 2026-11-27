@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
@@ -55,6 +56,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -100,6 +102,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   // Used to determine current strategy is sync or async
   protected final AtomicBoolean isUsingAsyncLoadTsFileStrategy = new AtomicBoolean(false);
+  protected final AtomicBoolean supportsCrcRetry = new AtomicBoolean(false);
   protected final AtomicBoolean validateTsFile = new AtomicBoolean(true);
 
   protected final AtomicBoolean shouldMarkAsPipeRequest = new AtomicBoolean(true);
@@ -118,6 +121,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   protected TPipeTransferResp handleTransferHandshakeV1(final PipeTransferHandshakeV1Req req) {
+    supportsCrcRetry.set(false);
     hasPipeHandshakeCredential = false;
     senderClusterId = PipeReceiverRuntimeRegistry.UNKNOWN;
     receiverPipeName = null;
@@ -250,6 +254,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected TPipeTransferResp handleTransferHandshakeV2(final PipeTransferHandshakeV2Req req)
       throws IOException {
+    supportsCrcRetry.set(false);
     hasPipeHandshakeCredential = false;
 
     // Reject to handshake if the receiver can not take clusterId from config node.
@@ -378,7 +383,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
               loadTsFileStrategyString));
     }
-
     validateTsFile.set(
         Boolean.parseBoolean(
             req.getParams()
@@ -416,6 +420,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       senderClusterId = clusterIdFromHandshakeRequest;
       receiverPipeName = pipeNameString;
       receiverPipeCreationTime = parsePipeCreationTime(pipeCreationTimeString);
+      supportsCrcRetry.set(
+          Boolean.parseBoolean(
+              req.getParams()
+                  .getOrDefault(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CRC_RETRY, "false")));
     }
     hasPipeHandshakeCredential =
         handshakeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
@@ -499,13 +507,15 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     try (final AutoCloseable ignored = tryAllocateMemoryForFilePiece(req)) {
       updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
 
+      if (req.isSetCrc32() && req.getStartWritingOffset() == 0 && writingFileWriter.length() > 0) {
+        truncateWritingFile(0);
+      }
+
       // If the request is through air gap, the sender will resend the file piece from the beginning
       // of the file. So the receiver should reset the offset of the writing file to the beginning
       // of the file.
       if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
-        org.apache.iotdb.commons.utils.FileUtils.truncateFile(
-            writingFile, req.getStartWritingOffset());
-        writingFileWriter.seek(req.getStartWritingOffset());
+        truncateWritingFile(req.getStartWritingOffset());
       }
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
@@ -513,8 +523,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           // If the file is a tsFile, then the content will not be changed for a specific filename.
           // However, for other files (mod, snapshot, etc.) the content varies for the same name in
           // different times, then we must rewrite the file to apply the newest version.
-          org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
-          writingFileWriter.seek(0);
+          truncateWritingFile(0);
         }
 
         final TSStatus status =
@@ -557,6 +566,35 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       } catch (Exception ex) {
         return PipeTransferFilePieceResp.toTPipeTransferResp(status);
       }
+    }
+  }
+
+  private void truncateWritingFile(final long size) throws IOException {
+    writingFileWriter.close();
+    writingFileWriter = null;
+
+    Exception truncationFailure = null;
+    try {
+      org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, size);
+    } catch (final IOException | RuntimeException e) {
+      truncationFailure = e;
+    }
+
+    try {
+      writingFileWriter = new RandomAccessFile(writingFile, "rw");
+      writingFileWriter.seek(size);
+    } catch (final IOException | RuntimeException e) {
+      if (Objects.nonNull(truncationFailure)) {
+        e.addSuppressed(truncationFailure);
+      }
+      throw e;
+    }
+
+    if (truncationFailure instanceof IOException) {
+      throw (IOException) truncationFailure;
+    }
+    if (truncationFailure instanceof RuntimeException) {
+      throw (RuntimeException) truncationFailure;
     }
   }
 
@@ -735,6 +773,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected final TPipeTransferResp handleTransferFileSealV1(final PipeTransferFileSealReqV1 req) {
     File sealedWritingFile = null;
     boolean shouldDeleteSealedFile = true;
+    boolean shouldPreserveSealedFile = false;
     try {
       if (!isWritingFileAvailable()) {
         final TSStatus status =
@@ -775,6 +814,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFile = null;
 
       final TSStatus status = loadFileV1(req, fileAbsolutePath);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && PipeTransferIntegrityUtils.isStructureCorruption(status.getMessage())) {
+        shouldPreserveSealedFile =
+            !onFileStructureLoadFailure(Collections.singletonList(fileAbsolutePath), status);
+      }
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         shouldDeleteSealedFile = false;
         LOGGER.debug(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePath);
@@ -804,7 +848,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // All pieces of the writing file and its mod (if exists) should be retransmitted by the
       // sender.
       closeCurrentWritingFileWriter(false);
-      if (shouldDeleteSealedFile) {
+      if (shouldDeleteSealedFile && !shouldPreserveSealedFile) {
         if (writingFile != null) {
           deleteCurrentWritingFile();
         } else if (sealedWritingFile != null) {
@@ -818,6 +862,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
     final List<String> fileNames = req.getFileNames();
     TSStatus loadStatus = null;
+    boolean shouldPreserveSealedFiles = false;
     try {
       final List<File> files =
           fileNames.stream()
@@ -886,6 +931,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       loadStatus = status;
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && PipeTransferIntegrityUtils.isStructureCorruption(status.getMessage())) {
+        shouldPreserveSealedFiles = !onFileStructureLoadFailure(fileAbsolutePaths, status);
+      }
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.debug(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePaths);
       } else {
@@ -920,7 +969,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       closeCurrentWritingFileWriter(false);
       // Clear the directory instead of only deleting the referenced files in seal request
       // to avoid previously undeleted file being redundant when transferring multi files
-      if (shouldDeleteSealedFilesOnFailure(req, loadStatus)) {
+      if (!shouldPreserveSealedFiles && shouldDeleteSealedFilesOnFailure(req, loadStatus)) {
         IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
       }
     }
@@ -933,6 +982,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
    */
   protected boolean shouldDeleteSealedFilesOnFailure(
       final PipeTransferFileSealReqV2 req, final TSStatus loadStatus) {
+    return true;
+  }
+
+  protected boolean onFileStructureLoadFailure(
+      final List<String> fileAbsolutePaths, final TSStatus status) {
     return true;
   }
 

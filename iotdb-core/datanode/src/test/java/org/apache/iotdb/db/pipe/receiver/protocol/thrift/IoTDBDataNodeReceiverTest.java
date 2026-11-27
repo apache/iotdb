@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapsho
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -104,6 +106,77 @@ public class IoTDBDataNodeReceiverTest {
           .getConfig()
           .setDataRegionConsensusProtocolClass(originalProtocol);
     }
+  }
+
+  @Test
+  public void testReceiverRejectsRequestWithMismatchedCrcBeforeDispatch() {
+    final TPipeTransferReq request = new TPipeTransferReq();
+    request.setVersion((byte) 1);
+    request.setType((short) 100);
+    request.setBody(new byte[] {1, 2, 3});
+    PipeTransferIntegrityUtils.setCrc32(request);
+    request.setBody(new byte[] {1, 2, 4});
+
+    final TPipeTransferResp response = new TestingDataNodeReceiver().receive(request);
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
+    Assert.assertTrue(PipeTransferIntegrityUtils.isCrcMismatch(response.getStatus().getMessage()));
+  }
+
+  @Test
+  public void testReceiverRejectsSliceWithMismatchedCrcBeforeReassembly() throws Exception {
+    final TPipeTransferReq originalRequest =
+        PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0));
+    final ByteBuffer body = originalRequest.body.duplicate();
+    final int midpoint = body.limit() / 2;
+    final PipeTransferSliceReq firstSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(
+            1, originalRequest.getType(), 0, 2, body, 0, midpoint);
+    PipeTransferIntegrityUtils.setCrc32(firstSlice);
+    final PipeTransferSliceReq secondSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(
+            1, originalRequest.getType(), 1, 2, body, midpoint, body.limit());
+    PipeTransferIntegrityUtils.setCrc32(secondSlice);
+
+    final AdmissionTestReceiver receiver = new AdmissionTestReceiver();
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver.receive(firstSlice).getStatus().getCode());
+
+    final byte[] corruptedBody = secondSlice.getBody().clone();
+    corruptedBody[corruptedBody.length - 9] ^= 1;
+    secondSlice.setBody(corruptedBody);
+    final TPipeTransferResp response = receiver.receive(secondSlice);
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
+    Assert.assertTrue(PipeTransferIntegrityUtils.isCrcMismatch(response.getStatus().getMessage()));
+    Assert.assertEquals(0, receiver.executionAttempts);
+  }
+
+  @Test
+  public void testReceiverRejectsCompressedRequestWithMismatchedCrc() throws Exception {
+    final AdmissionTestReceiver receiver = new AdmissionTestReceiver();
+    final TPipeTransferReq originalRequest =
+        PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0));
+    PipeTransferIntegrityUtils.setCrc32(originalRequest);
+    final TPipeTransferReq compressedRequest =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            originalRequest,
+            Collections.singletonList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    final byte[] corruptedBody = compressedRequest.getBody().clone();
+    corruptedBody[corruptedBody.length - 1] ^= 1;
+    compressedRequest.setBody(corruptedBody);
+
+    final TPipeTransferResp response = receiver.receive(compressedRequest);
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
+    Assert.assertTrue(PipeTransferIntegrityUtils.isCrcMismatch(response.getStatus().getMessage()));
+    Assert.assertEquals(0, receiver.executionAttempts);
   }
 
   @Test
@@ -219,37 +292,31 @@ public class IoTDBDataNodeReceiverTest {
             .setType(plain.getType())
             .setBody(plain.body.duplicate());
     Assert.assertEquals(expectedCode, receiver.receive(airGap).getStatus().getCode());
-    Assert.assertEquals(
-        expectedCode,
-        receiver
-            .receive(
-                PipeTransferCompressedReq.toTPipeTransferReq(
-                    PipeTransferPlanNodeReq.toTPipeTransferReq(node),
-                    Collections.singletonList(
-                        PipeCompressorFactory.getCompressor(
-                            PipeCompressor.PipeCompressionType.GZIP.getIndex()))))
-            .getStatus()
-            .getCode());
+    final TPipeTransferReq compressedPayload = PipeTransferPlanNodeReq.toTPipeTransferReq(node);
+    PipeTransferIntegrityUtils.setCrc32(compressedPayload);
+    final TPipeTransferReq compressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            compressedPayload,
+            Collections.singletonList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    Assert.assertEquals(expectedCode, receiver.receive(compressedReq).getStatus().getCode());
 
     final TPipeTransferReq sliced = PipeTransferPlanNodeReq.toTPipeTransferReq(node);
+    PipeTransferIntegrityUtils.setCrc32(sliced);
     final ByteBuffer body = sliced.body.duplicate();
     final int midpoint = body.limit() / 2;
+    final PipeTransferSliceReq firstSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(1, sliced.getType(), 0, 2, body, 0, midpoint);
+    PipeTransferIntegrityUtils.setCrc32(firstSlice);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        receiver
-            .receive(
-                PipeTransferSliceReq.toTPipeTransferReq(
-                    1, sliced.getType(), 0, 2, body, 0, midpoint))
-            .getStatus()
-            .getCode());
-    Assert.assertEquals(
-        expectedCode,
-        receiver
-            .receive(
-                PipeTransferSliceReq.toTPipeTransferReq(
-                    1, sliced.getType(), 1, 2, body, midpoint, body.limit()))
-            .getStatus()
-            .getCode());
+        receiver.receive(firstSlice).getStatus().getCode());
+    final PipeTransferSliceReq secondSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(
+            1, sliced.getType(), 1, 2, body, midpoint, body.limit());
+    PipeTransferIntegrityUtils.setCrc32(secondSlice);
+    Assert.assertEquals(expectedCode, receiver.receive(secondSlice).getStatus().getCode());
     Assert.assertEquals(rejected ? 0 : 4, receiver.executionAttempts);
   }
 
@@ -706,6 +773,21 @@ public class IoTDBDataNodeReceiverTest {
             true,
             true,
             true));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldTakeOverToAsyncLoad(
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+                .setMessage(PipeTransferIntegrityUtils.STRUCTURE_CORRUPTION_MARKER),
+            false,
+            true,
+            true,
+            true));
+  }
+
+  @Test
+  public void testCrcRetryCapableSenderUsesSynchronousLoad() {
+    Assert.assertFalse(IoTDBDataNodeReceiver.shouldLoadTsFileAsynchronously(true, true));
+    Assert.assertFalse(IoTDBDataNodeReceiver.shouldLoadTsFileAsynchronously(false, true));
+    Assert.assertTrue(IoTDBDataNodeReceiver.shouldLoadTsFileAsynchronously(true, false));
   }
 
   @Test
