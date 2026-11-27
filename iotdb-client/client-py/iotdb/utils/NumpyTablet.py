@@ -74,6 +74,8 @@ class NumpyTablet(object):
             timestamps = timestamps[index]
             for i in range(len(values)):
                 values[i] = values[i][index]
+            if bitmaps is not None:
+                bitmaps = [self._sort_bitmap(bitmap, index) for bitmap in bitmaps]
 
         if timestamps.dtype != TSDataType.INT64.np_dtype():
             timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
@@ -95,6 +97,21 @@ class NumpyTablet(object):
             )
         else:
             self.__column_types = column_types
+
+    @staticmethod
+    def _sort_bitmap(bitmap, index):
+        if bitmap is None:
+            return None
+        sorted_bitmap = BitMap(bitmap.get_size())
+        if not bitmap.is_all_unmarked():
+            packed = np.asarray(bitmap.bits, dtype=np.uint8)
+            # BitMap stores the first row in the low bit of each byte.
+            rows = np.unpackbits(packed).reshape(-1, 8)[:, ::-1]
+            sorted_rows = np.zeros(rows.size, dtype=np.uint8)
+            sorted_rows[: len(index)] = rows.flat[index]
+            sorted_bytes = np.packbits(sorted_rows.reshape(-1, 8)[:, ::-1])
+            sorted_bitmap.bits = sorted_bytes.tolist()
+        return sorted_bitmap
 
     @staticmethod
     def check_sorted(timestamps):
