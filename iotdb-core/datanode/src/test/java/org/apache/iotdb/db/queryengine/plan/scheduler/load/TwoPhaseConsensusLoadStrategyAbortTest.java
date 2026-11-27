@@ -357,6 +357,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
 
     assertFalse(prepareAndCommit(strategy));
     assertEquals(Arrays.asList("PREPARE@1", "PREPARE@2", "ABORT@1", "ABORT@2"), submitted);
+    assertFalse(strategy.shouldSkipTabletFallback());
   }
 
   @Test
@@ -496,5 +497,6 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
         Arrays.asList(
             "PREPARE@1", "ABORT@1", "ABORT@1", "ABORT@1", "ABORT@2", "ABORT@2", "ABORT@2"),
         submitted);
+    assertTrue(strategy.shouldSkipTabletFallback());
   }
 }

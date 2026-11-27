@@ -363,7 +363,7 @@ public class LoadTsFileScheduler implements IScheduler {
       }
       stateMachine.transitionToRunning();
       boolean allFilesSucceeded = true;
-      final Set<Integer> rpcTransportFailureNodeIndexes = new HashSet<>();
+      final Set<Integer> tabletFallbackBlockedNodeIndexes = new HashSet<>();
 
       final int totalFiles = tsFileNodeList.size();
       for (int i = 0; i < totalFiles; ++i) {
@@ -376,7 +376,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
         partitionFetcher.setDatabase(getPartitionQueryDatabase(node, isGeneratedByPipe));
 
-        if (!processSingleNode(node, i, totalFiles, userName, rpcTransportFailureNodeIndexes)) {
+        if (!processSingleNode(node, i, totalFiles, userName, tabletFallbackBlockedNodeIndexes)) {
           allFilesSucceeded = false;
           failedTsFileNodeIndexes.add(i);
           continue;
@@ -394,7 +394,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 isGeneratedByPipe,
                 tsFileNodeList,
                 failedTsFileNodeIndexes,
-                rpcTransportFailureNodeIndexes,
+                tabletFallbackBlockedNodeIndexes,
                 stateMachine)
             .convertFailedTsFilesToTablets();
       }
@@ -421,7 +421,7 @@ public class LoadTsFileScheduler implements IScheduler {
       final int index,
       final int totalFiles,
       final String userName,
-      final Set<Integer> rpcTransportFailureNodeIndexes) {
+      final Set<Integer> tabletFallbackBlockedNodeIndexes) {
     final String filePath = node.getTsFileResource().getTsFilePath();
     final long startTimeMs = System.currentTimeMillis();
     boolean lockAcquired = false;
@@ -444,8 +444,8 @@ public class LoadTsFileScheduler implements IScheduler {
 
       strategy = resolveStrategy(node, userName);
       final boolean loadSuccess = strategy.execute(node);
-      if (!loadSuccess && strategy.hasRpcTransportFailure()) {
-        rpcTransportFailureNodeIndexes.add(index);
+      if (!loadSuccess && strategy.shouldSkipTabletFallback()) {
+        tabletFallbackBlockedNodeIndexes.add(index);
       }
 
       if (isRegionMigrating(startTimeMs)) {
@@ -465,8 +465,8 @@ public class LoadTsFileScheduler implements IScheduler {
       return true;
     } catch (final Exception e) {
       if (LoadConsensusSubmitter.isPotentiallyUnstableRpcFailure(e)
-          || (strategy != null && strategy.hasRpcTransportFailure())) {
-        rpcTransportFailureNodeIndexes.add(index);
+          || (strategy != null && strategy.shouldSkipTabletFallback())) {
+        tabletFallbackBlockedNodeIndexes.add(index);
       }
       LOGGER.warn(DataNodeQueryMessages.LOADTSFILESCHEDULER_LOADS_TSFILE_ERROR, filePath, e);
       return false;

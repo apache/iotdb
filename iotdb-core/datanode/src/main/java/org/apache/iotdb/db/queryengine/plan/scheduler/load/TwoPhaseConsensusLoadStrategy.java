@@ -97,6 +97,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private final LoadConsensusSubmitter consensusSubmitter;
   private final boolean isGeneratedByPipe;
   private boolean rpcTransportFailure;
+  private boolean unresolvedLoadTransaction;
 
   /** The source file being loaded, kept for the phase-two commands. */
   private LoadSingleTsFileNode currentNode;
@@ -147,6 +148,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   public boolean execute(LoadSingleTsFileNode node) {
     this.currentNode = node;
     rpcTransportFailure = false;
+    unresolvedLoadTransaction = false;
     dispatcher.setUuid(UUID.randomUUID().toString());
     regionRoutes.clear();
     regionLoadIds.clear();
@@ -179,6 +181,11 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   @Override
   public boolean hasRpcTransportFailure() {
     return rpcTransportFailure;
+  }
+
+  @Override
+  public boolean shouldSkipTabletFallback() {
+    return rpcTransportFailure || unresolvedLoadTransaction;
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
@@ -445,6 +452,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
             TSStatusCode.representOf(status.getCode()).name(),
             status.getMessage());
         allAborted = false;
+        unresolvedLoadTransaction = true;
       }
     }
     return allAborted;
@@ -560,6 +568,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
             regionExpectedDataEnd.getOrDefault(regionId, Collections.emptyMap()));
     final TSStatus abortStatus = submitTerminalCommandWithRetry(regionId, abort);
     if (abortStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      unresolvedLoadTransaction = true;
       LOGGER.warn(
           DataNodeQueryMessages
               .LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_89B6F261,

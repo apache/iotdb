@@ -61,7 +61,7 @@ public class LoadFallbackHandler {
   private final boolean isGeneratedByPipe;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
   private final List<Integer> failedTsFileNodeIndexes;
-  private final Set<Integer> rpcTransportFailureNodeIndexes;
+  private final Set<Integer> tabletFallbackBlockedNodeIndexes;
   private final QueryStateMachine stateMachine;
 
   public LoadFallbackHandler(
@@ -84,7 +84,7 @@ public class LoadFallbackHandler {
       final boolean isGeneratedByPipe,
       final List<LoadSingleTsFileNode> tsFileNodeList,
       final List<Integer> failedTsFileNodeIndexes,
-      final Set<Integer> rpcTransportFailureNodeIndexes,
+      final Set<Integer> tabletFallbackBlockedNodeIndexes,
       final QueryStateMachine stateMachine) {
     this.queryContext =
         Objects.requireNonNull(
@@ -97,7 +97,8 @@ public class LoadFallbackHandler {
         Objects.requireNonNull(
             failedTsFileNodeIndexes,
             DataNodeQueryMessages.EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6);
-    this.rpcTransportFailureNodeIndexes = Objects.requireNonNull(rpcTransportFailureNodeIndexes);
+    this.tabletFallbackBlockedNodeIndexes =
+        Objects.requireNonNull(tabletFallbackBlockedNodeIndexes);
     this.stateMachine =
         Objects.requireNonNull(
             stateMachine, DataNodeQueryMessages.EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790);
@@ -154,11 +155,11 @@ public class LoadFallbackHandler {
       final LoadSingleTsFileNode failedNode = tsFileNodeList.get(nodeIndex);
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
 
-      if (rpcTransportFailureNodeIndexes.contains(nodeIndex)) {
+      if (tabletFallbackBlockedNodeIndexes.contains(nodeIndex)) {
         final String message =
             String.format(
                 DataNodeQueryMessages
-                    .EXCEPTION_TSFILE_ARG_IS_UNCERTAIN_AFTER_AN_RPC_TRANSPORT_FAILURE_2A59AF17,
+                    .EXCEPTION_TSFILE_ARG_HAS_AN_UNCERTAIN_LOAD_OUTCOME_RETRY_WAS_SKIPPED_70149528,
                 filePath);
         failureDetails.add(message);
         LOGGER.warn(message);
@@ -271,7 +272,7 @@ public class LoadFallbackHandler {
 
     final String message =
         String.format(
-            failedTsFileNodeIndexes.stream().anyMatch(rpcTransportFailureNodeIndexes::contains)
+            failedTsFileNodeIndexes.stream().anyMatch(tabletFallbackBlockedNodeIndexes::contains)
                 ? DataNodeQueryMessages.EXCEPTION_FAILED_TO_LOAD_TSFILES_DETAILS_ARG_D79C19DB
                 : DataNodeQueryMessages
                     .EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5,
@@ -287,7 +288,7 @@ public class LoadFallbackHandler {
   private String getFailedFilePathsString() {
     return failedTsFileNodeIndexes.stream()
         .filter(index -> index >= 0 && index < tsFileNodeList.size())
-        .filter(index -> !rpcTransportFailureNodeIndexes.contains(index))
+        .filter(index -> !tabletFallbackBlockedNodeIndexes.contains(index))
         .map(index -> tsFileNodeList.get(index).getTsFileResource().getTsFilePath())
         .collect(Collectors.joining(", "));
   }

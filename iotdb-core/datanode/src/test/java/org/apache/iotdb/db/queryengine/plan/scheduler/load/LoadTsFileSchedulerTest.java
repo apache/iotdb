@@ -234,7 +234,7 @@ public class LoadTsFileSchedulerTest {
 
     Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
     Assert.assertTrue(stateMachine.getFailureMessage().contains("partition-failed.tsfile"));
-    Assert.assertTrue(stateMachine.getFailureMessage().contains("RPC transport failure"));
+    Assert.assertTrue(stateMachine.getFailureMessage().contains("uncertain LOAD outcome"));
     Mockito.verify(partitionFetcher)
         .getOrCreateDataPartition(Mockito.<DataPartitionQueryParam>anyList(), Mockito.anyString());
   }

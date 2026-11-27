@@ -48,4 +48,9 @@ public interface TsFileLoadStrategy {
   default boolean hasRpcTransportFailure() {
     return false;
   }
+
+  /** Returns whether the file's LOAD outcome is unsafe to retry through tablet conversion. */
+  default boolean shouldSkipTabletFallback() {
+    return hasRpcTransportFailure();
+  }
 }

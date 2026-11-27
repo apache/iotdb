@@ -46,10 +46,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketTimeoutException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -274,8 +275,9 @@ public class LoadConsensusSubmitter {
   static boolean isPotentiallyUnstableRpcFailure(Throwable error) {
     while (error != null) {
       if (error instanceof ClientManagerException
-          || error instanceof TException
-          || error instanceof TimeoutException) {
+          || error instanceof TTransportException
+          || error instanceof TimeoutException
+          || error instanceof SocketTimeoutException) {
         return true;
       }
       error = error.getCause();

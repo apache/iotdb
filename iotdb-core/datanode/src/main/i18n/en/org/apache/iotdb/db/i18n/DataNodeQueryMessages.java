@@ -45,8 +45,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
       "Failed to load TsFiles after tablet conversion. Details: %s";
   public static final String
-      EXCEPTION_TSFILE_ARG_IS_UNCERTAIN_AFTER_AN_RPC_TRANSPORT_FAILURE_2A59AF17 =
-          "TsFile %s is uncertain after an RPC transport failure.";
+      EXCEPTION_TSFILE_ARG_HAS_AN_UNCERTAIN_LOAD_OUTCOME_RETRY_WAS_SKIPPED_70149528 =
+          "TsFile %s has an uncertain LOAD outcome; retry was skipped.";
   public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_DETAILS_ARG_D79C19DB =
       "Failed to load TsFiles. Details: %s";
   public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =

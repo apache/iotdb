@@ -147,8 +147,8 @@ public class LoadFallbackHandlerTest {
   }
 
   @Test
-  public void testRpcTransportFailureSkipsTabletFallback() throws Exception {
-    final LoadSingleTsFileNode node = newNode("rpc-failed.tsfile", false);
+  public void testUncertainLoadOutcomeSkipsTabletFallback() throws Exception {
+    final LoadSingleTsFileNode node = newNode("uncertain.tsfile", false);
     final List<Integer> failedIndexes = new ArrayList<>(Collections.singletonList(0));
     final QueryStateMachine stateMachine = newStateMachine();
 
@@ -168,6 +168,8 @@ public class LoadFallbackHandlerTest {
             .getFailureStatus()
             .getMessage()
             .contains(node.getTsFileResource().getTsFilePath()));
+    Assert.assertTrue(
+        stateMachine.getFailureStatus().getMessage().contains("uncertain LOAD outcome"));
     verify(converter, never()).convertForTreeModel(any());
     verify(converter, never()).convertForTableModel(any());
   }

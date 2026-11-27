@@ -43,6 +43,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
@@ -56,8 +57,10 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -173,7 +176,7 @@ public class LoadConsensusSubmitterTest {
   }
 
   @Test
-  public void testGenericThriftFailureIsClassified() throws Exception {
+  public void testGenericThriftFailureIsNotClassifiedAsTransportFailure() throws Exception {
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     stubLeader(11);
     final TEndPoint endPoint = new TEndPoint("192.0.2.1", 9003);
@@ -192,7 +195,7 @@ public class LoadConsensusSubmitterTest {
         submitter.submit(replicaSet(location(11, endPoint.getIp(), endPoint.getPort())), node);
 
     assertEquals(TSStatusCode.DISPATCH_ERROR.getStatusCode(), status.getCode());
-    assertTrue(submitter.isLastSubmissionRpcTransportFailure());
+    assertFalse(submitter.isLastSubmissionRpcTransportFailure());
   }
 
   @Test
@@ -217,9 +220,25 @@ public class LoadConsensusSubmitterTest {
   }
 
   @Test
-  public void testLocalIOExceptionIsNotClassifiedAsUnstableRpcFailure() {
+  public void testStableFailuresAreNotClassifiedAsUnstableRpcFailure() {
     assertFalse(
         LoadConsensusSubmitter.isPotentiallyUnstableRpcFailure(new IOException("local failure")));
+    assertFalse(
+        LoadConsensusSubmitter.isPotentiallyUnstableRpcFailure(new TException("protocol failure")));
+    assertFalse(
+        LoadConsensusSubmitter.isPotentiallyUnstableRpcFailure(
+            new TApplicationException(
+                TApplicationException.INTERNAL_ERROR, "application failure")));
+  }
+
+  @Test
+  public void testTimeoutsAreClassifiedAsUnstableRpcFailures() {
+    assertTrue(
+        LoadConsensusSubmitter.isPotentiallyUnstableRpcFailure(
+            new TimeoutException("rpc timeout")));
+    assertTrue(
+        LoadConsensusSubmitter.isPotentiallyUnstableRpcFailure(
+            new SocketTimeoutException("socket timeout")));
   }
 
   @Test
