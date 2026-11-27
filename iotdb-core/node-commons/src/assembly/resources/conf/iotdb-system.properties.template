@@ -2382,7 +2382,7 @@ procedure_completed_clean_interval=30
 procedure_completed_evict_ttl=60
 
 # Whether to wait for DROP TABLE, ALTER TABLE DROP COLUMN, and DELETE TIMESERIES procedures to finish before returning.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: boolean
 enable_sync_schema_deletion=false
 
