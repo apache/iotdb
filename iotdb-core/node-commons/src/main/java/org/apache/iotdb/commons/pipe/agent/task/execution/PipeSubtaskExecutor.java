@@ -43,6 +43,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class PipeSubtaskExecutor {
 
@@ -61,6 +62,8 @@ public abstract class PipeSubtaskExecutor {
   protected final ListeningScheduledExecutorService subtaskWorkerScheduledExecutor;
 
   private final Map<String, PipeSubtask> registeredIdSubtaskMapper;
+  private final ConcurrentHashMap<String, LockReference> subtaskLifecycleLockReferences =
+      new ConcurrentHashMap<>();
 
   private final int corePoolSize;
   private int runningSubtaskNumber;
@@ -127,18 +130,25 @@ public abstract class PipeSubtaskExecutor {
 
   /////////////////////// Subtask management ///////////////////////
 
-  public final synchronized void register(final PipeSubtask subtask) {
-    if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
-      LOGGER.warn(PipeMessages.SUBTASK_ALREADY_REGISTERED, subtask.getDisplayTaskID());
-      return;
-    }
+  public final void register(final PipeSubtask subtask) {
+    final String subtaskID = subtask.getTaskID();
+    runWithSubtaskLifecycleLock(
+        subtaskID,
+        () -> {
+          synchronized (this) {
+            if (registeredIdSubtaskMapper.containsKey(subtaskID)) {
+              LOGGER.warn(PipeMessages.SUBTASK_ALREADY_REGISTERED, subtask.getDisplayTaskID());
+              return;
+            }
 
-    registeredIdSubtaskMapper.put(subtask.getTaskID(), subtask);
-    subtask.bindExecutors(
-        subtaskWorkerThreadPoolExecutor,
-        subtaskWorkerScheduledExecutor,
-        subtaskCallbackListeningExecutor,
-        schedulerSupplier(this));
+            registeredIdSubtaskMapper.put(subtaskID, subtask);
+            subtask.bindExecutors(
+                subtaskWorkerThreadPoolExecutor,
+                subtaskWorkerScheduledExecutor,
+                subtaskCallbackListeningExecutor,
+                schedulerSupplier(this));
+          }
+        });
   }
 
   private static String getSafeSubtaskStr(final String subtaskID) {
@@ -149,50 +159,63 @@ public abstract class PipeSubtaskExecutor {
     return new PipeSubtaskScheduler(executor);
   }
 
-  public final synchronized void start(final String subTaskID) {
-    if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
-      LOGGER.warn(PipeMessages.SUBTASK_NOT_REGISTERED, getSafeSubtaskStr(subTaskID));
-      return;
-    }
+  public final void start(final String subTaskID) {
+    runWithSubtaskLifecycleLock(
+        subTaskID,
+        () -> {
+          synchronized (this) {
+            if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
+              LOGGER.warn(PipeMessages.SUBTASK_NOT_REGISTERED, getSafeSubtaskStr(subTaskID));
+              return;
+            }
 
-    final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
-    if (isShutdown()) {
-      // Fail fast before touching the "submitting self" state, otherwise start() may report a
-      // false success and the subtask will never be executed.
-      LOGGER.error(
-          PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID());
-      throw new RejectedExecutionException(
-          PipeMessages
-              .EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212);
-    }
+            final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
+            if (isShutdown()) {
+              LOGGER.error(
+                  PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA,
+                  subtask.getDisplayTaskID());
+              throw new RejectedExecutionException(
+                  PipeMessages
+                      .EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212);
+            }
 
-    if (subtask.isSubmittingSelf()) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, subtask.getDisplayTaskID());
-      }
-    } else {
-      try {
-        subtask.allowSubmittingSelf();
-        subtask.submitSelf();
-      } catch (final RuntimeException e) {
-        // The submission may be rejected, e.g., because the underlying thread pool has been shut
-        // down. The "submitting self" state must be reverted, otherwise this and all the following
-        // start() calls would take the "already running" branch above and report a false success,
-        // leaving the subtask never executed until the node restarts.
-        subtask.disallowSubmittingSelf();
-        LOGGER.error(
-            PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID(), e);
-        throw e;
-      } catch (final Error e) {
-        subtask.disallowSubmittingSelf();
-        throw e;
-      }
-      ++runningSubtaskNumber;
-      LOGGER.info(PipeMessages.SUBTASK_STARTED, subtask.getDisplayTaskID());
-    }
+            if (subtask.isSubmittingSelf()) {
+              if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, subtask.getDisplayTaskID());
+              }
+            } else {
+              try {
+                subtask.allowSubmittingSelf();
+                subtask.submitSelf();
+              } catch (final RuntimeException e) {
+                subtask.disallowSubmittingSelf();
+                LOGGER.error(
+                    PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA,
+                    subtask.getDisplayTaskID(),
+                    e);
+                throw e;
+              } catch (final Error e) {
+                subtask.disallowSubmittingSelf();
+                throw e;
+              }
+              ++runningSubtaskNumber;
+              LOGGER.info(PipeMessages.SUBTASK_STARTED, subtask.getDisplayTaskID());
+            }
+          }
+        });
   }
 
-  public final synchronized void stop(final String subTaskID) {
+  public final void stop(final String subTaskID) {
+    runWithSubtaskLifecycleLock(
+        subTaskID,
+        () -> {
+          synchronized (this) {
+            stopSubtaskLocked(subTaskID);
+          }
+        });
+  }
+
+  private void stopSubtaskLocked(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
       LOGGER.warn(PipeMessages.SUBTASK_NOT_REGISTERED, getSafeSubtaskStr(subTaskID));
       return;
@@ -203,28 +226,65 @@ public abstract class PipeSubtaskExecutor {
     }
   }
 
-  public final synchronized void deregister(final String subTaskID) {
-    stop(subTaskID);
+  public final void deregister(final String subTaskID) {
+    runWithSubtaskLifecycleLock(
+        subTaskID,
+        () -> {
+          final PipeSubtask subtask;
+          synchronized (this) {
+            stopSubtaskLocked(subTaskID);
+            subtask = registeredIdSubtaskMapper.remove(subTaskID);
+          }
 
-    final PipeSubtask subtask = registeredIdSubtaskMapper.remove(subTaskID);
+          if (subtask != null) {
+            try {
+              subtask.close();
+              LOGGER.info(PipeMessages.SUBTASK_CLOSED, subtask.getDisplayTaskID());
+            } catch (final Exception e) {
+              LOGGER.error(PipeMessages.SUBTASK_CLOSE_FAILED, subtask.getDisplayTaskID(), e);
+            }
+          }
+        });
+  }
 
-    if (subtask != null) {
-      try {
-        subtask.close();
-        LOGGER.info(PipeMessages.SUBTASK_CLOSED, subtask.getDisplayTaskID());
-      } catch (final Exception e) {
-        LOGGER.error(PipeMessages.SUBTASK_CLOSE_FAILED, subtask.getDisplayTaskID(), e);
-      }
+  private void runWithSubtaskLifecycleLock(final String subTaskID, final Runnable operation) {
+    final LockReference lockReference =
+        subtaskLifecycleLockReferences.compute(
+            subTaskID,
+            (id, current) -> {
+              final LockReference reference = current == null ? new LockReference() : current;
+              ++reference.referenceCount;
+              return reference;
+            });
+
+    lockReference.lock.lock();
+    try {
+      operation.run();
+    } finally {
+      lockReference.lock.unlock();
+      subtaskLifecycleLockReferences.compute(
+          subTaskID,
+          (id, current) -> {
+            if (current == lockReference && --current.referenceCount == 0) {
+              return null;
+            }
+            return current;
+          });
     }
   }
 
+  private static class LockReference {
+    private final ReentrantLock lock = new ReentrantLock();
+    private int referenceCount;
+  }
+
   @TestOnly
-  public final boolean isRegistered(final String subTaskID) {
+  public final synchronized boolean isRegistered(final String subTaskID) {
     return registeredIdSubtaskMapper.containsKey(subTaskID);
   }
 
   @TestOnly
-  public final int getRegisteredSubtaskNumber() {
+  public final synchronized int getRegisteredSubtaskNumber() {
     return registeredIdSubtaskMapper.size();
   }
 
@@ -260,7 +320,7 @@ public abstract class PipeSubtaskExecutor {
     return corePoolSize;
   }
 
-  public final int getRunningSubtaskNumber() {
+  public final synchronized int getRunningSubtaskNumber() {
     return runningSubtaskNumber;
   }
 

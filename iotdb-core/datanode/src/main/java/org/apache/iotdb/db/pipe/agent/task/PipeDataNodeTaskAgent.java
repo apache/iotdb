@@ -124,6 +124,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
+  @Override
+  protected boolean shouldReleasePipeMetaWriteLockDuringTaskLifecycle() {
+    return true;
+  }
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -217,6 +222,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return null;
     }
     try {
+      if (hasPipeLifecycleOperationsInProgress()) {
+        return null;
+      }
       // Reconciliation and alter-progress reuse need one complete view under the same write lock.
       // Resolve replacements using the keeper's name/visibility identity, including new versions
       // of existing pipes. Preserve the incoming old-DROPPED/new pair used by alter procedures.
