@@ -62,6 +62,23 @@ public class LazyBlockListTest {
   }
 
   @Test
+  public void testGrownCapacityDoesNotOverflow() {
+    // Geometric growth for a normal container.
+    Assert.assertEquals(15, LazyBlockList.grownCapacity(10, 11));
+    Assert.assertEquals(2, LazyBlockList.grownCapacity(1, 2));
+    // The requested length always wins when it is larger than the grown length.
+    Assert.assertEquals(64, LazyBlockList.grownCapacity(10, 64));
+    // A nearly full array must not overflow into a shorter (or negative) capacity.
+    int nearlyFull = Integer.MAX_VALUE - 8;
+    Assert.assertEquals(nearlyFull, LazyBlockList.grownCapacity(nearlyFull, nearlyFull));
+    Assert.assertEquals(nearlyFull, LazyBlockList.grownCapacity(nearlyFull, nearlyFull - 10));
+    // At the array length limit the exact minimum is requested, so the allocation fails instead of
+    // silently dropping slots.
+    Assert.assertEquals(
+        Integer.MAX_VALUE, LazyBlockList.grownCapacity(nearlyFull, Integer.MAX_VALUE));
+  }
+
+  @Test
   public void testWriteFarAheadCoversTheWholePrefix() {
     LazyBlockList<Object> container = new LazyBlockList(2_000, 0);
     container.set(1_999, "tail");

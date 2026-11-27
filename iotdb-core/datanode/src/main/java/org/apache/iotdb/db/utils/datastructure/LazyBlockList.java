@@ -136,22 +136,26 @@ final class LazyBlockList<T> extends AbstractList<T> implements RandomAccess {
     return copy;
   }
 
+  /**
+   * Array length that holds at least {@code minLength} slots of a container that currently holds
+   * {@code currentLength}.
+   *
+   * <p>The length grows geometrically so that appending one block stays amortized O(1). It is
+   * computed in long arithmetic because a nearly full array would overflow {@code int}, and it is
+   * capped at the longest array the JVM can allocate: at that limit the exact minimum is returned,
+   * so the allocation fails instead of silently dropping slots.
+   */
+  static int grownCapacity(int currentLength, int minLength) {
+    long grownLength = currentLength + (long) (currentLength >> 1);
+    int capacity = (int) Math.min(Math.max(grownLength, (long) minLength), MAX_BLOCK_ARRAY_LENGTH);
+    return capacity < minLength ? minLength : capacity;
+  }
+
   private Object[] ensureCapacity(int minLength) {
     if (blocks == null) {
       blocks = new Object[minLength];
     } else if (blocks.length < minLength) {
-      // Grow geometrically so that appending one block stays amortized O(1). The product and the
-      // sum are computed in long arithmetic: an almost full array would otherwise overflow int, and
-      // the result must never be shorter than the slots the container already holds.
-      long grownLength = blocks.length + (long) (blocks.length >> 1);
-      int newLength =
-          (int) Math.min(Math.max(grownLength, (long) minLength), MAX_BLOCK_ARRAY_LENGTH);
-      if (newLength < minLength) {
-        // Already at the array length limit: request the exact length so that the allocation fails
-        // instead of silently dropping slots.
-        newLength = minLength;
-      }
-      blocks = Arrays.copyOf(blocks, newLength);
+      blocks = Arrays.copyOf(blocks, grownCapacity(blocks.length, minLength));
     }
     return blocks;
   }
