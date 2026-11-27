@@ -534,14 +534,7 @@ public class SessionPool implements ISessionPool {
     this.maxSize = builder.maxSize;
     this.coreSize = builder.coreSize;
     this.maxIdleTimeInMs = builder.maxIdleTimeInMs;
-    if (coreSize < 0 || coreSize > maxSize) {
-      throw new IllegalArgumentException(
-          String.format(SessionMessages.SESSION_POOL_CORE_SIZE_ARG_ILLEGAL, coreSize, maxSize));
-    }
-    if (maxIdleTimeInMs < 0) {
-      throw new IllegalArgumentException(
-          String.format(SessionMessages.SESSION_POOL_MAX_IDLE_TIME_ARG_ILLEGAL, maxIdleTimeInMs));
-    }
+    validateIdleConfig(coreSize, maxSize, maxIdleTimeInMs);
     this.user = builder.username;
     this.password = builder.pw;
     this.fetchSize = builder.fetchSize;
@@ -1010,6 +1003,17 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  private static void validateIdleConfig(int coreSize, int maxSize, long maxIdleTimeInMs) {
+    if (coreSize < 0 || coreSize > maxSize) {
+      throw new IllegalArgumentException(
+          String.format(SessionMessages.SESSION_POOL_CORE_SIZE_ARG_ILLEGAL, coreSize, maxSize));
+    }
+    if (maxIdleTimeInMs < 0) {
+      throw new IllegalArgumentException(
+          String.format(SessionMessages.SESSION_POOL_MAX_IDLE_TIME_ARG_ILLEGAL, maxIdleTimeInMs));
+    }
+  }
+
   /**
    * Closes idle sessions which have been idle for more than {@link #maxIdleTimeInMs}, until the
    * total number of sessions drops to {@link #coreSize}. Evicted sessions are closed outside the
@@ -1034,8 +1038,8 @@ public class SessionPool implements ISessionPool {
       }
       sizeAfterEviction = size;
       if (!evicted.isEmpty()) {
-        // wake up waiters so that they can create new sessions if size < maxSize.
-        this.notify();
+        // wake up all waiters so that they can create new sessions if size < maxSize.
+        this.notifyAll();
       }
     }
     if (!evicted.isEmpty()) {
