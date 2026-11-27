@@ -161,6 +161,11 @@ public class ImportSchema extends AbstractSchemaTool {
       }
       importSchema.init();
       AbstractImportSchema.init(importSchema);
+      if (connectionFailed) {
+        ioTPrinter.println(
+            String.format(CliMessages.MESSAGE_IMPORT_SCHEMA_FAIL_ARG_609A6D30, "connection"));
+        return Constants.CODE_ERROR;
+      }
       return Constants.CODE_OK;
     } catch (InterruptedException e) {
       ioTPrinter.println(

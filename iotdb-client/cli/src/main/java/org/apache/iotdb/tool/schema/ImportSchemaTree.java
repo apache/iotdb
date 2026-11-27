@@ -125,6 +125,10 @@ public class ImportSchemaTree extends AbstractImportSchema {
       }
       writeScheme(file.getName(), headerNames, records, failedFilePath);
       processSuccessFile();
+    } catch (IllegalStateException e) {
+      // A connection-retry failure is already reported and the failed rows are already written;
+      // set the flag so the entry point can exit with a non-zero status code.
+      connectionFailed = true;
     } catch (IOException | IllegalPathException e) {
       ioTPrinter.println(
           String.format(
