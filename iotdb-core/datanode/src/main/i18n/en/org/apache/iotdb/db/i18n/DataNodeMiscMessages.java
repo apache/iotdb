@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
+
+  public static final String MESSAGE_TEST_INSERTION_REQUIRES_A_KNOWN_STAGE_AND_EXACTLY_ONE_INSERTION_PAYLOAD_B0F3D171 =
+      "Test insertion requires a known stage and exactly one insertion payload";
   public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
       "Failed to authorize CQ {} for user {}: {}";
 

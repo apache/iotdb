@@ -546,6 +546,7 @@ public class TableHeaderSchemaValidator {
       final MPPQueryContext context,
       final String database,
       final InsertNodeMeasurementInfo measurementInfo) {
+    context.checkSchemaModificationAllowed();
     DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     final TsTable tsTable = toTsTable(measurementInfo);
     AuthorityChecker.getAccessControl()
@@ -578,6 +579,7 @@ public class TableHeaderSchemaValidator {
       final InsertNodeMeasurementInfo measurementInfo,
       final List<Integer> missingIndices,
       final MPPQueryContext context) {
+    context.checkSchemaModificationAllowed();
     DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     AuthorityChecker.getAccessControl()
         .checkCanAlterTable(
@@ -635,6 +637,7 @@ public class TableHeaderSchemaValidator {
 
   private void autoCreateTable(
       final MPPQueryContext context, final String database, final TableSchema tableSchema) {
+    context.checkSchemaModificationAllowed();
     // Release to avoid deadlock
     DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     final TsTable tsTable = new TsTable(tableSchema.getTableName());
@@ -843,6 +846,7 @@ public class TableHeaderSchemaValidator {
       final String tableName,
       final List<ColumnSchema> inputColumnList,
       final MPPQueryContext context) {
+    context.checkSchemaModificationAllowed();
     DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     AuthorityChecker.getAccessControl()
         .checkCanAlterTable(

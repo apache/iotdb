@@ -20,6 +20,27 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+
+  public static final String EXCEPTION_TEST_INSERTION_REQUIRES_AN_EXISTING_DATA_PARTITION_FOR_ARG_AT_ARG_A5AABFF2 =
+      "Test insertion requires an existing data partition for %s at %s";
+
+  public static final String EXCEPTION_INVALID_TEST_INSERTION_ACKNOWLEDGEMENT_FROM_ARG_E2F722A6 =
+      "Invalid test insertion acknowledgement from %s";
+
+  public static final String MESSAGE_TEST_INSERTION_TARGET_REGION_DOES_NOT_EXIST_A4645EC1 =
+      "Test insertion target region does not exist";
+
+  public static final String MESSAGE_TEST_INSERTION_ACCEPTS_ONLY_INSERTION_PLANS_TARGETING_DATA_REGIONS_319E02A6 =
+      "Test insertion accepts only insertion plans targeting data regions";
+
+  public static final String EXCEPTION_TEST_INSERTION_REQUIRES_AN_EXISTING_DATABASE_FOR_EVERY_DEVICE_22548137 =
+      "Test insertion requires an existing database for every device";
+
+  public static final String EXCEPTION_TEST_INSERTION_HAS_NO_EXECUTABLE_INSERTION_PLAN_803B3A76 =
+      "Test insertion has no executable insertion plan";
+
+  public static final String EXCEPTION_TEST_INSERTION_REQUIRES_EXISTING_SCHEMA_DEVICES_AND_ATTRIBUTES_METADATA_CHANGES_ARE_NOT_ALLOWED_8CF4EF1B =
+      "Test insertion requires existing schema, devices and attributes; metadata changes are not allowed";
   public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89 = "Query attempt %s is closed.";
   public static final String EXCEPTION_QUERY_ATTEMPT_ARG_ADMISSION_EXPIRED_DEADLINE_ARG_NS_NOW_ARG_NS_16A9846C = "Query attempt %s admission expired: deadline=%d ns, now=%d ns.";
   public static final String EXCEPTION_INVALID_QUERY_ADMISSION_ISSUER_FOR_ATTEMPT_ARG_9D1C4E9C = "Invalid query admission issuer for attempt %s.";

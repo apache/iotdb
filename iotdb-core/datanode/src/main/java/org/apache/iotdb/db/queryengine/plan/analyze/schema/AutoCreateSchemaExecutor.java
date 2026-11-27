@@ -84,6 +84,9 @@ class AutoCreateSchemaExecutor {
   }
 
   private ExecutionResult executeStatement(Statement statement, MPPQueryContext context) {
+    if (context != null) {
+      context.checkSchemaModificationAllowed();
+    }
 
     return coordinator.executeForTreeModel(
         statement,

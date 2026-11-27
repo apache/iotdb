@@ -20,6 +20,27 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+
+  public static final String EXCEPTION_TEST_INSERTION_REQUIRES_AN_EXISTING_DATA_PARTITION_FOR_ARG_AT_ARG_A5AABFF2 =
+      "测试写入要求设备 %s 在时间 %s 的数据分区已存在";
+
+  public static final String EXCEPTION_INVALID_TEST_INSERTION_ACKNOWLEDGEMENT_FROM_ARG_E2F722A6 =
+      "来自 %s 的测试写入确认无效";
+
+  public static final String MESSAGE_TEST_INSERTION_TARGET_REGION_DOES_NOT_EXIST_A4645EC1 =
+      "测试写入的目标 Region 不存在";
+
+  public static final String MESSAGE_TEST_INSERTION_ACCEPTS_ONLY_INSERTION_PLANS_TARGETING_DATA_REGIONS_319E02A6 =
+      "测试写入仅接受以 DataRegion 为目标的写入计划";
+
+  public static final String EXCEPTION_TEST_INSERTION_REQUIRES_AN_EXISTING_DATABASE_FOR_EVERY_DEVICE_22548137 =
+      "测试写入要求每个设备所属的数据库已存在";
+
+  public static final String EXCEPTION_TEST_INSERTION_HAS_NO_EXECUTABLE_INSERTION_PLAN_803B3A76 =
+      "测试写入没有可执行的写入计划";
+
+  public static final String EXCEPTION_TEST_INSERTION_REQUIRES_EXISTING_SCHEMA_DEVICES_AND_ATTRIBUTES_METADATA_CHANGES_ARE_NOT_ALLOWED_8CF4EF1B =
+      "测试写入要求 schema、设备和属性已存在；不允许修改元数据";
   public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89 = "查询执行轮次 %s 已关闭。";
   public static final String EXCEPTION_QUERY_ATTEMPT_ARG_ADMISSION_EXPIRED_DEADLINE_ARG_NS_NOW_ARG_NS_16A9846C = "查询执行轮次 %s 的接收凭证已过期：截止时间=%d ns，当前时间=%d ns。";
   public static final String EXCEPTION_INVALID_QUERY_ADMISSION_ISSUER_FOR_ATTEMPT_ARG_9D1C4E9C = "查询执行轮次 %s 的接收凭证签发节点进程不匹配。";

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
@@ -208,6 +209,24 @@ public class MPPQueryContext implements IAuditEntity {
   private final Set<ExternalTsFileQueryResource> externalTsFileQueryResources =
       ConcurrentHashMap.newKeySet();
   private final AtomicInteger externalTsFileQueryResourceIndex = new AtomicInteger();
+
+  private boolean testInsert;
+
+  public boolean isTestInsert() {
+    return testInsert;
+  }
+
+  public void setTestInsert(boolean testInsert) {
+    this.testInsert = testInsert;
+  }
+
+  public void checkSchemaModificationAllowed() {
+    if (testInsert) {
+      throw new SemanticException(
+          DataNodeQueryMessages
+              .EXCEPTION_TEST_INSERTION_REQUIRES_EXISTING_SCHEMA_DEVICES_AND_ATTRIBUTES_METADATA_CHANGES_ARE_NOT_ALLOWED_8CF4EF1B);
+    }
+  }
 
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
