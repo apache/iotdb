@@ -167,7 +167,7 @@ public class ThriftServerBufferReclamationTest {
             "test-service-thread",
             InetAddress.getLoopbackAddress().getHostAddress(),
             port,
-            4,
+            Math.max(4, Runtime.getRuntime().availableProcessors()),
             1,
             null,
             false,
@@ -315,7 +315,8 @@ public class ThriftServerBufferReclamationTest {
       usedMemoryInBytes.addAndGet(-sizeInBytes);
     }
 
-    private long getUsedMemoryInBytes() {
+    @Override
+    public long getUsedMemoryInBytes() {
       return usedMemoryInBytes.get();
     }
 
