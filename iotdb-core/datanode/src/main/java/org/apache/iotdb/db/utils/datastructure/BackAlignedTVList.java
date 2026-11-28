@@ -31,7 +31,12 @@ public class BackAlignedTVList extends QuickAlignedTVList {
   }
 
   BackAlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
-    super(types, initializeValueColumns);
+    this(types, initializeValueColumns, 0);
+  }
+
+  BackAlignedTVList(
+      List<TSDataType> types, boolean initializeValueColumns, int preallocatedBlockNum) {
+    super(types, initializeValueColumns, preallocatedBlockNum);
     policy = new BackwardSort(this);
   }
 

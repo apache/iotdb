@@ -59,12 +59,14 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.RandomAccess;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -84,6 +86,25 @@ public abstract class AlignedTVList extends TVList {
   // Data types of this aligned tvList
   protected List<TSDataType> dataTypes;
 
+  /**
+   * Capacity reserved by a column container on its first materialization. 0 means no
+   * pre-allocation.
+   */
+  private int preallocatedBlockNum;
+
+  /**
+   * Shared read-only view used by every column that has never been written. It reports the current
+   * block count and reads every block as null, so such a column costs no container object and no
+   * slot array; the column is upgraded to a real {@link LazyBlockList} on its first non-null write.
+   */
+  private final List<Object> emptyColumnView = new EmptyColumnView();
+
+  // Type interfaces of dataTypes, resolved once per column. writeCell resolves the Type of every
+  // written cell, so keeping one reference per column removes an enum switch from that loop. Kept
+  // in sync by the constructor and extendColumns, the only places where dataTypes changes; null
+  // marks a slot whose column does not exist.
+  private Type[] columnTypes;
+
   // Record total memory size of binary column
   protected long[] memoryBinaryChunkSize;
 
@@ -92,6 +113,29 @@ public abstract class AlignedTVList extends TVList {
   private long materializedValueArrayMemCost;
   private long materializedBitmapMemoryCost;
   private long arrayMemCostWithoutPrimitiveArraysAndIndex;
+
+  // Cached result of calculateContainerRamCost(null). Structural changes are rare (one per block or
+  // per new column) compared with writes, so invalidating this cache on structural changes keeps
+  // the per-write memory reconciliation O(1) instead of re-estimating every column.
+  private long structureRamCost;
+  private boolean structureRamCostDirty = true;
+
+  // Per-column state of the block that is currently being appended to. Because rows are
+  // append-only,
+  // the last row a column wrote is enough to derive its nulls: every row between two writes of the
+  // same column in the same block is null, and the unwritten tail is materialized when the block
+  // closes or before the block is read. One element per column replaces the previous long epoch
+  // plus the growable column-index array. An int is used instead of a narrower marker because
+  // PrimitiveArrayManager.ARRAY_SIZE is the configurable primitive_array_size with no documented
+  // upper bound, so a row index in the open block does not always fit in a short.
+  private int[] blockLastRow;
+  // Columns that have at least one materialized value array in the open block, one bit per column.
+  // This is column-level state, unlike the row-level null markers in bitMaps. touchedColumnCount is
+  // maintained on mark/clear so the write path never has to scan the bitset.
+  private BitMap touchedColumns;
+  private int touchedColumnCount;
+  // Whether this list may contain a null value at all. When false, readers skip all null handling.
+  private boolean hasNull;
 
   /**
    * A fully prepared partial clone. All allocations and validations are completed before this plan
@@ -159,37 +203,102 @@ public abstract class AlignedTVList extends TVList {
   private final AlignedTVList outer = this;
 
   AlignedTVList(List<TSDataType> types) {
-    this(types, true);
+    this(types, true, 0);
   }
 
   AlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
+    this(types, initializeValueColumns, 0);
+  }
+
+  AlignedTVList(List<TSDataType> types, boolean initializeValueColumns, int preallocatedBlockNum) {
     super();
+    this.preallocatedBlockNum = Math.max(0, preallocatedBlockNum);
     dataTypes = types;
+    columnTypes = resolveColumnTypes(types);
     memoryBinaryChunkSize = new long[dataTypes.size()];
     materializedValueArrayCounts = new int[dataTypes.size()];
+    blockLastRow = new int[dataTypes.size()];
+    touchedColumns = new BitMap(dataTypes.size());
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
-      values.add(initializeValueColumns ? new ArrayList<>(getDefaultArrayNum()) : null);
+      // A wide device owns many columns but writes only a few of them, so every column starts on a
+      // shared read-only view and is upgraded to a real container by its first non-null write.
+      values.add(initializeValueColumns ? emptyColumnView : null);
     }
     // arrayMemCostWithoutPrimitiveArrays depends on per-column value arrays, so values must be
     // initialized before computing it
     refreshArrayMemCostWithoutPrimitiveArrays();
   }
 
+  /** Retained memory of the shared view, which is allocated once per list. */
+  private static final long EMPTY_VIEW_RAM_COST =
+      RamUsageEstimator.shallowSizeOfInstance(EmptyColumnView.class);
+
+  /** Retained memory of the shared view of the unwritten columns. */
+  static long emptyViewRamCost() {
+    return EMPTY_VIEW_RAM_COST;
+  }
+
+  /** Read-only view of a column that has never been written; see {@link #emptyColumnView}. */
+  private final class EmptyColumnView extends AbstractList<Object> implements RandomAccess {
+
+    @Override
+    public int size() {
+      return timestamps.size();
+    }
+
+    @Override
+    public Object get(int index) {
+      Objects.checkIndex(index, timestamps.size());
+      return null;
+    }
+
+    @Override
+    public Object set(int index, Object element) {
+      // Writing must upgrade the column first, which only the enclosing list can do.
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void add(int index, Object element) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clear() {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  /** Resolve the Type interface of every column, leaving a null slot for a non-existent column. */
+  private static Type[] resolveColumnTypes(List<TSDataType> types) {
+    Type[] resolved = new Type[types.size()];
+    for (int i = 0; i < resolved.length; i++) {
+      TSDataType dataType = types.get(i);
+      resolved[i] = dataType == null ? null : Type.fromTsDataType(dataType);
+    }
+    return resolved;
+  }
+
   public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
-    return newAlignedList(dataTypes, true);
+    return newAlignedList(dataTypes, true, 0);
   }
 
   public static AlignedTVList newAlignedList(
       List<TSDataType> dataTypes, boolean initializeValueColumns) {
+    return newAlignedList(dataTypes, initializeValueColumns, 0);
+  }
+
+  public static AlignedTVList newAlignedList(
+      List<TSDataType> dataTypes, boolean initializeValueColumns, int preallocatedBlockNum) {
     switch (TVLIST_SORT_ALGORITHM) {
       case QUICK:
-        return new QuickAlignedTVList(dataTypes, initializeValueColumns);
+        return new QuickAlignedTVList(dataTypes, initializeValueColumns, preallocatedBlockNum);
       case BACKWARD:
-        return new BackAlignedTVList(dataTypes, initializeValueColumns);
+        return new BackAlignedTVList(dataTypes, initializeValueColumns, preallocatedBlockNum);
       default:
-        return new TimAlignedTVList(dataTypes, initializeValueColumns);
+        return new TimAlignedTVList(dataTypes, initializeValueColumns, preallocatedBlockNum);
     }
   }
 
@@ -244,6 +353,18 @@ public abstract class AlignedTVList extends TVList {
     alignedTvList.timeColDeletedMap = this.timeColDeletedMap;
     alignedTvList.timeDeletedCnt = this.timeDeletedCnt;
     alignedTvList.materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps, null);
+    // Keep the per-column open-block progress so the projected list reports the same nulls as the
+    // source for the block that is still being appended to.
+    alignedTvList.hasNull = hasNull;
+    alignedTvList.blockLastRow = new int[columnIndexList.size()];
+    alignedTvList.touchedColumns = new BitMap(columnIndexList.size());
+    for (int i = 0; i < columnIndexList.size(); i++) {
+      int sourceColumnIndex = columnIndexList.get(i);
+      if (sourceColumnIndex != -1 && isTouched(sourceColumnIndex)) {
+        alignedTvList.blockLastRow[i] = blockLastRow[sourceColumnIndex];
+        alignedTvList.markTouched(i);
+      }
+    }
     for (int i = 0; i < columnIndexList.size(); i++) {
       int columnIndex = columnIndexList.get(i);
       if (columnIndex != -1 && values.get(i) != null) {
@@ -270,6 +391,10 @@ public abstract class AlignedTVList extends TVList {
         Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
     cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
     cloneList.materializedBitmapMemoryCost = materializedBitmapMemoryCost;
+    cloneList.hasNull = hasNull;
+    cloneList.blockLastRow = Arrays.copyOf(blockLastRow, blockLastRow.length);
+    cloneList.touchedColumns = touchedColumns.clone();
+    cloneList.touchedColumnCount = touchedColumnCount;
     return cloneList;
   }
 
@@ -282,6 +407,10 @@ public abstract class AlignedTVList extends TVList {
     cloneList.materializedValueArrayCounts =
         Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
     cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
+    cloneList.hasNull = hasNull;
+    cloneList.blockLastRow = Arrays.copyOf(blockLastRow, blockLastRow.length);
+    cloneList.touchedColumns = touchedColumns.clone();
+    cloneList.touchedColumnCount = touchedColumnCount;
     return cloneList;
   }
 
@@ -386,6 +515,10 @@ public abstract class AlignedTVList extends TVList {
         // Defensive: prepareMovePlan already validated that every moved column is materialized.
         continue;
       }
+      if (columnValues == emptyColumnView) {
+        // An unwritten column keeps the target's own view instead of the source instance.
+        continue;
+      }
       plan.cloneList.values.set(i, columnValues);
       values.set(i, null);
       List<BitMap> columnBitMaps = bitMaps == null ? null : bitMaps.get(i);
@@ -406,9 +539,23 @@ public abstract class AlignedTVList extends TVList {
 
     materializedBitmapMemoryCost = plan.sourceBitmapMemoryCost;
     plan.cloneList.materializedBitmapMemoryCost = plan.cloneBitmapMemoryCost;
+    // Both lists address the same rows, so the open-block progress is identical until the source
+    // releases a moved column.
+    plan.cloneList.hasNull = hasNull;
+    plan.cloneList.blockLastRow = Arrays.copyOf(blockLastRow, blockLastRow.length);
+    plan.cloneList.touchedColumns = touchedColumns.clone();
+    plan.cloneList.touchedColumnCount = touchedColumnCount;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (!plan.retainedColumns.contains(i)) {
+        clearTouched(i);
+        blockLastRow[i] = 0;
+      }
+    }
     // Refresh the cached per-block cost after the retained columns changed on both lists.
     refreshArrayMemCostWithoutPrimitiveArrays();
     plan.cloneList.refreshArrayMemCostWithoutPrimitiveArrays();
+    invalidateStructureRamCost();
+    plan.cloneList.invalidateStructureRamCost();
   }
 
   /**
@@ -445,6 +592,8 @@ public abstract class AlignedTVList extends TVList {
       }
       values.set(i, null);
       memoryBinaryChunkSize[i] = 0;
+      clearTouched(i);
+      blockLastRow[i] = 0;
 
       // Release bitmap memory for non-query columns
       if (bitMaps != null && bitMaps.get(i) != null) {
@@ -463,6 +612,7 @@ public abstract class AlignedTVList extends TVList {
     materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps, columnsToKeep);
     // Refresh the cached per-block cost after releasing columns
     refreshArrayMemCostWithoutPrimitiveArrays();
+    invalidateStructureRamCost();
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -480,12 +630,7 @@ public abstract class AlignedTVList extends TVList {
         markNullValue(i, arrayIndex, elementIndex);
         continue;
       }
-      TSDataType dataType = dataTypes.get(i);
-      Object valueArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
-      Type.fromTsDataType(dataType).addValue(elementIndex, columnValue, valueArray);
-      if (dataType.isBinary()) {
-        memoryBinaryChunkSize[i] += getBinarySize((Binary) columnValue);
-      }
+      writeCell(i, arrayIndex, elementIndex, columnValue);
     }
     if (indices != null) {
       indices.get(arrayIndex)[elementIndex] = rowCount;
@@ -495,6 +640,50 @@ public abstract class AlignedTVList extends TVList {
       if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
         sorted = false;
         segmentMovedMap = null;
+        invalidateStructureRamCost();
+      } else {
+        seqRowCount++;
+      }
+    }
+  }
+
+  /**
+   * Write one aligned row whose value array only contains the columns being written.
+   *
+   * @param destColumns {@code destColumns[i]} is the column index in this list that receives {@code
+   *     value[i]}. This avoids allocating and scanning a device-wide array when a write only
+   *     touches a few measurement columns.
+   */
+  public synchronized void putAlignedValue(long timestamp, Object[] value, int[] destColumns) {
+    checkExpansion();
+    int arrayIndex = rowCount / ARRAY_SIZE;
+    int elementIndex = rowCount % ARRAY_SIZE;
+    maxTime = Math.max(maxTime, timestamp);
+    minTime = Math.min(minTime, timestamp);
+    timestamps.get(arrayIndex)[elementIndex] = timestamp;
+    for (int i = 0; i < destColumns.length; i++) {
+      int columnIndex = destColumns[i];
+      Object columnValue = value[i];
+      if (columnValue == null) {
+        markNullValue(columnIndex, arrayIndex, elementIndex);
+        continue;
+      }
+      writeCell(columnIndex, arrayIndex, elementIndex, columnValue);
+    }
+    if (destColumns.length < dataTypes.size()) {
+      // The row leaves at least one column unwritten, so its cell is null even though no bitmap
+      // update happened above (for example an all-null row).
+      hasNull = true;
+    }
+    if (indices != null) {
+      indices.get(arrayIndex)[elementIndex] = rowCount;
+    }
+    rowCount++;
+    if (sorted) {
+      if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+        sorted = false;
+        segmentMovedMap = null;
+        invalidateStructureRamCost();
       } else {
         seqRowCount++;
       }
@@ -615,22 +804,32 @@ public abstract class AlignedTVList extends TVList {
     if (newDataTypes.isEmpty()) {
       return;
     }
+    int existingBlockCount = timestamps.size();
+    int firstNewColumn = dataTypes.size();
     for (TSDataType dataType : newDataTypes) {
-      List<Object> columnValue = new ArrayList<>(timestamps.size());
-      for (int i = 0; i < timestamps.size(); i++) {
-        // New columns contain only implicit nulls until their first non-null write.
-        columnValue.add(null);
-      }
+      // The new column is null for every block that is already open; it stays on the shared view
+      // until its first non-null write.
       if (bitMaps != null) {
         bitMaps.add(null);
       }
-      values.add(columnValue);
+      values.add(emptyColumnView);
       dataTypes.add(dataType);
     }
     // Recompute the full-width memory estimate only once for the entire batch.
     refreshArrayMemCostWithoutPrimitiveArrays();
+    columnTypes = Arrays.copyOf(columnTypes, dataTypes.size());
+    for (int i = firstNewColumn; i < columnTypes.length; i++) {
+      columnTypes[i] = Type.fromTsDataType(dataTypes.get(i));
+    }
     memoryBinaryChunkSize = Arrays.copyOf(memoryBinaryChunkSize, dataTypes.size());
     materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
+    blockLastRow = Arrays.copyOf(blockLastRow, dataTypes.size());
+    if (touchedColumns.getSize() < dataTypes.size()) {
+      BitMap grownTouched = new BitMap(dataTypes.size());
+      BitMap.copyOfRange(touchedColumns, 0, grownTouched, 0, touchedColumns.getSize());
+      touchedColumns = grownTouched;
+    }
+    invalidateStructureRamCost();
   }
 
   private Object getObjectByValueIndex(int rowIndex, int columnIndex) {
@@ -789,18 +988,144 @@ public abstract class AlignedTVList extends TVList {
     if (values.get(columnIndex).get(arrayIndex) == null) {
       return true;
     }
+    if (!hasNull) {
+      return false;
+    }
+    int elementIndex = unsortedRowIndex % ARRAY_SIZE;
+    if (arrayIndex == timestamps.size() - 1 && elementIndex >= blockLastRow[columnIndex]) {
+      // The open block's unwritten tail is not materialized until the block closes or is read.
+      return true;
+    }
     if (bitMaps == null
         || bitMaps.get(columnIndex) == null
         || bitMaps.get(columnIndex).get(arrayIndex) == null) {
       return false;
     }
-    int elementIndex = unsortedRowIndex % ARRAY_SIZE;
     List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
     return columnBitMaps.get(arrayIndex).isMarked(elementIndex);
   }
 
+  private boolean isTouched(int columnIndex) {
+    return touchedColumns.isMarked(columnIndex);
+  }
+
+  private void markTouched(int columnIndex) {
+    if (!touchedColumns.isMarked(columnIndex)) {
+      touchedColumns.mark(columnIndex);
+      touchedColumnCount++;
+    }
+  }
+
+  private void clearTouched(int columnIndex) {
+    if (touchedColumns.isMarked(columnIndex)) {
+      touchedColumns.unmark(columnIndex);
+      touchedColumnCount--;
+    }
+  }
+
+  /** Mark the rows [from, toExclusive) of the open block as null for one column. */
+  private void markNullRange(int columnIndex, int arrayIndex, int from, int toExclusive) {
+    if (from >= toExclusive) {
+      return;
+    }
+    getBitMap(columnIndex, arrayIndex).markRange(from, toExclusive - from);
+    hasNull = true;
+  }
+
+  /**
+   * Materialize the unwritten tail of every column that has a value array in the open block. The
+   * tail is the null range [last written row, upToExclusive); it is materialized when the block
+   * closes and before the block is encoded for flush or serialized to WAL.
+   *
+   * <p>This method mutates the bitmap containers, so it must not be called from a query read path:
+   * a concurrent flush or query may release or move columns of this list while a reader runs.
+   */
+  private void materializeOpenBlockTails(int upToExclusive) {
+    int arrayIndex = timestamps.size() - 1;
+    if (arrayIndex < 0) {
+      return;
+    }
+    // Only the rows that already exist in the open block may be marked. Marking rows that will be
+    // appended later would hide the values of the following writes.
+    int openBlockRows = Math.min(rowCount - arrayIndex * ARRAY_SIZE, ARRAY_SIZE);
+    int limit = Math.min(upToExclusive, openBlockRows);
+    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      if (!isTouched(columnIndex) || values.get(columnIndex) == null) {
+        // A released or moved column has no container left to materialize.
+        continue;
+      }
+      int lastRow = blockLastRow[columnIndex];
+      if (lastRow < limit) {
+        markNullRange(columnIndex, arrayIndex, lastRow, limit);
+      }
+    }
+  }
+
+  private void resetOpenBlockState() {
+    if (touchedColumnCount > 0) {
+      Arrays.fill(blockLastRow, 0);
+      touchedColumns.reset();
+      touchedColumnCount = 0;
+    }
+  }
+
+  /**
+   * Write one non-null cell and materialize the null rows this column skipped since its previous
+   * write in the same block.
+   */
+  private void writeCell(int columnIndex, int arrayIndex, int elementIndex, Object columnValue) {
+    TSDataType dataType = dataTypes.get(columnIndex);
+    Object valueArray = getOrCreateValueArray(columnIndex, arrayIndex, elementIndex);
+    columnTypes[columnIndex].addValue(elementIndex, columnValue, valueArray);
+    if (dataType.isBinary()) {
+      memoryBinaryChunkSize[columnIndex] += getBinarySize((Binary) columnValue);
+    }
+    int lastRow = blockLastRow[columnIndex];
+    if (lastRow != 0 && lastRow < elementIndex) {
+      markNullRange(columnIndex, arrayIndex, lastRow, elementIndex);
+    }
+    blockLastRow[columnIndex] = elementIndex + 1;
+    markTouched(columnIndex);
+    if (touchedColumnCount < dataTypes.size()) {
+      // A column without a value array in this block is entirely null.
+      hasNull = true;
+    }
+  }
+
+  /**
+   * Record the rows [elementIdx, elementIdx + len) written for the columns of a batch write. Null
+   * cells were already masked by {@link #markNullBitmapRange}, so only the per-column progress and
+   * the gaps before the batch need to be recorded here.
+   */
+  private void recordWrittenSegment(int[] destColumns, int arrayIndex, int elementIdx, int len) {
+    int columnCount = getColumnCount(destColumns);
+    if (columnCount < dataTypes.size()) {
+      // Rows that do not write every column have null cells even if no bitmap was updated.
+      hasNull = true;
+    }
+    for (int j = 0; j < columnCount; j++) {
+      int columnIndex = getColumnIndex(destColumns, j);
+      if (values.get(columnIndex).get(arrayIndex) == null) {
+        continue;
+      }
+      int lastRow = blockLastRow[columnIndex];
+      if (lastRow != 0 && lastRow < elementIdx) {
+        markNullRange(columnIndex, arrayIndex, lastRow, elementIdx);
+      }
+      blockLastRow[columnIndex] = elementIdx + len;
+    }
+  }
+
   public List<List<Object>> getValues() {
     return values;
+  }
+
+  /**
+   * Materialize the null tails of the open block so that readers which use the raw value and bitmap
+   * containers (e.g. the flush encoder) see the same representation as for closed blocks.
+   */
+  public synchronized void materializeOpenBlockForRead() {
+    materializeOpenBlockTails(rowCount);
   }
 
   public BitMap getSegmentMovedMap() {
@@ -809,6 +1134,9 @@ public abstract class AlignedTVList extends TVList {
 
   protected void updateSegmentMovedMap() {
     segmentMovedMap = null;
+    // Sorting may have materialized the lazily created indices container (and this method may
+    // materialize the moved-segment bitmap), both of which are charged by the container cost.
+    invalidateStructureRamCost();
     if (indices == null) {
       return;
     }
@@ -963,8 +1291,15 @@ public abstract class AlignedTVList extends TVList {
    * or delete wrong rows.
    */
   public synchronized void deleteColumn(int columnIndex) {
+    hasNull = true;
+    // A removed column is null in every row and is never written again: drop its open-block
+    // progress, otherwise readers and encoders keep treating it as a column that is still being
+    // appended to (same bookkeeping as releaseNonQueryColumns).
+    clearTouched(columnIndex);
+    blockLastRow[columnIndex] = 0;
     List<Object> columnValues = values.get(columnIndex);
     if (columnValues == null) {
+      invalidateStructureRamCost();
       return;
     }
     for (int arrayIndex = 0; arrayIndex < columnValues.size(); arrayIndex++) {
@@ -972,6 +1307,7 @@ public abstract class AlignedTVList extends TVList {
         getBitMap(columnIndex, arrayIndex).markAll();
       }
     }
+    invalidateStructureRamCost();
   }
 
   protected Object cloneValue(TSDataType type, Object value) {
@@ -1020,8 +1356,29 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
 
-      for (Object valueArray : columnValues) {
-        cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
+      if (columnValues == emptyColumnView) {
+        // The shared view is per list: the clone keeps its own instance and nothing is
+        // materialized.
+        hasBitMapsToMove |= bitMaps != null && bitMaps.get(i) != null;
+        cloneList.values.set(i, cloneList.emptyColumnView);
+        continue;
+      }
+
+      if (columnValues instanceof LazyBlockList) {
+        // Copy the structure (block count and allocated slots) as well, otherwise the deep clone
+        // would materialize one reference per block and retain a different container size.
+        LazyBlockList<Object> source = (LazyBlockList<Object>) columnValues;
+        LazyBlockList<Object> copy = source.copyStructure();
+        int blocks = Math.min(source.size(), source.materializedLength());
+        for (int block = 0; block < blocks; block++) {
+          copy.set(block, cloneValue(dataTypes.get(i), source.get(block)));
+        }
+        cloneList.values.set(i, copy);
+      } else {
+        for (Object valueArray : columnValues) {
+          Object clonedValueArray = cloneValue(dataTypes.get(i), valueArray);
+          cloneList.values.get(i).add(clonedValueArray);
+        }
       }
       // Clone bitmap in columnIndex
       if (bitMaps != null && bitMaps.get(i) != null) {
@@ -1033,9 +1390,18 @@ public abstract class AlignedTVList extends TVList {
           }
         }
         if (cloneList.bitMaps.get(i) == null) {
-          List<BitMap> cloneColumnBitMaps = new ArrayList<>();
-          for (BitMap bitMap : columnBitMaps) {
-            cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
+          LazyBlockList<BitMap> cloneColumnBitMaps;
+          int blocks;
+          if (columnBitMaps instanceof LazyBlockList) {
+            cloneColumnBitMaps = ((LazyBlockList<BitMap>) columnBitMaps).copyStructure();
+            blocks = Math.min(columnBitMaps.size(), cloneColumnBitMaps.materializedLength());
+          } else {
+            cloneColumnBitMaps = new LazyBlockList<>(columnBitMaps.size(), 0);
+            blocks = columnBitMaps.size();
+          }
+          for (int block = 0; block < blocks; block++) {
+            BitMap bitMap = columnBitMaps.get(block);
+            cloneColumnBitMaps.set(block, bitMap == null ? null : bitMap.clone());
           }
           cloneList.bitMaps.set(i, cloneColumnBitMaps);
         }
@@ -1049,13 +1415,26 @@ public abstract class AlignedTVList extends TVList {
         cloneList.bitMaps.add(null);
       }
     }
+    cloneList.invalidateStructureRamCost();
+  }
+
+  @Override
+  protected void checkExpansion() {
+    if ((rowCount % ARRAY_SIZE) == 0) {
+      // Closing the previous block materializes its unwritten tails, so the closed block can be
+      // read
+      // with the plain bitmap representation.
+      materializeOpenBlockTails(ARRAY_SIZE);
+      resetOpenBlockState();
+    }
+    super.checkExpansion();
   }
 
   @Override
   protected void clearValue() {
     for (int i = 0; i < dataTypes.size(); i++) {
       List<Object> columnValues = values.get(i);
-      if (columnValues != null) {
+      if (columnValues != null && columnValues != emptyColumnView) {
         for (Object dataArray : columnValues) {
           if (dataArray != null) {
             PrimitiveArrayManager.release(dataArray);
@@ -1067,6 +1446,11 @@ public abstract class AlignedTVList extends TVList {
     }
     Arrays.fill(materializedValueArrayCounts, 0);
     materializedValueArrayMemCost = 0;
+    Arrays.fill(blockLastRow, 0);
+    touchedColumns.reset();
+    touchedColumnCount = 0;
+    hasNull = false;
+    invalidateStructureRamCost();
   }
 
   @Override
@@ -1081,6 +1465,7 @@ public abstract class AlignedTVList extends TVList {
     }
     materializedBitmapMemoryCost = 0;
     segmentMovedMap = null;
+    invalidateStructureRamCost();
   }
 
   @Override
@@ -1100,12 +1485,15 @@ public abstract class AlignedTVList extends TVList {
                     .EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6,
                 i));
       }
-      columnValues.add(null);
+      if (columnValues != emptyColumnView) {
+        // The shared view follows the block count by itself.
+        columnValues.add(null);
+      }
       if (bitMaps != null && bitMaps.get(i) != null) {
         bitMaps.get(i).add(null);
-        materializedBitmapMemoryCost += bitmapReferenceRamCost();
       }
     }
+    invalidateStructureRamCost();
   }
 
   /**
@@ -1158,12 +1546,32 @@ public abstract class AlignedTVList extends TVList {
   @Override
   public synchronized void putAlignedValues(
       long[] time, Object[] value, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
+    putAlignedValues(time, value, bitMaps, null, start, end, results);
+  }
+
+  /**
+   * Write aligned rows whose value and bitmap arrays only contain the columns being written.
+   *
+   * @param destColumns {@code destColumns[i]} is the column index in this list that receives {@code
+   *     value[i]} and {@code bitMaps[i]}. When it is null, the arrays are indexed directly by the
+   *     device-wide column index.
+   */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public synchronized void putAlignedValues(
+      long[] time,
+      Object[] value,
+      BitMap[] bitMaps,
+      int[] destColumns,
+      int start,
+      int end,
+      TSStatus[] results) {
     checkExpansion();
     int idx = start;
 
     updateMinMaxTimeAndSorted(time, start, end);
     if (!sorted) {
       segmentMovedMap = null;
+      invalidateStructureRamCost();
     }
 
     while (idx < end) {
@@ -1174,37 +1582,51 @@ public abstract class AlignedTVList extends TVList {
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-        arrayCopy(value, bitMaps, results, idx, arrayIdx, elementIdx, inputRemaining);
+        arrayCopy(value, bitMaps, results, destColumns, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
           if (indices != null) {
             indices.get(arrayIdx)[elementIdx + i] = rowCount;
           }
           rowCount++;
         }
-        markNullBitmapRange(value, bitMaps, results, idx, elementIdx, inputRemaining, arrayIdx);
+        markNullBitmapRange(
+            value, bitMaps, results, destColumns, idx, elementIdx, inputRemaining, arrayIdx);
+        recordWrittenSegment(destColumns, arrayIdx, elementIdx, inputRemaining);
         break;
       } else {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-        arrayCopy(value, bitMaps, results, idx, arrayIdx, elementIdx, internalRemaining);
+        arrayCopy(
+            value, bitMaps, results, destColumns, idx, arrayIdx, elementIdx, internalRemaining);
         for (int i = 0; i < internalRemaining; i++) {
           if (indices != null) {
             indices.get(arrayIdx)[elementIdx + i] = rowCount;
           }
           rowCount++;
         }
-        markNullBitmapRange(value, bitMaps, results, idx, elementIdx, internalRemaining, arrayIdx);
+        markNullBitmapRange(
+            value, bitMaps, results, destColumns, idx, elementIdx, internalRemaining, arrayIdx);
+        recordWrittenSegment(destColumns, arrayIdx, elementIdx, internalRemaining);
         idx += internalRemaining;
         checkExpansion();
       }
     }
   }
 
+  private int getColumnCount(int[] destColumns) {
+    return destColumns == null ? values.size() : destColumns.length;
+  }
+
+  private static int getColumnIndex(int[] destColumns, int position) {
+    return destColumns == null ? position : destColumns[position];
+  }
+
   private void markNullBitmapRange(
       Object[] inputValues,
       BitMap[] bitMaps,
       TSStatus[] results,
+      int[] destColumns,
       int idx,
       int elementIdx,
       int len,
@@ -1216,27 +1638,32 @@ public abstract class AlignedTVList extends TVList {
             ? buildResultBitMap(results, idx, elementIdx, len)
             : null;
 
-    for (int j = 0; j < inputValues.length; j++) {
+    int columnCount = getColumnCount(destColumns);
+    for (int j = 0; j < columnCount; j++) {
+      int columnIndex = getColumnIndex(destColumns, j);
       // A null value array represents an entirely null block, so no bitmap is needed until the
       // block receives its first non-null value.
-      if (values.get(j).get(arrayIndex) == null) {
+      if (values.get(columnIndex).get(arrayIndex) == null) {
         continue;
       }
 
       /* Fast-path: column is entirely null */
       if (inputValues[j] == null) {
-        getBitMap(j, arrayIndex).markRange(elementIdx, len);
+        getBitMap(columnIndex, arrayIndex).markRange(elementIdx, len);
+        hasNull = true;
         continue;
       }
 
       /* 2.mask the column bitmap */
       if (bitMaps != null && bitMaps[j] != null && bitMaps[j].isRangeAnyMarked(idx, len)) {
-        getBitMap(j, arrayIndex).merge(bitMaps[j], idx, elementIdx, len);
+        getBitMap(columnIndex, arrayIndex).merge(bitMaps[j], idx, elementIdx, len);
+        hasNull = true;
       }
 
       /* 3. Overlay result bitmap (failure rows) */
       if (resultBitMap != null) {
-        getBitMap(j, arrayIndex).merge(resultBitMap, elementIdx & 7, elementIdx, len);
+        getBitMap(columnIndex, arrayIndex).merge(resultBitMap, elementIdx & 7, elementIdx, len);
+        hasNull = true;
       }
     }
   }
@@ -1279,22 +1706,25 @@ public abstract class AlignedTVList extends TVList {
       Object[] value,
       BitMap[] bitMaps,
       TSStatus[] results,
+      int[] destColumns,
       int idx,
       int arrayIndex,
       int elementIndex,
       int remaining) {
-    for (int i = 0; i < values.size(); i++) {
+    int columnCount = getColumnCount(destColumns);
+    for (int i = 0; i < columnCount; i++) {
       if (value[i] == null || !containsNonNullValue(bitMaps, results, i, idx, remaining)) {
         continue;
       }
-      Object targetArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
+      int columnIndex = getColumnIndex(destColumns, i);
+      Object targetArray = getOrCreateValueArray(columnIndex, arrayIndex, elementIndex);
       System.arraycopy(value[i], idx, targetArray, elementIndex, remaining);
 
-      if (dataTypes.get(i).isBinary()) {
+      if (dataTypes.get(columnIndex).isBinary()) {
         Binary[] binaryValues = (Binary[]) targetArray;
         // update raw size of Text chunk
         for (int valueIndex = 0; valueIndex < remaining; valueIndex++) {
-          memoryBinaryChunkSize[i] +=
+          memoryBinaryChunkSize[columnIndex] +=
               binaryValues[elementIndex + valueIndex] != null
                   ? getBinarySize(binaryValues[elementIndex + valueIndex])
                   : 0;
@@ -1328,12 +1758,23 @@ public abstract class AlignedTVList extends TVList {
     List<Object> columnValues = values.get(columnIndex);
     Object valueArray = columnValues.get(arrayIndex);
     if (valueArray == null) {
+      if (columnValues == emptyColumnView) {
+        // First non-null value of this column: upgrade the shared view to a real container.
+        columnValues = new LazyBlockList<>(timestamps.size(), preallocatedBlockNum);
+        values.set(columnIndex, columnValues);
+      }
+      // The slot is about to be backed by the container array, so the container grows.
+      long previousContainerCost = containerRamCost(columnValues);
       valueArray = getPrimitiveArraysByType(dataTypes.get(columnIndex));
       columnValues.set(arrayIndex, valueArray);
+      updateStructureRamCost(previousContainerCost, columnValues);
+      markTouched(columnIndex);
       materializedValueArrayCounts[columnIndex]++;
       materializedValueArrayMemCost += primitiveArrayMemCost(dataTypes.get(columnIndex));
       if (elementIndex > 0) {
+        // The column skipped the rows before its first value in this block.
         getBitMap(columnIndex, arrayIndex).markRange(0, elementIndex);
+        hasNull = true;
       }
     }
     return valueArray;
@@ -1356,21 +1797,21 @@ public abstract class AlignedTVList extends TVList {
         localBitMaps.add(null);
       }
       bitMaps = localBitMaps;
+      invalidateStructureRamCost();
     }
 
     // if the bitmap in columnIndex is null, init the bitmap of this column from the beginning
     if (bitMaps.get(columnIndex) == null) {
-      List<BitMap> columnBitMaps = new ArrayList<>(columnValues.size());
-      for (int i = 0; i < columnValues.size(); i++) {
-        columnBitMaps.add(null);
-      }
-      bitMaps.set(columnIndex, columnBitMaps);
-      materializedBitmapMemoryCost += (long) columnBitMaps.size() * bitmapReferenceRamCost();
+      // A bitmap column is mostly null, so its slots stay implicit like the value slots do.
+      bitMaps.set(columnIndex, new LazyBlockList<>(columnValues.size(), 0));
+      invalidateStructureRamCost();
     }
 
     // if the bitmap in arrayIndex is null, init the bitmap
     if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
+      long previousContainerCost = containerRamCost(bitMaps.get(columnIndex));
       bitMaps.get(columnIndex).set(arrayIndex, BitMap.createBitMapDynamically(ARRAY_SIZE));
+      updateStructureRamCost(previousContainerCost, bitMaps.get(columnIndex));
       materializedBitmapMemoryCost += bitmapRamCost();
     }
 
@@ -1378,6 +1819,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   private boolean markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
+    hasNull = true;
     List<Object> columnValues = values.get(columnIndex);
     if (columnValues == null || columnValues.get(arrayIndex) == null) {
       return false;
@@ -1428,7 +1870,16 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public synchronized long getStructureRamSize() {
-    return calculateContainerRamCost(null);
+    if (structureRamCostDirty) {
+      structureRamCost = calculateContainerRamCost(null);
+      structureRamCostDirty = false;
+    }
+    return structureRamCost;
+  }
+
+  /** Mark the cached container cost stale after a structural change. */
+  private void invalidateStructureRamCost() {
+    structureRamCostDirty = true;
   }
 
   public synchronized long getRamSize(Set<Integer> columnsToClone) {
@@ -1452,36 +1903,43 @@ public abstract class AlignedTVList extends TVList {
    * Calculate the one-time container memory retained by this list.
    *
    * <p>The outer N-wide containers (the {@code values}/{@code bitMaps} ArrayLists, the {@code
-   * dataTypes} list and the accounting arrays kept after a partial clone) are not charged anywhere
-   * else and are counted in full, including all their slot references.
+   * dataTypes} list, the {@code columnTypes} array and the accounting arrays kept after a partial
+   * clone) are not charged anywhere else and are counted in full, including all their slot
+   * references.
    *
-   * <p>For a retained column, the inner value list is charged with the references of all its slots
-   * (including null placeholders for blocks that were never materialized), so each slot reference
-   * is counted exactly once; the materialized primitive array payload and header are charged once
-   * per materialized block by {@code materializedValueArrayMemCost}. The timestamps/indices inner
-   * lists only contribute their list object and backing-array header here, since their primitive
-   * arrays are already charged per block by {@code
+   * <p>For a retained column, the inner container is charged with the slots it allocated, so each
+   * reference is counted exactly once; the materialized primitive array payload and header are
+   * charged once per materialized block by {@code materializedValueArrayMemCost}. A {@link
+   * LazyBlockList} keeps the null placeholders implicit and is charged for the slots it actually
+   * allocated, so a column that holds no value is charged for nothing but its container. The
+   * timestamps/indices inner lists only contribute their list object and backing-array header here,
+   * since their primitive arrays are already charged per block by {@code
    * alignedTvListArrayMemCostWithoutPrimitiveArrays}.
    */
   long calculateContainerRamCost(Set<Integer> retainedColumns) {
     long size = 0;
 
     size += listRamCostWithReferences(dataTypes);
+    size += RamUsageEstimator.sizeOfObjectArray(columnTypes.length);
     size += RamUsageEstimator.sizeOfLongArray(memoryBinaryChunkSize.length);
     size += RamUsageEstimator.sizeOfIntArray(materializedValueArrayCounts.length);
+    size += RamUsageEstimator.sizeOfIntArray(blockLastRow.length);
+    size += touchedColumns.ramBytesUsed();
     size += listRamCostWithoutReferences(timestamps);
     if (indices != null) {
       size += listRamCostWithoutReferences(indices);
     }
 
     size += listRamCostWithReferences(values);
+    // The shared view of the unwritten columns is a single object per list.
+    size += EMPTY_VIEW_RAM_COST;
     for (int i = 0; i < values.size(); i++) {
       if (retainedColumns != null && !retainedColumns.contains(i)) {
         continue;
       }
       List<Object> columnValues = values.get(i);
       if (columnValues != null) {
-        size += listRamCostWithReferences(columnValues);
+        size += containerRamCost(columnValues);
       }
     }
 
@@ -1493,14 +1951,42 @@ public abstract class AlignedTVList extends TVList {
         }
         List<BitMap> columnBitMaps = bitMaps.get(i);
         if (columnBitMaps != null) {
-          size += listRamCostWithoutReferences(columnBitMaps);
+          size += containerRamCost(columnBitMaps);
         }
       }
     }
     if (segmentMovedMap != null) {
       size += segmentMovedMap.ramBytesUsed();
     }
+    if (timeColDeletedMap != null) {
+      size += timeColDeletedMap.ramBytesUsed();
+    }
+    if (allValueColDeletedMap != null) {
+      size += allValueColDeletedMap.ramBytesUsed();
+    }
     return size;
+  }
+
+  /** Retained memory of one column container. */
+  private long containerRamCost(List<?> container) {
+    if (container instanceof LazyBlockList) {
+      return ((LazyBlockList<?>) container).ramCost();
+    }
+    if (container == emptyColumnView) {
+      // Shared by every unwritten column, so it is charged once for the whole list.
+      return 0L;
+    }
+    return listRamCostWithReferences(container);
+  }
+
+  /**
+   * Keep the cached container cost exact after one column slot materialized, without recomputing
+   * the whole list. A stale cache is recomputed later, so only a valid cache is adjusted.
+   */
+  private void updateStructureRamCost(long previousContainerCost, List<?> container) {
+    if (!structureRamCostDirty) {
+      structureRamCost += containerRamCost(container) - previousContainerCost;
+    }
   }
 
   static long listRamCostWithReferences(List<?> list) {
@@ -1527,7 +2013,7 @@ public abstract class AlignedTVList extends TVList {
       if (columnBitMaps == null) {
         continue;
       }
-      size += columnBitMaps.size() * bitmapReferenceRamCost();
+      // The reference array of the bitmap column is charged by calculateContainerRamCost.
       for (BitMap bitMap : columnBitMaps) {
         if (bitMap != null) {
           size += bitMap.ramBytesUsed();
@@ -1877,6 +2363,7 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    materializeOpenBlockTails(rowCount);
     WALWriteUtils.write(TSDataType.VECTOR, buffer);
     buffer.putInt(dataTypes.size());
     for (TSDataType dataType : dataTypes) {
@@ -1984,8 +2471,20 @@ public abstract class AlignedTVList extends TVList {
     }
 
     int blockCount = (rowCount + ARRAY_SIZE - 1) / ARRAY_SIZE;
-    // Preserve the dense fast path: one column without null blocks or bitmaps proves that every row
-    // has at least one value.
+    // The last allocated block is still append-only, so the rows a column has not written yet are
+    // implicit nulls that are not materialized in its bitmap. This method must not materialize
+    // them: it runs on the query thread while the flush process or another query can release or
+    // move columns of this list (which nulls their value and bitmap containers), so writing
+    // bitmaps here would race with those ownership changes. The implicit tails are derived from
+    // blockLastRow instead, exactly like isNullValue does.
+    int openBlockIndex = timestamps.size() - 1;
+    int openBlockRows =
+        openBlockIndex < 0 || openBlockIndex >= blockCount
+            ? 0
+            : Math.min(rowCount - openBlockIndex * ARRAY_SIZE, ARRAY_SIZE);
+
+    // Preserve the dense fast path: one column without null blocks, bitmaps or an implicit null
+    // tail proves that every row has at least one value.
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
       if (columnValues == null) {
@@ -2000,6 +2499,13 @@ public abstract class AlignedTVList extends TVList {
           break;
         }
       }
+      if (columnHasNoNull
+          && openBlockRows > 0
+          && isTouched(columnIndex)
+          && blockLastRow[columnIndex] < openBlockRows) {
+        // The open block still has an implicit null tail for this column.
+        columnHasNoNull = false;
+      }
       if (columnHasNoNull) {
         return null;
       }
@@ -2010,7 +2516,9 @@ public abstract class AlignedTVList extends TVList {
     for (int blockIndex = 0; blockIndex < blockCount; blockIndex++) {
       int row = blockIndex * ARRAY_SIZE;
       int byteIndex = row / Byte.SIZE;
-      int byteCount = (Math.min(rowCount - row, ARRAY_SIZE) + Byte.SIZE - 1) / Byte.SIZE;
+      int rowsInBlock = Math.min(rowCount - row, ARRAY_SIZE);
+      int byteCount = (rowsInBlock + Byte.SIZE - 1) / Byte.SIZE;
+      boolean openBlock = blockIndex == openBlockIndex;
       for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
         List<Object> columnValues = values.get(columnIndex);
         if (columnValues == null || columnValues.get(blockIndex) == null) {
@@ -2019,14 +2527,34 @@ public abstract class AlignedTVList extends TVList {
 
         List<BitMap> columnBitMaps = bitMaps == null ? null : bitMaps.get(columnIndex);
         BitMap bitMap = columnBitMaps == null ? null : columnBitMaps.get(blockIndex);
-        if (bitMap == null) {
+        // A closed block materialized its null tails when it was closed. In the open block only
+        // the rows before blockLastRow are materialized; the rest are implicit nulls.
+        int materializedRows =
+            openBlock && isTouched(columnIndex)
+                ? Math.min(blockLastRow[columnIndex], rowsInBlock)
+                : rowsInBlock;
+        if (bitMap == null && materializedRows == rowsInBlock) {
+          // No row of this block is null in this column.
           Arrays.fill(rowBitsArr, byteIndex, byteIndex + byteCount, (byte) 0x00);
           break;
         }
 
-        byte[] bitMapBytes = bitMap.getByteArray();
+        byte[] bitMapBytes = bitMap == null ? null : bitMap.getByteArray();
+        int fullBytes = materializedRows / Byte.SIZE;
+        int partialBits = materializedRows - fullBytes * Byte.SIZE;
         for (int i = 0; i < byteCount; i++) {
-          rowBitsArr[byteIndex + i] &= bitMapBytes[i];
+          int nullBits;
+          if (i < fullBytes) {
+            nullBits = bitMapBytes == null ? 0 : bitMapBytes[i] & 0xFF;
+          } else if (i == fullBytes) {
+            // Rows from materializedRows on are implicit nulls, so their bits stay set.
+            int materializedMask = partialBits == 0 ? 0 : (1 << partialBits) - 1;
+            int bitmapBits = bitMapBytes == null ? 0 : bitMapBytes[i] & 0xFF;
+            nullBits = (bitmapBits & materializedMask) | (~materializedMask & 0xFF);
+          } else {
+            nullBits = 0xFF;
+          }
+          rowBitsArr[byteIndex + i] &= (byte) nullBits;
         }
       }
     }

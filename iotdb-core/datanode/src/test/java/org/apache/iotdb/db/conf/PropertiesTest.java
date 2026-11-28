@@ -70,6 +70,44 @@ public class PropertiesTest {
     }
   }
 
+  /**
+   * Verifies that the TVList block pre-allocation switch defaults off, can be set at startup, and
+   * is hot reloadable.
+   */
+  @Test
+  public void testTVListBlockPreallocationConfiguration() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final boolean originalValue = descriptor.getConfig().isEnableTVListBlockPreallocation();
+    final int originalMaxBlocks = descriptor.getConfig().getTvListMaxPreallocatedBlocks();
+    final TrimProperties properties = new TrimProperties();
+
+    try {
+      Assert.assertFalse(new IoTDBConfig().isEnableTVListBlockPreallocation());
+      Assert.assertEquals(16, new IoTDBConfig().getTvListMaxPreallocatedBlocks());
+      Assert.assertEquals(
+          "false",
+          ConfigurationFileUtils.getConfigurationDefaultValue("enable_tvlist_block_preallocation"));
+      Assert.assertEquals(
+          "16",
+          ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_max_preallocated_blocks"));
+
+      properties.setProperty("enable_tvlist_block_preallocation", "true");
+      properties.setProperty("tvlist_max_preallocated_blocks", "32");
+      descriptor.loadProperties(properties);
+      Assert.assertTrue(descriptor.getConfig().isEnableTVListBlockPreallocation());
+      Assert.assertEquals(32, descriptor.getConfig().getTvListMaxPreallocatedBlocks());
+
+      properties.setProperty("enable_tvlist_block_preallocation", "false");
+      properties.setProperty("tvlist_max_preallocated_blocks", "8");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertFalse(descriptor.getConfig().isEnableTVListBlockPreallocation());
+      Assert.assertEquals(8, descriptor.getConfig().getTvListMaxPreallocatedBlocks());
+    } finally {
+      descriptor.getConfig().setEnableTVListBlockPreallocation(originalValue);
+      descriptor.getConfig().setTvListMaxPreallocatedBlocks(originalMaxBlocks);
+    }
+  }
+
   /** The LOAD write buffer defaults to 1 MiB, can be overridden, and must stay positive. */
   @Test
   public void testLoadTsFileWriteBufferSizeDefaultsAndReloads() throws Exception {

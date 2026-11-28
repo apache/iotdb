@@ -48,6 +48,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
@@ -480,9 +482,17 @@ public class WritingMetrics implements IMetricSet {
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
-  // TVList preallocation needs a process-lifetime, node-wide mean independent of metric lifecycle.
+  /** Weight of the newest sample of the decaying mean used as a pre-allocation hint. */
+  private static final double RECENT_MEAN_WEIGHT = 0.25d;
+
+  // Process-lifetime, node-wide mean of the points per series of flushed memtables. It is kept for
+  // observability; the pre-allocation hint uses the decaying mean below, so a temporarily dense
+  // workload cannot pin the hint at a high value.
   private final DoubleAdder avgSeriesPointNumSum = new DoubleAdder();
   private final LongAdder flushedMemTableCount = new LongAdder();
+  private final AtomicLong recentAvgSeriesPointNumBits = new AtomicLong(0L);
+  private final ConcurrentHashMap<Integer, AtomicLong> regionRecentAvgSeriesPointNumBits =
+      new ConcurrentHashMap<>();
 
   private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
       DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
@@ -745,6 +755,7 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void removeFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
+    regionRecentAvgSeriesPointNumBits.remove(dataRegionId.getId());
     Arrays.asList(
             MEM_TABLE_SIZE,
             SERIES_NUM,
@@ -833,6 +844,25 @@ public class WritingMetrics implements IMetricSet {
     if (dataRegionId == null) {
       return;
     }
+    recordFlushingMemTableStatus(dataRegionId, memSize, seriesNum, totalPointsNum, avgSeriesNum);
+  }
+
+  /**
+   * Record the flush of a memtable into the metrics of its DataRegion.
+   *
+   * <p>The flush task knows the region directly, so it does not have to encode the region id into a
+   * storage group string: every sample, including the decaying mean used as the pre-allocation
+   * hint, is then attributed to the correct region.
+   */
+  public void recordFlushingMemTableStatus(
+      DataRegionId dataRegionId,
+      long memSize,
+      long seriesNum,
+      long totalPointsNum,
+      long avgSeriesNum) {
+    if (dataRegionId == null) {
+      return;
+    }
 
     MetricService.getInstance()
         .histogram(
@@ -870,8 +900,53 @@ public class WritingMetrics implements IMetricSet {
             AVG_SERIES_POINT_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
+
     avgSeriesPointNumSum.add(avgSeriesNum);
     flushedMemTableCount.increment();
+    updateRecentMean(recentAvgSeriesPointNumBits, avgSeriesNum);
+    updateRecentMean(
+        regionRecentAvgSeriesPointNumBits.computeIfAbsent(
+            dataRegionId.getId(), id -> new AtomicLong(0L)),
+        avgSeriesNum);
+  }
+
+  /** Number of flushed memtables sampled so far, used to ignore a cold-start sample. */
+  public long getFlushedMemTableCount() {
+    return flushedMemTableCount.sum();
+  }
+
+  /** Decaying mean points per series of one DataRegion, falling back to the node-wide one. */
+  public double getRecentAvgSeriesPointNum(int dataRegionId) {
+    AtomicLong bits = regionRecentAvgSeriesPointNumBits.get(dataRegionId);
+    return bits == null ? getRecentAvgSeriesPointNum() : Double.longBitsToDouble(bits.get());
+  }
+
+  /**
+   * Update a lock-free exponential moving average; a node-global metric is shared by all regions.
+   */
+  private static void updateRecentMean(AtomicLong targetBits, double sample) {
+    while (true) {
+      long previousBits = targetBits.get();
+      double previous = Double.longBitsToDouble(previousBits);
+      double next =
+          previousBits == 0L
+              ? sample
+              : RECENT_MEAN_WEIGHT * sample + (1.0d - RECENT_MEAN_WEIGHT) * previous;
+      if (targetBits.compareAndSet(previousBits, Double.doubleToRawLongBits(next))) {
+        return;
+      }
+    }
+  }
+
+  /** Decaying node-wide mean points per series, used as the bounded pre-allocation hint. */
+  public double getRecentAvgSeriesPointNum() {
+    return Double.longBitsToDouble(recentAvgSeriesPointNumBits.get());
+  }
+
+  /** Process-lifetime node-wide mean points per series of flushed memtables, for observability. */
+  public double getGlobalAvgSeriesPointNum() {
+    long count = flushedMemTableCount.sum();
+    return count == 0 ? 0.0d : avgSeriesPointNumSum.sum() / count;
   }
 
   public void recordFlushTsFileSize(String storageGroup, long size) {
@@ -1107,10 +1182,5 @@ public class WritingMetrics implements IMetricSet {
 
   public static WritingMetrics getInstance() {
     return INSTANCE;
-  }
-
-  public double getGlobalAvgSeriesPointNum() {
-    long count = flushedMemTableCount.sum();
-    return count == 0 ? 0 : avgSeriesPointNumSum.sum() / count;
   }
 }

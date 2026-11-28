@@ -30,7 +30,12 @@ public class QuickAlignedTVList extends AlignedTVList {
   }
 
   QuickAlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
-    super(types, initializeValueColumns);
+    this(types, initializeValueColumns, 0);
+  }
+
+  QuickAlignedTVList(
+      List<TSDataType> types, boolean initializeValueColumns, int preallocatedBlockNum) {
+    super(types, initializeValueColumns, preallocatedBlockNum);
     policy = new QuickSort(this);
   }
 

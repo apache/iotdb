@@ -410,6 +410,22 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   private boolean enableTimedFlushUnseqMemtable = true;
 
   /**
+   * Whether a memtable TVList pre-allocates the containers that address its data blocks.
+   *
+   * <p>Disabled by default: the number of blocks a memtable list holds is small and depends on the
+   * workload, while a wide device would reserve a container for every measurement it owns,
+   * including the measurements it never writes. Enable it only for dense devices.
+   */
+  private volatile boolean enableTVListBlockPreallocation = false;
+
+  /**
+   * Upper bound of blocks a memtable container may pre-allocate when block pre-allocation is
+   * enabled. The recent (EWMA) mean points per series is clamped into {@code [1, this value]}, so a
+   * temporarily dense workload cannot inflate the hint.
+   */
+  private volatile int tvListMaxPreallocatedBlocks = 16;
+
+  /**
    * If a memTable's last update time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
@@ -2285,6 +2301,24 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   void setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
     this.deleteWalFilesPeriodInMs = deleteWalFilesPeriodInMs;
+  }
+
+  public boolean isEnableTVListBlockPreallocation() {
+    return enableTVListBlockPreallocation;
+  }
+
+  public void setEnableTVListBlockPreallocation(boolean enableTVListBlockPreallocation) {
+    this.enableTVListBlockPreallocation = enableTVListBlockPreallocation;
+  }
+
+  public int getTvListMaxPreallocatedBlocks() {
+    return tvListMaxPreallocatedBlocks;
+  }
+
+  public void setTvListMaxPreallocatedBlocks(int tvListMaxPreallocatedBlocks) {
+    if (tvListMaxPreallocatedBlocks >= 0) {
+      this.tvListMaxPreallocatedBlocks = tvListMaxPreallocatedBlocks;
+    }
   }
 
   public boolean isWalFileListCacheEnabled() {

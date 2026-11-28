@@ -190,14 +190,15 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private IWritableMemChunkGroup createAlignedMemChunkGroupIfNotExistAndGet(
       IDeviceID deviceId, List<IMeasurementSchema> schemaList) {
-    List<IMeasurementSchema> filteredSchemaList =
-        schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList());
     IWritableMemChunkGroup memChunkGroup =
         memTableMap.computeIfAbsent(
             deviceId,
             k -> {
+              List<IMeasurementSchema> filteredSchemaList =
+                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList());
               seriesNumber += filteredSchemaList.size();
-              return new AlignedWritableMemChunkGroup(filteredSchemaList, encryptParameter);
+              return new AlignedWritableMemChunkGroup(
+                  filteredSchemaList, encryptParameter, dataRegionId);
             });
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {

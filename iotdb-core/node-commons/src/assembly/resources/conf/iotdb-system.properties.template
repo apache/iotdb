@@ -923,6 +923,20 @@ storage_engine_memory_proportion=8:2
 # effectiveMode: restart
 write_memory_proportion=19:1
 
+# Whether a memtable TVList pre-allocates the containers that address its data blocks.
+# It is disabled by default: the number of blocks a memtable list holds is small and depends on the
+# workload, while a wide device (many measurements) would reserve a container for every measurement
+# it owns, including the measurements it never writes. Enable it only for dense devices.
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_tvlist_block_preallocation=false
+
+# Upper bound of blocks a memtable container may pre-allocate when block pre-allocation is enabled.
+# The recent mean points per series is clamped into [1, this value].
+# effectiveMode: hot_reload
+# Datatype: int
+tvlist_max_preallocated_blocks=16
+
 # primitive array size (length of each array) in array pool
 # effectiveMode: restart
 # Datatype: int
