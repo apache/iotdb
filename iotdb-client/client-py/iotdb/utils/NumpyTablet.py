@@ -56,6 +56,9 @@ class NumpyTablet(object):
         :param column_names: Str List, names of columns
         :param data_types: TSDataType List, specify value types for columns
         :param values: ndarray List, one ndarray contains the value of one column
+            For BLOB columns, use np.array(blobs, dtype=object) on the original
+            Python bytes to preserve trailing zeros. Fixed-width byte arrays
+            treat trailing zeros as padding.
         :param timestamps: ndarray, contains the timestamps
         :param bitmaps: BitMap list, one bitmap records the position of none value in a column
         :param column_types: ColumnType List, marking the type of each column, can be none for tree-view interfaces.
@@ -69,6 +72,7 @@ class NumpyTablet(object):
                 "Input error! len(values) does not equal to len(data_types)!"
             )
 
+        values = list(values)
         if not self.check_sorted(timestamps):
             index = timestamps.argsort()
             timestamps = timestamps[index]
@@ -79,9 +83,17 @@ class NumpyTablet(object):
 
         if timestamps.dtype != TSDataType.INT64.np_dtype():
             timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
-        for i in range(len(values)):
-            if values[i].dtype != data_types[i].np_dtype():
-                values[i] = values[i].astype(data_types[i].np_dtype())
+        for i, data_type in enumerate(data_types):
+            column = values[i]
+            dtype = data_type.np_dtype()
+            if (
+                data_type == TSDataType.BLOB
+                and column.dtype.kind in "OV"
+                and column.dtype.names is None
+            ):
+                values[i] = self._copy_blob_column(column)
+            elif column.dtype != dtype:
+                values[i] = column.astype(dtype)
 
         self.__values = values
         self.__timestamps = timestamps
@@ -97,6 +109,23 @@ class NumpyTablet(object):
             )
         else:
             self.__column_types = column_types
+
+    @staticmethod
+    def _copy_blob_column(column):
+        # Object dtype preserves the length of each BLOB, including trailing zeros.
+        result = column.astype(object)
+        for row, cell in enumerate(result):
+            if isinstance(cell, bytes):
+                continue
+            if cell is None:
+                # Preserve the payload of NumPy's bytes cast for bitmap-marked nulls.
+                result[row] = b"None"
+            elif isinstance(cell, (bytearray, memoryview)):
+                result[row] = bytes(cell)
+            else:
+                # Keep NumPy's scalar conversion and rejection of nested sequences.
+                result[row] = result[row : row + 1].astype(np.bytes_)[0]
+        return result
 
     @staticmethod
     def _sort_bitmap(bitmap, index):
@@ -162,12 +191,11 @@ class NumpyTablet(object):
             elif data_type == 5 or data_type == 11 or data_type == 10:
                 format_str_list = [">"]
                 values_tobe_packed = []
-                for str_list in value:
-                    # For TEXT, it's same as the original solution
-                    if isinstance(str_list, str):
-                        value_bytes = bytes(str_list, "utf-8")
+                for cell in value:
+                    if isinstance(cell, str):
+                        value_bytes = bytes(cell, "utf-8")
                     else:
-                        value_bytes = str_list
+                        value_bytes = cell
                     format_str_list.append("i")
                     format_str_list.append(str(len(value_bytes)))
                     format_str_list.append("s")

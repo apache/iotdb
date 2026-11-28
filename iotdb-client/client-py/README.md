@@ -225,6 +225,8 @@ With less memory footprint and time cost of serialization, the insert performanc
 1. time and value columns in Tablet are ndarray.
 2. recommended to use the specific dtypes to each ndarray, see the example below 
 (if not, the default dtypes are also ok).
+3. For a BLOB column, use `dtype=object` directly on the original Python `bytes` to preserve trailing zero bytes.
+   Arrays created with `TSDataType.BLOB.np_dtype()` use fixed-width byte strings that lose the original lengths.
 
 ```python
 import numpy as np
@@ -272,6 +274,16 @@ np_tablet_with_none = NumpyTablet(
     device_id, measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
 )
 session.insert_tablet(np_tablet_with_none)
+
+blobs = [b"A\x00\x00", b""]
+blob_tablet = NumpyTablet(
+    device_id,
+    ["payload"],
+    [TSDataType.BLOB],
+    [np.array(blobs, dtype=object)],
+    np.array([1, 2], TSDataType.INT64.np_dtype()),
+)
+session.insert_tablet(blob_tablet)
 ```
 
 * Insert multiple Tablets
