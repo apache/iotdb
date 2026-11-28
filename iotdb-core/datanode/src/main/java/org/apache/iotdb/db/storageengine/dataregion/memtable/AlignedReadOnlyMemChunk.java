@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.TsBlockAlignedRowPointReader;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
@@ -385,7 +386,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       }
     }
     TsBlock tsBlock = buildTsBlock();
-    return tsBlock.getTsBlockAlignedRowIterator();
+    return new TsBlockAlignedRowPointReader(tsBlock);
   }
 
   private TsBlock buildTsBlock() {

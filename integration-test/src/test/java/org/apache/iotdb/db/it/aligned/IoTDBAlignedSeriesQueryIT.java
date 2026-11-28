@@ -37,7 +37,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.avg;
@@ -6657,5 +6660,65 @@ public class IoTDBAlignedSeriesQueryIT {
         Assert.assertEquals(0, cnt);
       }
     }
+  }
+
+  /** Regression test for #19392: partial updates across flushes merge in strict priority order. */
+  @Test
+  public void partialUpdateMergeAcrossMultipleFlushesTest() throws SQLException {
+    String db = "root.merge_lookahead_db";
+    String flush = "FLUSH " + db;
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement s = conn.createStatement()) {
+      s.execute("CREATE DATABASE " + db);
+      try {
+        s.execute("CREATE ALIGNED TIMESERIES " + db + ".d1(x INT64, y INT64)");
+        s.execute("CREATE ALIGNED TIMESERIES " + db + ".d2(x INT64, y INT64)");
+
+        // Ascending-scan scenario (#19392) on d1: verify before and after 3rd flush
+        s.execute("INSERT INTO " + db + ".d1(timestamp, y) ALIGNED VALUES (10, 100), (20, 200)");
+        s.execute(flush);
+        s.execute("INSERT INTO " + db + ".d1(timestamp, y) ALIGNED VALUES (20, 220)");
+        s.execute(flush);
+        s.execute("INSERT INTO " + db + ".d1(timestamp, x) ALIGNED VALUES (10, 110), (20, 120)");
+        for (int i = 0; i < 2; i++) {
+          if (i == 1) {
+            s.execute(flush);
+          }
+          assertMergeRows(s, db + ".d1", "WHERE time = 20", "20,120,220");
+          assertMergeRows(s, db + ".d1", "ORDER BY time", "10,110,100", "20,120,220");
+          assertMergeRows(s, db + ".d1", "ORDER BY time DESC", "20,120,220", "10,110,100");
+          assertMergeRows(s, db + ".d1", "WHERE x = 120 AND y = 220 ORDER BY time", "20,120,220");
+        }
+
+        // Symmetric descending-scan scenario on d2: verify before and after 3rd flush
+        s.execute("INSERT INTO " + db + ".d2(timestamp, y) ALIGNED VALUES (10, 100), (20, 200)");
+        s.execute(flush);
+        s.execute("INSERT INTO " + db + ".d2(timestamp, y) ALIGNED VALUES (10, 120)");
+        s.execute(flush);
+        s.execute("INSERT INTO " + db + ".d2(timestamp, x) ALIGNED VALUES (10, 110), (20, 210)");
+        for (int i = 0; i < 2; i++) {
+          if (i == 1) {
+            s.execute(flush);
+          }
+          assertMergeRows(s, db + ".d2", "ORDER BY time DESC", "20,210,200", "10,110,120");
+          assertMergeRows(
+              s, db + ".d2", "WHERE x = 110 AND y = 120 ORDER BY time DESC", "10,110,120");
+        }
+      } finally {
+        s.execute("DELETE DATABASE " + db);
+      }
+    }
+  }
+
+  private void assertMergeRows(Statement s, String device, String clause, String... expected)
+      throws SQLException {
+    String sql = "SELECT x, y FROM " + device + " " + clause;
+    List<String> actual = new ArrayList<>();
+    try (ResultSet rs = s.executeQuery(sql)) {
+      while (rs.next()) {
+        actual.add(rs.getLong(1) + "," + rs.getString(2) + "," + rs.getString(3));
+      }
+    }
+    assertEquals("Mismatch for query: " + sql, Arrays.asList(expected), actual);
   }
 }

@@ -28,12 +28,18 @@ public class Element {
 
   private final MergeReaderPriority priority;
   private final IPointReader reader;
+  private final AlignedPointReader alignedReader;
   private TimeValuePair timeValuePair;
 
   public Element(IPointReader reader, TimeValuePair timeValuePair, MergeReaderPriority priority) {
     this.reader = reader;
+    this.alignedReader = reader instanceof AlignedPointReader ? (AlignedPointReader) reader : null;
     this.timeValuePair = timeValuePair;
     this.priority = priority;
+  }
+
+  public boolean isCurrentRowComplete() {
+    return alignedReader != null && alignedReader.isLastRowComplete();
   }
 
   public long currTime() {

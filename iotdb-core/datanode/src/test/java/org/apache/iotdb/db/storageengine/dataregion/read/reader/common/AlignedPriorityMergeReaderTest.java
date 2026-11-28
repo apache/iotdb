@@ -18,13 +18,34 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.MergeSortMultiAlignedTVListIterator;
+import org.apache.iotdb.db.utils.datastructure.OrderedMultiAlignedTVListIterator;
+
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.utils.TsPrimitiveType.TsBinary;
 import org.apache.tsfile.utils.TsPrimitiveType.TsInt;
+import org.apache.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.tsfile.utils.TsPrimitiveType.TsVector;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class AlignedPriorityMergeReaderTest {
 
@@ -86,5 +107,257 @@ public class AlignedPriorityMergeReaderTest {
     assertEquals(10, v.getValue().getVector()[0].getInt());
     assertEquals(20, v.getValue().getVector()[1].getInt());
     assertEquals(30, v.getValue().getVector()[2].getInt());
+  }
+
+  @Test
+  public void testAscScanMergesMiddlePriorityReaderAtNextTimestamp() throws IOException {
+    assertMiddlePriorityMerge(new AlignedPriorityMergeReader(), 10L, 20L);
+  }
+
+  @Test
+  public void testDescScanMergesMiddlePriorityReaderAtNextTimestamp() throws IOException {
+    assertMiddlePriorityMerge(new AlignedDescPriorityMergeReader(), 20L, 10L);
+  }
+
+  private void assertMiddlePriorityMerge(PriorityMergeReader reader, long t1, long t2)
+      throws IOException {
+    addBatch(reader, 1, t2, batch(t1, vec(null, 100L), t2, vec(null, 200L)));
+    addBatch(reader, 2, t2, batch(t2, vec(null, 220L)));
+    addBatch(reader, 3, t2, batch(t1, vec(110L, null), t2, vec(120L, null)));
+
+    assertLongRow(reader.nextTimeValuePair(), t1, 110L, 100L);
+    assertLongRow(reader.nextTimeValuePair(), t2, 120L, 220L);
+    assertFalse(reader.hasNextTimeValuePair());
+  }
+
+  @Test
+  public void testAscScanPreservesOlderColumnsWhileMiddleOverridesOverlappingColumn()
+      throws IOException {
+    AlignedPriorityMergeReader reader = new AlignedPriorityMergeReader();
+    addBatch(reader, 1, 20L, batch(10L, vec(null, 100L, 1000L), 20L, vec(null, 200L, 2000L)));
+    addBatch(reader, 2, 20L, batch(20L, vec(null, 220L, null)));
+    addBatch(reader, 3, 20L, batch(10L, vec(110L, null, null), 20L, vec(120L, null, null)));
+
+    assertLongRow(reader.nextTimeValuePair(), 10L, 110L, 100L, 1000L);
+    assertLongRow(reader.nextTimeValuePair(), 20L, 120L, 220L, 2000L);
+    assertFalse(reader.hasNextTimeValuePair());
+  }
+
+  @Test
+  public void testSkipOlderReaderOnlyWhenNextAlignedRowIsComplete() throws IOException {
+    assertFalse(
+        AlignedPriorityMergeReader.fillNullValueInAligned(
+            new TimeValuePair(1, new TsVector(vec(10L, null, null))),
+            new TimeValuePair(1, new TsVector(vec(null, 20L, null)))));
+    assertTrue(
+        AlignedPriorityMergeReader.fillNullValueInAligned(
+            new TimeValuePair(1, new TsVector(vec(10L, null))),
+            new TimeValuePair(1, new TsVector(vec(null, 20L)))));
+
+    assertCompleteRowSkip(new AlignedPriorityMergeReader(), 10L, 20L, 30L);
+    assertCompleteRowSkip(new AlignedDescPriorityMergeReader(), 30L, 20L, 10L);
+
+    // Non-tracking IPointReader conservatively defers look-ahead skipping without scanning vectors.
+    AlignedPriorityMergeReader fallbackReader = new AlignedPriorityMergeReader();
+    addBatch(fallbackReader, 1, 20L, batch(10L, vec(null, 100L), 20L, vec(null, 200L)));
+    addBatch(fallbackReader, 2, 20L, batch(10L, vec(110L, 101L), 20L, vec(120L, 201L)));
+    assertLongRow(fallbackReader.nextTimeValuePair(), 10L, 110L, 101L);
+    assertEquals(2, fallbackReader.heap.size());
+    assertLongRow(fallbackReader.nextTimeValuePair(), 20L, 120L, 201L);
+    assertFalse(fallbackReader.hasNextTimeValuePair());
+  }
+
+  private void assertCompleteRowSkip(PriorityMergeReader reader, long t1, long t2, long t3)
+      throws IOException {
+    Binary oldBin = new Binary(new byte[] {1});
+    TsBinary oldVal = new TsBinary(oldBin);
+    TsBinary emptyVal = new TsBinary(Binary.EMPTY_VALUE);
+
+    long[] times = {t1, t2, t3};
+    TsBlock older =
+        buildBlock(times, new Long[] {null, null, null}, new Binary[] {oldBin, oldBin, oldBin});
+    TsBlock newer =
+        buildBlock(
+            times,
+            new Long[] {10L, 20L, 30L},
+            new Binary[] {Binary.EMPTY_VALUE, null, Binary.EMPTY_VALUE});
+
+    reader.addReader(
+        new TsBlockAlignedRowPointReader(older), new MergeReaderPriority(1, 1, 0, false), t3);
+    reader.addReader(
+        new TsBlockAlignedRowPointReader(newer), new MergeReaderPriority(2, 1, 0, false), t3);
+
+    // topNext (t2) has a null binary field, so older stays in the heap; at t2, topNext (t3) is
+    // tracked as complete in O(1), so older is skipped and closed immediately.
+    assertEquals(emptyVal, reader.nextTimeValuePair().getValue().getVector()[1]);
+    assertEquals(2, reader.heap.size());
+    assertEquals(oldVal, reader.nextTimeValuePair().getValue().getVector()[1]);
+    assertEquals(1, reader.heap.size());
+    assertEquals(emptyVal, reader.nextTimeValuePair().getValue().getVector()[1]);
+    assertFalse(reader.hasNextTimeValuePair());
+  }
+
+  private static TsBlock buildBlock(long[] times, Long[] xs, Binary[] ys) {
+    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.INT64, TSDataType.TEXT));
+    for (int i = 0; i < times.length; i++) {
+      builder.getTimeColumnBuilder().writeLong(times[i]);
+      if (xs[i] == null) {
+        builder.getColumnBuilder(0).appendNull();
+      } else {
+        builder.getColumnBuilder(0).writeLong(xs[i]);
+      }
+      if (ys[i] == null) {
+        builder.getColumnBuilder(1).appendNull();
+      } else {
+        builder.getColumnBuilder(1).writeBinary(ys[i]);
+      }
+      builder.declarePosition();
+    }
+    return builder.build();
+  }
+
+  private static void addBatch(PriorityMergeReader reader, int prio, long endTime, BatchData data)
+      throws IOException {
+    reader.addReader(
+        data.getBatchDataIterator(), new MergeReaderPriority(prio, 1, 0, false), endTime);
+  }
+
+  private static BatchData batch(long t1, TsPrimitiveType[] v1) {
+    BatchData b = new BatchData(TSDataType.VECTOR);
+    b.putVector(t1, v1);
+    return b;
+  }
+
+  private static BatchData batch(long t1, TsPrimitiveType[] v1, long t2, TsPrimitiveType[] v2) {
+    BatchData b = batch(t1, v1);
+    b.putVector(t2, v2);
+    return b;
+  }
+
+  private static TsPrimitiveType[] vec(Long... values) {
+    TsPrimitiveType[] v = new TsPrimitiveType[values.length];
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] != null) {
+        v[i] = new TsLong(values[i]);
+      }
+    }
+    return v;
+  }
+
+  private static void assertLongRow(TimeValuePair row, long expectedTime, long... expectedValues) {
+    assertEquals(expectedTime, row.getTimestamp());
+    for (int i = 0; i < expectedValues.length; i++) {
+      assertEquals(expectedValues[i], row.getValue().getVector()[i].getLong());
+    }
+  }
+
+  @Test
+  public void testAlignedTVListIteratorIsLastRowComplete() throws IOException {
+    List<TSDataType> types = Arrays.asList(TSDataType.INT64, TSDataType.TEXT);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(types);
+    tvList.putAlignedValue(10L, new Object[] {10L, Binary.EMPTY_VALUE});
+    tvList.putAlignedValue(20L, new Object[] {20L, null});
+    tvList.putAlignedValue(30L, new Object[] {30L, new Binary(new byte[] {1})});
+    tvList.putAlignedValue(40L, new Object[] {40L, new Binary(new byte[] {2})});
+    tvList.delete(30L, 30L, 1);
+    tvList.sort();
+
+    AlignedTVList.AlignedTVListIterator it =
+        tvList.iterator(
+            Ordering.ASC,
+            tvList.rowCount(),
+            null,
+            types,
+            Arrays.asList(0, 1),
+            Arrays.asList(Collections.emptyList(), Collections.emptyList()),
+            null,
+            null,
+            100);
+
+    assertReaderCompleteness(
+        it, new long[] {10L, 20L, 30L, 40L}, new boolean[] {true, false, false, true});
+  }
+
+  @Test
+  public void testMultiAlignedTVListIteratorsIsLastRowComplete() throws IOException {
+    List<TSDataType> types = Arrays.asList(TSDataType.INT64, TSDataType.TEXT);
+    List<Integer> colIdx = Arrays.asList(0, 1);
+    List<List<TimeRange>> noDeletions =
+        Arrays.asList(Collections.emptyList(), Collections.emptyList());
+
+    // OrderedMultiAlignedTVListIterator: non-overlapping TVLists with complete, null TEXT, deleted
+    AlignedTVList list1 = AlignedTVList.newAlignedList(types);
+    list1.putAlignedValue(10L, new Object[] {10L, Binary.EMPTY_VALUE});
+    list1.putAlignedValue(20L, new Object[] {20L, null});
+    list1.sort();
+
+    AlignedTVList list2 = AlignedTVList.newAlignedList(types);
+    list2.putAlignedValue(30L, new Object[] {30L, new Binary(new byte[] {1})});
+    list2.putAlignedValue(40L, new Object[] {40L, new Binary(new byte[] {2})});
+    list2.delete(30L, 30L, 1);
+    list2.sort();
+
+    OrderedMultiAlignedTVListIterator orderedIt =
+        new OrderedMultiAlignedTVListIterator(
+            types,
+            colIdx,
+            Arrays.asList(list1, list2),
+            Arrays.asList(list1.rowCount(), list2.rowCount()),
+            Ordering.ASC,
+            null,
+            noDeletions,
+            null,
+            null,
+            100);
+    assertReaderCompleteness(
+        orderedIt, new long[] {10L, 20L, 30L, 40L}, new boolean[] {true, false, false, true});
+
+    // MergeSortMultiAlignedTVListIterator: overlapping TVLists with merged complete rows,
+    // valueColumnsDeletionList deletion (iteratorIndex == -1), and null TEXT field.
+    AlignedTVList older = AlignedTVList.newAlignedList(types);
+    older.putAlignedValue(10L, new Object[] {10L, null});
+    older.putAlignedValue(20L, new Object[] {20L, new Binary(new byte[] {1})});
+    older.putAlignedValue(30L, new Object[] {30L, new Binary(new byte[] {2})});
+    older.sort();
+
+    AlignedTVList newer = AlignedTVList.newAlignedList(types);
+    newer.putAlignedValue(10L, new Object[] {null, Binary.EMPTY_VALUE});
+    newer.putAlignedValue(20L, new Object[] {20L, new Binary(new byte[] {3})});
+    newer.putAlignedValue(30L, new Object[] {30L, null});
+    newer.putAlignedValue(40L, new Object[] {40L, null});
+    newer.sort();
+
+    List<List<TimeRange>> col1DeletedAt20 =
+        Arrays.asList(Collections.emptyList(), Collections.singletonList(new TimeRange(20L, 20L)));
+    MergeSortMultiAlignedTVListIterator mergeSortIt =
+        new MergeSortMultiAlignedTVListIterator(
+            types,
+            colIdx,
+            Arrays.asList(older, newer),
+            Arrays.asList(older.rowCount(), newer.rowCount()),
+            Ordering.ASC,
+            null,
+            col1DeletedAt20,
+            null,
+            null,
+            100);
+    assertReaderCompleteness(
+        mergeSortIt, new long[] {10L, 20L, 30L, 40L}, new boolean[] {true, false, true, false});
+  }
+
+  private static void assertReaderCompleteness(
+      AlignedPointReader reader, long[] expectedTimes, boolean[] expectedComplete)
+      throws IOException {
+    for (int i = 0; i < expectedTimes.length; i++) {
+      assertTrue(reader.hasNextTimeValuePair());
+      TimeValuePair pair = reader.nextTimeValuePair();
+      assertEquals(expectedTimes[i], pair.getTimestamp());
+      assertEquals(expectedComplete[i], reader.isLastRowComplete());
+      // hasNextTimeValuePair() must not mutate isLastRowComplete().
+      assertEquals(i + 1 < expectedTimes.length, reader.hasNextTimeValuePair());
+      assertEquals(expectedComplete[i], reader.isLastRowComplete());
+    }
+    assertNull(reader.nextTimeValuePair());
+    assertFalse(reader.isLastRowComplete());
   }
 }

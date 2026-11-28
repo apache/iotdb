@@ -35,18 +35,28 @@ public class AlignedPriorityMergeReader extends PriorityMergeReader {
    * @param c TimeValuePair with low priority is used to fill the v
    */
   @Override
-  protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
-    fillNullValueInAligned(v, c);
+  protected boolean fillNullValue(TimeValuePair v, TimeValuePair c) {
+    return fillNullValueInAligned(v, c);
   }
 
-  static void fillNullValueInAligned(TimeValuePair to, TimeValuePair from) {
+  @Override
+  protected boolean isRowComplete(Element element) {
+    return element.isCurrentRowComplete();
+  }
+
+  static boolean fillNullValueInAligned(TimeValuePair to, TimeValuePair from) {
     TsPrimitiveType[] toArray = to.getValue().getVector();
     TsPrimitiveType[] fromArray = from.getValue().getVector();
+    boolean allFilled = true;
     for (int i = 0, size = toArray.length; i < size; i++) {
-      if ((toArray[i] == null || toArray[i].getValue() == null)
-          && (fromArray[i] != null && fromArray[i].getValue() != null)) {
-        toArray[i] = fromArray[i];
+      if (toArray[i] == null || toArray[i].getValue() == null) {
+        if (fromArray[i] != null && fromArray[i].getValue() != null) {
+          toArray[i] = fromArray[i];
+        } else {
+          allFilled = false;
+        }
       }
     }
+    return allFilled;
   }
 }

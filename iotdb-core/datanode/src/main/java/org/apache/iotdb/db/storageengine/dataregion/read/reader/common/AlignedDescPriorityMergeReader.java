@@ -34,7 +34,12 @@ public class AlignedDescPriorityMergeReader extends DescPriorityMergeReader {
    * @param c TimeValuePair with low priority is used to fill the v
    */
   @Override
-  protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
-    AlignedPriorityMergeReader.fillNullValueInAligned(v, c);
+  protected boolean fillNullValue(TimeValuePair v, TimeValuePair c) {
+    return AlignedPriorityMergeReader.fillNullValueInAligned(v, c);
+  }
+
+  @Override
+  protected boolean isRowComplete(Element element) {
+    return element.isCurrentRowComplete();
   }
 }
