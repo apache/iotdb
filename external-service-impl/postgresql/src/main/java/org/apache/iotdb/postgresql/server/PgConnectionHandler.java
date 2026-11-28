@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** One client connection: the startup phase, the login and then the query layer. */
 final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMessage> {
@@ -82,7 +83,8 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
   private final Map<String, String> startupParameters = new LinkedHashMap<>();
   private ExternalServiceClientSession dbSession;
   private CancelRegistry.Key key;
-  private volatile QueryProtocol protocol;
+  // set once after login, read by the event loop and by channelInactive
+  private final AtomicReference<QueryProtocol> protocol = new AtomicReference<>();
   private ScheduledFuture<?> startupTimeout;
 
   PgConnectionHandler(PgServerContext context, PgFrameDecoder decoder) {
@@ -119,7 +121,7 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
     if (startupTimeout != null) {
       startupTimeout.cancel(false);
     }
-    QueryProtocol running = protocol;
+    QueryProtocol running = protocol.get();
     if (running != null) {
       // stop a running query now; release() waits behind it on the serial executor
       running.cancel();
@@ -132,8 +134,9 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
     if (key != null) {
       context.cancels.unregister(key);
     }
-    if (protocol != null) {
-      protocol.close();
+    QueryProtocol current = protocol.get();
+    if (current != null) {
+      current.close();
     }
     if (dbSession != null) {
       SessionManager.getInstance()
@@ -158,7 +161,7 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
             ctx.close();
             return;
           }
-          serial.execute(() -> protocol.handle(message, ctx.channel()));
+          serial.execute(() -> protocol.get().handle(message, ctx.channel()));
           return;
         default:
           // closed: ignore late messages
@@ -353,8 +356,9 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
         });
     session.markStartup();
     SessionManager.getInstance().registerExternalServiceSession(dbSession);
-    protocol = context.protocols.apply(session);
-    key = context.cancels.register(protocol::cancel);
+    QueryProtocol created = context.protocols.apply(session);
+    protocol.set(created);
+    key = context.cancels.register(created::cancel);
     session.setProcessId(key.processId());
     BackendMessages.backendKeyData(out, key.processId(), key.secretKey());
     BackendMessages.readyForQuery(out, 'I');
@@ -398,7 +402,8 @@ final class PgConnectionHandler extends SimpleChannelInboundHandler<FrontendMess
   public void userEventTriggered(ChannelHandlerContext ctx, Object event) {
     if (event instanceof io.netty.handler.timeout.IdleStateEvent) {
       // only connections without a running query are idle
-      if (state != State.READY || protocol == null || !protocol.busy()) {
+      QueryProtocol current = protocol.get();
+      if (state != State.READY || current == null || !current.busy()) {
         fail(
             ctx,
             PgException.fatal(
