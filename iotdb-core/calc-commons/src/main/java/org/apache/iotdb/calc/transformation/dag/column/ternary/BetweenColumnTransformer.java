@@ -108,11 +108,11 @@ public class BetweenColumnTransformer extends CompareTernaryColumnTransformer {
               ^ isNotBetween;
     } else {
       flag =
-          ((Double.compare(
+          ((CommonTransformUtils.compare(
                           firstColumnTransformer.getType().getDouble(firstColumn, i),
                           secondColumnTransformer.getType().getDouble(secondColumn, i))
                       >= 0)
-                  && (Double.compare(
+                  && (CommonTransformUtils.compare(
                           firstColumnTransformer.getType().getDouble(firstColumn, i),
                           thirdColumnTransformer.getType().getDouble(thirdColumn, i))
                       <= 0))

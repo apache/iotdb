@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
+import org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
@@ -1074,7 +1075,7 @@ public class IrExpressionInterpreter {
                   || left instanceof Double
                   || right instanceof Float
                   || right instanceof Double)
-              ? Double.compare(left.doubleValue(), right.doubleValue())
+              ? CommonTransformUtils.compare(left.doubleValue(), right.doubleValue())
               : Long.compare(left.longValue(), right.longValue());
       switch (operator) {
         case LESS_THAN:

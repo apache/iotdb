@@ -38,6 +38,15 @@ public class CommonTransformUtils {
     return first.compareTo(second);
   }
 
+  /**
+   * Compares two numbers for SQL comparison predicates. Unlike {@link Double#compare}, -0.0 and 0.0
+   * are equal, matching the pushed-down TsFile value filters. NaN is still ordered by {@link
+   * Double#compare}.
+   */
+  public static int compare(double first, double second) {
+    return first == second ? 0 : Double.compare(first, second);
+  }
+
   public static Optional<Character> getEscapeCharacter(String escape) {
     if (escape.length() == 1) {
       return Optional.of(escape.charAt(0));

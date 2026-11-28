@@ -49,11 +49,11 @@ public class BetweenTransformer extends CompareTernaryTransformer {
         int secondIndex,
         Column thirdValues,
         int thirdIndex) ->
-        ((Double.compare(
+        ((CommonTransformUtils.compare(
                         castValueToDouble(firstValues, firstReaderDataType, firstIndex),
                         castValueToDouble(secondValues, secondReaderDataType, secondIndex))
                     >= 0)
-                && (Double.compare(
+                && (CommonTransformUtils.compare(
                         castValueToDouble(firstValues, firstReaderDataType, firstIndex),
                         castValueToDouble(thirdValues, thirdReaderDataType, thirdIndex))
                     <= 0))

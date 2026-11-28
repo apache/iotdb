@@ -81,6 +81,8 @@ public class IoTDBFilterIT {
           "create TIMESERIES root.vehicle.testUDTF.s1 with datatype=TEXT,encoding=PLAIN");
       statement.execute(
           "create TIMESERIES root.vehicle.testUDTF.s2 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute(
+          "create TIMESERIES root.vehicle.testSignedZero.v with datatype=DOUBLE,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -119,6 +121,8 @@ public class IoTDBFilterIT {
           " insert into root.sg1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
       statement.execute(
           " insert into root.vehicle.testUDTF(time, s1, s2) values (1,\"ss\",0), (2,\"d\",3)");
+      statement.execute(
+          "insert into root.vehicle.testSignedZero(time, v) values (1,-0.0), (2,0.0)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -253,5 +257,21 @@ public class IoTDBFilterIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
+  }
+
+  @Test
+  public void testSignedZeroComparison() {
+    String v = "root.vehicle.testSignedZero.v";
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, v};
+    String[] retArray = new String[] {"1,-0.0,", "2,0.0,"};
+    // "v = 0.0" is pushed down to the scan, "v * 1.0 = 0.0" is evaluated by the transformer
+    resultSetEqualTest(
+        "select v from root.vehicle.testSignedZero where v = 0.0", expectedHeader, retArray);
+    resultSetEqualTest(
+        "select v from root.vehicle.testSignedZero where v * 1.0 = 0.0", expectedHeader, retArray);
+    resultSetEqualTest(
+        "select v = 0.0, v < 0.0, v >= 0.0 from root.vehicle.testSignedZero",
+        new String[] {TIMESTAMP_STR, v + " = 0.0", v + " < 0.0", v + " >= 0.0"},
+        new String[] {"1,true,false,true,", "2,true,false,true,"});
   }
 }
