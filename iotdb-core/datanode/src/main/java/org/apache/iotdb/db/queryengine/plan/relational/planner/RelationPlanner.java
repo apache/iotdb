@@ -302,6 +302,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     if (dataStore == null) {
       return null;
     }
+    // the CTE's own tables were read by a separate query, so this one does not read only
+    // information_schema
+    analysis.markNonInformationSchemaTableRead();
 
     List<Symbol> cteSymbols =
         dataStore.getTableSchema().getColumns().stream()
@@ -351,6 +354,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     final Collection<Field> fields = scope.getRelationType().getAllFields();
     final QualifiedObjectName qualifiedObjectName = getQualifiedObjectName(table, analysis);
+    if (!qualifiedObjectName.getDatabaseName().equals(INFORMATION_DATABASE)) {
+      analysis.markNonInformationSchemaTableRead();
+    }
 
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry

@@ -423,6 +423,7 @@ public class InformationSchemaContentSupplierFactory {
         databaseTableInfoMap.put(
             InformationSchema.INFORMATION_DATABASE,
             InformationSchema.getSchemaTables().values().stream()
+                .filter(table -> InformationSchema.isListed(table.getTableName()))
                 .map(
                     table -> {
                       final TTableInfo info =
@@ -617,6 +618,7 @@ public class InformationSchemaContentSupplierFactory {
         resultMap.put(
             InformationSchema.INFORMATION_DATABASE,
             InformationSchema.getSchemaTables().values().stream()
+                .filter(table -> InformationSchema.isListed(table.getTableName()))
                 .collect(
                     Collectors.toMap(
                         TsTable::getTableName,

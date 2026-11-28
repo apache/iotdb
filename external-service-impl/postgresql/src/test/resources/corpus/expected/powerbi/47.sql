@@ -1,0 +1,19 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one
+-- or more contributor license agreements.  See the NOTICE file
+-- distributed with this work for additional information
+-- regarding copyright ownership.  The ASF licenses this file
+-- to you under the Apache License, Version 2.0 (the
+-- "License"); you may not use this file except in compliance
+-- with the License.  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing,
+-- software distributed under the License is distributed on an
+-- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-- KIND, either express or implied.  See the License for the
+-- specific language governing permissions and limitations
+-- under the License.
+--
+SELECT "ns"."nspname", "a"."typname", "a"."oid", "a"."typrelid", "a"."typbasetype", CASE WHEN "pg_proc"."proname" = 'array_recv' THEN 'a' ELSE "a"."typtype" END AS "type", CASE WHEN "pg_proc"."proname" = 'array_recv' THEN "a"."typelem" WHEN "a"."typtype" = 'r' THEN "rngsubtype" ELSE 0 END AS "elemoid", CASE WHEN "pg_proc"."proname" IN ('array_recv', 'oidvectorrecv') THEN 3 WHEN "a"."typtype" = 'r' THEN 2 WHEN "a"."typtype" = 'd' THEN 1 ELSE 0 END AS "ord" FROM information_schema."pg_type" AS "a" JOIN information_schema."pg_namespace" AS "ns" ON ("ns"."oid" = "a"."typnamespace") JOIN information_schema."pg_proc" ON "pg_proc"."oid" = "a"."typreceive" LEFT OUTER JOIN information_schema."pg_class" AS "cls" ON ("cls"."oid" = "a"."typrelid") LEFT OUTER JOIN information_schema."pg_type" AS "b" ON ("b"."oid" = "a"."typelem") LEFT OUTER JOIN information_schema."pg_class" AS "elemcls" ON ("elemcls"."oid" = "b"."typrelid") LEFT OUTER JOIN information_schema."pg_range" ON ("pg_range"."rngtypid" = "a"."oid") WHERE "a"."typtype" IN ('b', 'r', 'e', 'd') OR ("a"."typtype" = 'c' AND "cls"."relkind" = 'c') OR ("pg_proc"."proname" = 'array_recv' AND ("b"."typtype" IN ('b', 'r', 'e', 'd') OR ("b"."typtype" = 'p' AND "b"."typname" IN ('record', 'void')) OR ("b"."typtype" = 'c' AND "elemcls"."relkind" = 'c'))) OR ("a"."typtype" = 'p' AND "a"."typname" IN ('record', 'void')) ORDER BY "ord" NULLS LAST

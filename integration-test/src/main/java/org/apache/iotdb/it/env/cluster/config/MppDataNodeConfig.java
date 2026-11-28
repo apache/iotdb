@@ -141,6 +141,36 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setEnablePostgreSqlService(boolean enablePostgreSqlService) {
+    setProperty("enable_postgresql_service", String.valueOf(enablePostgreSqlService));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setPostgreSqlServiceAddress(String address) {
+    setProperty("postgresql_service_address", address);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setPostgreSqlServicePort(int port) {
+    setProperty("postgresql_service_port", String.valueOf(port));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setPostgreSqlServiceMaxConnections(int maxConnections) {
+    setProperty("postgresql_service_max_connections", String.valueOf(maxConnections));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setPostgreSqlServiceWriteTimeoutInMs(long writeTimeoutInMs) {
+    setProperty("postgresql_service_write_timeout_in_ms", String.valueOf(writeTimeoutInMs));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
     return this;

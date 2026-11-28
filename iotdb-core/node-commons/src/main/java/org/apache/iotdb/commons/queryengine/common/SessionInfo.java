@@ -72,6 +72,11 @@ public class SessionInfo {
   // database-internal operation. This transient state is not serialized.
   private transient boolean internalRpcSession;
 
+  // Set by external services whose clients send many catalog queries (the PostgreSQL service for
+  // BI tools): a query that reads only information_schema tables then gets the highest priority.
+  // Only consulted during analysis and therefore not serialized.
+  private transient boolean metadataQueriesFirst;
+
   public SessionInfo(long sessionId, UserEntity userEntity, ZoneId zoneId) {
     this.sessionId = sessionId;
     this.userEntity = userEntity;
@@ -231,6 +236,15 @@ public class SessionInfo {
 
   public SessionInfo setInternalRpcSession(final boolean internalRpcSession) {
     this.internalRpcSession = internalRpcSession;
+    return this;
+  }
+
+  public boolean isMetadataQueriesFirst() {
+    return metadataQueriesFirst;
+  }
+
+  public SessionInfo setMetadataQueriesFirst(final boolean metadataQueriesFirst) {
+    this.metadataQueriesFirst = metadataQueriesFirst;
     return this;
   }
 

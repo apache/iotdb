@@ -1,0 +1,19 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one
+-- or more contributor license agreements.  See the NOTICE file
+-- distributed with this work for additional information
+-- regarding copyright ownership.  The ASF licenses this file
+-- to you under the Apache License, Version 2.0 (the
+-- "License"); you may not use this file except in compliance
+-- with the License.  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing,
+-- software distributed under the License is distributed on an
+-- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-- KIND, either express or implied.  See the License for the
+-- specific language governing permissions and limitations
+-- under the License.
+--
+SELECT * FROM (SELECT "n"."nspname", "c"."relname", "a"."attname", "a"."atttypid", "a"."attnotnull" OR ("t"."typtype" = 'd' AND "t"."typnotnull") AS "attnotnull", "a"."atttypmod", "a"."attlen", "t"."typtypmod", row_number() OVER (PARTITION BY "a"."attrelid" ORDER BY "a"."attnum" NULLS LAST) AS "attnum", CASE WHEN "a"."attidentity" <> '' OR "a"."attidentity" IS NULL OR '' IS NULL THEN "a"."attidentity" END AS "attidentity", CASE WHEN "a"."attgenerated" <> '' OR "a"."attgenerated" IS NULL OR '' IS NULL THEN "a"."attgenerated" END AS "attgenerated", CAST(NULL AS STRING) AS "adsrc", "dsc"."description", "t"."typbasetype", "t"."typtype" FROM information_schema."pg_namespace" AS "n" JOIN information_schema."pg_class" AS "c" ON ("c"."relnamespace" = "n"."oid") JOIN information_schema."pg_attribute" AS "a" ON ("a"."attrelid" = "c"."oid") JOIN information_schema."pg_type" AS "t" ON ("a"."atttypid" = "t"."oid") LEFT JOIN information_schema."pg_attrdef" AS "def" ON ("a"."attrelid" = "def"."adrelid" AND "a"."attnum" = "def"."adnum") LEFT JOIN information_schema."pg_description" AS "dsc" ON ("c"."oid" = "dsc"."objoid" AND "a"."attnum" = "dsc"."objsubid") LEFT JOIN information_schema."pg_class" AS "dc" ON ("dc"."oid" = "dsc"."classoid" AND "dc"."relname" = 'pg_class') LEFT JOIN information_schema."pg_namespace" AS "dn" ON ("dc"."relnamespace" = "dn"."oid" AND "dn"."nspname" = 'pg_catalog') WHERE "c"."relkind" IN ('r', 'p', 'v', 'f', 'm') AND "a"."attnum" > 0 AND NOT "a"."attisdropped" AND "n"."nspname" LIKE 'refdb' ESCAPE '\' AND "c"."relname" LIKE 'sensors' ESCAPE '\') c WHERE TRUE AND "attname" LIKE '%' ESCAPE '\' ORDER BY "nspname" NULLS LAST, "c"."relname" NULLS LAST, "attnum" NULLS LAST

@@ -1,0 +1,19 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one
+-- or more contributor license agreements.  See the NOTICE file
+-- distributed with this work for additional information
+-- regarding copyright ownership.  The ASF licenses this file
+-- to you under the Apache License, Version 2.0 (the
+-- "License"); you may not use this file except in compliance
+-- with the License.  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing,
+-- software distributed under the License is distributed on an
+-- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-- KIND, either express or implied.  See the License for the
+-- specific language governing permissions and limitations
+-- under the License.
+--
+SELECT "a"."attname", CASE CAST("a"."atttypid" AS INT32) WHEN 16 THEN 'boolean' WHEN 17 THEN 'bytea' WHEN 18 THEN '"char"' WHEN 19 THEN 'name' WHEN 20 THEN 'bigint' WHEN 21 THEN 'smallint' WHEN 23 THEN 'integer' WHEN 24 THEN 'regproc' WHEN 25 THEN 'text' WHEN 26 THEN 'oid' WHEN 700 THEN 'real' WHEN 701 THEN 'double precision' WHEN 1043 THEN 'character varying' WHEN 1082 THEN 'date' WHEN 1114 THEN 'timestamp without time zone' WHEN 1184 THEN 'timestamp with time zone' WHEN 1700 THEN 'numeric' WHEN 2206 THEN 'regtype' WHEN 705 THEN 'unknown' WHEN 2249 THEN 'record' WHEN 2278 THEN 'void' WHEN 1000 THEN 'boolean[]' WHEN 1001 THEN 'bytea[]' WHEN 1002 THEN '"char"[]' WHEN 1003 THEN 'name[]' WHEN 1016 THEN 'bigint[]' WHEN 1005 THEN 'smallint[]' WHEN 1007 THEN 'integer[]' WHEN 1008 THEN 'regproc[]' WHEN 1009 THEN 'text[]' WHEN 1028 THEN 'oid[]' WHEN 1021 THEN 'real[]' WHEN 1022 THEN 'double precision[]' WHEN 1015 THEN 'character varying[]' WHEN 1182 THEN 'date[]' WHEN 1115 THEN 'timestamp without time zone[]' WHEN 1185 THEN 'timestamp with time zone[]' WHEN 1231 THEN 'numeric[]' WHEN 2211 THEN 'regtype[]' WHEN 2287 THEN 'record[]' ELSE CASE WHEN "a"."atttypid" IS NULL THEN CAST(NULL AS STRING) ELSE '???' END END AS "format_type", CAST(NULL AS STRING), "a"."attnotnull", (SELECT "c"."collname" FROM information_schema."pg_collation" AS "c", information_schema."pg_type" AS "t" WHERE "c"."oid" = "a"."attcollation" AND "t"."oid" = "a"."atttypid" AND "a"."attcollation" <> "t"."typcollation") AS "attcollation", "a"."attidentity", "a"."attgenerated" FROM information_schema."pg_attribute" AS "a" WHERE "a"."attrelid" = 16386 AND "a"."attnum" > 0 AND NOT "a"."attisdropped" ORDER BY "a"."attnum" NULLS LAST

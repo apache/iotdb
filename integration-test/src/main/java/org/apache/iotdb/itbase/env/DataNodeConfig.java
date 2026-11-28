@@ -52,6 +52,16 @@ public interface DataNodeConfig {
 
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
 
+  DataNodeConfig setEnablePostgreSqlService(boolean enablePostgreSqlService);
+
+  DataNodeConfig setPostgreSqlServiceAddress(String address);
+
+  DataNodeConfig setPostgreSqlServicePort(int port);
+
+  DataNodeConfig setPostgreSqlServiceMaxConnections(int maxConnections);
+
+  DataNodeConfig setPostgreSqlServiceWriteTimeoutInMs(long writeTimeoutInMs);
+
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
 
   DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize);

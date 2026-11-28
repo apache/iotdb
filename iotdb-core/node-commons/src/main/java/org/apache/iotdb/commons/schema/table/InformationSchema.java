@@ -27,9 +27,11 @@ import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -544,12 +546,29 @@ public class InformationSchema {
 
   // ==================== SPI extension point ====================
 
+  private static final List<InformationSchemaExtension> extensions = new ArrayList<>();
+
   static {
     for (final InformationSchemaExtension extension :
         ServiceLoader.load(InformationSchemaExtension.class)) {
       extension.registerAdditionalInformationSchemaTables(schemaTables::put);
       extension.enhanceInformationSchemaTables(schemaTables::get);
+      extensions.add(extension);
     }
+  }
+
+  /**
+   * Whether a table appears in the listings of {@code information_schema} ({@code SHOW TABLES},
+   * {@code information_schema.tables} and {@code .columns}). An extension can hide its tables, for
+   * example while the service that needs them is not running; they can still be queried.
+   */
+  public static boolean isListed(final String tableName) {
+    for (final InformationSchemaExtension extension : extensions) {
+      if (!extension.isListed(tableName)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /** Extends the information schema by adding new tables or enhancing existing tables. */
@@ -574,6 +593,14 @@ public class InformationSchema {
      */
     default void enhanceInformationSchemaTables(final Function<String, TsTable> tableProvider) {
       // Do nothing by default
+    }
+
+    /**
+     * Whether a table is listed now (see {@link InformationSchema#isListed}); asked on every
+     * listing.
+     */
+    default boolean isListed(final String tableName) {
+      return true;
     }
   }
 

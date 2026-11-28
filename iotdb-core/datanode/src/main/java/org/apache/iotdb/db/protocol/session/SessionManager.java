@@ -508,6 +508,25 @@ public class SessionManager implements SessionManagerMBean {
     currSessionIdleTime.remove();
   }
 
+  /**
+   * Lists the logged-in session of an external service's connection (SHOW SESSIONS, {@code
+   * information_schema.connections}) until {@link #removeExternalServiceSession} is called for it.
+   * Such services serve many connections from shared threads, so this does not touch the thread's
+   * current session.
+   */
+  public void registerExternalServiceSession(IClientSession session) {
+    sessions.put(session, placeHolder);
+  }
+
+  /**
+   * Forgets an external service's session when its connection is closed: it is no longer listed and
+   * no longer logged in. Call it after {@link #closeSession(IClientSession, LongConsumer)}.
+   */
+  public void removeExternalServiceSession(IClientSession session) {
+    sessions.remove(session);
+    session.setLogin(false);
+  }
+
   public void removeCurrSessionForMqtt(MqttClientSession mqttClientSession) {
     if (mqttClientSession != null) {
       sessions.remove(mqttClientSession);

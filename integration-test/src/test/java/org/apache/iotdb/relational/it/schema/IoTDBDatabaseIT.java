@@ -1014,7 +1014,12 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton((InformationSchema.getSchemaTables().size() + 2) + ","));
+          Collections.singleton(
+              (InformationSchema.getSchemaTables().keySet().stream()
+                          .filter(InformationSchema::isListed)
+                          .count()
+                      + 2)
+                  + ","));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),

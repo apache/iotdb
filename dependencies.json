@@ -13,6 +13,7 @@
         "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base",
         "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider",
         "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations",
+        "com.github.jsqlparser:jsqlparser",
         "com.github.luben:zstd-jni",
         "com.github.moquette-io.moquette:moquette-broker",
         "com.github.wendykierp:JTransforms",
