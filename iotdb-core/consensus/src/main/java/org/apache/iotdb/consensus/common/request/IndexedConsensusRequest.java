@@ -49,6 +49,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private long memorySize = 0;
   private long retainedMemorySize = 0;
   private boolean serializedRequestsBuilt = false;
+  private boolean clearRequestsAfterSerialization;
   private long queueReservedMemorySize = -1L;
   private boolean containsUserData = false;
   private final AtomicLong referenceCnt = new AtomicLong();
@@ -80,6 +81,9 @@ public class IndexedConsensusRequest implements IConsensusRequest {
           this.retainedMemorySize += buffer.capacity() + r.getMemorySize();
         });
     serializedRequestsBuilt = true;
+    if (clearRequestsAfterSerialization) {
+      clearRequests();
+    }
   }
 
   @Override
@@ -145,6 +149,17 @@ public class IndexedConsensusRequest implements IConsensusRequest {
       retainedMemorySize -= requests.stream().mapToLong(IConsensusRequest::getMemorySize).sum();
     }
     requests.clear();
+  }
+
+  /**
+   * Clears source requests after deferred serialization when no subscription queue needs them. The
+   * serialized buffers remain available to replication retries.
+   */
+  public synchronized void clearRequestsAfterSerialization() {
+    clearRequestsAfterSerialization = true;
+    if (serializedRequestsBuilt) {
+      clearRequests();
+    }
   }
 
   public long getSearchIndex() {

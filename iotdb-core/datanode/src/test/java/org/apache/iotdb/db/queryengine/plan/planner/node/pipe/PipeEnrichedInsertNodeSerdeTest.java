@@ -33,6 +33,17 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 
 public class PipeEnrichedInsertNodeSerdeTest {
+
+  // Deferred replication of a pipe-enriched insert must reserve the wrapped insert and wrapper.
+  @Test
+  public void testDeferredRequestKeepsWrappedInsertMemoryEstimate() throws IllegalPathException {
+    InsertRowNode insertRowNode = getInsertRowNode();
+    PipeEnrichedInsertNode pipeEnrichedInsertNode = new PipeEnrichedInsertNode(insertRowNode);
+
+    Assert.assertTrue(pipeEnrichedInsertNode.isSerializationDeferred());
+    Assert.assertTrue(pipeEnrichedInsertNode.getMemorySize() > insertRowNode.getMemorySize());
+  }
+
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
     InsertRowNode insertRowNode = getInsertRowNode();

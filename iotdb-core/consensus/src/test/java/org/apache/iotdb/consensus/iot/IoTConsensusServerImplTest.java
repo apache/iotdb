@@ -46,23 +46,28 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Spliterator;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -104,6 +109,66 @@ public class IoTConsensusServerImplTest {
           ConsensusGroupModifyPeerException.class,
           () -> server.getLogDispatcher().waitUntilSyncLogCompleted(peer, 11, 1));
     } finally {
+      server.stop();
+      background.shutdownNow();
+    }
+  }
+
+  // A deferred local write is serialized after the state machine lock is released, before callers
+  // can reuse the request, and subscription consumers still receive its serialized bytes.
+  @Test
+  public void testDeferredWriteIsSerializedAfterStateMachineLockRelease() throws Exception {
+    final FakeConsensusReqReader reader = mock(FakeConsensusReqReader.class);
+    final ScheduledExecutorService background = Executors.newSingleThreadScheduledExecutor();
+    final Peer self = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    final TestStateMachine stateMachine =
+        new TestStateMachine() {
+          @Override
+          public synchronized DataSet read(IConsensusRequest ignored) {
+            return reader;
+          }
+
+          @Override
+          public TSStatus write(IConsensusRequest ignored) {
+            return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          }
+        };
+    final IoTConsensusServerImpl server =
+        new IoTConsensusServerImpl(
+            temporaryFolder.getRoot().getAbsolutePath(),
+            null,
+            DirectoryStrategyType.SEQUENCE_STRATEGY,
+            self,
+            Collections.singletonList(self),
+            stateMachine,
+            background,
+            null,
+            null,
+            IoTConsensusConfig.newBuilder().build());
+    final Field stateMachineLockField =
+        IoTConsensusServerImpl.class.getDeclaredField("stateMachineLock");
+    stateMachineLockField.setAccessible(true);
+    final ReentrantLock stateMachineLock = (ReentrantLock) stateMachineLockField.get(server);
+    final DeferredRequest request = new DeferredRequest(stateMachineLock);
+    final BlockingQueue<IndexedConsensusRequest> subscriptionQueue = new LinkedBlockingQueue<>();
+    server.registerSubscriptionQueue(
+        subscriptionQueue,
+        new SubscriptionWalRetentionPolicy(
+            "test",
+            SubscriptionWalRetentionPolicy.UNBOUNDED,
+            SubscriptionWalRetentionPolicy.UNBOUNDED),
+        () -> 0L);
+
+    try {
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), server.write(request).getCode());
+      assertTrue(request.isSerialized());
+      assertFalse(request.wasSerializedWhileLockHeld());
+      final IndexedConsensusRequest deliveredRequest = subscriptionQueue.poll();
+      assertNotNull(deliveredRequest);
+      assertFalse(deliveredRequest.getSerializedRequests().isEmpty());
+      assertTrue(deliveredRequest.getRequests().contains(request));
+    } finally {
+      server.deregisterSubscriptionQueue(subscriptionQueue);
       server.stop();
       background.shutdownNow();
     }
@@ -382,6 +447,41 @@ public class IoTConsensusServerImplTest {
     assertEquals(snapshot.size(), new HashSet<>(snapshot).size());
     for (int index = 1; index < snapshot.size(); index++) {
       assertTrue(snapshot.get(index - 1).compareTo(snapshot.get(index)) < 0);
+    }
+  }
+
+  private static class DeferredRequest implements IConsensusRequest {
+    private final ReentrantLock stateMachineLock;
+    private boolean serialized;
+    private boolean serializedWhileLockHeld;
+
+    private DeferredRequest(ReentrantLock stateMachineLock) {
+      this.stateMachineLock = stateMachineLock;
+    }
+
+    @Override
+    public ByteBuffer serializeToByteBuffer() {
+      serialized = true;
+      serializedWhileLockHeld = stateMachineLock.isHeldByCurrentThread();
+      return ByteBuffer.allocate(Integer.BYTES);
+    }
+
+    @Override
+    public long getMemorySize() {
+      return Integer.BYTES;
+    }
+
+    @Override
+    public boolean isSerializationDeferred() {
+      return true;
+    }
+
+    private boolean isSerialized() {
+      return serialized;
+    }
+
+    private boolean wasSerializedWhileLockHeld() {
+      return serializedWhileLockHeld;
     }
   }
 }

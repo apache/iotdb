@@ -53,10 +53,10 @@ public interface IConsensusRequest {
    * Returns whether this request materializes its bytes only when it is about to be sent, instead
    * of when it is handed over to the replication layer.
    *
-   * <p>A deferred request keeps just its source objects while it waits in the replication queues,
-   * so it must be able to rebuild the very same bytes on demand and must stay small. Consensus
-   * implementations may postpone {@link #serializeToByteBuffer()} for such requests and keep the
-   * source objects alive until then.
+   * <p>A deferred request keeps its source objects while it waits in the replication queues, so
+   * {@link #getMemorySize()} must account for them and the request must be able to rebuild the same
+   * bytes on demand. Consensus implementations may postpone {@link #serializeToByteBuffer()} for
+   * such requests and keep the source objects alive until then.
    */
   default boolean isSerializationDeferred() {
     return false;

@@ -565,6 +565,15 @@ public abstract class InsertNode extends SearchNode {
     return memorySize;
   }
 
+  /**
+   * IoTConsensus applies inserts under its per-region state machine lock. Deferring replication
+   * serialization lets encoding run after that lock has been released.
+   */
+  @Override
+  public boolean isSerializationDeferred() {
+    return true;
+  }
+
   public abstract void checkDataType(AbstractMemTable memTable)
       throws DataTypeInconsistentException;
 }

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -61,6 +62,9 @@ import java.util.stream.Collectors;
  */
 public class PipeEnrichedInsertNode extends InsertNode {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PipeEnrichedInsertNode.class);
+
   private final InsertNode insertNode;
 
   public PipeEnrichedInsertNode(final InsertNode insertNode) {
@@ -70,6 +74,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
 
   public InsertNode getInsertNode() {
     return insertNode;
+  }
+
+  @Override
+  public long getMemorySize() {
+    return insertNode.getMemorySize() + INSTANCE_SIZE;
   }
 
   @Override

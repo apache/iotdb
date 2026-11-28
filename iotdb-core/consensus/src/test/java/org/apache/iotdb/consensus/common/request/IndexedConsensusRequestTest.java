@@ -70,6 +70,25 @@ public class IndexedConsensusRequestTest {
     Assert.assertEquals(64L, request.getQueueReservedMemorySize());
   }
 
+  // A serialized replication request releases its source object when no subscription retains it.
+  @Test
+  public void testDeferredSourceCanBeClearedAfterSerialization() {
+    final CountingRequest deferred = new CountingRequest(true);
+    final IndexedConsensusRequest request =
+        new IndexedConsensusRequest(1L, 1L, Collections.singletonList(deferred));
+    Assert.assertEquals(64L, request.getQueueReservedMemorySize());
+
+    request.clearRequestsAfterSerialization();
+    request.buildSerializedRequests();
+
+    Assert.assertTrue(request.getRequests().isEmpty());
+    Assert.assertEquals(1, deferred.serializationCount);
+    Assert.assertEquals(64L, request.getMemorySize());
+    Assert.assertEquals(32L, request.getRetainedMemorySize());
+    Assert.assertEquals(64L, request.getQueueReservedMemorySize());
+    Assert.assertEquals(1, request.getSerializedRequests().size());
+  }
+
   @Test
   public void testRequestThatSerializesEagerlyIsNotTreatedAsDeferred() {
     final CountingRequest eager = new CountingRequest(false);

@@ -246,32 +246,38 @@ public class LogDispatcher {
   public void offer(IndexedConsensusRequest request, boolean keepRequestsForSubscription) {
     // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
-      // A request that deferred its serialization keeps only its source objects, which stay small,
-      // so that the entries waiting in the queues to be replicated do not retain their payloads.
-      // Such requests materialize their bytes when a batch is built instead.
+      // The memory manager accounts for deferred source objects until batch construction
+      // materializes their bytes.
       final boolean serializationDeferred = request.hasDeferredRequests();
       if (!serializationDeferred) {
         request.buildSerializedRequests();
       }
       if (!keepRequestsForSubscription && !serializationDeferred) {
         request.clearRequests();
+      } else if (!keepRequestsForSubscription) {
+        request.clearRequestsAfterSerialization();
       }
+      boolean offeredToAnyThread = false;
       synchronized (this) {
-        threads.forEach(
-            thread -> {
-              logger.debug(
-                  IoTConsensusMessages.PUSH_LOG_TO_QUEUE,
-                  impl.getThisNode().getGroupId(),
-                  thread.getPeer().getEndpoint().getIp(),
-                  thread.getPendingEntriesSize());
-              if (!thread.offer(request)) {
-                logger.debug(
-                    IoTConsensusMessages.LOG_QUEUE_FULL,
-                    impl.getThisNode().getGroupId(),
-                    thread.getPeer(),
-                    request.getSearchIndex());
-              }
-            });
+        for (LogDispatcherThread thread : threads) {
+          logger.debug(
+              IoTConsensusMessages.PUSH_LOG_TO_QUEUE,
+              impl.getThisNode().getGroupId(),
+              thread.getPeer().getEndpoint().getIp(),
+              thread.getPendingEntriesSize());
+          if (thread.offer(request)) {
+            offeredToAnyThread = true;
+          } else {
+            logger.debug(
+                IoTConsensusMessages.LOG_QUEUE_FULL,
+                impl.getThisNode().getGroupId(),
+                thread.getPeer(),
+                request.getSearchIndex());
+          }
+        }
+      }
+      if (!keepRequestsForSubscription && serializationDeferred && !offeredToAnyThread) {
+        request.clearRequests();
       }
     } else if (!keepRequestsForSubscription) {
       // A single-replica region has no dispatcher thread, but still does not need the raw request
