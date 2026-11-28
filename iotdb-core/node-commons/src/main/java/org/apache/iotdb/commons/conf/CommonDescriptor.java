@@ -33,6 +33,21 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
+import static org.apache.iotdb.commons.conf.ConfigValidation.BOOLEAN;
+import static org.apache.iotdb.commons.conf.ConfigValidation.FLOAT;
+import static org.apache.iotdb.commons.conf.ConfigValidation.INT;
+import static org.apache.iotdb.commons.conf.ConfigValidation.LONG;
+import static org.apache.iotdb.commons.conf.ConfigValidation.STRING;
+import static org.apache.iotdb.commons.conf.ConfigValidation.database;
+import static org.apache.iotdb.commons.conf.ConfigValidation.databaseText;
+import static org.apache.iotdb.commons.conf.ConfigValidation.directories;
+import static org.apache.iotdb.commons.conf.ConfigValidation.nonNegative;
+import static org.apache.iotdb.commons.conf.ConfigValidation.oneOf;
+import static org.apache.iotdb.commons.conf.ConfigValidation.positive;
+import static org.apache.iotdb.commons.conf.ConfigValidation.range;
+import static org.apache.iotdb.commons.conf.ConfigValidation.unrestricted;
+import static org.apache.iotdb.commons.conf.ConfigValidation.withUnlimited;
+
 public class CommonDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CommonDescriptor.class);
@@ -101,8 +116,12 @@ public class CommonDescriptor {
       tierTTLStr[i] = String.valueOf(config.getTierTTLInMs()[i]);
     }
     tierTTLStr =
-        properties
-            .getProperty("tier_ttl_in_ms", String.join(IoTDBConstant.TIER_SEPARATOR, tierTTLStr))
+        database(
+                properties,
+                "tier_ttl_in_ms",
+                String.join(IoTDBConstant.TIER_SEPARATOR, tierTTLStr),
+                STRING,
+                ConfigValidation.elements(IoTDBConstant.TIER_SEPARATOR, LONG, unrestricted()))
             .split(IoTDBConstant.TIER_SEPARATOR);
     long[] tierTTL = new long[tierTTLStr.length];
     for (int i = 0; i < tierTTL.length; ++i) {
@@ -114,16 +133,17 @@ public class CommonDescriptor {
     config.setTierTTLInMs(tierTTL);
 
     config.setTTLCheckInterval(
-        Long.parseLong(
-            properties.getProperty(
-                "ttl_check_interval", Long.toString(config.getTTLCheckInterval()))));
+        database(properties, "ttl_check_interval", config.getTTLCheckInterval(), LONG, positive()));
 
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(
-        properties
-            .getProperty("dn_wal_dirs", String.join(",", config.getWalDirs()))
-            .trim()
+        database(
+                properties,
+                "dn_wal_dirs",
+                String.join(",", config.getWalDirs()),
+                STRING,
+                directories(",", false))
             .split(","));
 
     config.setRpcThriftCompressionEnabled(
@@ -257,13 +277,20 @@ public class CommonDescriptor {
     }
 
     config.setTimestampPrecision(
-        properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
+        database(
+            properties,
+            "timestamp_precision",
+            config.getTimestampPrecision(),
+            STRING,
+            oneOf(false, "ms", "us", "ns")));
 
     config.setTimestampPrecisionCheckEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "timestamp_precision_check_enabled",
-                String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
+        database(
+            properties,
+            "timestamp_precision_check_enabled",
+            config.isTimestampPrecisionCheckEnabled(),
+            BOOLEAN,
+            unrestricted()));
     config.setDatanodeTokenTimeoutMS(
         Integer.parseInt(
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
@@ -291,7 +318,12 @@ public class CommonDescriptor {
     loadSubscriptionProps(properties);
 
     config.setSchemaEngineMode(
-        properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));
+        database(
+            properties,
+            "schema_engine_mode",
+            config.getSchemaEngineMode(),
+            STRING,
+            oneOf(false, "Memory", "PBTree")));
 
     config.setLastCacheEnable(
         Boolean.parseBoolean(
@@ -299,43 +331,61 @@ public class CommonDescriptor {
                 "enable_last_cache", Boolean.toString(config.isLastCacheEnable()))));
 
     config.setTagAttributeTotalSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
+        database(
+            properties,
+            "tag_attribute_total_size",
+            config.getTagAttributeTotalSize(),
+            INT,
+            nonNegative()));
 
     int singleMeasurementCheckCacheSize =
-        Integer.parseInt(
-            properties.getProperty(
-                "single_measurement_check_cache_size",
-                String.valueOf(config.getSingleMeasurementCheckCacheSize())));
+        database(
+            properties,
+            "single_measurement_check_cache_size",
+            config.getSingleMeasurementCheckCacheSize(),
+            INT,
+            nonNegative());
     if (singleMeasurementCheckCacheSize >= 0) {
       config.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
     }
 
     config.setTimePartitionOrigin(
-        Long.parseLong(
-            properties.getProperty(
-                "time_partition_origin", String.valueOf(config.getTimePartitionOrigin()))));
+        database(
+            properties,
+            "time_partition_origin",
+            config.getTimePartitionOrigin(),
+            LONG,
+            unrestricted()));
 
     config.setTimePartitionInterval(
-        Long.parseLong(
-            properties.getProperty(
-                "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
+        database(
+            properties,
+            "time_partition_interval",
+            config.getTimePartitionInterval(),
+            LONG,
+            positive()));
 
     config.setDatabaseLimitThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+        database(
+            properties,
+            "database_limit_threshold",
+            config.getDatabaseLimitThreshold(),
+            INT,
+            withUnlimited(nonNegative())));
     config.setSeriesLimitThreshold(
-        Long.parseLong(
-            properties.getProperty(
-                "cluster_timeseries_limit_threshold",
-                String.valueOf(config.getSeriesLimitThreshold()))));
+        database(
+            properties,
+            "cluster_timeseries_limit_threshold",
+            config.getSeriesLimitThreshold(),
+            LONG,
+            withUnlimited(nonNegative())));
     config.setDeviceLimitThreshold(
-        Long.parseLong(
-            properties.getProperty(
-                "cluster_device_limit_threshold",
-                String.valueOf(config.getDeviceLimitThreshold()))));
+        database(
+            properties,
+            "cluster_device_limit_threshold",
+            config.getDeviceLimitThreshold(),
+            LONG,
+            withUnlimited(nonNegative())));
     config.setPathLogMaxSize(
         Integer.parseInt(
             properties.getProperty(
@@ -344,256 +394,332 @@ public class CommonDescriptor {
     loadRetryProperties(properties);
   }
 
-  private void loadSubscriptionProps(TrimProperties properties) throws IOException {
+  void loadSubscriptionProps(TrimProperties properties) {
     config.setSubscriptionCacheMemoryUsagePercentage(
-        parseSubscriptionCacheMemoryUsagePercentage(
-            properties.getProperty(
-                "subscription_cache_memory_usage_percentage",
-                String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
+        database(
+            properties,
+            "subscription_cache_memory_usage_percentage",
+            config.getSubscriptionCacheMemoryUsagePercentage(),
+            FLOAT,
+            range(0.0f, true, 1.0f, true)));
     config.setSubscriptionSubtaskExecutorMaxThreadNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_subtask_executor_max_thread_num",
-                Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
+        database(
+            properties,
+            "subscription_subtask_executor_max_thread_num",
+            config.getSubscriptionSubtaskExecutorMaxThreadNum(),
+            INT,
+            positive()));
     config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_prefetch_executor_max_thread_num",
-                Integer.toString(config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum()))));
+        database(
+            properties,
+            "subscription_consensus_prefetch_executor_max_thread_num",
+            config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum(),
+            INT,
+            positive()));
 
     config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_prefetch_tablet_batch_max_delay_in_ms",
-                String.valueOf(config.getSubscriptionPrefetchTabletBatchMaxDelayInMs()))));
+        database(
+            properties,
+            "subscription_prefetch_tablet_batch_max_delay_in_ms",
+            config.getSubscriptionPrefetchTabletBatchMaxDelayInMs(),
+            INT,
+            nonNegative()));
     config.setSubscriptionPrefetchTabletBatchMaxSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_prefetch_tablet_batch_max_size_in_bytes",
-                String.valueOf(config.getSubscriptionPrefetchTabletBatchMaxSizeInBytes()))));
+        database(
+            properties,
+            "subscription_prefetch_tablet_batch_max_size_in_bytes",
+            config.getSubscriptionPrefetchTabletBatchMaxSizeInBytes(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_prefetch_ts_file_batch_max_delay_in_ms",
-                String.valueOf(config.getSubscriptionPrefetchTsFileBatchMaxDelayInMs()))));
+        database(
+            properties,
+            "subscription_prefetch_ts_file_batch_max_delay_in_ms",
+            config.getSubscriptionPrefetchTsFileBatchMaxDelayInMs(),
+            INT,
+            nonNegative()));
     config.setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_prefetch_ts_file_batch_max_size_in_bytes",
-                String.valueOf(config.getSubscriptionPrefetchTsFileBatchMaxSizeInBytes()))));
+        database(
+            properties,
+            "subscription_prefetch_ts_file_batch_max_size_in_bytes",
+            config.getSubscriptionPrefetchTsFileBatchMaxSizeInBytes(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionPollMaxBlockingTimeMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_poll_max_blocking_time_ms",
-                String.valueOf(config.getSubscriptionPollMaxBlockingTimeMs()))));
+        database(
+            properties,
+            "subscription_poll_max_blocking_time_ms",
+            config.getSubscriptionPollMaxBlockingTimeMs(),
+            INT,
+            nonNegative()));
     config.setSubscriptionDefaultTimeoutInMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_default_timeout_in_ms",
-                String.valueOf(config.getSubscriptionDefaultTimeoutInMs()))));
+        database(
+            properties,
+            "subscription_default_timeout_in_ms",
+            config.getSubscriptionDefaultTimeoutInMs(),
+            INT,
+            nonNegative()));
     config.setSubscriptionLaunchRetryIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_launch_retry_interval_ms",
-                String.valueOf(config.getSubscriptionLaunchRetryIntervalMs()))));
+        database(
+            properties,
+            "subscription_launch_retry_interval_ms",
+            config.getSubscriptionLaunchRetryIntervalMs(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionRecycleUncommittedEventIntervalMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_recycle_uncommitted_event_interval_ms",
-                String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalMs()))));
+        database(
+            properties,
+            "subscription_recycle_uncommitted_event_interval_ms",
+            config.getSubscriptionRecycleUncommittedEventIntervalMs(),
+            INT,
+            unrestricted()));
     config.setSubscriptionReadFileBufferSize(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_read_file_buffer_size",
-                String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+        database(
+            properties,
+            "subscription_read_file_buffer_size",
+            config.getSubscriptionReadFileBufferSize(),
+            LONG,
+            positive()));
     config.setSubscriptionReadTabletBufferSize(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_read_tablet_buffer_size",
-                String.valueOf(config.getSubscriptionReadTabletBufferSize()))));
+        database(
+            properties,
+            "subscription_read_tablet_buffer_size",
+            config.getSubscriptionReadTabletBufferSize(),
+            LONG,
+            positive()));
     config.setSubscriptionTsFileDeduplicationWindowSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_ts_file_deduplication_window_seconds",
-                String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
+        database(
+            properties,
+            "subscription_ts_file_deduplication_window_seconds",
+            config.getSubscriptionTsFileDeduplicationWindowSeconds(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionCheckMemoryEnoughIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_check_memory_enough_interval_ms",
-                String.valueOf(config.getSubscriptionCheckMemoryEnoughIntervalMs()))));
+        database(
+            properties,
+            "subscription_check_memory_enough_interval_ms",
+            config.getSubscriptionCheckMemoryEnoughIntervalMs(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionEstimatedInsertNodeTabletInsertionEventSize(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_estimated_insert_node_tablet_insertion_event_size",
-                String.valueOf(
-                    config.getSubscriptionEstimatedInsertNodeTabletInsertionEventSize()))));
+        database(
+            properties,
+            "subscription_estimated_insert_node_tablet_insertion_event_size",
+            config.getSubscriptionEstimatedInsertNodeTabletInsertionEventSize(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionEstimatedRawTabletInsertionEventSize(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_estimated_raw_tablet_insertion_event_size",
-                String.valueOf(config.getSubscriptionEstimatedRawTabletInsertionEventSize()))));
+        database(
+            properties,
+            "subscription_estimated_raw_tablet_insertion_event_size",
+            config.getSubscriptionEstimatedRawTabletInsertionEventSize(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionMaxAllowedEventCountInTabletBatch(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_max_allowed_event_count_in_tablet_batch",
-                String.valueOf(config.getSubscriptionMaxAllowedEventCountInTabletBatch()))));
+        database(
+            properties,
+            "subscription_max_allowed_event_count_in_tablet_batch",
+            config.getSubscriptionMaxAllowedEventCountInTabletBatch(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionLogManagerWindowSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_log_manager_window_seconds",
-                String.valueOf(config.getSubscriptionLogManagerWindowSeconds()))));
+        database(
+            properties,
+            "subscription_log_manager_window_seconds",
+            config.getSubscriptionLogManagerWindowSeconds(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionLogManagerBaseIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_log_manager_base_interval_ms",
-                String.valueOf(config.getSubscriptionLogManagerBaseIntervalMs()))));
+        database(
+            properties,
+            "subscription_log_manager_base_interval_ms",
+            config.getSubscriptionLogManagerBaseIntervalMs(),
+            LONG,
+            nonNegative()));
 
     config.setSubscriptionPrefetchEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_prefetch_enabled",
-                String.valueOf(config.getSubscriptionPrefetchEnabled()))));
+        database(
+            properties,
+            "subscription_prefetch_enabled",
+            config.getSubscriptionPrefetchEnabled(),
+            BOOLEAN,
+            unrestricted()));
     config.setSubscriptionPrefetchMemoryThreshold(
-        Float.parseFloat(
-            properties.getProperty(
-                "subscription_prefetch_memory_threshold",
-                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+        database(
+            properties,
+            "subscription_prefetch_memory_threshold",
+            config.getSubscriptionPrefetchMemoryThreshold(),
+            FLOAT,
+            range(0.0f, true, 1.0f, true)));
     config.setSubscriptionPrefetchMissingRateThreshold(
-        Float.parseFloat(
-            properties.getProperty(
-                "subscription_prefetch_missing_rate_threshold",
-                String.valueOf(config.getSubscriptionPrefetchMissingRateThreshold()))));
+        database(
+            properties,
+            "subscription_prefetch_missing_rate_threshold",
+            config.getSubscriptionPrefetchMissingRateThreshold(),
+            FLOAT,
+            range(0.0f, true, 1.0f, true)));
     config.setSubscriptionPrefetchEventLocalCountThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_prefetch_event_local_count_threshold",
-                String.valueOf(config.getSubscriptionPrefetchEventLocalCountThreshold()))));
+        database(
+            properties,
+            "subscription_prefetch_event_local_count_threshold",
+            config.getSubscriptionPrefetchEventLocalCountThreshold(),
+            INT,
+            nonNegative()));
     config.setSubscriptionPrefetchEventGlobalCountThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_prefetch_event_global_count_threshold",
-                String.valueOf(config.getSubscriptionPrefetchEventGlobalCountThreshold()))));
+        database(
+            properties,
+            "subscription_prefetch_event_global_count_threshold",
+            config.getSubscriptionPrefetchEventGlobalCountThreshold(),
+            INT,
+            nonNegative()));
 
     config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_meta_syncer_initial_sync_delay_minutes",
-                String.valueOf(config.getSubscriptionMetaSyncerInitialSyncDelayMinutes()))));
+        database(
+            properties,
+            "subscription_meta_syncer_initial_sync_delay_minutes",
+            config.getSubscriptionMetaSyncerInitialSyncDelayMinutes(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionMetaSyncerSyncIntervalMinutes(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_meta_syncer_sync_interval_minutes",
-                String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
+        database(
+            properties,
+            "subscription_meta_syncer_sync_interval_minutes",
+            config.getSubscriptionMetaSyncerSyncIntervalMinutes(),
+            LONG,
+            nonNegative()));
 
     config.setSubscriptionOwnerLeaseDurationMsMin(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_owner_lease_duration_ms_min",
-                String.valueOf(config.getSubscriptionOwnerLeaseDurationMsMin()))));
+        database(
+            properties,
+            "subscription_owner_lease_duration_ms_min",
+            config.getSubscriptionOwnerLeaseDurationMsMin(),
+            LONG,
+            nonNegative()));
 
     config.setSubscriptionConsensusBatchMaxDelayInMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_batch_max_delay_in_ms",
-                String.valueOf(config.getSubscriptionConsensusBatchMaxDelayInMs()))));
+        database(
+            properties,
+            "subscription_consensus_batch_max_delay_in_ms",
+            config.getSubscriptionConsensusBatchMaxDelayInMs(),
+            INT,
+            nonNegative()));
     config.setSubscriptionConsensusBatchMaxSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_batch_max_size_in_bytes",
-                String.valueOf(config.getSubscriptionConsensusBatchMaxSizeInBytes()))));
+        database(
+            properties,
+            "subscription_consensus_batch_max_size_in_bytes",
+            config.getSubscriptionConsensusBatchMaxSizeInBytes(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionConsensusBatchMaxTabletCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_batch_max_tablet_count",
-                String.valueOf(config.getSubscriptionConsensusBatchMaxTabletCount()))));
+        database(
+            properties,
+            "subscription_consensus_batch_max_tablet_count",
+            config.getSubscriptionConsensusBatchMaxTabletCount(),
+            INT,
+            nonNegative()));
     config.setSubscriptionConsensusWalRetentionSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_wal_retention_size_in_bytes",
-                String.valueOf(config.getSubscriptionConsensusWalRetentionSizeInBytes()))));
+        database(
+            properties,
+            "subscription_consensus_wal_retention_size_in_bytes",
+            config.getSubscriptionConsensusWalRetentionSizeInBytes(),
+            LONG,
+            withUnlimited(nonNegative())));
     config.setSubscriptionConsensusWalRetentionTimeMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_wal_retention_time_ms",
-                String.valueOf(config.getSubscriptionConsensusWalRetentionTimeMs()))));
+        database(
+            properties,
+            "subscription_consensus_wal_retention_time_ms",
+            config.getSubscriptionConsensusWalRetentionTimeMs(),
+            LONG,
+            withUnlimited(nonNegative())));
     config.setSubscriptionConsensusBatchMaxWalEntries(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_batch_max_wal_entries",
-                String.valueOf(config.getSubscriptionConsensusBatchMaxWalEntries()))));
+        database(
+            properties,
+            "subscription_consensus_batch_max_wal_entries",
+            config.getSubscriptionConsensusBatchMaxWalEntries(),
+            INT,
+            nonNegative()));
     config.setSubscriptionConsensusCommitPersistInterval(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_commit_persist_interval",
-                String.valueOf(config.getSubscriptionConsensusCommitPersistInterval()))));
+        database(
+            properties,
+            "subscription_consensus_commit_persist_interval",
+            config.getSubscriptionConsensusCommitPersistInterval(),
+            INT,
+            nonNegative()));
     config.setSubscriptionConsensusCommitFsyncEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_consensus_commit_fsync_enabled",
-                String.valueOf(config.isSubscriptionConsensusCommitFsyncEnabled()))));
+        database(
+            properties,
+            "subscription_consensus_commit_fsync_enabled",
+            config.isSubscriptionConsensusCommitFsyncEnabled(),
+            BOOLEAN,
+            unrestricted()));
     config.setSubscriptionConsensusConsumerEvictionTimeoutMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_consumer_eviction_timeout_ms",
-                String.valueOf(config.getSubscriptionConsensusConsumerEvictionTimeoutMs()))));
+        database(
+            properties,
+            "subscription_consensus_consumer_eviction_timeout_ms",
+            config.getSubscriptionConsensusConsumerEvictionTimeoutMs(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionConsensusLagBasedPriority(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_consensus_lag_based_priority",
-                String.valueOf(config.isSubscriptionConsensusLagBasedPriority()))));
+        database(
+            properties,
+            "subscription_consensus_lag_based_priority",
+            config.isSubscriptionConsensusLagBasedPriority(),
+            BOOLEAN,
+            unrestricted()));
     config.setSubscriptionConsensusFallbackPollingEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_consensus_fallback_polling_enabled",
-                String.valueOf(config.isSubscriptionConsensusFallbackPollingEnabled()))));
+        database(
+            properties,
+            "subscription_consensus_fallback_polling_enabled",
+            config.isSubscriptionConsensusFallbackPollingEnabled(),
+            BOOLEAN,
+            unrestricted()));
     config.setSubscriptionConsensusPrefetchingQueueCapacity(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_prefetching_queue_capacity",
-                String.valueOf(config.getSubscriptionConsensusPrefetchingQueueCapacity()))));
+        database(
+            properties,
+            "subscription_consensus_prefetching_queue_capacity",
+            config.getSubscriptionConsensusPrefetchingQueueCapacity(),
+            INT,
+            positive()));
     config.setSubscriptionConsensusWatermarkEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_consensus_watermark_enabled",
-                String.valueOf(config.isSubscriptionConsensusWatermarkEnabled()))));
+        database(
+            properties,
+            "subscription_consensus_watermark_enabled",
+            config.isSubscriptionConsensusWatermarkEnabled(),
+            BOOLEAN,
+            unrestricted()));
     config.setSubscriptionConsensusWatermarkIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_watermark_interval_ms",
-                String.valueOf(config.getSubscriptionConsensusWatermarkIntervalMs()))));
+        database(
+            properties,
+            "subscription_consensus_watermark_interval_ms",
+            config.getSubscriptionConsensusWatermarkIntervalMs(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionConsensusIdleSafeTimeBarrierIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_idle_safe_time_barrier_interval_ms",
-                String.valueOf(config.getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs()))));
-  }
-
-  static float parseSubscriptionCacheMemoryUsagePercentage(final String value) throws IOException {
-    final float percentage = Float.parseFloat(value);
-    if (!Float.isFinite(percentage) || percentage < 0 || percentage > 1) {
-      throw new IOException(
-          String.format(
-              CommonMessages
-                  .EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66,
-              percentage));
-    }
-    return percentage;
+        database(
+            properties,
+            "subscription_consensus_idle_safe_time_barrier_interval_ms",
+            config.getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs(),
+            LONG,
+            nonNegative()));
   }
 
   public void loadRetryProperties(TrimProperties properties) throws IOException {
     config.setRemoteWriteMaxRetryDurationInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "write_request_remote_dispatch_max_retry_duration_in_ms",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "write_request_remote_dispatch_max_retry_duration_in_ms"))));
+        databaseText(
+            properties,
+            "write_request_remote_dispatch_max_retry_duration_in_ms",
+            ConfigurationFileUtils.getConfigurationDefaultValue(
+                "write_request_remote_dispatch_max_retry_duration_in_ms"),
+            LONG,
+            unrestricted()));
 
     config.setRetryForUnknownErrors(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_retry_for_unknown_error",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "enable_retry_for_unknown_error"))));
+        databaseText(
+            properties,
+            "enable_retry_for_unknown_error",
+            ConfigurationFileUtils.getConfigurationDefaultValue("enable_retry_for_unknown_error"),
+            BOOLEAN,
+            unrestricted()));
   }
 
   /**
@@ -632,35 +758,47 @@ public class CommonDescriptor {
    */
   public void loadHotModifiedSubscriptionConsensusProps(final TrimProperties properties) {
     config.setSubscriptionConsensusBatchMaxDelayInMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_batch_max_delay_in_ms",
-                String.valueOf(config.getSubscriptionConsensusBatchMaxDelayInMs()))));
+        database(
+            properties,
+            "subscription_consensus_batch_max_delay_in_ms",
+            config.getSubscriptionConsensusBatchMaxDelayInMs(),
+            INT,
+            nonNegative()));
     config.setSubscriptionConsensusBatchMaxSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_batch_max_size_in_bytes",
-                String.valueOf(config.getSubscriptionConsensusBatchMaxSizeInBytes()))));
+        database(
+            properties,
+            "subscription_consensus_batch_max_size_in_bytes",
+            config.getSubscriptionConsensusBatchMaxSizeInBytes(),
+            LONG,
+            nonNegative()));
     config.setSubscriptionConsensusBatchMaxTabletCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_batch_max_tablet_count",
-                String.valueOf(config.getSubscriptionConsensusBatchMaxTabletCount()))));
+        database(
+            properties,
+            "subscription_consensus_batch_max_tablet_count",
+            config.getSubscriptionConsensusBatchMaxTabletCount(),
+            INT,
+            nonNegative()));
     config.setSubscriptionConsensusBatchMaxWalEntries(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_consensus_batch_max_wal_entries",
-                String.valueOf(config.getSubscriptionConsensusBatchMaxWalEntries()))));
+        database(
+            properties,
+            "subscription_consensus_batch_max_wal_entries",
+            config.getSubscriptionConsensusBatchMaxWalEntries(),
+            INT,
+            nonNegative()));
     config.setSubscriptionConsensusWalRetentionSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_wal_retention_size_in_bytes",
-                String.valueOf(config.getSubscriptionConsensusWalRetentionSizeInBytes()))));
+        database(
+            properties,
+            "subscription_consensus_wal_retention_size_in_bytes",
+            config.getSubscriptionConsensusWalRetentionSizeInBytes(),
+            LONG,
+            withUnlimited(nonNegative())));
     config.setSubscriptionConsensusWalRetentionTimeMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_consensus_wal_retention_time_ms",
-                String.valueOf(config.getSubscriptionConsensusWalRetentionTimeMs()))));
+        database(
+            properties,
+            "subscription_consensus_wal_retention_time_ms",
+            config.getSubscriptionConsensusWalRetentionTimeMs(),
+            LONG,
+            withUnlimited(nonNegative())));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

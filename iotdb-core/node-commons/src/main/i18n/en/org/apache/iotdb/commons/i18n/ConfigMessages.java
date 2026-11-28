@@ -20,6 +20,33 @@
 package org.apache.iotdb.commons.i18n;
 
 public final class ConfigMessages {
+  public static final String EXCEPTION_EXPECTED_A_SUPPORTED_TIMESTAMP_OR_NOW_0B41AA33 =
+      "expected a supported timestamp or now";
+  public static final String EXCEPTION_EXPECTED_TYPE_ARG_3252306A =
+      "expected type %s";
+  public static final String EXCEPTION_EXPECTED_A_NON_NEGATIVE_NUMBER_C0569CF9 =
+      "expected a non-negative number";
+  public static final String EXCEPTION_EXPECTED_A_POSITIVE_NUMBER_74E1B6E0 =
+      "expected a positive number";
+  public static final String EXCEPTION_EXPECTED_1_UNLIMITED_OR_A_VALUE_SATISFYING_THIS_CONSTRAINT_ARG_93049C28 =
+      "expected -1 (unlimited) or a value satisfying this constraint: %s";
+  public static final String EXCEPTION_EXPECTED_A_NUMBER_IN_ARG_55110FC5 =
+      "expected a number in %s";
+  public static final String EXCEPTION_EXPECTED_ONE_OF_ARG_7E3B0009 =
+      "expected one of [%s]";
+  public static final String EXCEPTION_EXPECTED_A_DIRECTORY_PATH_F0A68B41 =
+      "expected a directory path";
+  public static final String EXCEPTION_EXPECTED_A_LIST_OF_DIRECTORY_PATHS_02244CF5 =
+      "expected a list of directory paths";
+  public static final String LOG_INVALID_ARG_PARAMETER_ARG_ARG_AC2A7B4C =
+      "Invalid {} parameter {}: {}";
+  public static final String LOG_IGNORING_UNKNOWN_ARG_PARAMETER_ARG_B7F5AAD6 =
+      "Ignoring unknown {} parameter {}";
+  public static final String EXCEPTION_INVALID_ARG_PARAMETER_ARG_ARG_4EAB34E6 =
+      "Invalid %s parameter %s: %s";
+  public static final String EXCEPTION_EXPECTED_A_COLON_SEPARATED_LIST_OF_NON_NEGATIVE_WEIGHTS_WITH_A_POSITIVE_SUM_48DA2BDC =
+      "expected a colon-separated list of non-negative weights with a positive sum";
+
 
   // ===================== Generic config-set-to pattern =====================
   public static final String CONFIG_SET_TO = "{} is set to {}.";

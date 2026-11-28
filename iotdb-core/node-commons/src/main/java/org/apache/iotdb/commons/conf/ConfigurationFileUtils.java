@@ -125,6 +125,12 @@ public class ConfigurationFileUtils {
         continue;
       }
       String value = entry.getValue() == null ? null : entry.getValue().toString();
+      if (properties instanceof TrimProperties trimProperties) {
+        final String effectiveValue = trimProperties.getEffectiveAppliedValue(key);
+        if (effectiveValue != null) {
+          value = effectiveValue;
+        }
+      }
       lastAppliedProperties.put(
           key, hidedParameters.contains(key) ? displayValueOfHidedParameter : value);
     }
@@ -267,6 +273,19 @@ public class ConfigurationFileUtils {
     DefaultConfigurationItem defaultConfigurationItem =
         configuration2DefaultValue.get(parameterName);
     return defaultConfigurationItem == null ? null : defaultConfigurationItem.value;
+  }
+
+  public static void warnUnknownConfigurationKeys(final TrimProperties properties) {
+    try {
+      loadConfigurationDefaultValueFromTemplate();
+      for (final Object key : properties.keySet()) {
+        if (!configuration2DefaultValue.containsKey(key) && !properties.wasAccessed(key)) {
+          ConfigValidation.warnUnknown(ConfigValidation.Context.DATABASE, key);
+        }
+      }
+    } catch (final IOException ignored) {
+      return;
+    }
   }
 
   public static PrivilegeType getConfigurationItemPrivilege(String parameterName)

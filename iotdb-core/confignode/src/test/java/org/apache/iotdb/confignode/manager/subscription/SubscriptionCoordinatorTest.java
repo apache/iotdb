@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -82,6 +83,31 @@ public class SubscriptionCoordinatorTest {
       }
       executor.shutdownNow();
     }
+  }
+
+  @Test
+  public void testMalformedOwnerAttributesAreRejectedBeforeMetaBuild() {
+    final String topicName = "test_topic";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> initialAttributes = new HashMap<>();
+    initialAttributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
+    initialAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "1");
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo
+            .createTopic(new CreateTopicPlan(new TopicMeta(topicName, 1L, initialAttributes)))
+            .getCode());
+
+    final SubscriptionCoordinator coordinator =
+        new SubscriptionCoordinator(Mockito.mock(ConfigManager.class), subscriptionInfo);
+    final TAlterTopicReq request =
+        new TAlterTopicReq()
+            .setTopicName(topicName)
+            .setTopicAttributes(
+                Map.of(TopicConstant.OWNER_ID_KEY, "owner2", TopicConstant.OWNER_EPOCH_KEY, "bad"));
+
+    Assert.assertThrows(
+        SubscriptionException.class, () -> coordinator.validateTopicAttributesBeforeAlter(request));
   }
 
   @Test

@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeParameterDefinitions;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -136,6 +137,13 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                 PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
 
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+
+    alterPipeRequest.setExtractorAttributes(
+        PipeParameterDefinitions.validateSource(alterPipeRequest.getExtractorAttributes()));
+    alterPipeRequest.setProcessorAttributes(
+        PipeParameterDefinitions.validateProcessor(alterPipeRequest.getProcessorAttributes()));
+    alterPipeRequest.setConnectorAttributes(
+        PipeParameterDefinitions.validateSink(alterPipeRequest.getConnectorAttributes()));
 
     if (checkSource) {
       CreatePipeProcedureV2.checkAndEnrichSourceAuthentication(

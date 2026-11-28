@@ -22,26 +22,47 @@ package org.apache.iotdb.commons.conf;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-
 public class CommonDescriptorSubscriptionCacheMemoryUsagePercentageTest {
 
   @Test
-  public void testValidPercentage() throws IOException {
+  public void testValidPercentage() {
     for (final String value : new String[] {"0", "0.05", "0.1", "1"}) {
-      Assert.assertEquals(
-          Float.parseFloat(value),
-          CommonDescriptor.parseSubscriptionCacheMemoryUsagePercentage(value),
-          0);
+      Assert.assertEquals(Float.parseFloat(value), loadPercentage(value), 0);
     }
   }
 
   @Test
-  public void testInvalidPercentage() {
-    for (final String value : new String[] {"-0.01", "1.01", "NaN", "Infinity", "-Infinity"}) {
-      Assert.assertThrows(
-          IOException.class,
-          () -> CommonDescriptor.parseSubscriptionCacheMemoryUsagePercentage(value));
+  public void testInvalidPercentageUsesDefault() {
+    for (final String value :
+        new String[] {"-0.01", "1.01", "NaN", "Infinity", "-Infinity", "wrong"}) {
+      Assert.assertEquals(
+          new CommonConfig().getSubscriptionCacheMemoryUsagePercentage(), loadPercentage(value), 0);
+    }
+  }
+
+  private static float loadPercentage(final String value) {
+    final CommonDescriptor descriptor = CommonDescriptor.getInstance();
+    final CommonConfig config = descriptor.getConfig();
+    final float original = config.getSubscriptionCacheMemoryUsagePercentage();
+    final String originalAppliedValue =
+        ConfigurationFileUtils.getAppliedProperties()
+            .get("subscription_cache_memory_usage_percentage");
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("subscription_cache_memory_usage_percentage", value);
+    try {
+      config.setSubscriptionCacheMemoryUsagePercentage(
+          new CommonConfig().getSubscriptionCacheMemoryUsagePercentage());
+      descriptor.loadSubscriptionProps(properties);
+      return config.getSubscriptionCacheMemoryUsagePercentage();
+    } finally {
+      config.setSubscriptionCacheMemoryUsagePercentage(original);
+      if (originalAppliedValue == null) {
+        ConfigurationFileUtils.getAppliedProperties()
+            .remove("subscription_cache_memory_usage_percentage");
+      } else {
+        ConfigurationFileUtils.getAppliedProperties()
+            .put("subscription_cache_memory_usage_percentage", originalAppliedValue);
+      }
     }
   }
 }

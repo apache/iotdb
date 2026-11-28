@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
@@ -32,6 +33,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -97,31 +99,45 @@ public class ConfigManagerTimeseriesDeletionIntervalReloadTest {
   }
 
   @Test
-  public void testLaterValidationFailureStillUpdatesSchedulerAndSameValueRetry() {
+  public void testInvalidPipeRateLimitFallsBackAndSchedulerStillUpdates() throws IOException {
     final long updatedIntervalMs = originalIntervalMs + 1;
-    assertEquals(
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-        configManager
-            .setConfiguration(
-                request(
-                    Map.of(
-                        "timeseries_deletion_execution_interval_ms",
-                        "" + updatedIntervalMs,
-                        "pipe_all_sinks_rate_limit_bytes_per_second",
-                        "invalid")))
-            .getCode());
-    assertEquals(updatedIntervalMs, CONF.getTimeseriesDeletionExecutionIntervalMs());
-    verify(procedureManager).updateTimeseriesDeletionExecutionIntervalMs(updatedIntervalMs);
+    final String rateLimitKey = "pipe_all_sinks_rate_limit_bytes_per_second";
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final double originalRateLimit = commonConfig.getPipeAllSinksRateLimitBytesPerSecond();
+    final double defaultRateLimit =
+        Double.parseDouble(ConfigurationFileUtils.getConfigurationDefaultValue(rateLimitKey));
+    try {
+      commonConfig.setPipeAllSinksRateLimitBytesPerSecond(1024);
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          configManager
+              .setConfiguration(
+                  request(
+                      Map.of(
+                          "timeseries_deletion_execution_interval_ms",
+                          "" + updatedIntervalMs,
+                          rateLimitKey,
+                          "invalid")))
+              .getCode());
+      assertEquals(defaultRateLimit, commonConfig.getPipeAllSinksRateLimitBytesPerSecond(), 0);
+      assertEquals(
+          Double.toString(defaultRateLimit),
+          ConfigurationFileUtils.getAppliedProperties().get(rateLimitKey));
+      assertEquals(updatedIntervalMs, CONF.getTimeseriesDeletionExecutionIntervalMs());
+      verify(procedureManager).updateTimeseriesDeletionExecutionIntervalMs(updatedIntervalMs);
 
-    assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        configManager
-            .setConfiguration(
-                request(
-                    Map.of("timeseries_deletion_execution_interval_ms", "" + updatedIntervalMs)))
-            .getCode());
-    verify(procedureManager, times(2))
-        .updateTimeseriesDeletionExecutionIntervalMs(updatedIntervalMs);
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          configManager
+              .setConfiguration(
+                  request(
+                      Map.of("timeseries_deletion_execution_interval_ms", "" + updatedIntervalMs)))
+              .getCode());
+      verify(procedureManager, times(2))
+          .updateTimeseriesDeletionExecutionIntervalMs(updatedIntervalMs);
+    } finally {
+      commonConfig.setPipeAllSinksRateLimitBytesPerSecond(originalRateLimit);
+    }
   }
 
   @Test

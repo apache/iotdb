@@ -78,4 +78,46 @@ public class PipeDescriptorTest {
 
     Assert.assertEquals(1048576, config.getPipeAirGapReceiverUdpSocketBufferSizeInBytes());
   }
+
+  @Test
+  public void testHardlinkDirectoryNamesCanBeRelative() {
+    final String originalBaseDirName = config.getPipeHardlinkBaseDirName();
+    final String originalTsFileDirName = config.getPipeHardlinkTsFileDirName();
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("pipe_hardlink_base_dir_name", "custom-pipe");
+    properties.setProperty("pipe_hardlink_tsfile_dir_name", "custom-tsfile");
+
+    try {
+      PipeDescriptor.loadPipeStaticConfig(config, properties);
+      Assert.assertEquals("custom-pipe", config.getPipeHardlinkBaseDirName());
+      Assert.assertEquals("custom-tsfile", config.getPipeHardlinkTsFileDirName());
+    } finally {
+      config.setPipeHardlinkBaseDirName(originalBaseDirName);
+      config.setPipeHardlinkTsFileDirName(originalTsFileDirName);
+    }
+  }
+
+  @Test
+  public void testInvalidTwoStageAggregateValuesFallBackToCurrentConfig() {
+    final long originalMaxCombinerLiveTimeInMs =
+        config.getTwoStageAggregateMaxCombinerLiveTimeInMs();
+    final long originalDataRegionInfoCacheTimeInMs =
+        config.getTwoStageAggregateDataRegionInfoCacheTimeInMs();
+    final long originalSenderEndPointsCacheInMs =
+        config.getTwoStageAggregateSenderEndPointsCacheInMs();
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("two_stage_aggregate_max_combiner_live_time_in_ms", "invalid");
+    properties.setProperty("two_stage_aggregate_data_region_info_cache_time_in_ms", "-1");
+    properties.setProperty("two_stage_aggregate_sender_end_points_cache_in_ms", "invalid");
+
+    PipeDescriptor.loadPipeStaticConfig(config, properties);
+
+    Assert.assertEquals(
+        originalMaxCombinerLiveTimeInMs, config.getTwoStageAggregateMaxCombinerLiveTimeInMs());
+    Assert.assertEquals(
+        originalDataRegionInfoCacheTimeInMs,
+        config.getTwoStageAggregateDataRegionInfoCacheTimeInMs());
+    Assert.assertEquals(
+        originalSenderEndPointsCacheInMs, config.getTwoStageAggregateSenderEndPointsCacheInMs());
+  }
 }

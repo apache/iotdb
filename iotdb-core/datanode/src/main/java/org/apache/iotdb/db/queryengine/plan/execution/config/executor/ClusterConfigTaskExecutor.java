@@ -96,6 +96,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicParameterDefinitions;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
@@ -360,6 +361,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -3218,7 +3220,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     final String topicName = createTopicStatement.getTopicName();
-    final Map<String, String> topicAttributes = createTopicStatement.getTopicAttributes();
+    final Map<String, String> topicAttributes;
+    try {
+      topicAttributes =
+          TopicParameterDefinitions.validate(createTopicStatement.getTopicAttributes());
+    } catch (final SubscriptionException failure) {
+      future.setException(
+          new IoTDBException(
+              failure.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
+      return future;
+    }
 
     // Replace now value with current time (raw timestamp based on system timestamp precision)
     final long currentTime =

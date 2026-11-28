@@ -53,6 +53,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -254,6 +255,18 @@ public class SubscriptionCoordinator {
         new TopicModelKey(req.getTopicName(), currentTopicMeta.visibleUnderTableModel()),
         System.currentTimeMillis());
     return true;
+  }
+
+  public void validateTopicAttributesBeforeAlter(final TAlterTopicReq req)
+      throws SubscriptionException {
+    final boolean isTableModel = new TopicConfig(req.getTopicAttributes()).isTableTopic();
+    final TopicMeta currentTopicMeta =
+        subscriptionInfo.deepCopyTopicMeta(req.getTopicName(), isTableModel);
+    subscriptionInfo.validateUpdatedTopicAttributes(
+        req.getTopicAttributes(),
+        Objects.isNull(currentTopicMeta)
+            ? Collections.emptyMap()
+            : currentTopicMeta.getConfig().getAttribute());
   }
 
   public void unblockOwnerLeaseRenewal(String topicName) {
