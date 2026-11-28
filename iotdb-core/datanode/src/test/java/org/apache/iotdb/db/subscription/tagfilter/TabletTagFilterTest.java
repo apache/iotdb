@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.subscription.tagfilter;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -31,6 +34,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -134,11 +138,69 @@ public class TabletTagFilterTest {
     Assert.assertNull(TabletTagFilter.filter(tablet, TagFilterMatcher.matchNone()));
   }
 
+  @Test
+  public void testBoundSchemaTreatsAbsentNewlyAddedTagColumnInOlderTabletAsNull() throws Exception {
+    final TsTable evolvedTable = new TsTable("weather");
+    evolvedTable.addColumnSchema(new TagColumnSchema("region", TSDataType.STRING));
+    evolvedTable.addColumnSchema(new TagColumnSchema("device", TSDataType.STRING));
+    evolvedTable.addColumnSchema(new TagColumnSchema("new_tag", TSDataType.STRING));
+    evolvedTable.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.DOUBLE));
+    final Map<String, Map<String, TsTable>> tables =
+        Collections.singletonMap("db1", Collections.singletonMap("weather", evolvedTable));
+
+    // Older tablet written before ALTER TABLE ADD COLUMN new_tag STRING TAG lacks new_tag.
+    final Tablet olderTablet = createTablet();
+
+    final Tablet isNullFiltered =
+        TabletTagFilter.filter(
+            olderTablet, boundMatcher("db1", "weather", "new_tag IS NULL", tables), "db1");
+    Assert.assertSame(olderTablet, isNullFiltered);
+
+    Assert.assertNull(
+        TabletTagFilter.filter(
+            olderTablet, boundMatcher("db1", "weather", "new_tag = \"v1\"", tables), "db1"));
+
+    // SQL 3VL: NOT (NULL = "v1") evaluates to UNKNOWN (false), not TRUE.
+    Assert.assertNull(
+        TabletTagFilter.filter(
+            olderTablet, boundMatcher("db1", "weather", "NOT (new_tag = \"v1\")", tables), "db1"));
+
+    final Tablet orFiltered =
+        TabletTagFilter.filter(
+            olderTablet,
+            boundMatcher("db1", "weather", "new_tag = \"v1\" OR region = \"north\"", tables),
+            "db1");
+    Assert.assertNotNull(orFiltered);
+    Assert.assertEquals(1, orFiltered.getRowSize());
+    Assert.assertEquals(1L, orFiltered.getTimestamp(0));
+
+    // Wildcard topic that already has a valid TableBinding for (db1, weather) also treats absent
+    // newly-added TAG column in historical tablets as NULL.
+    final Tablet wildcardFiltered =
+        TabletTagFilter.filter(
+            olderTablet, boundMatcher("db1", ".*", "new_tag IS NULL", tables), "db1");
+    Assert.assertSame(olderTablet, wildcardFiltered);
+  }
+
   private static TagFilterMatcher matcher(final String filter) throws Exception {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put("__system.sql-dialect", "table");
     attributes.put(TopicConstant.TAG_FILTER_KEY, filter);
     return TagFilterMatcher.fromTopicConfig(new TopicConfig(attributes));
+  }
+
+  private static TagFilterMatcher boundMatcher(
+      final String database,
+      final String table,
+      final String filter,
+      final Map<String, Map<String, TsTable>> tables)
+      throws Exception {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put("__system.sql-dialect", "table");
+    attributes.put(TopicConstant.DATABASE_KEY, database);
+    attributes.put(TopicConstant.TABLE_KEY, table);
+    attributes.put(TopicConstant.TAG_FILTER_KEY, filter);
+    return TagFilterMatcher.fromTopicConfig(new TopicConfig(attributes), tables);
   }
 
   private static void assertFailsClosed(final String filter) throws Exception {
