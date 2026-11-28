@@ -36,7 +36,7 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
     Column valueColumn = arguments[0];
     Column weightColumn = arguments[1];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -74,7 +74,7 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
     Column valueColumn = arguments[0];
     Column weightColumn = arguments[1];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -112,7 +112,7 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
     Column valueColumn = arguments[0];
     Column weightColumn = arguments[1];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -150,7 +150,7 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
     Column valueColumn = arguments[0];
     Column weightColumn = arguments[1];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {

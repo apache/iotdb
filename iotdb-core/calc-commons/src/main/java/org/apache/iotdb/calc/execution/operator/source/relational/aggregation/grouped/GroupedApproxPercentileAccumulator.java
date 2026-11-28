@@ -35,7 +35,7 @@ public class GroupedApproxPercentileAccumulator extends AbstractGroupedApproxPer
   public void addIntInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     Column valueColumn = arguments[0];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -64,7 +64,7 @@ public class GroupedApproxPercentileAccumulator extends AbstractGroupedApproxPer
   public void addLongInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     Column valueColumn = arguments[0];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -93,7 +93,7 @@ public class GroupedApproxPercentileAccumulator extends AbstractGroupedApproxPer
   public void addFloatInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     Column valueColumn = arguments[0];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -122,7 +122,7 @@ public class GroupedApproxPercentileAccumulator extends AbstractGroupedApproxPer
   public void addDoubleInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     Column valueColumn = arguments[0];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {

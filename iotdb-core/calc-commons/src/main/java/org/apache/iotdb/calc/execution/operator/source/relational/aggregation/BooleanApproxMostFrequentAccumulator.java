@@ -65,7 +65,7 @@ public class BooleanApproxMostFrequentAccumulator
     }
     SpaceSaving<Boolean> spaceSaving = getOrCreateSpaceSaving(state, maxBuckets, capacity);
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     Column valueColumn = arguments[0];
 

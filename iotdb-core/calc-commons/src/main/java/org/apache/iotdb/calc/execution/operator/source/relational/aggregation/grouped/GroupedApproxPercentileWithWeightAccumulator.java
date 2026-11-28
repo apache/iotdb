@@ -39,7 +39,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
     Column valueColumn = arguments[0];
     Column weightColumn = arguments[1];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -82,7 +82,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
     Column valueColumn = arguments[0];
     Column weightColumn = arguments[1];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -125,7 +125,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
     Column valueColumn = arguments[0];
     Column weightColumn = arguments[1];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -168,7 +168,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
     Column valueColumn = arguments[0];
     Column weightColumn = arguments[1];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {

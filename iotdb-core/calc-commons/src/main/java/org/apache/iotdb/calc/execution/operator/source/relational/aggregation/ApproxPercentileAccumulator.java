@@ -32,7 +32,7 @@ public class ApproxPercentileAccumulator extends AbstractApproxPercentileAccumul
   public void addIntInput(Column[] arguments, AggregationMask mask) {
 
     Column valueColumn = arguments[0];
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -56,7 +56,7 @@ public class ApproxPercentileAccumulator extends AbstractApproxPercentileAccumul
   public void addLongInput(Column[] arguments, AggregationMask mask) {
 
     Column valueColumn = arguments[0];
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -80,7 +80,7 @@ public class ApproxPercentileAccumulator extends AbstractApproxPercentileAccumul
   public void addFloatInput(Column[] arguments, AggregationMask mask) {
 
     Column valueColumn = arguments[0];
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -103,7 +103,7 @@ public class ApproxPercentileAccumulator extends AbstractApproxPercentileAccumul
   @Override
   public void addDoubleInput(Column[] arguments, AggregationMask mask) {
     Column valueColumn = arguments[0];
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
         if (!valueColumn.isNull(i)) {
