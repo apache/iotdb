@@ -73,6 +73,18 @@ def test_numpy_tablet_preserves_blob_bytes():
     assert tablet.get_binary_values() == expected.get_binary_values()
 
 
+def test_numpy_tablet_copies_object_blob_column():
+    column = np.array([b"first\x00"], dtype=object)
+    values = [column]
+    types = [TSDataType.BLOB]
+    tablet = NumpyTablet("root.sg.d", ["s"], types, values, np.array([1]))
+
+    column[0] = b"second"
+    values[0] = np.array([b"third"], dtype=object)
+    expected = Tablet("root.sg.d", ["s"], types, [[b"first\x00"]], [1])
+    assert tablet.get_binary_values() == expected.get_binary_values()
+
+
 def test_numpy_tablet_fixed_width_blob_padding():
     column = np.array([b"A", b"XYZ"], dtype="S4")
     types = [TSDataType.BLOB]
@@ -135,20 +147,18 @@ def test_numpy_tablet_blob_buffers(buffer_type):
 def test_numpy_tablet_blob_rejects_nested_sequence():
     column = np.array([b"A", [65]], dtype=object)
     with pytest.raises(ValueError):
-        NumpyTablet(
-            "root.sg.d", ["s"], [TSDataType.BLOB], [column], np.array([1, 2])
-        ).get_binary_values()
+        NumpyTablet("root.sg.d", ["s"], [TSDataType.BLOB], [column], np.array([1, 2]))
 
 
 def test_numpy_tablet_blob_scalar_conversion_with_bitmap():
-    column = np.array([None, 123], dtype=object)
-    nulls = BitMap(2)
+    column = np.array([None, 123, b"A\x00"], dtype=object)
+    nulls = BitMap(3)
     nulls.mark(0)
     tablet = NumpyTablet(
-        "root.sg.d", ["s"], [TSDataType.BLOB], [column], np.array([1, 2]), [nulls]
+        "root.sg.d", ["s"], [TSDataType.BLOB], [column], np.array([1, 2, 3]), [nulls]
     )
     assert tablet.get_binary_values() == bytes.fromhex(
-        "00000004 4e6f6e65 00000003 313233 01 01"
+        "00000004 4e6f6e65 00000003 313233 00000002 4100 01 01"
     )
 
 

@@ -72,6 +72,7 @@ class NumpyTablet(object):
                 "Input error! len(values) does not equal to len(data_types)!"
             )
 
+        values = list(values)
         if not self.check_sorted(timestamps):
             index = timestamps.argsort()
             timestamps = timestamps[index]
@@ -90,10 +91,8 @@ class NumpyTablet(object):
                 and column.dtype.kind in "OV"
                 and column.dtype.names is None
             ):
-                # Box objects and raw void values per cell.
-                # Structured arrays need NumPy's whole-column cast to extract the field.
-                dtype = object
-            if column.dtype != dtype:
+                values[i] = self._copy_blob_column(column)
+            elif column.dtype != dtype:
                 values[i] = column.astype(dtype)
 
         self.__values = values
@@ -110,6 +109,23 @@ class NumpyTablet(object):
             )
         else:
             self.__column_types = column_types
+
+    @staticmethod
+    def _copy_blob_column(column):
+        # Object dtype preserves the length of each BLOB, including trailing zeros.
+        result = column.astype(object)
+        for row, cell in enumerate(result):
+            if isinstance(cell, bytes):
+                continue
+            if cell is None:
+                # Preserve the payload of NumPy's bytes cast for bitmap-marked nulls.
+                result[row] = b"None"
+            elif isinstance(cell, (bytearray, memoryview)):
+                result[row] = bytes(cell)
+            else:
+                # Keep NumPy's scalar conversion and rejection of nested sequences.
+                result[row] = result[row : row + 1].astype(np.bytes_)[0]
+        return result
 
     @staticmethod
     def _sort_bitmap(bitmap, index):
@@ -175,14 +191,8 @@ class NumpyTablet(object):
             elif data_type == 5 or data_type == 11 or data_type == 10:
                 format_str_list = [">"]
                 values_tobe_packed = []
-                for row, cell in enumerate(value):
-                    if data_type == TSDataType.BLOB and not isinstance(cell, bytes):
-                        if isinstance(cell, (bytearray, memoryview)):
-                            value_bytes = bytes(cell)
-                        else:
-                            # Cast the object in its column so NumPy treats it as one cell.
-                            value_bytes = value[row : row + 1].astype(np.bytes_)[0]
-                    elif isinstance(cell, str):
+                for cell in value:
+                    if isinstance(cell, str):
                         value_bytes = bytes(cell, "utf-8")
                     else:
                         value_bytes = cell
