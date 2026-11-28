@@ -95,6 +95,13 @@ public class IoTDBBitwiseFunctionTableIT {
         "INSERT INTO bitwise_right_shift_table(Time,device_id,s1,s2,s3,s4) values(7, 'd1', 'a', 0, 1, 1)",
         "INSERT INTO bitwise_right_shift_table(Time,device_id,s1,s2,s3,s4) values(8, 'd1', 'a', 0, 2, 1)",
         "INSERT INTO bitwise_right_shift_table(Time,device_id,s1) values(9, 'd1', 'a')",
+        // shift width follows the declared operand type, not the value
+        "create table bitwise_shift_width_table(device_id STRING TAG, i32 INT32 FIELD, i64 INT64 FIELD)",
+        "INSERT INTO bitwise_shift_width_table(Time,device_id,i32,i64) values(1, 'd1', 1, 1)",
+        "INSERT INTO bitwise_shift_width_table(Time,device_id,i32,i64) values(2, 'd1', 100, 100)",
+        "INSERT INTO bitwise_shift_width_table(Time,device_id,i32,i64) values(3, 'd1', -45, -45)",
+        "INSERT INTO bitwise_shift_width_table(Time,device_id,i32,i64) values(4, 'd1', -45000, -45000)",
+        "INSERT INTO bitwise_shift_width_table(Time,device_id,i32,i64) values(5, 'd1', 1000, 1000)",
         // bitwise_right_shift_arithmetic
         "create table bitwise_right_shift_arithmetic_table(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD)",
         "INSERT INTO bitwise_right_shift_arithmetic_table(Time,device_id,s1,s2,s3,s4) values(1, 'd1', 'a', 12, 64, 1)",
@@ -433,6 +440,102 @@ public class IoTDBBitwiseFunctionTableIT {
         "701: Scalar function bitwise_right_shift_arithmetic only accepts two arguments and they must be Int32 or Int64 data type.",
         CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+        DATABASE_NAME);
+  }
+
+  /**
+   * The shift width has to follow the declared type of the operand. Each row below crosses the
+   * 8-bit or 16-bit boundary that the shift used to infer from the value, except -45000, whose
+   * magnitude already selected the full width, so one column used to be evaluated with two
+   * different widths under the same shift amount.
+   */
+  @Test
+  public void bitwiseLeftShiftKeepsDeclaredInt32Width() {
+    String[] expectedHeader = new String[] {"time", "i32", "_col2", "_col3"};
+    String[] expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,128,1048576,",
+          "1970-01-01T00:00:00.002Z,100,12800,104857600,",
+          "1970-01-01T00:00:00.003Z,-45,-5760,-47185920,",
+          "1970-01-01T00:00:00.004Z,-45000,-5760000,58720256,",
+          "1970-01-01T00:00:00.005Z,1000,128000,1048576000,"
+        };
+    tableResultSetEqualTest(
+        "select time,i32,bitwise_left_shift(i32,7),bitwise_left_shift(i32,20) from bitwise_shift_width_table order by time",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void bitwiseLeftShiftKeepsDeclaredInt64Width() {
+    String[] expectedHeader = new String[] {"time", "i64", "_col2", "_col3", "_col4"};
+    String[] expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,2147483648,1099511627776,4611686018427387904,",
+          "1970-01-01T00:00:00.002Z,100,214748364800,109951162777600,0,",
+          "1970-01-01T00:00:00.003Z,-45,-96636764160,-49478023249920,-4611686018427387904,",
+          "1970-01-01T00:00:00.004Z,-45000,-96636764160000,-49478023249920000,0,",
+          "1970-01-01T00:00:00.005Z,1000,2147483648000,1099511627776000,0,"
+        };
+    tableResultSetEqualTest(
+        "select time,i64,bitwise_left_shift(i64,31),bitwise_left_shift(i64,40),bitwise_left_shift(i64,62) from bitwise_shift_width_table order by time",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void bitwiseRightShiftKeepsDeclaredWidthPerType() {
+    String[] expectedHeader = new String[] {"time", "i32", "_col2", "i64", "_col4"};
+    String[] expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,0,1,0,",
+          "1970-01-01T00:00:00.002Z,100,50,100,50,",
+          "1970-01-01T00:00:00.003Z,-45,2147483625,-45,9223372036854775785,",
+          "1970-01-01T00:00:00.004Z,-45000,2147461148,-45000,9223372036854753308,",
+          "1970-01-01T00:00:00.005Z,1000,500,1000,500,"
+        };
+    tableResultSetEqualTest(
+        "select time,i32,bitwise_right_shift(i32,1),i64,bitwise_right_shift(i64,1) from bitwise_shift_width_table order by time",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  /** A shifted expression in a predicate must not drop rows whose correct shift matches. */
+  @Test
+  public void bitwiseLeftShiftInPredicate() {
+    String[] expectedHeader = new String[] {"time", "i32"};
+    String[] expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,100,",
+          "1970-01-01T00:00:00.004Z,-45000,",
+          "1970-01-01T00:00:00.005Z,1000,"
+        };
+    tableResultSetEqualTest(
+        "select time,i32 from bitwise_shift_width_table where bitwise_left_shift(i32,20) > 0 order by time",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void bitwiseRightShiftArithmeticIsUnaffectedByOperandWidth() {
+    String[] expectedHeader = new String[] {"time", "i32", "_col2", "_col3"};
+    String[] expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,0,0,",
+          "1970-01-01T00:00:00.002Z,100,50,50,",
+          "1970-01-01T00:00:00.003Z,-45,-23,-23,",
+          "1970-01-01T00:00:00.004Z,-45000,-22500,-22500,",
+          "1970-01-01T00:00:00.005Z,1000,500,500,"
+        };
+    tableResultSetEqualTest(
+        "select time,i32,bitwise_right_shift_arithmetic(i32,1),bitwise_right_shift_arithmetic(i64,1) from bitwise_shift_width_table order by time",
+        expectedHeader,
+        expectedAns,
         DATABASE_NAME);
   }
 }
