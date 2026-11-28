@@ -55,6 +55,7 @@ public final class SessionMessages {
       "Error occurs when closing session at server. Maybe server is down.";
   public static final String REDIRECT_QUERY_ERROR =
       "need to redirect query, should not see this.";
+  public static final String RECONNECT_INTERRUPTED = "Reconnection interrupted";
   public static final String RETRY_RECONNECTING =
       "Retry attempt #{}, Reconnecting to other datanode";
   public static final String NODE_DOWN_TRY_NEXT =

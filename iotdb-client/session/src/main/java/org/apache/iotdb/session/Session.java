@@ -60,6 +60,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.endpointselector.EndpointSelectionStrategy;
+import org.apache.iotdb.session.endpointselector.EndpointSelectionStrategyFactory;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
@@ -215,6 +217,8 @@ public class Session implements ISession {
 
   // may be null
   protected volatile String database;
+
+  private final EndpointSelectionStrategy selectionStrategy;
 
   protected volatile boolean enableAutoCreateSchema = true;
 
@@ -383,6 +387,33 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    this(
+        host,
+        rpcPort,
+        username,
+        password,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        version,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public Session(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version,
+      String endpointSelectStrategyName) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.initialNodeUrls =
         Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
@@ -394,6 +425,8 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
+    this.selectionStrategy =
+        EndpointSelectionStrategyFactory.createSelectionStrategy(endpointSelectStrategyName);
   }
 
   public Session(List<String> nodeUrls, String username, String password) {
@@ -440,6 +473,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  @SuppressWarnings("squid:S107")
   public Session(
       List<String> nodeUrls,
       String username,
@@ -450,6 +484,31 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        version,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version,
+      String endpointSelectStrategyName) {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
@@ -464,6 +523,8 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
+    this.selectionStrategy =
+        EndpointSelectionStrategyFactory.createSelectionStrategy(endpointSelectStrategyName);
   }
 
   public Session(AbstractSessionBuilder builder) {
@@ -504,12 +565,19 @@ public class Session implements ISession {
     this.keyStorePwd = builder.keyStorePwd;
     this.sslProtocol = builder.sslProtocol;
     this.enableAutoFetch = builder.enableAutoFetch;
+    this.selectionStrategy =
+        EndpointSelectionStrategyFactory.createSelectionStrategy(
+            builder.endpointSelectionStrategyName);
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
     this.database = builder.database;
     this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
+  }
+
+  public EndpointSelectionStrategy getEndpointSelectionStrategy() {
+    return this.selectionStrategy;
   }
 
   @Override
@@ -4864,6 +4932,11 @@ public class Session implements ISession {
 
     public Builder sslProtocol(String sslProtocol) {
       this.sslProtocol = sslProtocol;
+      return this;
+    }
+
+    public Builder endpointSelectionStrategyName(String endpointSelectionStrategyName) {
+      this.endpointSelectionStrategyName = endpointSelectionStrategyName;
       return this;
     }
 

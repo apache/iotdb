@@ -54,6 +54,7 @@ public final class SessionMessages {
       "关闭服务端 Session 时发生错误，服务器可能已宕机。";
   public static final String REDIRECT_QUERY_ERROR =
       "需要重定向查询，不应看到此错误。";
+  public static final String RECONNECT_INTERRUPTED = "重新连接被中断";
   public static final String RETRY_RECONNECTING =
       "第 {} 次重试，正在重连其他 DataNode";
   public static final String NODE_DOWN_TRY_NEXT =

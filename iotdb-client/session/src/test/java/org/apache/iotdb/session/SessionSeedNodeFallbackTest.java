@@ -168,6 +168,42 @@ public class SessionSeedNodeFallbackTest {
   }
 
   @Test
+  public void testSequentialReconnectTriesEveryDiscoveredEndpoint() throws Exception {
+    verifyReconnectBeyondRetryCount(SessionConfig.ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL, true);
+  }
+
+  @Test
+  public void testRandomReconnectExhaustsDiscoveryBeforeTryingSeed() throws Exception {
+    verifyReconnectBeyondRetryCount(SessionConfig.ENDPOINT_SELECTION_STRATEGY_RANDOM, false);
+  }
+
+  private void verifyReconnectBeyondRetryCount(String strategy, boolean discoverHealthyNode)
+      throws Exception {
+    nodes.add(new TestNode());
+    nodes.add(new TestNode());
+    supplier.close();
+    advertised = discoverHealthyNode ? endpoints(0, 1, 2, 3, 4) : endpoints(0, 1, 2, 3);
+    supplier = createSupplier(endpoints(4));
+    supplier.run();
+    assertEquals(advertised, supplier.get());
+    for (int i = 0; i < 4; i++) {
+      nodes.get(i).online = false;
+    }
+    attempts.clear();
+
+    SessionConnection connection = newConnection(strategy);
+    assertTrue(reconnect(connection));
+    assertEquals(nodes.get(4).endpoint, connection.getEndPoint());
+    assertEquals(5, attempts.size());
+    assertEquals(nodes.get(4).endpoint, attempts.get(4));
+    if (discoverHealthyNode) {
+      assertEquals(endpoints(0, 1, 2, 3, 4), attempts);
+    } else {
+      assertEquals(new HashSet<>(endpoints(0, 1, 2, 3, 4)), new HashSet<>(attempts));
+    }
+  }
+
+  @Test
   public void testDiscoveredNodeIsPreferredToHealthySeed() throws Exception {
     advertised = endpoints(1);
     supplier.run();
@@ -738,8 +774,16 @@ public class SessionSeedNodeFallbackTest {
   }
 
   private SessionConnection newConnection() {
+    return newConnection(SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
+  }
+
+  private SessionConnection newConnection(String strategy) {
     SessionConnection connection = new SessionConnection("tree");
-    Session session = new Session.Builder().nodeUrls(Collections.singletonList(url(0))).build();
+    Session session =
+        new Session.Builder()
+            .nodeUrls(Collections.singletonList(url(0)))
+            .endpointSelectionStrategyName(strategy)
+            .build();
     session.connectionTimeoutInMs = 1000;
     Whitebox.setInternalState(connection, "session", session);
     Whitebox.setInternalState(connection, "zoneId", ZoneId.of("UTC"));

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
@@ -190,6 +191,7 @@ public class SessionPoolTest {
             .zoneId(ZoneOffset.UTC)
             .connectionTimeoutInMs(3)
             .version(Version.V_1_0)
+            .endpointSelectionStrategyName(SessionConfig.ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL)
             .build();
 
     assertEquals("localhost", pool.getHost());
@@ -204,6 +206,8 @@ public class SessionPoolTest {
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
     assertEquals(Version.V_1_0, pool.getVersion());
+    assertEquals(
+        SessionConfig.ENDPOINT_SELECTION_STRATEGY_SEQUENTIAL, pool.getEndpointSelectStrategyName());
   }
 
   @Test

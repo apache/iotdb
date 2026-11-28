@@ -120,6 +120,8 @@ public class SessionPool implements ISessionPool {
 
   private String trustStore;
 
+  private final String endpointSelectionStrategyName;
+
   private String trustStorePwd;
 
   private String keyStore;
@@ -419,6 +421,41 @@ public class SessionPool implements ISessionPool {
       Version version,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize) {
+    this(
+        host,
+        port,
+        user,
+        password,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableThriftCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableThriftCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      String endpointSelectionStrategyName) {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
@@ -440,10 +477,12 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
+    this.endpointSelectionStrategyName = endpointSelectionStrategyName;
     initThreadPool();
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
 
+  @SuppressWarnings("squid:S107")
   public SessionPool(
       String host,
       int port,
@@ -462,6 +501,47 @@ public class SessionPool implements ISessionPool {
       boolean useSSL,
       String trustStore,
       String trustStorePwd) {
+    this(
+        host,
+        port,
+        user,
+        password,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableThriftCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        useSSL,
+        trustStore,
+        trustStorePwd,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableThriftCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String endpointSelectionStrategyName) {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
@@ -487,11 +567,12 @@ public class SessionPool implements ISessionPool {
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
     this.sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
+    this.endpointSelectionStrategyName = endpointSelectionStrategyName;
     initThreadPool();
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
 
-  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  @SuppressWarnings("squid:S107")
   public SessionPool(
       List<String> nodeUrls,
       String user,
@@ -506,6 +587,39 @@ public class SessionPool implements ISessionPool {
       Version version,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableThriftCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableThriftCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      String endpointSelectionStrategyName) {
     this.maxSize = maxSize;
     this.host = null;
     this.port = -1;
@@ -530,6 +644,7 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = this.nodeUrls.toString();
+    this.endpointSelectionStrategyName = endpointSelectionStrategyName;
     initThreadPool();
     initAvailableNodes(SessionUtils.parseSeedNodeUrls(this.nodeUrls));
   }
@@ -570,6 +685,7 @@ public class SessionPool implements ISessionPool {
     this.database = builder.database;
     this.queryTimeoutInMs = builder.timeOut;
     this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
+    this.endpointSelectionStrategyName = builder.endpointSelectionStrategyName;
 
     final INodeSupplier suppliedNodes = builder.nodeSupplier;
     if (enableAutoFetch && suppliedNodes == null) {
@@ -671,6 +787,7 @@ public class SessionPool implements ISessionPool {
               .timeOut(queryTimeoutInMs)
               .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
               .enableThriftRpcCompression(enableThriftCompression)
+              .endpointSelectionStrategyName(endpointSelectionStrategyName)
               .build();
     } else {
       // Construct redirect-able Session
@@ -701,6 +818,7 @@ public class SessionPool implements ISessionPool {
               .timeOut(queryTimeoutInMs)
               .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
               .enableThriftRpcCompression(enableThriftCompression)
+              .endpointSelectionStrategyName(endpointSelectionStrategyName)
               .build();
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
@@ -3864,6 +3982,11 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
+  public String getEndpointSelectStrategyName() {
+    return endpointSelectionStrategyName;
+  }
+
+  @Override
   public void setQueryTimeout(long timeoutInMs) {
     this.queryTimeoutInMs = timeoutInMs;
     for (IdleSession idleSession : queue) {
@@ -4072,6 +4195,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder queryTimeoutInMs(long queryTimeoutInMs) {
       this.timeOut = queryTimeoutInMs;
+      return this;
+    }
+
+    public Builder endpointSelectionStrategyName(String endpointSelectionStrategyName) {
+      this.endpointSelectionStrategyName = endpointSelectionStrategyName;
       return this;
     }
 

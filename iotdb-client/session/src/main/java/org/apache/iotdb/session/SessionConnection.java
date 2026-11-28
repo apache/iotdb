@@ -68,6 +68,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.endpointselector.EndpointSelectionStrategy;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.util.SessionUtils;
 
@@ -83,12 +84,13 @@ import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -1196,94 +1198,101 @@ public class SessionConnection {
     RpcUtils.verifySuccess(status);
   }
 
-  @SuppressWarnings({
-    "squid:S3776"
-  }) // ignore Cognitive Complexity of methods should not be too high
+  @SuppressWarnings("squid:S3776")
   private boolean reconnect() {
-    if (forceClosed) {
-      return false;
-    }
-    boolean connectedSuccess = false;
-    SecureRandom random = new SecureRandom();
-    for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
+    INodeSupplier nodeSupplier =
+        availableNodes instanceof INodeSupplier ? (INodeSupplier) availableNodes : null;
+    for (int round = 0; round < SessionConfig.RETRY_NUM; round++) {
       if (forceClosed) {
         return false;
       }
       if (transport != null) {
         transport.close();
-        List<TEndPoint> discoveredNodes = availableNodes.get();
-        endPointList = new ArrayList<>(discoveredNodes);
-        if (!endPointList.isEmpty()) {
-          Collections.rotate(endPointList, -random.nextInt(endPointList.size()));
+      }
+      List<TEndPoint> discoveredNodes = new ArrayList<>(availableNodes.get());
+      List<TEndPoint> seeds =
+          nodeSupplier == null
+              ? Collections.emptyList()
+              : new ArrayList<>(nodeSupplier.getSeedNodes());
+      Set<TEndPoint> candidates = new LinkedHashSet<>(discoveredNodes);
+      candidates.addAll(seeds);
+      endPointList = new ArrayList<>(candidates);
+      if (candidates.isEmpty()) {
+        continue;
+      }
+
+      EndpointSelectionStrategy strategy = session.getEndpointSelectionStrategy();
+      Set<TEndPoint> triedEndpoints = new HashSet<>();
+      while (triedEndpoints.size() < candidates.size()) {
+        if (forceClosed) {
+          return false;
         }
-        if (availableNodes instanceof INodeSupplier) {
-          List<TEndPoint> seeds = new ArrayList<>(((INodeSupplier) availableNodes).getSeedNodes());
-          if (!seeds.isEmpty()) {
-            Collections.rotate(seeds, -random.nextInt(seeds.size()));
-          }
-          endPointList.addAll(seeds);
+        if (Thread.currentThread().isInterrupted()) {
+          logger.warn(SessionMessages.RECONNECT_INTERRUPTED);
+          return false;
         }
-        // Try every discovered endpoint before falling back to seeds, once per endpoint per round.
-        endPointList = new ArrayList<>(new LinkedHashSet<>(endPointList));
-        for (TEndPoint candidate : endPointList) {
-          if (forceClosed) {
-            return false;
-          }
-          this.endPoint = candidate;
-          try {
-            init(
-                endPoint,
-                session.useSSL,
-                session.trustStore,
-                session.trustStorePwd,
-                session.keyStore,
-                session.keyStorePwd,
-                session.sslProtocol);
-            if (forceClosed) {
-              forceCloseTransport();
-              return false;
-            }
-            connectedSuccess = true;
-            if (!discoveredNodes.contains(endPoint) && availableNodes instanceof INodeSupplier) {
-              ((INodeSupplier) availableNodes).requestRefresh();
-            }
-          } catch (IoTDBConnectionException e) {
-            logger.warn(SessionMessages.NODE_DOWN_TRY_NEXT, endPoint);
-            continue;
-          } catch (StatementExecutionException e) {
-            logger.warn(SessionMessages.LOGIN_FAILED, e.getMessage());
-          }
+
+        // Exhaust discovery before trying seeds, skipping duplicates across the two lists.
+        TEndPoint candidate = strategy.selectNext(discoveredNodes, triedEndpoints);
+        if (candidate == null) {
+          candidate = strategy.selectNext(seeds, triedEndpoints);
+        }
+        triedEndpoints.add(candidate);
+        this.endPoint = candidate;
+        try {
+          init(
+              candidate,
+              session.useSSL,
+              session.trustStore,
+              session.trustStorePwd,
+              session.keyStore,
+              session.keyStorePwd,
+              session.sslProtocol);
+        } catch (IoTDBConnectionException e) {
+          logger.warn(SessionMessages.NODE_DOWN_TRY_NEXT, candidate);
+          continue;
+        } catch (StatementExecutionException e) {
+          logger.warn(SessionMessages.LOGIN_FAILED, e.getMessage());
           break;
         }
-      }
-      if (connectedSuccess) {
+
         if (forceClosed) {
           forceCloseTransport();
           return false;
         }
-        // remove the broken end point
-        session.removeBrokenSessionConnection(this);
-        session.defaultEndPoint = this.endPoint;
-        session.setDefaultSessionConnection(this);
-        if (session.endPointToSessionConnection == null) {
-          session.endPointToSessionConnection = new ConcurrentHashMap<>();
+        if (nodeSupplier != null && !discoveredNodes.contains(candidate)) {
+          nodeSupplier.requestRefresh();
         }
-        session.endPointToSessionConnection.compute(
-            session.defaultEndPoint,
-            (k, v) -> {
-              if (v != null && v.transport != null && v.transport.isOpen()) {
-                try {
-                  v.close();
-                } catch (IoTDBConnectionException e) {
-                  logger.warn(SessionMessages.CLOSE_CONNECTION_FAILED, e.getMessage());
-                }
-              }
-              return this;
-            });
-        break;
+        if (forceClosed) {
+          forceCloseTransport();
+          return false;
+        }
+        updateSessionConnection();
+        return true;
       }
     }
-    return connectedSuccess;
+    return false;
+  }
+
+  private void updateSessionConnection() {
+    session.removeBrokenSessionConnection(this);
+    session.defaultEndPoint = this.endPoint;
+    session.setDefaultSessionConnection(this);
+    if (session.endPointToSessionConnection == null) {
+      session.endPointToSessionConnection = new ConcurrentHashMap<>();
+    }
+    session.endPointToSessionConnection.compute(
+        session.defaultEndPoint,
+        (k, v) -> {
+          if (v != null && v != this && v.transport != null && v.transport.isOpen()) {
+            try {
+              v.close();
+            } catch (IoTDBConnectionException e) {
+              logger.warn(SessionMessages.CLOSE_CONNECTION_FAILED, e.getMessage());
+            }
+          }
+          return this;
+        });
   }
 
   protected void createSchemaTemplate(TSCreateSchemaTemplateReq request)
