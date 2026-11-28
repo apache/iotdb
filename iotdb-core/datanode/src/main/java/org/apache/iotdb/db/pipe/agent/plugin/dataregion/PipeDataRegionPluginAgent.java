@@ -75,7 +75,8 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
     // validate visibility
     // TODO: validate visibility for schema region and config region
     final Visibility pipeVisibility =
-        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(sourceAttributes));
+        VisibilityUtils.calculateFromExtractorParameters(
+            normalizeSourceParameters(new PipeParameters(sourceAttributes)));
     final Visibility sourceVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
     final Visibility processorVisibility =

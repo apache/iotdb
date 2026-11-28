@@ -186,11 +186,7 @@ public class PipeTaskCoordinator {
   }
 
   private TSStatus validateDoubleLivingPipeParameters(final PipeParameters sourceParameters) {
-    final Boolean isForwardingPipeRequests =
-        sourceParameters.getBooleanByKeys(
-            PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-            PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY);
-    return Boolean.TRUE.equals(isForwardingPipeRequests)
+    return PipeSourceConstant.isForwardingPipeRequestsEnabled(sourceParameters)
         ? RpcUtils.getStatus(
             TSStatusCode.PIPE_ERROR,
             PipeMessages

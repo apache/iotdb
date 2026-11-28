@@ -125,6 +125,70 @@ public class PipeMetaDeSerTest {
   }
 
   @Test
+  public void testBuiltinParametersAreNormalizedAfterLegacyDeserialization() throws IOException {
+    final PipeStaticMeta legacyStaticMeta =
+        new PipeStaticMeta("pipe", 1L, Map.of(), Map.of(), Map.of());
+    legacyStaticMeta.getSourceParameters().getAttribute().put(" SOURCE ", " IOTDB-EXTRACTOR ");
+    legacyStaticMeta.getSourceParameters().getAttribute().put(" Source.Path ", " Root.SG.** ");
+    legacyStaticMeta
+        .getSourceParameters()
+        .getAttribute()
+        .put(" Source.Custom.Option ", " Mixed Value ");
+    legacyStaticMeta
+        .getProcessorParameters()
+        .getAttribute()
+        .put(
+            " PROCESSOR ",
+            BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName().toUpperCase());
+    legacyStaticMeta.getProcessorParameters().getAttribute().put(" Processor.Mode ", " ON ");
+    legacyStaticMeta
+        .getSinkParameters()
+        .getAttribute()
+        .put(
+            " CONNECTOR ",
+            BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase());
+    legacyStaticMeta.getSinkParameters().getAttribute().put(" Connector.User ", " ROOT ");
+    legacyStaticMeta
+        .getSinkParameters()
+        .getAttribute()
+        .put(" Connector.Node-URLs ", " https://NODEA:6667,NodeB:6667 ");
+    legacyStaticMeta.getSinkParameters().getAttribute().put(" Connector.Host ", " NODE.EXAMPLE ");
+    legacyStaticMeta.getSinkParameters().getAttribute().put(" Connector.IP ", " 2001:DB8::1 ");
+    legacyStaticMeta
+        .getSinkParameters()
+        .getAttribute()
+        .put(" Connector.Custom.Option ", " Mixed Value ");
+
+    final ByteBuffer serialized = legacyStaticMeta.serialize();
+    final PipeStaticMeta fromByteBuffer = PipeStaticMeta.deserialize(serialized.duplicate());
+    final byte[] bytes = new byte[serialized.remaining()];
+    serialized.get(bytes);
+    final PipeStaticMeta fromInputStream =
+        PipeStaticMeta.deserialize(new ByteArrayInputStream(bytes));
+
+    for (final PipeStaticMeta deserialized :
+        new PipeStaticMeta[] {fromByteBuffer, fromInputStream}) {
+      Assert.assertEquals(
+          "iotdb-extractor", deserialized.getSourceParameters().getString("source"));
+      Assert.assertEquals(
+          " Root.SG.** ", deserialized.getSourceParameters().getString("source.path"));
+      Assert.assertEquals(
+          "mixed value", deserialized.getSourceParameters().getString("source.custom.option"));
+      Assert.assertEquals("on", deserialized.getProcessorParameters().getString("processor.mode"));
+      Assert.assertEquals(" ROOT ", deserialized.getSinkParameters().getString("connector.user"));
+      Assert.assertEquals(
+          " https://NODEA:6667,NodeB:6667 ",
+          deserialized.getSinkParameters().getString("connector.node-urls"));
+      Assert.assertEquals(
+          " NODE.EXAMPLE ", deserialized.getSinkParameters().getString("connector.host"));
+      Assert.assertEquals(
+          " 2001:DB8::1 ", deserialized.getSinkParameters().getString("connector.ip"));
+      Assert.assertEquals(
+          "mixed value", deserialized.getSinkParameters().getString("connector.custom.option"));
+    }
+  }
+
+  @Test
   public void testPipeStatusTypeCompatibility() {
     Assert.assertEquals((byte) 0, PipeStatus.RUNNING.getType());
     Assert.assertEquals((byte) 1, PipeStatus.STOPPED.getType());

@@ -241,8 +241,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
       throws SubscriptionException {
     final Map<String, String> topicAttributes =
         new HashMap<>(safeTopicAttributes(createTopicReq.getTopicAttributes()));
+    validateDuplicateTopicAttributes(topicAttributes);
     final TopicConfig topicConfig = new TopicConfig(topicAttributes);
-    validateDuplicateTopicAttributes(topicConfig);
     canonicalizeTopicAttributes(topicAttributes);
     createTopicReq.setTopicAttributes(topicAttributes);
     validateTopicConfig(topicConfig);
@@ -352,7 +352,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   public void validateUpdatedTopicAttributes(final Map<String, String> updatedAttributes)
       throws SubscriptionException {
-    validateDuplicateTopicAttributes(new TopicConfig(safeTopicAttributes(updatedAttributes)));
+    validateDuplicateTopicAttributes(safeTopicAttributes(updatedAttributes));
   }
 
   private void checkBeforeAlteringTopicInternal(
@@ -393,7 +393,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void validateTopicConfig(final TopicConfig topicConfig) throws SubscriptionException {
-    validateDuplicateTopicAttributes(topicConfig);
+    validateDuplicateTopicAttributes(topicConfig.getAttribute());
     validateTopicDoesNotOnlySelectAuditDatabase(topicConfig);
 
     final String mode = topicConfig.getMode();
@@ -628,10 +628,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
     throw new SubscriptionException(exceptionMessage);
   }
 
-  private void validateDuplicateTopicAttributes(final TopicConfig topicConfig)
+  private void validateDuplicateTopicAttributes(final Map<String, String> attributes)
       throws SubscriptionException {
     final Set<String> seenKeys = new HashSet<>();
-    for (final String key : topicConfig.getAttribute().keySet()) {
+    for (final String key : attributes.keySet()) {
       if (Objects.isNull(key)) {
         continue;
       }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.stage;
 
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
@@ -80,25 +81,21 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
                 pipeName, creationTime, regionId, pipeTaskMeta, sourceUserEntity, sourcePassword));
-    final PipeProcessor pipeProcessor =
+    final boolean isDataRegionSource =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-                || PipeRuntimeMeta.isSourceExternal(regionId)
-            ? PipeDataNodeAgent.plugin()
-                .dataRegion()
-                .getConfiguredProcessor(
-                    pipeProcessorParameters.getStringOrDefault(
-                        PipeProcessorConstant.PROCESSOR_KEY,
-                        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
-                    pipeProcessorParameters,
-                    runtimeConfiguration)
-            : PipeDataNodeAgent.plugin()
-                .schemaRegion()
-                .getConfiguredProcessor(
-                    pipeProcessorParameters.getStringOrDefault(
-                        PipeProcessorConstant.PROCESSOR_KEY,
-                        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
-                    pipeProcessorParameters,
-                    runtimeConfiguration);
+            || PipeRuntimeMeta.isSourceExternal(regionId);
+    final PipeParameters normalizedProcessorParameters =
+        PipePluginAgent.normalizeProcessorParameters(pipeProcessorParameters);
+    final PipeProcessor pipeProcessor =
+        (isDataRegionSource
+                ? PipeDataNodeAgent.plugin().dataRegion()
+                : PipeDataNodeAgent.plugin().schemaRegion())
+            .getConfiguredProcessor(
+                normalizedProcessorParameters.getStringOrDefault(
+                    PipeProcessorConstant.PROCESSOR_KEY,
+                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
+                normalizedProcessorParameters,
+                runtimeConfiguration);
 
     // Should add creation time in taskID, because subtasks are stored in the hashmap
     // PipeProcessorSubtaskWorker.subtasks, and deleted subtasks will be removed by

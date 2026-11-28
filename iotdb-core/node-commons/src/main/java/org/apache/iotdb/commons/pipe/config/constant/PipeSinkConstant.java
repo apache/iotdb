@@ -29,6 +29,9 @@ import com.github.luben.zstd.Zstd;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
@@ -80,14 +83,42 @@ public class PipeSinkConstant {
   public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
 
   public static boolean isSerializeByRegionEnabled(final PipeParameters parameters) {
-    return parameters.getBooleanOrDefault(
-        Arrays.asList(CONNECTOR_SERIALIZE_BY_REGION_KEY, SINK_SERIALIZE_BY_REGION_KEY),
-        CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE);
+    return Boolean.parseBoolean(
+        getStringOrDefaultIgnoreCase(
+            parameters,
+            Arrays.asList(CONNECTOR_SERIALIZE_BY_REGION_KEY, SINK_SERIALIZE_BY_REGION_KEY),
+            Boolean.toString(CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE)));
   }
 
   public static String getConnectorOrSinkNameWithDefault(final PipeParameters parameters) {
-    return parameters.getStringOrDefault(
-        Arrays.asList(CONNECTOR_KEY, SINK_KEY), getDefaultConnectorOrSinkName(parameters));
+    return getStringOrDefaultIgnoreCase(
+        parameters,
+        Arrays.asList(CONNECTOR_KEY, SINK_KEY),
+        getDefaultConnectorOrSinkName(parameters));
+  }
+
+  private static String getStringOrDefaultIgnoreCase(
+      final PipeParameters parameters, final List<String> keys, final String defaultValue) {
+    for (final String key : keys) {
+      for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
+        if (entry.getKey() != null
+            && key.equalsIgnoreCase(entry.getKey().trim())
+            && entry.getValue() != null
+            && !entry.getValue().trim().isEmpty()) {
+          return entry.getValue().trim();
+        }
+      }
+      final String reducedKey = PipeParameters.KeyReducer.reduce(key.toLowerCase(Locale.ROOT));
+      for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
+        if (entry.getKey() != null
+            && reducedKey.equalsIgnoreCase(entry.getKey().trim())
+            && entry.getValue() != null
+            && !entry.getValue().trim().isEmpty()) {
+          return entry.getValue().trim();
+        }
+      }
+    }
+    return defaultValue;
   }
 
   private static String getDefaultConnectorOrSinkName(final PipeParameters parameters) {

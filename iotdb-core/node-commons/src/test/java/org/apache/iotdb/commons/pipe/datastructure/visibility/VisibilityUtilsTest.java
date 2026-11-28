@@ -128,6 +128,40 @@ public class VisibilityUtilsTest {
             PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE));
   }
 
+  @Test
+  public void testDoubleLivingAttributeIsCaseInsensitiveAndTrimmed() {
+    Assert.assertTrue(
+        PipeSourceConstant.isDoubleLiving(
+            new PipeParameters(Map.of(" EXTRACTOR.MODE.DOUBLE-LIVING ", " TRUE "))));
+    Assert.assertTrue(
+        PipeSourceConstant.isDoubleLiving(new PipeParameters(Map.of(" DOUBLE-LIVING ", " TRUE "))));
+    Assert.assertFalse(
+        PipeSourceConstant.isDoubleLiving(
+            new PipeParameters(
+                Map.of(
+                    PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                    " false ",
+                    PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY,
+                    " true "))));
+
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(" EXTRACTOR.MODE.DOUBLE-LIVING ", " TRUE ");
+    attributes.put(" EXTRACTOR.FORWARDING-PIPE-REQUESTS ", " TRUE ");
+    Assert.assertTrue(PipeSourceConstant.isDoubleLiving(new PipeParameters(attributes)));
+    Assert.assertTrue(
+        PipeSourceConstant.isForwardingPipeRequestsEnabled(new PipeParameters(attributes)));
+
+    PipeSourceConstant.removeDoubleLivingAttributes(attributes);
+    PipeSourceConstant.disableForwardingPipeRequests(attributes);
+    Assert.assertFalse(PipeSourceConstant.isDoubleLiving(new PipeParameters(attributes)));
+    Assert.assertFalse(
+        PipeSourceConstant.isForwardingPipeRequestsEnabled(new PipeParameters(attributes)));
+    Assert.assertEquals(
+        Boolean.FALSE,
+        new PipeParameters(attributes)
+            .getBoolean(PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY));
+  }
+
   private void assertVisibility(
       final Visibility expectedVisibility,
       final Map<String, String> attributes,

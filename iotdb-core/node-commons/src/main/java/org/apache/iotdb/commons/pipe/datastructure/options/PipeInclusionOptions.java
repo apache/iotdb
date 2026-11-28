@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -218,15 +219,41 @@ public class PipeInclusionOptions {
   }
 
   public static String getInclusionString(final PipeParameters parameters) {
-    return parameters.getStringOrDefault(
+    return getStringIgnoreCase(
+        parameters,
         Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
         EXTRACTOR_INCLUSION_DEFAULT_VALUE);
   }
 
   public static String getExclusionString(final PipeParameters parameters) {
-    return parameters.getStringOrDefault(
+    return getStringIgnoreCase(
+        parameters,
         Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
         EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+  }
+
+  private static String getStringIgnoreCase(
+      final PipeParameters parameters, final List<String> keys, final String defaultValue) {
+    for (final String key : keys) {
+      for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
+        if (entry.getKey() != null
+            && key.equalsIgnoreCase(entry.getKey().trim())
+            && entry.getValue() != null
+            && !entry.getValue().trim().isEmpty()) {
+          return entry.getValue().trim();
+        }
+      }
+      final String reducedKey = PipeParameters.KeyReducer.reduce(key.toLowerCase(Locale.ROOT));
+      for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
+        if (entry.getKey() != null
+            && reducedKey.equalsIgnoreCase(entry.getKey().trim())
+            && entry.getValue() != null
+            && !entry.getValue().trim().isEmpty()) {
+          return entry.getValue().trim();
+        }
+      }
+    }
+    return defaultValue;
   }
 
   public static Set<PartialPath> parseOptions(final String optionsString)

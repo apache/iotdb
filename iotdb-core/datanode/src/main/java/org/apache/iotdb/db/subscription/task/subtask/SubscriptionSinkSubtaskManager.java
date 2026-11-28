@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
@@ -68,8 +69,9 @@ public class SubscriptionSinkSubtaskManager {
 
   public synchronized String register(
       final PipeSinkSubtaskExecutor executor,
-      final PipeParameters pipeSinkParameters,
+      PipeParameters pipeSinkParameters,
       final PipeTaskSinkRuntimeEnvironment environment) {
+    pipeSinkParameters = PipePluginAgent.normalizeSinkParameters(pipeSinkParameters);
     final String connectorKey =
         pipeSinkParameters
             .getStringOrDefault(

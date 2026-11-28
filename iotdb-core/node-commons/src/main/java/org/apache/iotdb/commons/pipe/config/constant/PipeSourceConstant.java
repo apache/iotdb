@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -227,8 +228,46 @@ public class PipeSourceConstant {
       "extractor.consensus.receiver-dn-id";
 
   public static boolean isDoubleLiving(final PipeParameters sourceParameters) {
-    return sourceParameters.getBooleanOrDefault(
-        DOUBLE_LIVING_KEYS, EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    for (final String key : DOUBLE_LIVING_KEYS) {
+      final String value = getStringIgnoreCase(sourceParameters, key);
+      if (value != null) {
+        return Boolean.parseBoolean(value);
+      }
+    }
+    return EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE;
+  }
+
+  private static String getStringIgnoreCase(
+      final PipeParameters parameters, final String expectedKey) {
+    for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
+      if (entry.getKey() != null
+          && expectedKey.equalsIgnoreCase(entry.getKey().trim())
+          && entry.getValue() != null
+          && !entry.getValue().trim().isEmpty()) {
+        return entry.getValue().trim();
+      }
+    }
+    final String reducedKey =
+        PipeParameters.KeyReducer.reduce(expectedKey.toLowerCase(Locale.ROOT));
+    for (final Map.Entry<String, String> entry : parameters.getAttribute().entrySet()) {
+      if (entry.getKey() != null
+          && reducedKey.equalsIgnoreCase(entry.getKey().trim())
+          && entry.getValue() != null
+          && !entry.getValue().trim().isEmpty()) {
+        return entry.getValue().trim();
+      }
+    }
+    return null;
+  }
+
+  public static boolean isForwardingPipeRequestsEnabled(final PipeParameters parameters) {
+    for (final String key : FORWARDING_PIPE_REQUESTS_KEYS) {
+      final String value = getStringIgnoreCase(parameters, key);
+      if (value != null) {
+        return Boolean.parseBoolean(value);
+      }
+    }
+    return false;
   }
 
   public static void removeDoubleLivingAttributes(final Map<String, String> sourceAttributes) {
@@ -244,11 +283,15 @@ public class PipeSourceConstant {
       final Map<String, String> sourceAttributes, final List<String> equivalentKeys) {
     final Set<String> reducedKeys =
         equivalentKeys.stream()
-            .map(PipeParameters.KeyReducer::reduce)
+            .map(key -> PipeParameters.KeyReducer.reduce(key.toLowerCase(Locale.ROOT).trim()))
             .collect(java.util.stream.Collectors.toSet());
     sourceAttributes
         .keySet()
-        .removeIf(key -> reducedKeys.contains(PipeParameters.KeyReducer.reduce(key)));
+        .removeIf(
+            key ->
+                key != null
+                    && reducedKeys.contains(
+                        PipeParameters.KeyReducer.reduce(key.toLowerCase(Locale.ROOT).trim())));
   }
 
   private PipeSourceConstant() {

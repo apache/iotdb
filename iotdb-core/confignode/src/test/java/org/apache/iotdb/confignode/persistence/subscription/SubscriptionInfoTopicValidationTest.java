@@ -245,9 +245,24 @@ public class SubscriptionInfoTopicValidationTest {
   public void testRejectDuplicateTopicConfigKeys() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newInitialTableTopicAttributes();
-    attributes.put("Mode", TopicConstant.MODE_SNAPSHOT_VALUE);
+    attributes.put(" MODE ", TopicConstant.MODE_SNAPSHOT_VALUE);
 
     assertCreateRejected(subscriptionInfo, attributes, "duplicate mode");
+  }
+
+  @Test
+  public void testRejectDuplicateTopicConfigKeysOnAlter() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
+    updatedAttributes.put(" MODE ", TopicConstant.MODE_SNAPSHOT_VALUE);
+
+    try {
+      subscriptionInfo.validateUpdatedTopicAttributes(updatedAttributes);
+      Assert.fail("Expected duplicate topic attributes to be rejected");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("duplicate mode"));
+    }
   }
 
   @Test

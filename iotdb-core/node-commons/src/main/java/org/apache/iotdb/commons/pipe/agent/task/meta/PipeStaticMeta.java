@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
@@ -66,9 +67,12 @@ public class PipeStaticMeta {
       final Map<String, String> connectorAttributes) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
-    sourceParameters = new PipeParameters(extractorAttributes);
-    processorParameters = new PipeParameters(processorAttributes);
-    sinkParameters = new PipeParameters(connectorAttributes);
+    sourceParameters =
+        PipePluginAgent.normalizeSourceParameters(new PipeParameters(extractorAttributes));
+    processorParameters =
+        PipePluginAgent.normalizeProcessorParameters(new PipeParameters(processorAttributes));
+    sinkParameters =
+        PipePluginAgent.normalizeSinkParameters(new PipeParameters(connectorAttributes));
     updateCompletionSupport();
   }
 
@@ -177,6 +181,7 @@ public class PipeStaticMeta {
         .put(PipeSourceConstant.SOURCE_IOTDB_USER_ID, String.valueOf(IoTDBConstant.SUPER_USER_ID));
     sourceParameters.getAttribute().put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, rootUserName);
     sourceParameters.getAttribute().put(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, password);
+    sourceParameters = PipePluginAgent.normalizeSourceParameters(sourceParameters);
   }
 
   public void enrichWriteBackSinkWithRootUserForCompatibility(
@@ -186,6 +191,7 @@ public class PipeStaticMeta {
         .put(PipeSinkConstant.SINK_IOTDB_USER_ID, String.valueOf(IoTDBConstant.SUPER_USER_ID));
     sinkParameters.getAttribute().put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, rootUserName);
     sinkParameters.getAttribute().put(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, password);
+    sinkParameters = PipePluginAgent.normalizeSinkParameters(sinkParameters);
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -245,6 +251,7 @@ public class PipeStaticMeta {
       pipeStaticMeta.sinkParameters.getAttribute().put(key, value);
     }
 
+    pipeStaticMeta.normalizePluginParameters();
     pipeStaticMeta.updateCompletionSupport();
     return pipeStaticMeta;
   }
@@ -278,8 +285,15 @@ public class PipeStaticMeta {
       pipeStaticMeta.sinkParameters.getAttribute().put(key, value);
     }
 
+    pipeStaticMeta.normalizePluginParameters();
     pipeStaticMeta.updateCompletionSupport();
     return pipeStaticMeta;
+  }
+
+  private void normalizePluginParameters() {
+    sourceParameters = PipePluginAgent.normalizeSourceParameters(sourceParameters);
+    processorParameters = PipePluginAgent.normalizeProcessorParameters(processorParameters);
+    sinkParameters = PipePluginAgent.normalizeSinkParameters(sinkParameters);
   }
 
   @Override

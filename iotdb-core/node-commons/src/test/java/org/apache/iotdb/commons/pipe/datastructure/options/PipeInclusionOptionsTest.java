@@ -86,4 +86,27 @@ public class PipeInclusionOptionsTest {
                     "source.inclusion", "all",
                     "source.inclusion.exclusion", "data.insert.extra"))));
   }
+
+  @Test
+  public void testInclusionAttributeIsCaseInsensitiveAndTrimmed() throws Exception {
+    Assert.assertTrue(
+        PipeInclusionOptions.isDataInsertionIncluded(
+            new PipeParameters(Map.of(" EXTRACTOR.INCLUSION ", " data.insert "))));
+    Assert.assertEquals(
+        "data.insert",
+        PipeInclusionOptions.getInclusionString(
+            new PipeParameters(Map.of(" Extractor.Inclusion ", " data.insert "))));
+    Assert.assertEquals(
+        "data.insert",
+        PipeInclusionOptions.getInclusionString(
+            new PipeParameters(Map.of(" INCLUSION ", " data.insert "))));
+  }
+
+  @Test
+  public void testBlankInclusionAttributeUsesDefault() {
+    Assert.assertEquals(
+        "data.insert",
+        PipeInclusionOptions.getInclusionString(
+            new PipeParameters(Map.of("extractor.inclusion", " "))));
+  }
 }
