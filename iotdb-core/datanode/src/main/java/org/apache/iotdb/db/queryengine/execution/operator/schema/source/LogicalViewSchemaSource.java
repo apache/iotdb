@@ -38,8 +38,8 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
 
 public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
@@ -117,16 +117,5 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   @Override
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
     return 0;
-  }
-
-  private String mapToString(Map<String, String> map) {
-    if (map == null || map.isEmpty()) {
-      return null;
-    }
-    String content =
-        map.entrySet().stream()
-            .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
-            .collect(Collectors.joining(","));
-    return "{" + content + "}";
   }
 }

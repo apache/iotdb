@@ -161,7 +161,8 @@ public class ImportSchema extends AbstractSchemaTool {
       }
       importSchema.init();
       AbstractImportSchema.init(importSchema);
-      return Constants.CODE_OK;
+      // the failure itself has already been printed by the file that hit it
+      return connectionFailed ? Constants.CODE_ERROR : Constants.CODE_OK;
     } catch (InterruptedException e) {
       ioTPrinter.println(
           String.format(CliMessages.MESSAGE_IMPORT_SCHEMA_FAIL_ARG_609A6D30, e.getMessage()));

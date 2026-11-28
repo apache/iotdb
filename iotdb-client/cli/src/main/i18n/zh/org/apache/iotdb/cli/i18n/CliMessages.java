@@ -145,6 +145,22 @@ public final class CliMessages {
   public static final String
       MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_FB573E37 =
           "待导入的 CSV 文件表头不合法，正确格式为 \"Timeseries, Alias, DataType, Encoding, Compression\"！";
+  public static final String
+      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_TAGS_ATTRIBUTES_14EDBFB9 =
+          "待导入的 CSV 文件表头不合法，正确格式为"
+              + " \"Timeseries, Alias, DataType, Encoding, Compression, Tags, Attributes\"！";
+  public static final String
+      MESSAGE_FAILED_TO_PARSE_THE_ARG_COLUMN_OF_TIMESERIES_ARG_AS_JSON_THE_RECORD_IS_SKIPPED_ARG_35D898C8 =
+          "时序 JSON 解析失败，列：%s，时序：%s，已跳过该记录，原因：%s";
+  public static final String EXCEPTION_TAGS_AND_ATTRIBUTES_VALUES_MUST_BE_JSON_STRINGS_C0A5BF8E =
+      "Tags 和 Attributes 的值必须是 JSON 字符串";
+  public static final String EXCEPTION_TAGS_AND_ATTRIBUTES_CELLS_MUST_BE_A_JSON_OBJECT_567BB6E5 =
+      "Tags 和 Attributes 列必须是 JSON 对象";
+  public static final String EXCEPTION_DUPLICATE_KEY_ARG_IN_A_JSON_OBJECT_F12787DC =
+      "JSON 对象中存在重复的键：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_ARG_BECAUSE_THE_CONNECTION_COULD_NOT_BE_RE_ESTABLISHED_ARG_3956569A =
+          "创建 %s 失败，连接无法重新建立：%s";
 
   private CliMessages() {}
 

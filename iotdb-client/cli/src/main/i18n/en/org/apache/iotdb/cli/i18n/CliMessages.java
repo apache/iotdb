@@ -157,6 +157,22 @@ public final class CliMessages {
       MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_FB573E37 =
           "The header of the CSV file to be imported is illegal. The correct format is"
               + " \"Timeseries, Alias, DataType, Encoding, Compression\"!";
+  public static final String
+      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_TAGS_ATTRIBUTES_14EDBFB9 =
+          "The header of the CSV file to be imported is illegal. The correct format is"
+              + " \"Timeseries, Alias, DataType, Encoding, Compression, Tags, Attributes\"!";
+  public static final String
+      MESSAGE_FAILED_TO_PARSE_THE_ARG_COLUMN_OF_TIMESERIES_ARG_AS_JSON_THE_RECORD_IS_SKIPPED_ARG_35D898C8 =
+          "Failed to parse the %s column of timeseries %s as JSON, the record is skipped: %s";
+  public static final String EXCEPTION_TAGS_AND_ATTRIBUTES_VALUES_MUST_BE_JSON_STRINGS_C0A5BF8E =
+      "Tags and Attributes values must be JSON strings";
+  public static final String EXCEPTION_TAGS_AND_ATTRIBUTES_CELLS_MUST_BE_A_JSON_OBJECT_567BB6E5 =
+      "Tags and Attributes cells must be a JSON object";
+  public static final String EXCEPTION_DUPLICATE_KEY_ARG_IN_A_JSON_OBJECT_F12787DC =
+      "Duplicate key %s in a JSON object";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_ARG_BECAUSE_THE_CONNECTION_COULD_NOT_BE_RE_ESTABLISHED_ARG_3956569A =
+          "Failed to create %s because the connection could not be re-established: %s";
 
   private CliMessages() {}
 
