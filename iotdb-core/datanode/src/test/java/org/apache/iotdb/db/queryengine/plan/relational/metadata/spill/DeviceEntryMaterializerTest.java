@@ -33,6 +33,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -40,6 +41,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -86,6 +91,24 @@ public class DeviceEntryMaterializerTest {
         assertEquals(expected, dataSet.getInlineEntries());
         assertFalse(queryContext.isDeviceEntrySpilled());
       }
+    }
+  }
+
+  @Test
+  public void testMaterializerRejectsOperationsAfterQueryCleanupStarts() throws Exception {
+    String queryId = "20260909_023029_00002";
+    MPPQueryContext queryContext = new MPPQueryContext(new QueryId(queryId));
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer(
+            queryId, new PlanNodeId("scan-0"), Long.MAX_VALUE, true, queryContext)) {
+      materializer.append(createEntries(1).get(0));
+      queryContext.markDeviceEntrySpillCleanupRequested();
+
+      assertThrows(IOException.class, materializer::forceSpill);
+      assertThrows(
+          IOException.class, () -> materializer.appendWithMemoryControl(createEntries(1).get(0)));
+      assertThrows(IOException.class, materializer::finish);
+      assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
     }
   }
 
@@ -285,6 +308,43 @@ public class DeviceEntryMaterializerTest {
     List<DeviceEntry> expected = new ArrayList<>(input);
     expected.sort(Comparator.comparing(entry -> entry.getDeviceID().toString()));
     assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testSortedMaterializerStopsMergingWhenQueryCleanupStarts() throws Exception {
+    String queryId = "q_sorted_cleanup";
+    MPPQueryContext queryContext = new MPPQueryContext(new QueryId(queryId));
+    queryContext.setStartTime(System.currentTimeMillis());
+    queryContext.setTimeOut(Long.MAX_VALUE);
+    ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
+    FutureTask<Void> queryCleanup =
+        new FutureTask<>(
+            () -> {
+              DeviceEntrySpillManager.getInstance().deregisterQuery(queryId);
+              return null;
+            });
+    Comparator<DeviceEntry> comparator =
+        (left, right) -> {
+          assertFalse(queryContext.isDeviceEntrySpillCleanupRequested());
+          queryContext.markDeviceEntrySpillCleanupRequested();
+          cleanupExecutor.execute(queryCleanup);
+          return DeviceEntry.compareDeviceId(left, right);
+        };
+
+    try (DeviceEntrySortedMaterializer materializer =
+        new DeviceEntrySortedMaterializer(
+            queryId, new PlanNodeId("scan-0"), 128, comparator, queryContext)) {
+      for (DeviceEntry entry : createEntries(3)) {
+        materializer.append(entry);
+        materializer.forceSpill();
+      }
+
+      assertThrows(IOException.class, materializer::finish);
+      queryCleanup.get(10, TimeUnit.SECONDS);
+      assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
+    } finally {
+      cleanupExecutor.shutdownNow();
+    }
   }
 
   @Test

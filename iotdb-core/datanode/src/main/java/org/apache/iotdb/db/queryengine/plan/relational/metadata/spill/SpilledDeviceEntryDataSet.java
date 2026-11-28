@@ -79,13 +79,15 @@ public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
   }
 
   @Override
-  public DeviceEntryReader openReader() {
-    return new DeviceEntryFileSpillerReader(segments, false, ioContext, false);
+  public DeviceEntryReader openReader() throws IOException {
+    return DeviceEntrySpillManager.getInstance()
+        .createReader(queryId, ownerDirectory, segments, false, ioContext, false);
   }
 
   @Override
-  public DeviceEntryReader openConsumingReader() {
-    return new DeviceEntryFileSpillerReader(segments, true, ioContext, false);
+  public DeviceEntryReader openConsumingReader() throws IOException {
+    return DeviceEntrySpillManager.getInstance()
+        .createReader(queryId, ownerDirectory, segments, true, ioContext, false);
   }
 
   @Override

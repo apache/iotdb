@@ -39,6 +39,9 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeviceEntryFileSpillerReader.class);
 
+  private final DeviceEntrySpillManager spillManager;
+  private final String queryId;
+  private final Path ownerDirectory;
   private final List<Path> segments;
   private final boolean deleteSegmentAfterRead;
   private final DeviceEntryIOContext ioContext;
@@ -49,10 +52,16 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
   private DeviceEntry next;
 
   public DeviceEntryFileSpillerReader(
+      DeviceEntrySpillManager spillManager,
+      String queryId,
+      Path ownerDirectory,
       List<Path> segments,
       boolean deleteSegmentAfterRead,
       DeviceEntryIOContext ioContext,
       boolean duringFetchSchema) {
+    this.spillManager = spillManager;
+    this.queryId = queryId;
+    this.ownerDirectory = ownerDirectory;
     this.segments = segments;
     this.deleteSegmentAfterRead = deleteSegmentAfterRead;
     this.ioContext = ioContext;
@@ -61,6 +70,10 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
 
   @Override
   public boolean hasNext() throws IOException {
+    return spillManager.hasNextReader(this);
+  }
+
+  synchronized boolean hasNextInternal() throws IOException {
     if (next != null) {
       return true;
     }
@@ -97,13 +110,25 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
 
   @Override
   public DeviceEntry next() throws IOException {
-    if (!hasNext()) {
+    return spillManager.nextReader(this);
+  }
+
+  synchronized DeviceEntry nextInternal() throws IOException {
+    if (!hasNextInternal()) {
       throw new NoSuchElementException(
           DataNodeQueryMessages.EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199);
     }
     DeviceEntry result = next;
     next = null;
     return result;
+  }
+
+  String queryId() {
+    return queryId;
+  }
+
+  Path ownerDirectory() {
+    return ownerDirectory;
   }
 
   private boolean openNextSegment() throws IOException {
@@ -155,6 +180,10 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
 
   @Override
   public void close() throws IOException {
+    spillManager.closeReader(this);
+  }
+
+  synchronized void closeInternal() throws IOException {
     if (input != null) {
       closeCurrentSegment(false);
     }

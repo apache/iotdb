@@ -105,15 +105,11 @@ public class IoTDBRestartIT {
     // Clear only databases owned by this class so recovered schemas cannot leak between scenarios.
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String database : Arrays.asList("root.turbine", "root.turbine1", "root.sg")) {
-        final boolean exists;
-        try (ResultSet resultSet = statement.executeQuery("show databases " + database)) {
-          exists = resultSet.next();
-        }
-        if (exists) {
-          statement.execute("delete database " + database);
-        }
+      final List<String> databases = Arrays.asList("root.turbine", "root.turbine1", "root.sg");
+      for (String database : databases) {
+        TestUtils.deleteDatabaseWithRetry(statement, database);
       }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
     }
   }
 

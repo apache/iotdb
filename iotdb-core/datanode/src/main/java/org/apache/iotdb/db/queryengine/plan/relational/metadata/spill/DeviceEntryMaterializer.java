@@ -48,6 +48,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   @Override
   public void append(DeviceEntry entry) throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     appendToBuffer(entry);
   }
 
@@ -55,6 +56,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   @Override
   public long appendWithMemoryControl(DeviceEntry entry) throws IOException {
     checkNotFinished();
+    checkSpillCleanupRequested();
     if (spiller == null) {
       long ramBytesUsed = entry.ramBytesUsed();
       if (getBufferedRamBytes() + ramBytesUsed <= thresholdInBytes()) {
@@ -63,17 +65,25 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
         return 0;
       }
     }
-    long releasedRamBytes = getBufferedRamBytes() + entry.ramBytesUsed();
-    ensureSpiller(false);
-    spiller.append(entry.serializeToBytes());
-    incrementEntryCount();
-    return releasedRamBytes;
+    return withSpillDirectoryLock(
+        () -> {
+          long releasedRamBytes = getBufferedRamBytes() + entry.ramBytesUsed();
+          ensureSpiller(false);
+          spiller.append(entry.serializeToBytes());
+          incrementEntryCount();
+          return releasedRamBytes;
+        });
   }
 
   @Override
   public void forceSpill() throws IOException {
     checkNotFinished();
-    ensureSpiller(true);
+    checkSpillCleanupRequested();
+    withSpillDirectoryLock(
+        () -> {
+          ensureSpiller(true);
+          return null;
+        });
   }
 
   @Override
@@ -84,23 +94,29 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   @Override
   public DeviceEntryDataSet finish() throws IOException {
     checkNotFinished();
-    DeviceEntryDataSet dataSet;
+    checkSpillCleanupRequested();
     if (spiller == null) {
-      dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries(), seriesPartitionSlots());
-    } else {
-      ensureSpiller(true);
-      dataSet =
-          new SpilledDeviceEntryDataSet(
-              queryId(),
-              ownerDirectory(),
-              spiller.finish(),
-              entryCount(),
-              ioContextOnSpill(),
-              seriesPartitionSlots());
+      DeviceEntryDataSet dataSet =
+          new InMemoryDeviceEntryDataSet(copyBufferedEntries(), seriesPartitionSlots());
+      recordDeviceEntryCount();
+      markFinished();
+      return dataSet;
     }
-    recordDeviceEntryCount();
-    markFinished();
-    return dataSet;
+    return withSpillDirectoryLock(
+        () -> {
+          ensureSpiller(true);
+          DeviceEntryDataSet dataSet =
+              new SpilledDeviceEntryDataSet(
+                  queryId(),
+                  ownerDirectory(),
+                  spiller.finish(),
+                  entryCount(),
+                  ioContextOnSpill(),
+                  seriesPartitionSlots());
+          recordDeviceEntryCount();
+          markFinished();
+          return dataSet;
+        });
   }
 
   private void ensureSpiller(boolean skipIfBufferEmpty) throws IOException {

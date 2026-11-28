@@ -576,7 +576,10 @@ public class QueryExecution implements IQueryExecution {
       cleanUpResultHandle();
     }
     context.releaseExternalTsFileQueryResources();
-    if (context.isDeviceEntrySpilled()) {
+    if (!isRetry) {
+      context.markDeviceEntrySpillCleanupRequested();
+    }
+    if (!isRetry || context.isDeviceEntrySpilled()) {
       try {
         DeviceEntrySpillManager.getInstance().deregisterQuery(context.getQueryId().getId());
       } catch (Exception e) {

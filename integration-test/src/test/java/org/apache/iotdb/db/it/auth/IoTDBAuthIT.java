@@ -156,20 +156,11 @@ public class IoTDBAuthIT {
         statement.execute("DROP ROLE " + role);
       }
 
-      List<String> databases = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
-        while (resultSet.next()) {
-          String database = resultSet.getString(1);
-          if (database != null
-              && !database.startsWith("root.__")
-              && !database.startsWith("information_schema")) {
-            databases.add(database);
-          }
-        }
-      }
+      List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, false);
       for (String database : databases) {
-        statement.execute("DELETE DATABASE " + database);
+        TestUtils.deleteDatabaseWithRetry(statement, database);
       }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
 
       List<String> timeseries = new ArrayList<>();
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**")) {

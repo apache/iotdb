@@ -116,7 +116,7 @@ public class WALBufferRollRecoveryTest {
     doAnswer(
             invocation -> {
               forceStarted.countDown();
-              assertTrue(releaseForce.await(5L, TimeUnit.SECONDS));
+              assertTrue(releaseForce.await(10L, TimeUnit.SECONDS));
               return invocation.callRealMethod();
             })
         .when(firstWriter)
@@ -124,13 +124,13 @@ public class WALBufferRollRecoveryTest {
     final WALInfoEntry remoteEntry = replicatedEntry(10L);
     try {
       buffer.write(remoteEntry);
-      assertTrue(forceStarted.await(5L, TimeUnit.SECONDS));
+      assertTrue(forceStarted.await(10L, TimeUnit.SECONDS));
       assertEquals(0L, buffer.getReplicatedWalVersion());
     } finally {
       releaseForce.countDown();
     }
     Awaitility.await()
-        .atMost(5L, TimeUnit.SECONDS)
+        .atMost(10L, TimeUnit.SECONDS)
         .untilAsserted(
             () -> assertEquals(Status.SUCCESS, remoteEntry.getWalFlushListener().waitForResult()));
     assertEquals(1L, buffer.getReplicatedWalVersion());

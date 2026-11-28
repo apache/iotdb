@@ -25,10 +25,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Before;
@@ -36,9 +36,7 @@ import org.junit.ClassRule;
 import org.junit.rules.ExternalResource;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -143,22 +141,11 @@ public abstract class AbstractPipeTreeModelSharedClusterIT extends AbstractPipeD
   private static void deleteTreeDatabases(final BaseEnv env) throws Exception {
     try (final Connection connection = env.getConnection();
         final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet result = statement.executeQuery("show databases")) {
-        while (result.next()) {
-          databases.add(result.getString(1));
-        }
-      }
+      final List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, false);
       for (final String database : databases) {
-        try {
-          statement.execute("delete database " + database);
-        } catch (final IoTDBSQLException e) {
-          // An in-flight metadata DROP can finish after the SHOW DATABASES snapshot.
-          if (e.getErrorCode() != TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
-            throw e;
-          }
-        }
+        TestUtils.deleteDatabaseWithRetry(statement, database);
       }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
     }
   }
 }

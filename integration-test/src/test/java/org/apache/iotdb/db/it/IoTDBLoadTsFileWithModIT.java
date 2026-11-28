@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
@@ -54,7 +55,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -109,21 +112,19 @@ public class IoTDBLoadTsFileWithModIT {
     }
   }
 
-  private static void executeQuietly(Statement statement, String sql) {
-    try {
-      statement.execute(sql);
-    } catch (SQLException ignored) {
-      // ignore
-    }
-  }
-
-  private static void cleanupTestDb() {
+  private static void cleanupTestDb() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      executeQuietly(statement, "DELETE DATABASE root.test.**");
-      executeQuietly(statement, "DELETE DATABASE root.test");
-    } catch (SQLException ignored) {
-      // ignore
+      final List<String> databases = new ArrayList<>();
+      for (final String database : TestUtils.showDatabasesWithRetry(statement)) {
+        if ("root.test".equals(database)
+            || (database != null && database.startsWith("root.test."))) {
+          databases.add(database);
+        }
+      }
+      TestUtils.deleteDatabaseWithRetry(statement, "root.test.**");
+      TestUtils.deleteDatabaseWithRetry(statement, "root.test");
+      TestUtils.waitForDatabasesAbsent(statement, databases);
     }
   }
 

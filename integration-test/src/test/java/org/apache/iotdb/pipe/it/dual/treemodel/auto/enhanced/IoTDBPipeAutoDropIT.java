@@ -43,10 +43,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -110,18 +108,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTreeModelSharedClusterIT {
   private static void deleteTableDatabases(final BaseEnv env) throws SQLException {
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet result = statement.executeQuery("show databases")) {
-        while (result.next()) {
-          final String database = result.getString(1);
-          if (!"information_schema".equals(database)) {
-            databases.add(database);
-          }
-        }
-      }
+      final List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, true);
       for (final String database : databases) {
         TestUtils.dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
       }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
     }
   }
 

@@ -101,9 +101,13 @@ public class IoTDBRestServiceIT {
   private static void cleanupAllData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      executeQuietly(statement, "DELETE DATABASE root.**");
-    } catch (SQLException ignored) {
-      // ignore
+      final List<String> databases = TestUtils.showUserDatabasesWithRetry(statement, false);
+      for (final String database : databases) {
+        TestUtils.deleteDatabaseWithRetry(statement, database);
+      }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
+    } catch (SQLException e) {
+      throw new AssertionError("Failed to clean up REST test databases", e);
     }
   }
 

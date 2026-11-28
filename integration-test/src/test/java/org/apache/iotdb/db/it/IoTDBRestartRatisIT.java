@@ -41,6 +41,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.*;
@@ -78,15 +79,11 @@ public class IoTDBRestartRatisIT {
     // Remove old schemas and data so each recovery scenario starts from empty databases.
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String database : Arrays.asList("root.turbine", "root.turbine1")) {
-        final boolean exists;
-        try (ResultSet resultSet = statement.executeQuery("show databases " + database)) {
-          exists = resultSet.next();
-        }
-        if (exists) {
-          statement.execute("delete database " + database);
-        }
+      final List<String> databases = Arrays.asList("root.turbine", "root.turbine1");
+      for (String database : databases) {
+        TestUtils.deleteDatabaseWithRetry(statement, database);
       }
+      TestUtils.waitForDatabasesAbsent(statement, databases);
     }
   }
 
