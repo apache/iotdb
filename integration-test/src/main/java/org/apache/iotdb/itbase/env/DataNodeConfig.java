@@ -40,6 +40,9 @@ public interface DataNodeConfig {
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
 
+  DataNodeConfig setLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber(
+      int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber);
+
   DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad);
 
   DataNodeConfig setLoadTsFileTabletConversionBatchMemorySizeInBytes(

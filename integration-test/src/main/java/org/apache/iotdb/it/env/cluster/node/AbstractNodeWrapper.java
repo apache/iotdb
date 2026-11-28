@@ -479,16 +479,30 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public void start() {
+    start(false);
+  }
+
+  /** Starts suspended so a test can install JDWP requests before any node code runs. */
+  public void startWithDebugger() {
+    if (jvmConfig.getDebugPort() <= 0) {
+      throw new IllegalStateException("A debug port must be configured before suspended startup");
+    }
+    start(true);
+  }
+
+  private void start(boolean suspendForDebugger) {
     try {
       File stdoutFile = new File(getLogPath());
       List<String> startCmd = new ArrayList<>();
       startCmd.add(JAVA_CMD);
+      startCmd.addAll(jvmConfig.getJvmOptions());
       if (jvmConfig.getDebugPort() > 0) {
         startCmd.add(
-            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:"
+            "-agentlib:jdwp=transport=dt_socket,server=y,suspend="
+                + (suspendForDebugger ? "y" : "n")
+                + ",address=127.0.0.1:"
                 + jvmConfig.getDebugPort());
       }
-      startCmd.addAll(jvmConfig.getJvmOptions());
       if (!SystemUtils.IS_JAVA_1_8) {
         startCmd.add("--add-opens=java.base/java.util.concurrent=ALL-UNNAMED");
         startCmd.add("--add-opens=java.base/java.lang=ALL-UNNAMED");
