@@ -124,6 +124,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
+  @Override
+  protected boolean shouldReleasePipeMetaWriteLockDuringTaskLifecycle() {
+    return true;
+  }
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -212,11 +217,19 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (pipeMetaListFromCoordinator.isEmpty()) {
       return Collections.emptyList();
     }
-    if (!tryWriteLockWithTimeOutInMs(
-        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+    final long timeoutInMs =
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3;
+    final long startTimeInNanos = System.nanoTime();
+    if (!tryWriteLockWithTimeOutInMs(timeoutInMs)) {
       return null;
     }
+    boolean writeLockHeld = true;
     try {
+      if (!tryWaitForPipeLifecycleOperationsAndReacquireWriteLock(
+          startTimeInNanos, TimeUnit.MILLISECONDS.toNanos(timeoutInMs))) {
+        writeLockHeld = false;
+        return null;
+      }
       // Reconciliation and alter-progress reuse need one complete view under the same write lock.
       // Resolve replacements using the keeper's name/visibility identity, including new versions
       // of existing pipes. Preserve the incoming old-DROPPED/new pair used by alter procedures.
@@ -245,7 +258,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
       return handlePipeMetaChangesInternal(fullPipeMetaList);
     } finally {
-      releaseWriteLock();
+      if (writeLockHeld) {
+        releaseWriteLock();
+      }
     }
   }
 

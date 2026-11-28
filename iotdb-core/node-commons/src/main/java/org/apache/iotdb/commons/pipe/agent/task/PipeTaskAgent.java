@@ -66,7 +66,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
@@ -105,6 +107,10 @@ public abstract class PipeTaskAgent {
   protected final PipeTaskManager pipeTaskManager;
   private final Map<String, AtomicLong> pipeNameWithCreationTime2FloatingMemoryUsageInByteMap;
   private final Map<String, Set<Long>> pipeName2CreationTimeSetMap;
+  private final ConcurrentHashMap<String, PipeLifecycleLockReference>
+      pipeName2LifecycleLockReferenceMap = new ConcurrentHashMap<>();
+  private final Object pipeLifecycleLockMonitor = new Object();
+  private final ThreadLocal<Boolean> pipeTaskLifecycleWriteLockReleaseEnabled = new ThreadLocal<>();
 
   protected PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
@@ -159,6 +165,16 @@ public abstract class PipeTaskAgent {
     return tryWriteLockWithTimeOut(convertMsToCeilSeconds(timeOutInMs));
   }
 
+  private boolean tryWriteLockWithTimeOutInNanos(final long timeOutInNanos) {
+    try {
+      return pipeMetaKeeper.tryWriteLock(Math.max(0L, timeOutInNanos), TimeUnit.NANOSECONDS);
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(PipeMessages.INTERRUPTED_ACQUIRING_WRITE_LOCK, e);
+      return false;
+    }
+  }
+
   protected void releaseWriteLock() {
     pipeMetaKeeper.releaseWriteLock();
   }
@@ -167,26 +183,216 @@ public abstract class PipeTaskAgent {
     return Math.max(1L, (Math.max(0L, timeOutInMs) + 999L) / 1000L);
   }
 
+  static long calculatePipeLifecycleTimeoutInNanos(final int dnConnectionTimeoutInMS) {
+    return TimeUnit.MILLISECONDS.toNanos(dnConnectionTimeoutInMS) * 2 / 3;
+  }
+
+  private PipeLifecycleLock tryLockPipeLifecycle(
+      final String pipeName, final long startTimeInNanos, final long timeOutInNanos) {
+    final PipeLifecycleLockReference lockReference =
+        pipeName2LifecycleLockReferenceMap.compute(
+            pipeName,
+            (ignoredPipeName, existingLockReference) -> {
+              final PipeLifecycleLockReference lockReferenceToUse =
+                  existingLockReference == null
+                      ? new PipeLifecycleLockReference()
+                      : existingLockReference;
+              ++lockReferenceToUse.referenceCount;
+              return lockReferenceToUse;
+            });
+    final long remainingTimeInNanos = timeOutInNanos - (System.nanoTime() - startTimeInNanos);
+    if (remainingTimeInNanos <= 0) {
+      releasePipeLifecycleLockReference(pipeName, lockReference);
+      return null;
+    }
+    try {
+      if (!lockReference.lock.tryLock(remainingTimeInNanos, TimeUnit.NANOSECONDS)) {
+        releasePipeLifecycleLockReference(pipeName, lockReference);
+        return null;
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      releasePipeLifecycleLockReference(pipeName, lockReference);
+      return null;
+    }
+    return new PipeLifecycleLock(pipeName, lockReference);
+  }
+
+  private void releasePipeLifecycleLockReference(
+      final String pipeName, final PipeLifecycleLockReference lockReference) {
+    synchronized (pipeLifecycleLockMonitor) {
+      pipeName2LifecycleLockReferenceMap.computeIfPresent(
+          pipeName,
+          (ignoredPipeName, currentLockReference) -> {
+            if (currentLockReference != lockReference) {
+              throw new IllegalStateException();
+            }
+            return --currentLockReference.referenceCount == 0 ? null : currentLockReference;
+          });
+      pipeLifecycleLockMonitor.notifyAll();
+    }
+  }
+
+  protected final boolean hasPipeLifecycleOperationsInProgress() {
+    return !pipeName2LifecycleLockReferenceMap.isEmpty();
+  }
+
+  protected boolean shouldReleasePipeMetaWriteLockDuringTaskLifecycle() {
+    return false;
+  }
+
+  private <T> T withPipeTaskLifecycleWriteLockReleaseEnabled(final Supplier<T> operation) {
+    final Boolean previousValue = pipeTaskLifecycleWriteLockReleaseEnabled.get();
+    pipeTaskLifecycleWriteLockReleaseEnabled.set(
+        shouldReleasePipeMetaWriteLockDuringTaskLifecycle());
+    try {
+      return operation.get();
+    } finally {
+      if (previousValue == null) {
+        pipeTaskLifecycleWriteLockReleaseEnabled.remove();
+      } else {
+        pipeTaskLifecycleWriteLockReleaseEnabled.set(previousValue);
+      }
+    }
+  }
+
+  private void runPipeTaskLifecycleWithoutWriteLock(final Runnable operation) {
+    if (!Boolean.TRUE.equals(pipeTaskLifecycleWriteLockReleaseEnabled.get())) {
+      operation.run();
+      return;
+    }
+
+    releaseWriteLock();
+    try {
+      operation.run();
+    } finally {
+      acquireWriteLock();
+    }
+  }
+
+  private void awaitPipeLifecycleOperations() {
+    boolean interrupted = false;
+    synchronized (pipeLifecycleLockMonitor) {
+      while (hasPipeLifecycleOperationsInProgress()) {
+        try {
+          pipeLifecycleLockMonitor.wait();
+        } catch (final InterruptedException e) {
+          interrupted = true;
+        }
+      }
+    }
+    if (interrupted) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  protected final void waitForPipeLifecycleOperations() {
+    while (hasPipeLifecycleOperationsInProgress()) {
+      releaseWriteLock();
+      try {
+        awaitPipeLifecycleOperations();
+      } finally {
+        acquireWriteLock();
+      }
+    }
+  }
+
+  protected final boolean tryWaitForPipeLifecycleOperationsAndReacquireWriteLock(
+      final long startTimeInNanos, final long timeoutInNanos) {
+    boolean interrupted = false;
+    try {
+      while (hasPipeLifecycleOperationsInProgress()) {
+        releaseWriteLock();
+        synchronized (pipeLifecycleLockMonitor) {
+          while (hasPipeLifecycleOperationsInProgress()) {
+            final long remainingTimeInNanos =
+                timeoutInNanos - (System.nanoTime() - startTimeInNanos);
+            if (remainingTimeInNanos <= 0) {
+              return false;
+            }
+            try {
+              TimeUnit.NANOSECONDS.timedWait(pipeLifecycleLockMonitor, remainingTimeInNanos);
+            } catch (final InterruptedException e) {
+              interrupted = true;
+            }
+          }
+        }
+
+        final long remainingTimeInNanos = timeoutInNanos - (System.nanoTime() - startTimeInNanos);
+        if (remainingTimeInNanos <= 0 || !tryWriteLockWithTimeOutInNanos(remainingTimeInNanos)) {
+          return false;
+        }
+      }
+      return true;
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private final class PipeLifecycleLock implements AutoCloseable {
+
+    private final String pipeName;
+    private final PipeLifecycleLockReference lockReference;
+
+    private PipeLifecycleLock(
+        final String pipeName, final PipeLifecycleLockReference lockReference) {
+      this.pipeName = pipeName;
+      this.lockReference = lockReference;
+    }
+
+    @Override
+    public void close() {
+      lockReference.lock.unlock();
+      releasePipeLifecycleLockReference(pipeName, lockReference);
+    }
+  }
+
+  private static final class PipeLifecycleLockReference {
+
+    private final ReentrantLock lock = new ReentrantLock();
+    private int referenceCount;
+  }
+
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   public TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       final PipeMeta pipeMetaFromCoordinator) {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
-    if (!tryWriteLockWithTimeOutInMs(
-        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
-      return new TPushPipeMetaRespExceptionMessage(
-          pipeName,
-          String.format(
-              PipeMessages
-                  .MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_HANDLING_SINGLE_PIPE_META_CHANGES_FOR_PIPE_ARG_BB90A99C,
-              pipeName),
-          System.currentTimeMillis());
+    final long timeOutInNanos =
+        calculatePipeLifecycleTimeoutInNanos(
+            CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS());
+    final long startTimeInNanos = System.nanoTime();
+    final PipeLifecycleLock pipeLifecycleLock =
+        tryLockPipeLifecycle(pipeName, startTimeInNanos, timeOutInNanos);
+    if (pipeLifecycleLock == null) {
+      return createWriteLockTimeoutMessage(pipeName);
     }
-    try {
-      return handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator);
-    } finally {
-      releaseWriteLock();
+    try (pipeLifecycleLock) {
+      final long remainingWriteLockTimeInNanos =
+          timeOutInNanos - (System.nanoTime() - startTimeInNanos);
+      if (remainingWriteLockTimeInNanos <= 0
+          || !tryWriteLockWithTimeOutInNanos(remainingWriteLockTimeInNanos)) {
+        return createWriteLockTimeoutMessage(pipeName);
+      }
+      try {
+        return withPipeTaskLifecycleWriteLockReleaseEnabled(
+            () -> handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator));
+      } finally {
+        releaseWriteLock();
+      }
     }
+  }
+
+  private TPushPipeMetaRespExceptionMessage createWriteLockTimeoutMessage(final String pipeName) {
+    return new TPushPipeMetaRespExceptionMessage(
+        pipeName,
+        String.format(
+            PipeMessages
+                .MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_HANDLING_SINGLE_PIPE_META_CHANGES_FOR_PIPE_ARG_BB90A99C,
+            pipeName),
+        System.currentTimeMillis());
   }
 
   protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
@@ -414,8 +620,13 @@ public abstract class PipeTaskAgent {
   protected abstract void freezeRate(final String pipeName, final long creationTime);
 
   public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
-    if (!tryWriteLockWithTimeOutInMs(
-        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+    final long timeOutInNanos =
+        calculatePipeLifecycleTimeoutInNanos(
+            CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS());
+    final long startTimeInNanos = System.nanoTime();
+    final PipeLifecycleLock pipeLifecycleLock =
+        tryLockPipeLifecycle(pipeName, startTimeInNanos, timeOutInNanos);
+    if (pipeLifecycleLock == null) {
       return new TPushPipeMetaRespExceptionMessage(
           pipeName,
           String.format(
@@ -424,10 +635,24 @@ public abstract class PipeTaskAgent {
               pipeName),
           System.currentTimeMillis());
     }
-    try {
-      return handleDropPipeInternal(pipeName);
-    } finally {
-      releaseWriteLock();
+    try (pipeLifecycleLock) {
+      final long remainingWriteLockTimeInNanos =
+          timeOutInNanos - (System.nanoTime() - startTimeInNanos);
+      if (remainingWriteLockTimeInNanos <= 0
+          || !tryWriteLockWithTimeOutInNanos(remainingWriteLockTimeInNanos)) {
+        return new TPushPipeMetaRespExceptionMessage(
+            pipeName,
+            String.format(
+                PipeMessages
+                    .MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_DROPPING_PIPE_ARG_53CC5A3B,
+                pipeName),
+            System.currentTimeMillis());
+      }
+      try {
+        return withPipeTaskLifecycleWriteLockReleaseEnabled(() -> handleDropPipeInternal(pipeName));
+      } finally {
+        releaseWriteLock();
+      }
     }
   }
 
@@ -451,14 +676,24 @@ public abstract class PipeTaskAgent {
 
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       final List<PipeMeta> pipeMetaListFromCoordinator) {
-    if (!tryWriteLockWithTimeOutInMs(
-        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+    final long timeoutInMs =
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3;
+    final long startTimeInNanos = System.nanoTime();
+    if (!tryWriteLockWithTimeOutInMs(timeoutInMs)) {
       return null;
     }
+    boolean writeLockHeld = true;
     try {
+      if (!tryWaitForPipeLifecycleOperationsAndReacquireWriteLock(
+          startTimeInNanos, TimeUnit.MILLISECONDS.toNanos(timeoutInMs))) {
+        writeLockHeld = false;
+        return null;
+      }
       return handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
     } finally {
-      releaseWriteLock();
+      if (writeLockHeld) {
+        releaseWriteLock();
+      }
     }
   }
 
@@ -543,15 +778,27 @@ public abstract class PipeTaskAgent {
   }
 
   public void dropAllPipeTasks() {
-    if (!tryWriteLockWithTimeOut(
-        TimeUnit.MILLISECONDS.toSeconds(PipeConfig.getInstance().getPipeMaxWaitFinishTime()))) {
+    final long timeoutInNanos =
+        TimeUnit.MILLISECONDS.toNanos(
+            Math.max(0L, PipeConfig.getInstance().getPipeMaxWaitFinishTime()));
+    final long startTimeInNanos = System.nanoTime();
+    if (!tryWriteLockWithTimeOutInNanos(timeoutInNanos - (System.nanoTime() - startTimeInNanos))) {
       LOGGER.info(PipeMessages.FAILED_TO_ACQUIRE_LOCK_DROPPING_ALL);
       return;
     }
+    boolean writeLockHeld = true;
     try {
+      if (!tryWaitForPipeLifecycleOperationsAndReacquireWriteLock(
+          startTimeInNanos, timeoutInNanos)) {
+        writeLockHeld = false;
+        LOGGER.info(PipeMessages.FAILED_TO_ACQUIRE_LOCK_DROPPING_ALL);
+        return;
+      }
       dropAllPipeTasksInternal();
     } finally {
-      releaseWriteLock();
+      if (writeLockHeld) {
+        releaseWriteLock();
+      }
     }
   }
 
@@ -678,11 +925,14 @@ public abstract class PipeTaskAgent {
     // dropped when its region leader changes, while the other tasks of the same pipe are still
     // running. Receiver runtime sessions can only be discarded after the whole pipe is stopped.
     final long startTime = System.currentTimeMillis();
-    runPipeTasks(pipeTasks.values(), PipeTask::stop);
-    runPipeTasks(
-        pipeTasks.values(),
-        pipeTask -> pipeTask.discardReceiverRuntimeSessions(pipeName, creationTime));
-    runPipeTasks(pipeTasks.values(), PipeTask::drop);
+    runPipeTaskLifecycleWithoutWriteLock(
+        () -> {
+          runPipeTasks(pipeTasks.values(), PipeTask::stop);
+          runPipeTasks(
+              pipeTasks.values(),
+              pipeTask -> pipeTask.discardReceiverRuntimeSessions(pipeName, creationTime));
+          runPipeTasks(pipeTasks.values(), PipeTask::drop);
+        });
     LOGGER.info(PipeMessages.DROP_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
     // Remove pipe meta from pipe meta keeper
@@ -720,13 +970,16 @@ public abstract class PipeTaskAgent {
     // dropped when its region leader changes, while the other tasks of the same pipe are still
     // running. Receiver runtime sessions can only be discarded after the whole pipe is stopped.
     final long startTime = System.currentTimeMillis();
-    runPipeTasks(pipeTasks.values(), PipeTask::stop);
-    runPipeTasks(
-        pipeTasks.values(),
-        pipeTask ->
-            pipeTask.discardReceiverRuntimeSessions(
-                pipeName, existedPipeMeta.getStaticMeta().getCreationTime()));
-    runPipeTasks(pipeTasks.values(), PipeTask::drop);
+    runPipeTaskLifecycleWithoutWriteLock(
+        () -> {
+          runPipeTasks(pipeTasks.values(), PipeTask::stop);
+          runPipeTasks(
+              pipeTasks.values(),
+              pipeTask ->
+                  pipeTask.discardReceiverRuntimeSessions(
+                      pipeName, existedPipeMeta.getStaticMeta().getCreationTime()));
+          runPipeTasks(pipeTasks.values(), PipeTask::drop);
+        });
     LOGGER.info(PipeMessages.DROP_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
     // Remove pipe meta from pipe meta keeper
@@ -753,12 +1006,15 @@ public abstract class PipeTaskAgent {
       return;
     }
 
-    // Trigger start() method for each pipe task by parallel stream
+    // Register receiver sessions and start each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    runPipeTasks(
-        pipeTasks.values(),
-        pipeTask -> pipeTask.registerReceiverRuntimeSessions(pipeName, creationTime));
-    runPipeTasks(pipeTasks.values(), PipeTask::start);
+    runPipeTaskLifecycleWithoutWriteLock(
+        () -> {
+          runPipeTasks(
+              pipeTasks.values(),
+              pipeTask -> pipeTask.registerReceiverRuntimeSessions(pipeName, creationTime));
+          runPipeTasks(pipeTasks.values(), PipeTask::start);
+        });
     LOGGER.info(
         PipeMessages.START_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
@@ -791,10 +1047,13 @@ public abstract class PipeTaskAgent {
 
     // Trigger stop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
-    runPipeTasks(pipeTasks.values(), PipeTask::stop);
-    runPipeTasks(
-        pipeTasks.values(),
-        pipeTask -> pipeTask.discardReceiverRuntimeSessions(pipeName, creationTime));
+    runPipeTaskLifecycleWithoutWriteLock(
+        () -> {
+          runPipeTasks(pipeTasks.values(), PipeTask::stop);
+          runPipeTasks(
+              pipeTasks.values(),
+              pipeTask -> pipeTask.discardReceiverRuntimeSessions(pipeName, creationTime));
+        });
     LOGGER.info(PipeMessages.STOP_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
     // Set pipe meta status to STOPPED
@@ -1006,7 +1265,7 @@ public abstract class PipeTaskAgent {
         .remove(consensusGroupId);
     final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, consensusGroupId);
     if (pipeTask != null) {
-      pipeTask.drop();
+      runPipeTaskLifecycleWithoutWriteLock(pipeTask::drop);
     }
   }
 
@@ -1017,7 +1276,7 @@ public abstract class PipeTaskAgent {
     }
 
     try {
-      pipeTask.start();
+      runPipeTaskLifecycleWithoutWriteLock(pipeTask::start);
     } catch (final Exception e) {
       LOGGER.error(
           PipeMessages
@@ -1080,6 +1339,7 @@ public abstract class PipeTaskAgent {
             while (true) {
               if (tryWriteLockWithTimeOut(5)) {
                 try {
+                  waitForPipeLifecycleOperations();
                   final PipeMeta failedPipeMeta =
                       findPipeMeta(pipeName, creationTime, pipeTaskMeta);
                   final PipeTaskMeta localFailedPipeTaskMeta =

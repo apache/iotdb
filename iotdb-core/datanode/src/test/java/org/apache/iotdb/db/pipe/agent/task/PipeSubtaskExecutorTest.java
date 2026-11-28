@@ -27,7 +27,10 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
@@ -165,6 +168,75 @@ public abstract class PipeSubtaskExecutorTest {
     executor.deregister(subtask.getTaskID());
     Assert.assertEquals(0, executor.getRegisteredSubtaskNumber());
     Assert.assertFalse(subtask.isSubmittingSelf());
+  }
+
+  @Test(timeout = 15000)
+  public void testDeregisterCloseDoesNotBlockOtherSubtaskStop() throws Exception {
+    final String blockedSubtaskID = "blocked-close-subtask";
+    final PipeSubtask blockedSubtask = Mockito.mock(PipeSubtask.class);
+    Mockito.when(blockedSubtask.getTaskID()).thenReturn(blockedSubtaskID);
+    Mockito.when(blockedSubtask.getDisplayTaskID()).thenReturn(blockedSubtaskID);
+
+    final CountDownLatch closeStarted = new CountDownLatch(1);
+    final CountDownLatch allowCloseToFinish = new CountDownLatch(1);
+    Mockito.doAnswer(
+            invocation -> {
+              closeStarted.countDown();
+              allowCloseToFinish.await();
+              return null;
+            })
+        .when(blockedSubtask)
+        .close();
+
+    executor.register(blockedSubtask);
+    executor.register(subtask);
+    executor.start(subtask.getTaskID());
+
+    final AtomicReference<Throwable> deregisterFailure = new AtomicReference<>();
+    final Thread deregisterThread =
+        new Thread(
+            () -> {
+              try {
+                executor.deregister(blockedSubtaskID);
+              } catch (final Throwable t) {
+                deregisterFailure.set(t);
+              }
+            });
+    deregisterThread.start();
+
+    final AtomicReference<Throwable> stopFailure = new AtomicReference<>();
+    final CountDownLatch stopFinished = new CountDownLatch(1);
+    final Thread stopThread =
+        new Thread(
+            () -> {
+              try {
+                executor.stop(subtask.getTaskID());
+              } catch (final Throwable t) {
+                stopFailure.set(t);
+              } finally {
+                stopFinished.countDown();
+              }
+            });
+
+    try {
+      Assert.assertTrue(closeStarted.await(5, TimeUnit.SECONDS));
+      stopThread.start();
+      Assert.assertTrue(
+          "Stopping another subtask should not wait for a blocked close",
+          stopFinished.await(5, TimeUnit.SECONDS));
+      Assert.assertNull(stopFailure.get());
+    } finally {
+      allowCloseToFinish.countDown();
+      deregisterThread.join(TimeUnit.SECONDS.toMillis(5));
+      if (stopThread.isAlive()) {
+        stopThread.join(TimeUnit.SECONDS.toMillis(5));
+      }
+    }
+
+    Assert.assertFalse(deregisterThread.isAlive());
+    Assert.assertFalse(stopThread.isAlive());
+    Assert.assertNull(deregisterFailure.get());
+    Assert.assertEquals(1, executor.getRegisteredSubtaskNumber());
   }
 
   @Test

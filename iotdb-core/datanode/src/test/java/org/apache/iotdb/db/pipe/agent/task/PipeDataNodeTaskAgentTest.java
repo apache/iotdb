@@ -63,7 +63,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataNodeTaskAgentTest {
 
@@ -169,6 +173,47 @@ public class PipeDataNodeTaskAgentTest {
         Collections.emptyList(), agent.handleMultiPipeMetaChanges(Collections.emptyList()));
 
     Assert.assertSame(existing, keeper.getPipeMeta(existing.getStaticMeta()));
+  }
+
+  @Test(timeout = 15000)
+  public void testPartialMetaSyncWaitsForPipeLifecycleOperation() throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final int originalDnConnectionTimeoutInMS = commonConfig.getDnConnectionTimeoutInMS();
+    commonConfig.setDnConnectionTimeoutInMS(3000);
+
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final String pipeName = "partial_meta_sync_" + System.nanoTime();
+    AutoCloseable lifecycleLock = null;
+    final AtomicReference<Thread> syncThread = new AtomicReference<>();
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<Boolean> syncFuture = null;
+    try {
+      final PipeMeta existing = newEmptyPipeMeta(pipeName, 1L);
+      addEmptyPipe(agent, existing);
+      final PipeMeta update = newEmptyPipeMeta(pipeName, 1L);
+      lifecycleLock = acquirePipeLifecycleLockForTest(agent, pipeName);
+      syncFuture =
+          executor.submit(
+              () -> {
+                syncThread.set(Thread.currentThread());
+                return agent.handleMultiPipeMetaChanges(Collections.singletonList(update)) != null;
+              });
+
+      Assert.assertTrue(
+          waitForThreadState(syncThread, Thread.State.TIMED_WAITING, 5, TimeUnit.SECONDS));
+      Assert.assertFalse(syncFuture.isDone());
+
+      lifecycleLock.close();
+      lifecycleLock = null;
+      Assert.assertTrue(syncFuture.get(5, TimeUnit.SECONDS));
+    } finally {
+      if (lifecycleLock != null) {
+        lifecycleLock.close();
+      }
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      commonConfig.setDnConnectionTimeoutInMS(originalDnConnectionTimeoutInMS);
+    }
   }
 
   @Test
@@ -281,6 +326,38 @@ public class PipeDataNodeTaskAgentTest {
         return false;
       }
     };
+  }
+
+  private static AutoCloseable acquirePipeLifecycleLockForTest(
+      final PipeDataNodeTaskAgent agent, final String pipeName) throws Exception {
+    final Method method =
+        PipeTaskAgent.class.getDeclaredMethod(
+            "tryLockPipeLifecycle", String.class, long.class, long.class);
+    method.setAccessible(true);
+    return (AutoCloseable)
+        method.invoke(agent, pipeName, System.nanoTime(), TimeUnit.SECONDS.toNanos(5));
+  }
+
+  private static boolean waitForThreadState(
+      final AtomicReference<Thread> threadReference,
+      final Thread.State expectedState,
+      final long timeout,
+      final TimeUnit timeUnit)
+      throws InterruptedException {
+    final long deadlineInNanos = System.nanoTime() + timeUnit.toNanos(timeout);
+    while (System.nanoTime() < deadlineInNanos) {
+      final Thread thread = threadReference.get();
+      if (thread != null) {
+        if (thread.getState() == expectedState) {
+          return true;
+        }
+        if (!thread.isAlive()) {
+          return false;
+        }
+      }
+      Thread.sleep(1);
+    }
+    return false;
   }
 
   private static PipeMeta newEmptyPipeMeta(final String name, final long creationTime)

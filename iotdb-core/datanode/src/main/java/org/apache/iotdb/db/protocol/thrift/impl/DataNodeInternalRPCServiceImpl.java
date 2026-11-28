@@ -1517,7 +1517,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         pipeMetas.stream()
                             .map(PipeMeta::deserialize4TaskAgent)
                             .collect(Collectors.toList()));
-            // PipeTaskAgent returns null only when its timed write-lock acquisition fails.
+            // PipeTaskAgent returns null when its timed lifecycle/write-lock acquisition fails.
             if (exceptionMessagesFromAgent == null) {
               return false;
             }

@@ -298,6 +298,8 @@ class PipeAgentLauncher {
         LOGGER.warn(DataNodePipeMessages.FAILED_TO_GET_PIPE_METAS_WILL_BE);
       }
 
+      // Startup recovery can return without applying the batch while a Pipe lifecycle operation
+      // is in progress; a subsequent heartbeat sync will reconcile the latest Pipe metadata.
       PipeDataNodeAgent.task()
           .handlePipeMetaChanges(
               getAllPipeInfoResp.getAllPipeInfo().stream()

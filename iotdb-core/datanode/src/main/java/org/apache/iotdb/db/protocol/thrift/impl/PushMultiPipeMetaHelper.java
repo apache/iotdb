@@ -58,7 +58,7 @@ final class PushMultiPipeMetaHelper {
      * @param pipeMetas serialized pipe metadata to process as one batch
      * @param exceptionMessages destination for per-pipe failures
      * @return {@code true} after the batch was processed, or {@code false} only when the task agent
-     *     could not acquire its write lock before the metadata handling timeout
+     *     could not acquire its task-agent locks before the metadata handling timeout
      */
     default boolean handlePipeMetaChanges(
         final List<ByteBuffer> pipeMetas,
@@ -86,8 +86,8 @@ final class PushMultiPipeMetaHelper {
           }
         }
       } else if (req.isSetPipeMetas()) {
-        // A false result is reserved for the task-agent write-lock timeout. Per-pipe processing
-        // failures are returned through exceptionMessages and use PIPE_PUSH_META_ERROR below.
+        // A false result is reserved for a task-agent lock timeout. Per-pipe processing failures
+        // are returned through exceptionMessages and use PIPE_PUSH_META_ERROR below.
         if (!handler.handlePipeMetaChanges(req.getPipeMetas(), exceptionMessages)) {
           return new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()));
