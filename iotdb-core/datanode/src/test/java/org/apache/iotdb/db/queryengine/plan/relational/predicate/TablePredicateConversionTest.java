@@ -24,20 +24,30 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.read.filter.operator.FalseLiteralFilter;
 import org.apache.tsfile.read.filter.operator.LongFilterOperators;
 import org.apache.tsfile.read.filter.operator.ValueIsNotNullOperator;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
@@ -502,5 +512,107 @@ public class TablePredicateConversionTest {
             predicate, int32MeasurementColumnsIndexMap, int32SchemaMap, null, null, null);
 
     Assert.assertEquals(new LongFilterOperators.ValueGtEq(0, 123), actualFilter);
+  }
+
+  @Test
+  public void testMultiValueInPredicateAndInt32Column() {
+    // Out-of-range integers must not be narrowed onto other INT32 values, and decimal literals
+    // must behave like "=": integral ones match, non-integral ones never match.
+    Filter filter =
+        convertInt32(
+            inPredicate(
+                int32Column, "1", "4294967298", "-4294967293", "2147483648", "2.5", "3.0", "1"));
+    Assert.assertEquals(
+        ValueFilterApi.in(0, new HashSet<>(Arrays.asList(1, 3)), TSDataType.INT32), filter);
+    Assert.assertFalse(filter.satisfyInteger(0, 2));
+    Assert.assertFalse(filter.satisfyInteger(0, Integer.MIN_VALUE));
+
+    // NOT IN keeps rows whose value would have been hit by a narrowed literal
+    Filter notInFilter =
+        convertInt32(new NotExpression(inPredicate(int32Column, "1", "4294967298")));
+    Assert.assertFalse(notInFilter.satisfyInteger(0, 1));
+    Assert.assertTrue(notInFilter.satisfyInteger(0, 2));
+
+    // No literal can match. The result must be FalseLiteralFilter rather than an empty ValueIn:
+    // TsFile reports allSatisfy() for an empty candidate set on an all-NULL page, which would
+    // make the pushed-down filter return those NULL rows.
+    Filter impossible = convertInt32(inPredicate(int32Column, "4294967298", "2.5"));
+    Assert.assertEquals(new FalseLiteralFilter(), impossible);
+    Assert.assertFalse(impossible.satisfyInteger(0, 2));
+    Filter notImpossible =
+        convertInt32(new NotExpression(inPredicate(int32Column, "4294967298", "2.5")));
+    Assert.assertTrue(notImpossible.satisfyInteger(0, 2));
+    Assert.assertTrue(notImpossible.satisfyInteger(0, Integer.MIN_VALUE));
+  }
+
+  @Test
+  public void testMultiValueInPredicateAndInt64Column() {
+    Filter filter =
+        PredicateUtils.convertPredicateToFilter(
+            inPredicate(
+                int64Column,
+                "2",
+                "2.5",
+                "3.0",
+                "4294967298",
+                "-9223372036854775808.0",
+                "9223372036854775808.0"),
+            int64MeasurementColumnsIndexMap,
+            int64SchemaMap,
+            null,
+            null,
+            null);
+    Assert.assertEquals(
+        ValueFilterApi.in(
+            0, new HashSet<>(Arrays.asList(2L, 3L, 4294967298L, Long.MIN_VALUE)), TSDataType.INT64),
+        filter);
+    Assert.assertFalse(filter.satisfyLong(0, Long.MAX_VALUE));
+  }
+
+  @Test
+  public void testInt64ColumnAndUpperBoundDoubleLiteral() {
+    // The optimizer deduplicates an IN list and rewrites a single remaining value to "=", so the
+    // boundary has to be rejected there too. (double) Long.MAX_VALUE rounds up to 2^63, which
+    // used to let the literal through and saturate back onto Long.MAX_VALUE.
+    DoubleLiteral upperBound = new DoubleLiteral("9223372036854775808.0");
+    Assert.assertEquals(
+        new FalseLiteralFilter(),
+        convertInt64(compare(ComparisonExpression.Operator.EQUAL, upperBound)));
+    Assert.assertEquals(
+        new ValueIsNotNullOperator(0),
+        convertInt64(compare(ComparisonExpression.Operator.NOT_EQUAL, upperBound)));
+    Assert.assertEquals(
+        new FalseLiteralFilter(),
+        convertInt64(compare(ComparisonExpression.Operator.GREATER_THAN, upperBound)));
+    Assert.assertEquals(
+        new ValueIsNotNullOperator(0),
+        convertInt64(compare(ComparisonExpression.Operator.LESS_THAN, upperBound)));
+    // Long.MIN_VALUE is exact as a double, so the lower boundary still converts
+    DoubleLiteral lowerBound = new DoubleLiteral("-9223372036854775808.0");
+    Assert.assertEquals(
+        ValueFilterApi.eq(0, Long.MIN_VALUE, TSDataType.INT64),
+        convertInt64(compare(ComparisonExpression.Operator.EQUAL, lowerBound)));
+  }
+
+  private Expression compare(ComparisonExpression.Operator operator, Literal literal) {
+    return new ComparisonExpression(operator, int64Column, literal);
+  }
+
+  private Filter convertInt64(Expression predicate) {
+    return PredicateUtils.convertPredicateToFilter(
+        predicate, int64MeasurementColumnsIndexMap, int64SchemaMap, null, null, null);
+  }
+
+  private Filter convertInt32(Expression predicate) {
+    return PredicateUtils.convertPredicateToFilter(
+        predicate, int32MeasurementColumnsIndexMap, int32SchemaMap, null, null, null);
+  }
+
+  private static InPredicate inPredicate(SymbolReference column, String... literals) {
+    List<Expression> values = new ArrayList<>();
+    for (String literal : literals) {
+      values.add(literal.contains(".") ? new DoubleLiteral(literal) : new LongLiteral(literal));
+    }
+    return new InPredicate(column, new InListExpression(values));
   }
 }
