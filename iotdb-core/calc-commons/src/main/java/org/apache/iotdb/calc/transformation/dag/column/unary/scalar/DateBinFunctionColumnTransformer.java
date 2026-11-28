@@ -129,6 +129,36 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
+  // Bin k starts at origin + k * interval. Every bin start is derived from the origin rather than
+  // from the previous bin, because plusMonths clamps the day of month: stepping from Jan 31 gives
+  // Feb 29, and stepping again from Feb 29 gives Mar 29 instead of Mar 31.
+  private static LocalDateTime monthBinStart(
+      LocalDateTime originDate, long binIndex, int monthDuration, long nonMonthDuration) {
+    return originDate
+        .plusNanos(getNanoTimeStamp(nonMonthDuration) * binIndex)
+        .plusMonths(binIndex * monthDuration);
+  }
+
+  // Index of the last bin that starts at or before sourceDate. MONTHS.between compares the day of
+  // month, so it is one short when the origin day does not exist in the source month (from Jan 31
+  // to Feb 29 it returns 0), and the estimate is corrected in both directions.
+  private static long monthBinIndex(
+      LocalDateTime originDate,
+      LocalDateTime sourceDate,
+      int monthDuration,
+      long nonMonthDuration) {
+    long binIndex = ChronoUnit.MONTHS.between(originDate, sourceDate) / monthDuration;
+    while (monthBinStart(originDate, binIndex, monthDuration, nonMonthDuration)
+        .isAfter(sourceDate)) {
+      binIndex--;
+    }
+    while (!monthBinStart(originDate, binIndex + 1, monthDuration, nonMonthDuration)
+        .isAfter(sourceDate)) {
+      binIndex++;
+    }
+    return binIndex;
+  }
+
   public static long dateBin(
       long source, long origin, int monthDuration, long nonMonthDuration, ZoneId zoneId) {
     // return source if interval is 0
@@ -140,22 +170,9 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
       LocalDateTime sourceDate = convertToLocalDateTime(source, zoneId);
       LocalDateTime originDate = convertToLocalDateTime(origin, zoneId);
 
-      // calculate the number of months between the origin and source
-      long monthsDiff = ChronoUnit.MONTHS.between(originDate, sourceDate);
-      // calculate the number of month cycles completed
-      long completedMonthCycles = monthsDiff / monthDuration;
-
-      LocalDateTime binStart =
-          originDate
-              .plusNanos(getNanoTimeStamp(nonMonthDuration) * completedMonthCycles)
-              .plusMonths(completedMonthCycles * monthDuration);
-
-      if (binStart.isAfter(sourceDate)) {
-        binStart =
-            binStart.minusMonths(monthDuration).minusNanos(getNanoTimeStamp(nonMonthDuration));
-      }
-
-      return convertToTimestamp(binStart, zoneId);
+      long binIndex = monthBinIndex(originDate, sourceDate, monthDuration, nonMonthDuration);
+      return convertToTimestamp(
+          monthBinStart(originDate, binIndex, monthDuration, nonMonthDuration), zoneId);
     }
 
     try {
@@ -185,23 +202,13 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
       LocalDateTime sourceDate = convertToLocalDateTime(source, zoneId);
       LocalDateTime originDate = convertToLocalDateTime(origin, zoneId);
 
-      // calculate the number of months between the origin and source
-      long monthsDiff = ChronoUnit.MONTHS.between(originDate, sourceDate);
-      // calculate the number of month cycles completed
-      long completedMonthCycles = monthsDiff / monthDuration;
-
-      LocalDateTime binStart =
-          originDate
-              .plusNanos(getNanoTimeStamp(nonMonthDuration) * completedMonthCycles)
-              .plusMonths(completedMonthCycles * monthDuration);
-
-      if (binStart.isAfter(sourceDate)) {
-        binStart =
-            binStart.minusMonths(monthDuration).minusNanos(getNanoTimeStamp(nonMonthDuration));
-      }
-
-      long startTime = convertToTimestamp(binStart, zoneId);
-      long endTime = convertToTimestamp(binStart.plusMonths(monthDuration), zoneId);
+      long binIndex = monthBinIndex(originDate, sourceDate, monthDuration, nonMonthDuration);
+      long startTime =
+          convertToTimestamp(
+              monthBinStart(originDate, binIndex, monthDuration, nonMonthDuration), zoneId);
+      long endTime =
+          convertToTimestamp(
+              monthBinStart(originDate, binIndex + 1, monthDuration, nonMonthDuration), zoneId);
       return new long[] {startTime, closedEnd ? saturatedAdd(endTime, -1) : endTime};
     }
 
@@ -220,10 +227,11 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
-  public static long nextDateBin(int monthDuration, ZoneId zoneId, long currentTime) {
-    LocalDateTime currentDateTime = convertToLocalDateTime(currentTime, zoneId);
-    LocalDateTime nextDateTime = currentDateTime.plusMonths(monthDuration);
-    return convertToTimestamp(nextDateTime, zoneId);
+  public static long nextDateBin(int monthDuration, long origin, ZoneId zoneId, long currentTime) {
+    LocalDateTime currentDate = convertToLocalDateTime(currentTime, zoneId);
+    LocalDateTime originDate = convertToLocalDateTime(origin, zoneId);
+    long binIndex = monthBinIndex(originDate, currentDate, monthDuration, 0);
+    return convertToTimestamp(monthBinStart(originDate, binIndex + 1, monthDuration, 0), zoneId);
   }
 
   public static long nextDateBin(long nonMonthDuration, long currentTime) {

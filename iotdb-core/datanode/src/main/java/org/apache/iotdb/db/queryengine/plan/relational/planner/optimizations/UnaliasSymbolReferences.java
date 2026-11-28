@@ -343,6 +343,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getEndTime(),
               node.getMonthDuration(),
               node.getNonMonthDuration(),
+              node.getOrigin(),
               mapper.map(node.getGapFillColumn()),
               groupingKeys),
           mapping);

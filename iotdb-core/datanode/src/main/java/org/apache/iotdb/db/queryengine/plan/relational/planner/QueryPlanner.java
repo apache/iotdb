@@ -1370,6 +1370,7 @@ public class QueryPlanner {
             startAndEndTime[1],
             monthDuration,
             nonMonthDuration,
+            origin,
             gapFillColumnSymbol,
             groupingKeys));
   }

@@ -34,6 +34,7 @@ public class GapFillWoGroupWMoOperator extends AbstractGapFillWoGroupOperator {
   // used when the first parameter(timeInterval) of date_bin_gapfill is like 1y, 1mo, 1y1mo which
   // only containing time interval unit larger than month
   private final int monthDuration;
+  private final long origin;
   private final ZoneId zoneId;
 
   public GapFillWoGroupWMoOperator(
@@ -44,14 +45,16 @@ public class GapFillWoGroupWMoOperator extends AbstractGapFillWoGroupOperator {
       long endTime,
       List<TSDataType> dataTypes,
       int monthDuration,
+      long origin,
       ZoneId zoneId) {
     super(operatorContext, child, timeColumnIndex, startTime, endTime, dataTypes);
     this.monthDuration = monthDuration;
+    this.origin = origin;
     this.zoneId = zoneId;
   }
 
   @Override
   void nextTime() {
-    this.currentTime = nextDateBin(monthDuration, zoneId, this.currentTime);
+    this.currentTime = nextDateBin(monthDuration, origin, zoneId, this.currentTime);
   }
 }

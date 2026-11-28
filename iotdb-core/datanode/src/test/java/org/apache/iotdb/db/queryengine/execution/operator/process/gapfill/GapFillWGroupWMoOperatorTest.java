@@ -404,6 +404,7 @@ public class GapFillWGroupWMoOperatorTest {
             TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE),
         groupKeyIndexSet,
         1,
+        1711900800000L,
         ZoneId.of("Asia/Shanghai"));
   }
 }

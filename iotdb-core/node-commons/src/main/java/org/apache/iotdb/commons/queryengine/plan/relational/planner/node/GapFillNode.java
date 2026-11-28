@@ -53,6 +53,8 @@ public class GapFillNode extends SingleChildProcessNode {
   // used when the first parameter(timeInterval) of date_bin_gapfill is like 1ns, 1us, 1ms, 1s, 1m,
   // 1h, 1d, 1w and so on which only containing time interval unit less than month
   private final long nonMonthDuration;
+  // the third parameter(origin) of date_bin_gapfill, month-based bins are anchored at it
+  private final long origin;
 
   private final Symbol gapFillColumn;
 
@@ -65,6 +67,7 @@ public class GapFillNode extends SingleChildProcessNode {
       long endTime,
       int monthDuration,
       long nonMonthDuration,
+      long origin,
       Symbol gapFillColumn,
       @Nonnull List<Symbol> gapFillGroupingKeys) {
     super(id, child);
@@ -72,6 +75,7 @@ public class GapFillNode extends SingleChildProcessNode {
     this.endTime = endTime;
     this.monthDuration = monthDuration;
     this.nonMonthDuration = nonMonthDuration;
+    this.origin = origin;
     this.gapFillColumn = gapFillColumn;
     this.gapFillGroupingKeys = gapFillGroupingKeys;
   }
@@ -100,6 +104,10 @@ public class GapFillNode extends SingleChildProcessNode {
     return nonMonthDuration;
   }
 
+  public long getOrigin() {
+    return origin;
+  }
+
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
     return ((ICoreQueryPlanVisitor<R, C>) visitor).visitGapFill(this, context);
@@ -124,6 +132,7 @@ public class GapFillNode extends SingleChildProcessNode {
         endTime,
         monthDuration,
         nonMonthDuration,
+        origin,
         gapFillColumn,
         gapFillGroupingKeys);
   }
@@ -135,6 +144,7 @@ public class GapFillNode extends SingleChildProcessNode {
     ReadWriteIOUtils.write(endTime, byteBuffer);
     ReadWriteIOUtils.write(monthDuration, byteBuffer);
     ReadWriteIOUtils.write(nonMonthDuration, byteBuffer);
+    ReadWriteIOUtils.write(origin, byteBuffer);
     Symbol.serialize(gapFillColumn, byteBuffer);
     ReadWriteIOUtils.write(gapFillGroupingKeys.size(), byteBuffer);
     for (Symbol symbol : gapFillGroupingKeys) {
@@ -149,6 +159,7 @@ public class GapFillNode extends SingleChildProcessNode {
     ReadWriteIOUtils.write(endTime, stream);
     ReadWriteIOUtils.write(monthDuration, stream);
     ReadWriteIOUtils.write(nonMonthDuration, stream);
+    ReadWriteIOUtils.write(origin, stream);
     Symbol.serialize(gapFillColumn, stream);
     ReadWriteIOUtils.write(gapFillGroupingKeys.size(), stream);
     for (Symbol symbol : gapFillGroupingKeys) {
@@ -161,6 +172,7 @@ public class GapFillNode extends SingleChildProcessNode {
     long endTime = ReadWriteIOUtils.readLong(byteBuffer);
     int monthDuration = ReadWriteIOUtils.readInt(byteBuffer);
     long nonMonthDuration = ReadWriteIOUtils.readLong(byteBuffer);
+    long origin = ReadWriteIOUtils.readLong(byteBuffer);
     Symbol gapFillColumn = Symbol.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Symbol> gapFillGroupingKeys = new ArrayList<>(size);
@@ -175,6 +187,7 @@ public class GapFillNode extends SingleChildProcessNode {
         endTime,
         monthDuration,
         nonMonthDuration,
+        origin,
         gapFillColumn,
         gapFillGroupingKeys);
   }
@@ -188,6 +201,7 @@ public class GapFillNode extends SingleChildProcessNode {
         endTime,
         monthDuration,
         nonMonthDuration,
+        origin,
         gapFillColumn,
         gapFillGroupingKeys);
   }
@@ -208,6 +222,7 @@ public class GapFillNode extends SingleChildProcessNode {
         && endTime == that.endTime
         && monthDuration == that.monthDuration
         && nonMonthDuration == that.nonMonthDuration
+        && origin == that.origin
         && Objects.equals(gapFillColumn, that.gapFillColumn)
         && Objects.equals(gapFillGroupingKeys, that.gapFillGroupingKeys);
   }
@@ -220,6 +235,7 @@ public class GapFillNode extends SingleChildProcessNode {
         endTime,
         monthDuration,
         nonMonthDuration,
+        origin,
         gapFillColumn,
         gapFillGroupingKeys);
   }

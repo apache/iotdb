@@ -470,6 +470,7 @@ public abstract class TableOperatorGenerator<
             node.getEndTime(),
             inputDataTypes,
             node.getMonthDuration(),
+            node.getOrigin(),
             context.getZoneId());
       }
 
@@ -506,6 +507,7 @@ public abstract class TableOperatorGenerator<
             inputDataTypes,
             groupingKeysIndexSet,
             node.getMonthDuration(),
+            node.getOrigin(),
             context.getZoneId());
       }
     }
