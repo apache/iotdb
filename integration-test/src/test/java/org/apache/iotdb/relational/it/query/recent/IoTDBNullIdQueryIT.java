@@ -24,8 +24,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.recent.IoTDBNullIdQueryTableViewBase;
 
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -40,6 +40,7 @@ import java.sql.Types;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetFuzzyTest;
@@ -49,7 +50,7 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBNullIdQueryIT {
+public class IoTDBNullIdQueryIT extends IoTDBNullIdQueryTableViewBase {
   private static final String DATABASE_NAME = "test";
   private static final String[] createSqls =
       new String[] {
@@ -75,16 +76,9 @@ public class IoTDBNullIdQueryIT {
       };
 
   @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
-    EnvFactory.getEnv().initClusterEnvironment();
+  public static void setUpTableData() throws Exception {
+    prepareData(new String[] {"CREATE DATABASE root.db_table"});
     prepareTableData(createSqls);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -506,11 +500,13 @@ public class IoTDBNullIdQueryIT {
     tableResultSetFuzzyTest("show current_timestamp", expectedHeader, 1, DATABASE_NAME);
   }
 
+  // A table user can switch its session between tree and table SQL dialects.
   @Test
   public void setSqlDialectTest() throws SQLException {
-    createUser("tempuser", "temppw123456");
+    createUser("tempuser_table", "TempTable!2026");
 
-    try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
+    try (Connection userCon =
+            EnvFactory.getEnv().getConnection("tempuser_table", "TempTable!2026");
         Statement userStmt = userCon.createStatement()) {
       assertCurrentSqlDialect(true, userStmt);
 
@@ -532,7 +528,7 @@ public class IoTDBNullIdQueryIT {
       userStmt.execute("use test1");
       userStmt.execute("set sql_dialect=tree");
       assertCurrentSqlDialect(true, userStmt);
-      userStmt.execute("insert into root.db(time,s1) values (0,1), (1, 3), (2,5)");
+      userStmt.execute("insert into root.db_table(time,s1) values (0,1), (1, 3), (2,5)");
     }
   }
 

@@ -60,6 +60,7 @@ public class IoTDBFormatFunctionTableIT {
         "CREATE TABLE timestamp_table(device_id STRING TAG, s1 TIMESTAMP FIELD)",
         "CREATE TABLE date_table(device_id STRING TAG, s1 DATE FIELD)",
         "CREATE TABLE null_table(device_id STRING TAG, s1 INT32 FIELD)",
+        "CREATE TABLE special(device_id STRING TAG, s1 DATE FIELD)",
         // data for number series
         "INSERT INTO number_table(time, device_id, s1, s2, s3, s4) VALUES (10, 'd1', 1000000, 1000000, 3.1415926, 3.1415926)",
         "INSERT INTO number_table(time, device_id, s1, s2, s3, s4) VALUES (20, 'd1', 1, 1, 1234567.25, 1234567.25)",
@@ -85,6 +86,8 @@ public class IoTDBFormatFunctionTableIT {
 
         // data for special series
         "INSERT INTO null_table(time, device_id, s1) VALUES (10, 'd1', null)",
+        "INSERT INTO special(time, device_id, s1) VALUES (1, 'd1', '2262-04-13')",
+        "INSERT INTO special(time, device_id, s1) VALUES (2, 'd1', '1677-09-21')",
       };
 
   @BeforeClass
@@ -218,6 +221,20 @@ public class IoTDBFormatFunctionTableIT {
     tableAssertTestFail(
         "SELECT FORMAT('%s') FROM string_table",
         "701: Scalar function format must have at least two arguments, and first argument pattern must be TEXT or STRING type.",
+        DATABASE_NAME);
+  }
+
+  // Verifies DATE values just beyond both TIMESTAMP limits fail to cast at nanosecond precision.
+  @Test
+  public void testTimestampOverflow() {
+    tableAssertTestFail(
+        "select cast(s1 as TIMESTAMP) from special where time = 1",
+        "750: Timestamp overflow",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select cast(s1 as TIMESTAMP) from special where time = 2",
+        "750: Timestamp overflow",
         DATABASE_NAME);
   }
 }

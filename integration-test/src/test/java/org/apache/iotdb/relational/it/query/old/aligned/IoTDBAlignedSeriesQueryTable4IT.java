@@ -45,6 +45,7 @@ public class IoTDBAlignedSeriesQueryTable4IT extends IoTDBAlignedSeriesQueryTabl
         .setDegreeOfParallelism(4);
     EnvFactory.getEnv().initClusterEnvironment();
     TableUtils.insertData();
+    prepareViewData();
   }
 
   @AfterClass

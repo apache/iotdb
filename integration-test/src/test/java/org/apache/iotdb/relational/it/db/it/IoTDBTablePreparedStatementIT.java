@@ -20,16 +20,9 @@
 package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -43,10 +36,8 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBTablePreparedStatementIT {
-  private static final String DATABASE_NAME = "test";
+public abstract class IoTDBTablePreparedStatementIT extends IoTDBFFTTableFunctionIT {
+  private static final String DATABASE_NAME = "test_prepared";
   private static final String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -70,15 +61,8 @@ public class IoTDBTablePreparedStatementIT {
     }
   }
 
-  @BeforeClass
-  public static void setUp() {
-    EnvFactory.getEnv().initClusterEnvironment();
+  static void preparePreparedStatementFixture() {
     insertData();
-  }
-
-  @AfterClass
-  public static void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   /**

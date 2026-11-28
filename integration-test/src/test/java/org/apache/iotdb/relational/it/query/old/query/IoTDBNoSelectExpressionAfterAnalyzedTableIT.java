@@ -19,36 +19,14 @@
 
 package org.apache.iotdb.relational.it.query.old.query;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
-  private static final String DATABASE_NAME = "test";
-  private static final String[] SQLs =
-      new String[] {
-        "CREATE DATABASE " + DATABASE_NAME,
-        "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device STRING TAG, s1 INT32 FIELD)",
-        "insert into sg(time,device,s1) values(1,'d1',1)"
-      };
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+public abstract class IoTDBNoSelectExpressionAfterAnalyzedTableIT extends IoTDBQueryDemoTableIT {
+  public static void prepareNoSelectExpressionAfterAnalyzedTableFixture() {
     prepareTableData(SQLs);
     tableAssertTestFail(
         "insert into sg(time,device,s1,s2) values(1,'d1',1,1)",
@@ -56,10 +34,14 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
         DATABASE_NAME);
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
+  private static final String DATABASE_NAME = "test_no_select_expression";
+  private static final String[] SQLs =
+      new String[] {
+        "CREATE DATABASE " + DATABASE_NAME,
+        "USE " + DATABASE_NAME,
+        "CREATE TABLE sg(device STRING TAG, s1 INT32 FIELD)",
+        "insert into sg(time,device,s1) values(1,'d1',1)"
+      };
 
   @Test
   public void testAlignByDevice() {

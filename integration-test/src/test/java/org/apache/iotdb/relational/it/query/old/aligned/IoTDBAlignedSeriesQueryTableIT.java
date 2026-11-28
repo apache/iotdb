@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.relational.it.query.view.old.aligned.IoTDBAlignedSeriesQueryTableViewBase;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -60,7 +61,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBAlignedSeriesQueryTableIT {
+public class IoTDBAlignedSeriesQueryTableIT extends IoTDBAlignedSeriesQueryTableViewBase {
 
   private static final double DELTA = 1e-6;
 
@@ -75,6 +76,7 @@ public class IoTDBAlignedSeriesQueryTableIT {
         .setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initClusterEnvironment();
     TableUtils.insertData();
+    prepareViewData();
   }
 
   @AfterClass

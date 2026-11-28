@@ -19,26 +19,20 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBQueryAttributeTableIT {
-  protected static final String DATABASE_NAME = "test_db";
+public abstract class IoTDBQueryAttributeTableIT extends IoTDBPredicateConversionTableIT {
+  public static void prepareQueryAttributeTableFixture() {
+    prepareTableData(createSqls);
+  }
+
+  protected static final String DATABASE_NAME = "test_query_attribute";
   protected static final String[] createSqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -46,17 +40,6 @@ public class IoTDBQueryAttributeTableIT {
         "create table t1(device STRING TAG, a1 STRING ATTRIBUTE, s1 INT32 FIELD)",
         "insert into t1 (time, device, a1, s1) values (1, 'd1', 'ATTR1', 1)"
       };
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(createSqls);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
 
   @Test
   public void test1() throws IoTDBConnectionException, StatementExecutionException {

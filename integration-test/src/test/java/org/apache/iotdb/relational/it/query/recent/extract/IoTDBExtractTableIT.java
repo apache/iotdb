@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -35,8 +34,12 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBExtractTableIT {
-  protected static final String DATABASE_NAME = "test";
+public abstract class IoTDBExtractTableIT {
+  public static void prepareExtractTableFixture() {
+    prepareTableData(createSqls);
+  }
+
+  protected static final String DATABASE_NAME = "test_extract";
   protected static final String[] createSqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -49,19 +52,18 @@ public class IoTDBExtractTableIT {
       };
   protected String decimal = "123";
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(createSqls);
-  }
-
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Checks EXTRACT date and time fields at the configured timestamp precision and time zone.
   @Test
   public void extractTest() {
+    runExtractTest(decimal);
+  }
+
+  public static void runExtractTest(String decimal) {
 
     String[] expectedHeader =
         new String[] {
@@ -69,7 +71,9 @@ public class IoTDBExtractTableIT {
           "_col10", "_col11"
         };
     String[] retArray =
-        new String[] {getTimeStrUTC("2025-07-08T01:18:51") + ",2025,3,7,27,8,2,189,1,18,51,123,"};
+        new String[] {
+          getTimeStrUTC("2025-07-08T01:18:51", decimal) + ",2025,3,7,27,8,2,189,1,18,51,123,"
+        };
     tableResultSetEqualTest(
         "SELECT time, extract(year from time),extract(quarter from time),extract(month from time),extract(week from time),extract(day from time),"
             + "extract(dow from time),extract(doy from time),extract(hour from time),extract(minute from time),extract(second from time),extract(ms from time)"
@@ -79,7 +83,9 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
 
     retArray =
-        new String[] {getTimeStrUTC8("2025-07-08T09:18:51") + ",2025,3,7,27,8,2,189,9,18,51,123,"};
+        new String[] {
+          getTimeStrUTC8("2025-07-08T09:18:51", decimal) + ",2025,3,7,27,8,2,189,9,18,51,123,"
+        };
     tableResultSetEqualTest(
         "SELECT time,extract(year from time),extract(quarter from time),extract(month from time),extract(week from time),extract(day from time),"
             + "extract(dow from time),extract(doy from time),extract(hour from time),extract(minute from time),extract(second from time),extract(ms from time)"
@@ -90,12 +96,17 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
   }
 
+  // Checks EXTRACT returns the correct microsecond and nanosecond components for this precision.
   @Test
   public void extractUsNsTest() {
+    runExtractUsNsTest(decimal);
+  }
+
+  public static void runExtractUsNsTest(String decimal) {
     String[] expectedHeader = new String[] {"time", "_col1", "_col2"};
     String[] retArray =
         new String[] {
-          getTimeStrUTC("2025-07-08T01:18:51") + ",0,0,",
+          getTimeStrUTC("2025-07-08T01:18:51", decimal) + ",0,0,",
         };
     tableResultSetEqualTest(
         "SELECT time, extract(us from time),extract(ns from time)"
@@ -106,7 +117,7 @@ public class IoTDBExtractTableIT {
 
     retArray =
         new String[] {
-          getTimeStrUTC8("2025-07-08T09:18:51") + ",0,0,",
+          getTimeStrUTC8("2025-07-08T09:18:51", decimal) + ",0,0,",
         };
     tableResultSetEqualTest(
         "SELECT time, extract(us from time),extract(ns from time)"
@@ -117,12 +128,17 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
   }
 
+  // Checks EXTRACT predicates on TIME and TIMESTAMP fields, expressions, and UTC offsets.
   @Test
   public void extractFilterPushDownTest() {
+    runExtractFilterPushDownTest(decimal);
+  }
+
+  public static void runExtractFilterPushDownTest(String decimal) {
     String[] expectedHeader = new String[] {"time", "s1"};
     String[] retArray =
         new String[] {
-          getTimeStrUTC("2025-07-08T02:18:51") + ",2,",
+          getTimeStrUTC("2025-07-08T02:18:51", decimal) + ",2,",
         };
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) > 1",
@@ -159,7 +175,7 @@ public class IoTDBExtractTableIT {
 
     retArray =
         new String[] {
-          getTimeStrUTC8("2025-07-08T10:18:51") + ",2,",
+          getTimeStrUTC8("2025-07-08T10:18:51", decimal) + ",2,",
         };
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) > 9",
@@ -201,7 +217,7 @@ public class IoTDBExtractTableIT {
     expectedHeader = new String[] {"time", "s1"};
     retArray =
         new String[] {
-          getTimeStrUTC("2025-07-09T00:17:50") + ",3,",
+          getTimeStrUTC("2025-07-09T00:17:50", decimal) + ",3,",
         };
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) < 1",
@@ -250,7 +266,7 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
     retArray =
         new String[] {
-          getTimeStrUTC8("2025-07-09T08:17:50") + ",3,",
+          getTimeStrUTC8("2025-07-09T08:17:50", decimal) + ",3,",
         };
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) < 9",
@@ -309,8 +325,8 @@ public class IoTDBExtractTableIT {
 
     retArray =
         new String[] {
-          getTimeStrUTC("2025-07-08T01:18:51") + ",1,",
-          getTimeStrUTC("2025-07-08T02:18:51") + ",2,",
+          getTimeStrUTC("2025-07-08T01:18:51", decimal) + ",1,",
+          getTimeStrUTC("2025-07-08T02:18:51", decimal) + ",2,",
         };
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) != 0",
@@ -345,8 +361,8 @@ public class IoTDBExtractTableIT {
 
     retArray =
         new String[] {
-          getTimeStrUTC8("2025-07-08T09:18:51") + ",1,",
-          getTimeStrUTC8("2025-07-08T10:18:51") + ",2,",
+          getTimeStrUTC8("2025-07-08T09:18:51", decimal) + ",1,",
+          getTimeStrUTC8("2025-07-08T10:18:51", decimal) + ",2,",
         };
     tableResultSetEqualTest(
         "SELECT time, s1 FROM table1 where extract(hour from time) != 8",
@@ -386,8 +402,13 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
   }
 
+  // Checks EXTRACT accepts a timestamp cast from a field value.
   @Test
   public void testExtractFromComplexExpression() {
+    runExtractFromComplexExpression();
+  }
+
+  public static void runExtractFromComplexExpression() {
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray = new String[] {"0,"};
     tableResultSetEqualTest(
@@ -397,8 +418,13 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
   }
 
+  // Checks EXTRACT accepts a timestamp literal without reading table data.
   @Test
   public void testExtractFromConstant() {
+    runExtractFromConstant();
+  }
+
+  public static void runExtractFromConstant() {
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray = new String[] {"1,"};
     tableResultSetEqualTest(
@@ -408,11 +434,11 @@ public class IoTDBExtractTableIT {
         DATABASE_NAME);
   }
 
-  protected String getTimeStrUTC(String time) {
+  protected static String getTimeStrUTC(String time, String decimal) {
     return time + "." + decimal + 'Z';
   }
 
-  protected String getTimeStrUTC8(String time) {
+  protected static String getTimeStrUTC8(String time, String decimal) {
     return time + "." + decimal + "+08:00";
   }
 }

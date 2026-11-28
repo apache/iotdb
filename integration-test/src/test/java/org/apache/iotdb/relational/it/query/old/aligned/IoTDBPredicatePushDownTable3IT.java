@@ -44,7 +44,7 @@ public class IoTDBPredicatePushDownTable3IT extends IoTDBPredicatePushDownTableI
         .setMaxTsBlockLineNumber(3)
         .setMaxNumberOfPointsInPage(3);
     EnvFactory.getEnv().initClusterEnvironment();
-    TableUtils.insertData();
+    prepareTestData();
   }
 
   @AfterClass

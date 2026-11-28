@@ -20,15 +20,8 @@
 package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -37,10 +30,8 @@ import static java.lang.String.format;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBPatternRecognitionIT {
-  private static final String DATABASE_NAME = "test";
+public abstract class IoTDBPatternRecognitionIT extends IoTDBPatternAggregationIT {
+  private static final String DATABASE_NAME = "test_pattern_recognition";
   private static final String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -114,19 +105,13 @@ public class IoTDBPatternRecognitionIT {
     }
   }
 
-  @BeforeClass
-  public static void setUp() {
-    EnvFactory.getEnv().initClusterEnvironment();
+  static void prepareRecognitionFixture() {
     insertData();
   }
 
-  @AfterClass
-  public static void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
+  // Detects altitude runs in DEP_1 and reports last-altitude values per device and match.
   @Test
-  public void testEventRecognition() {
+  public void testEventRecognitionPattern() {
     String[] expectedHeader =
         new String[] {"device_id", "match", "event_start", "event_end", "last_altitude"};
     String[] retArray =

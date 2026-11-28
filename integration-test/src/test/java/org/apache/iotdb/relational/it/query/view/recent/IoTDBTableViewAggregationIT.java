@@ -20,16 +20,11 @@
 package org.apache.iotdb.relational.it.query.view.recent;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
@@ -38,9 +33,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesTableIT.buildHeaders;
 import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesTableIT.repeatTest;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBTableViewAggregationIT {
+public abstract class IoTDBTableViewAggregationIT {
   protected static final String TREE_DB_NAME = "root.test";
   protected static final String DATABASE_NAME = "test";
   protected static final String[] createSqls =

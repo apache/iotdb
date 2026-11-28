@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.old.alignbydevice.IoTDBAlignByDeviceTableViewBase;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -39,7 +40,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBAlignByDeviceTableIT {
+public class IoTDBAlignByDeviceTableIT extends IoTDBAlignByDeviceTableViewBase {
 
   private static final String DATABASE_NAME = "db";
 
@@ -95,6 +96,7 @@ public class IoTDBAlignByDeviceTableIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
+    insertViewData();
   }
 
   @AfterClass

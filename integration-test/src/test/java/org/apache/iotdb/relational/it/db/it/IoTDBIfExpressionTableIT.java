@@ -19,16 +19,8 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
-
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +29,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBIfExpressionTableIT {
+public abstract class IoTDBIfExpressionTableIT extends IoTDBCaseWhenThenTableIT {
   private static final String DATABASE = "testDatabase";
 
   private static final String[] expectedHeader = {"_col0"};
@@ -67,8 +57,8 @@ public class IoTDBIfExpressionTableIT {
       };
 
   @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+  public static void setUpIfExpressionData() throws Exception {
+    // This fixture uses testDatabase, separate from the CASE expression fixture in test.
     prepareTableData(SQLs);
     List<String> moreSQLs = new ArrayList<>();
     moreSQLs.add("use " + DATABASE);
@@ -79,13 +69,9 @@ public class IoTDBIfExpressionTableIT {
     prepareTableData(moreSQLs);
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
+  // Checks IF with true, false, and null conditions returns the expected value for each input row.
   @Test
-  public void testKind1Basic() {
+  public void testKind1BasicIfExpression() {
     String[] retArray = new String[] {"99,", "9999,", "9999,", "999,"};
     tableResultSetEqualTest(
         "select if(s1=0, 99, if(s1>22, 999, 9999)) from table1",
@@ -99,8 +85,9 @@ public class IoTDBIfExpressionTableIT {
         "select if(s1=0, 99, if(s1>22, 999)) from table1", expectedHeader, retArray, DATABASE);
   }
 
+  // Checks the alternate IF form with true, false, and null conditions returns the expected values.
   @Test
-  public void testKind2Basic() {
+  public void testKind2BasicIfExpression() {
     String sql = "select if(s3=0.0, s4, if(s3=22.0, 999.0, 9999.0)) from table2";
     String[] retArray = new String[] {"44.0,", "9999.0,", "999.0,", "9999.0,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
@@ -111,31 +98,35 @@ public class IoTDBIfExpressionTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
 
+  // Checks IF evaluates only the selected branch, including branches with invalid expressions.
   @Test
-  public void testShortCircuitEvaluation() {
+  public void testShortCircuitEvaluationIfExpression() {
     String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
     tableResultSetEqualTest(
         "select if(1=0, s1/0, if(1!=0, s1)) from table1", expectedHeader, retArray, DATABASE);
   }
 
+  // Checks unsupported IF condition and branch types are rejected with the expected SQL errors.
   @Test
-  public void testKind1InputTypeRestrict() {
+  public void testKind1InputTypeRestrictIfExpression() {
     // IF condition must return BOOLEAN
     String sql = "select if(s1+1, 20, 22) from table1";
     String msg = "701: IF condition must evaluate to a BOOLEAN (actual: INT32)";
     tableAssertTestFail(sql, msg, DATABASE);
   }
 
+  // Checks the alternate IF form rejects unsupported condition and branch types.
   @Test
-  public void testKind2InputTypeRestrict() {
+  public void testKind2InputTypeRestrictIfExpression() {
     // the expression in IF condition must be able to be equated with the expression in IF condition
     String sql = "select if(s1='1', 20, 22) from table1";
     String msg = "701: Cannot apply operator: INT32 = STRING";
     tableAssertTestFail(sql, msg, DATABASE);
   }
 
+  // Checks incompatible IF branch result types are rejected with the expected SQL errors.
   @Test
-  public void testKind1OutputTypeRestrict() {
+  public void testKind1OutputTypeRestrictIfExpression() {
     // BOOLEAN and other types cannot exist at the same time
     String[] retArray = new String[] {"true,", "false,", "true,", "true,"};
     // success
@@ -219,8 +210,9 @@ public class IoTDBIfExpressionTableIT {
         DATABASE);
   }
 
+  // Checks nested IF expressions with many branches return the expected values.
   @Test
-  public void testKind1LargeNumberBranches() {
+  public void testKind1LargeNumberBranchesIfExpression() {
     StringBuilder sqlBuilder = new StringBuilder();
     List<String> retList = new ArrayList<>();
     sqlBuilder.append("select ");
@@ -239,8 +231,9 @@ public class IoTDBIfExpressionTableIT {
         sqlBuilder.toString(), expectedHeader, retList.toArray(new String[] {}), DATABASE);
   }
 
+  // Checks IF results compose with arithmetic and scalar expressions over the fixture rows.
   @Test
-  public void testKind1UsedInOtherOperation() {
+  public void testKind1UsedInOtherOperationIfExpression() {
     String sql;
     String[] retArray;
 
@@ -282,8 +275,9 @@ public class IoTDBIfExpressionTableIT {
     // UDF
   }
 
+  // Checks arithmetic and scalar expressions can be used inside IF conditions and branches.
   @Test
-  public void testKind1UseOtherOperation() {
+  public void testKind1UseOtherOperationIfExpression() {
     // use scalar function
     String sql = "select if(sin(s1)>=0, '>=0', '<0') from table1";
     String[] retArray =
@@ -308,8 +302,9 @@ public class IoTDBIfExpressionTableIT {
     // UDF
   }
 
+  // Checks IF expressions in WHERE retain the expected row filtering behavior.
   @Test
-  public void testKind1UseInWhereClause() {
+  public void testKind1UseInWhereClauseIfExpression() {
     String sql = "select s4 from table2 where if(s3=0, s4>44, if(s3=22, s4>0, if(time>300, true)))";
     String[] retArray = new String[] {"66.0,", "77.0,"};
     tableResultSetEqualTest(sql, new String[] {"s4"}, retArray, DATABASE);
@@ -327,8 +322,9 @@ public class IoTDBIfExpressionTableIT {
     tableResultSetEqualTest(sql, new String[] {"s4"}, retArray, DATABASE);
   }
 
+  // Checks a CASE expression nested in an IF branch returns the expected values.
   @Test
-  public void testKind1CaseInIf() {
+  public void testKind1CaseInIfIfExpression() {
     String sql =
         "select if(s1=0 OR s1=22, cast(case when s1=0 then 99 when s1>22 then 999 end as STRING), 'xxx') from table1";
     String[] retArray =
@@ -338,8 +334,9 @@ public class IoTDBIfExpressionTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
 
+  // Checks nested IF expressions select the expected inner branch values.
   @Test
-  public void testKind1IfInIf() {
+  public void testKind1IfInIfIfExpression() {
     String sql =
         "select if(s1=0 OR s1=22, cast(if(s1=0, 99, if(s1>22, 999)) as STRING), 'xxx') from table1";
     String[] retArray =
@@ -349,24 +346,27 @@ public class IoTDBIfExpressionTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
 
+  // Checks Boolean logic in IF conditions selects the expected output for each row.
   @Test
-  public void testKind1Logic() {
+  public void testKind1LogicIfExpression() {
     String sql =
         "select if(s3 >= 0 and s3 < 20 and s4 >= 50 and s4 < 60, 'value1', if(s3 >= 20 and s3 < 40 and s4 >= 70 and s4 < 80, 'value2')) from table2";
     String[] retArray = new String[] {"null,", "value1,", "null,", "value2,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
 
+  // Checks IF branches returning equal binary constants preserve the expected binary result.
   @Test
-  public void testReturnValueWithBinarySameConstant() {
+  public void testReturnValueWithBinarySameConstantIfExpression() {
     String sql = "select if(true, 200 + (s1 - 200)) as result FROM table1";
     String[] expectedHeader = new String[] {"result"};
     String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
 
+  // Checks IF returns the expected TEXT values when branch results use text fields.
   @Test
-  public void testIfWithText() {
+  public void testIfWithTextIfExpression() {
     String sql = "select if(s6 like 'text%', 'true', 'false') FROM table1";
     String[] retArray = new String[] {"true,", "true,", "true,", "true,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);

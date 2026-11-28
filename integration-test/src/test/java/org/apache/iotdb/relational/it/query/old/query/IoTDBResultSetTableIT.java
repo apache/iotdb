@@ -21,18 +21,11 @@ package org.apache.iotdb.relational.it.query.old.query;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -48,9 +41,11 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBResultSetTableIT {
+public abstract class IoTDBResultSetTableIT extends IoTDBQueryWithComplexValueFilterTableIT {
+  public static void prepareResultSetTableFixture() {
+    prepareTableData(SQLs);
+  }
+
   private static final String DATABASE_NAME = "test";
   private static final String[] SQLs =
       new String[] {
@@ -61,17 +56,6 @@ public class IoTDBResultSetTableIT {
       };
 
   private static final String[] emptyResultSet = new String[] {};
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(SQLs);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
 
   @Test
   public void intAndLongConversionTest() {

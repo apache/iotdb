@@ -28,19 +28,18 @@ import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 
 import static org.apache.iotdb.confignode.it.partition.IoTDBPartitionShuffleStrategyIT.SHUFFLE;
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBGapFillTable2IT extends IoTDBGapFillTableIT {
 
   @BeforeClass
-  public static void setUp() {
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(3_600_000); // 1h
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataPartitionAllocationStrategy(SHUFFLE);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(createSqls);
+    IoTDBGapFillTableIT.prepareFixtures();
   }
 
   @AfterClass

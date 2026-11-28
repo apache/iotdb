@@ -19,40 +19,15 @@
 
 package org.apache.iotdb.relational.it.query.recent.subquery.correlated;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.DATABASE_NAME;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.NUMERIC_MEASUREMENTS;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBCorrelatedQuantifiedComparisonIT {
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
-    EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(CREATE_SQLS);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
+public abstract class IoTDBCorrelatedQuantifiedComparisonIT
+    extends IoTDBCorrelatedExistsSubqueryIT {
 
   @Test
   public void testCorrelatedQuantifiedComparisonInWhereClause() {
@@ -100,8 +75,9 @@ public class IoTDBCorrelatedQuantifiedComparisonIT {
     }
   }
 
+  // Checks correlated ANY, SOME and ALL comparisons in SELECT for matching outer rows.
   @Test
-  public void testQuantifiedComparisonInSelectClause() {
+  public void testCorrelatedQuantifiedComparisonInSelectClause() {
     String sql;
     String[] expectedHeader;
     String[] retArray;

@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableQueryNoVerifyResultTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
@@ -50,6 +51,8 @@ public class IoTDBQueryAuthIT {
   private static final String USER_7 = "user7";
   private static final String USER_8 = "user8";
   private static final String USER_9 = "user9";
+  private static final String USER_10 = "user10";
+  private static final String USER_11 = "user11";
   private static final String PASSWORD = "password123456";
 
   private static final String[] createSqls =
@@ -77,6 +80,10 @@ public class IoTDBQueryAuthIT {
         String.format(CREATE_USER_FORMAT, USER_8, PASSWORD),
         "GRANT DELETE ON TABLE table2 TO USER " + USER_8,
         String.format(CREATE_USER_FORMAT, USER_9, PASSWORD),
+        // Keep the maintenance-auth fixture isolated from the broad query-auth grants.
+        String.format(CREATE_USER_FORMAT, USER_10, PASSWORD),
+        "GRANT SELECT ON TABLE table1 TO USER " + USER_10,
+        String.format(CREATE_USER_FORMAT, USER_11, PASSWORD),
       };
 
   @BeforeClass
@@ -317,5 +324,202 @@ public class IoTDBQueryAuthIT {
         USER_3,
         PASSWORD,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void maintainAuthTest() {
+    // case 1: explain
+    // user10 with select on table1
+    String[] expectedHeader = new String[] {"distribution plan"};
+    tableQueryNoVerifyResultTest(
+        "explain select * from test.table1", expectedHeader, USER_10, PASSWORD);
+    // user11 without select on table1
+    tableAssertTestFail(
+        "explain select * from test.table1",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SELECT ON test.table1",
+        USER_11,
+        PASSWORD);
+
+    // case 2: explain analyze [verbose]
+    // user10 with select on table1
+    expectedHeader = new String[] {"Explain Analyze"};
+    tableQueryNoVerifyResultTest(
+        "explain analyze select * from test.table1", expectedHeader, USER_10, PASSWORD);
+    tableQueryNoVerifyResultTest(
+        "explain analyze verbose select * from test.table1", expectedHeader, USER_10, PASSWORD);
+    // user11 without select on table1
+    tableAssertTestFail(
+        "explain analyze select * from test.table1",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SELECT ON test.table1",
+        USER_11,
+        PASSWORD);
+    tableAssertTestFail(
+        "explain analyze verbose select * from test.table1",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SELECT ON test.table1",
+        USER_11,
+        PASSWORD);
+
+    // case 3: show current_sql_dialect
+    expectedHeader = new String[] {"CurrentSqlDialect"};
+    tableQueryNoVerifyResultTest("SHOW CURRENT_SQL_DIALECT", expectedHeader, USER_11, PASSWORD);
+
+    // case 4: show current_user
+    expectedHeader = new String[] {"CurrentUser"};
+    tableQueryNoVerifyResultTest("SHOW CURRENT_USER", expectedHeader, USER_11, PASSWORD);
+
+    // case 5: show version
+    expectedHeader = new String[] {"Version", "BuildInfo"};
+    tableQueryNoVerifyResultTest("SHOW VERSION", expectedHeader, USER_11, PASSWORD);
+
+    // case 6: show current_timestamp
+    expectedHeader = new String[] {"CurrentTimestamp"};
+    tableQueryNoVerifyResultTest("SHOW CURRENT_TIMESTAMP", expectedHeader, USER_11, PASSWORD);
+
+    // case 7: show variables
+    // user11
+    tableAssertTestFail(
+        "SHOW VARIABLES",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 8: show cluster_id
+    // user11
+    tableAssertTestFail(
+        "SHOW CLUSTER_ID",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 9: flush
+    // user11
+    tableAssertTestFail(
+        "FLUSH",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 10: clear cache
+    // user11
+    tableAssertTestFail(
+        "CLEAR CACHE",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 11: set configuration
+    // user11
+    tableAssertTestFail(
+        "SET CONFIGURATION query_timeout_threshold='100000'",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 12: show queries
+    // non-root users can access its own queries
+    expectedHeader =
+        new String[] {
+          "query_id",
+          "start_time",
+          "datanode_id",
+          "elapsed_time",
+          "statement",
+          "user",
+          "wait_time_in_server",
+          "client_ip",
+          "timeout"
+        };
+    tableQueryNoVerifyResultTest("show queries", expectedHeader, USER_11, PASSWORD);
+
+    // case 13: kill query
+    // user11
+    tableAssertTestFail(
+        "kill query '20250206_093300_00001_1'",
+        TSStatusCode.NO_SUCH_QUERY.getStatusCode() + ": No such query",
+        USER_11,
+        PASSWORD);
+
+    // case 14: load configuration
+    // user11
+    tableAssertTestFail(
+        "LOAD CONFIGURATION",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
+        USER_11,
+        PASSWORD);
+
+    // case 15: set system status
+    // user11
+    tableAssertTestFail(
+        "SET SYSTEM TO RUNNING",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 16: start repair data
+    // user11
+    tableAssertTestFail(
+        "START REPAIR DATA",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 17: stop repair data
+    // user11
+    tableAssertTestFail(
+        "STOP REPAIR DATA",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 18: create function
+    // user10
+    tableAssertTestFail(
+        "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_10,
+        PASSWORD);
+    // user11
+    tableAssertTestFail(
+        "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
+
+    // case 19: show functions
+    // user10
+    expectedHeader = new String[] {"FunctionName", "FunctionType", "ClassName(UDF)", "State"};
+    tableQueryNoVerifyResultTest("SHOW FUNCTIONS", expectedHeader, USER_10, PASSWORD);
+    // user11
+    tableQueryNoVerifyResultTest("SHOW FUNCTIONS", expectedHeader, USER_11, PASSWORD);
+
+    // case 20: create function
+    // user10
+    tableAssertTestFail(
+        "drop function udsf",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_10,
+        PASSWORD);
+    // user11
+    tableAssertTestFail(
+        "drop function udsf",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_11,
+        PASSWORD);
   }
 }

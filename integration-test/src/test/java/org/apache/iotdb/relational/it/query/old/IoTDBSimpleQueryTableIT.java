@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.old.IoTDBSimpleQueryTableViewBase;
 
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
@@ -61,7 +62,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBSimpleQueryTableIT {
+public class IoTDBSimpleQueryTableIT extends IoTDBSimpleQueryTableViewBase {
   private static final String DATABASE_NAME = "test";
 
   @BeforeClass
@@ -76,6 +77,9 @@ public class IoTDBSimpleQueryTableIT {
         Statement statement = connection.createStatement()) {
       dropDatabaseWithRetry(statement, DATABASE_NAME);
       dropDatabaseWithRetry(statement, "group_with_hyphen");
+    } finally {
+      // Drop each view before its Tree source so the next method sees an empty catalog.
+      cleanViewData();
     }
   }
 

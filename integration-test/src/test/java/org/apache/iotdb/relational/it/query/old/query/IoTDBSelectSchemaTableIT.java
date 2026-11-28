@@ -20,16 +20,10 @@
 package org.apache.iotdb.relational.it.query.old.query;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.schema.IoTDBTableWithDefinedTimeIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -40,9 +34,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBSelectSchemaTableIT {
+public abstract class IoTDBSelectSchemaTableIT extends IoTDBTableWithDefinedTimeIT {
   private static final String DATABASE_NAME = "test";
   private static String[] SQLS =
       new String[] {
@@ -52,15 +44,8 @@ public class IoTDBSelectSchemaTableIT {
         "insert into sg(time, device, s1, s2, s3) values (1, 'd1', 1, 2, 3.0)"
       };
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+  public static void prepareSelectSchemaFixture() throws Exception {
     prepareTableData(SQLS);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

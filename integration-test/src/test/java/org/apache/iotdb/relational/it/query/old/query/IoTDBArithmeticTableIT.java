@@ -25,6 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.old.query.IoTDBArithmeticTableViewBase;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -50,7 +51,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBArithmeticTableIT {
+public class IoTDBArithmeticTableIT extends IoTDBArithmeticTableViewBase {
 
   private static final double E = 0.0001;
 
@@ -86,6 +87,8 @@ public class IoTDBArithmeticTableIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(INSERTION_SQLS);
+    // The view fixture has a separate database and uses the same arithmetic-test topology.
+    insertViewData();
   }
 
   @AfterClass

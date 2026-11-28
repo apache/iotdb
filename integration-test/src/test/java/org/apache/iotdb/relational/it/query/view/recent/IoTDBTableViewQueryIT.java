@@ -100,6 +100,16 @@ public class IoTDBTableViewQueryIT {
     "INSERT INTO root.db.battery.b4(time, voltage, current) values (4, 4, 4)",
   };
 
+  private static final String[] createTreeAlignedNotMatchedDataSqls = {
+    "CREATE ALIGNED TIMESERIES root.db.battery.b1(current FLOAT)",
+    "INSERT INTO root.db.battery.b1(time, current) aligned values (1, 1)",
+  };
+
+  private static final String[] createTreeNonAlignedNotMatchedDataSqls = {
+    "CREATE TIMESERIES root.db.battery.b1.current FLOAT",
+    "INSERT INTO root.db.battery.b1(time, current) values (1, 1)",
+  };
+
   protected static String[] createTableSqls = {
     "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
     "CREATE VIEW view2 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) as root.db.battery.**",
@@ -126,23 +136,36 @@ public class IoTDBTableViewQueryIT {
     "INSERT INTO table1 (time, battery, voltage, current) values (4, 'b4', 4, 4)",
   };
 
-  @Parameterized.Parameters(name = "aligned={0}, flush={1}")
+  // Keep both view-query fixtures in one suite so they share its cluster lifecycle.
+  @Parameterized.Parameters(name = "{3}")
   public static Collection<Object[]> data() {
     return Arrays.asList(
-        new Object[][] {{true, true}, {false, true}, {true, false}, {false, false}});
+        new Object[][] {
+          {true, true, false, "aligned=true, flush=true"},
+          {false, true, false, "aligned=false, flush=true"},
+          {true, false, false, "aligned=true, flush=false"},
+          {false, false, false, "aligned=false, flush=false"},
+          {true, false, true, "aligned=true"},
+          {false, false, true, "aligned=false"}
+        });
   }
 
   private final boolean aligned;
   private final boolean flush;
+  private final boolean notMatchedDataType;
   private final String databaseName;
   private final String treeDatabaseName;
 
-  public IoTDBTableViewQueryIT(boolean aligned, boolean flush) {
+  public IoTDBTableViewQueryIT(
+      boolean aligned, boolean flush, boolean notMatchedDataType, String parameterName) {
     this.aligned = aligned;
     this.flush = flush;
-    // Isolate both models so parameter cases can share the cluster without reusing fixture state.
+    this.notMatchedDataType = notMatchedDataType;
+    // Preserve each original case's database name while isolating fixtures in the shared cluster.
     databaseName =
-        DATABASE_NAME + (aligned ? "_aligned" : "_non_aligned") + (flush ? "_flushed" : "_memory");
+        DATABASE_NAME
+            + (aligned ? "_aligned" : "_non_aligned")
+            + (notMatchedDataType ? "" : (flush ? "_flushed" : "_memory"));
     treeDatabaseName = "root." + databaseName;
   }
 
@@ -158,7 +181,13 @@ public class IoTDBTableViewQueryIT {
     // Reuse the tree session for schema, writes and the optional flush of this case's source.
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE " + treeDatabaseName);
-      for (String sql : aligned ? createTreeAlignedDataSqls : createTreeNonAlignedDataSqls) {
+      String[] treeDataSqls =
+          notMatchedDataType
+              ? (aligned
+                  ? createTreeAlignedNotMatchedDataSqls
+                  : createTreeNonAlignedNotMatchedDataSqls)
+              : (aligned ? createTreeAlignedDataSqls : createTreeNonAlignedDataSqls);
+      for (String sql : treeDataSqls) {
         session.executeNonQueryStatement(sql.replace("root.db.", treeDatabaseName + "."));
       }
       if (flush) {
@@ -169,8 +198,15 @@ public class IoTDBTableViewQueryIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE " + databaseName);
       session.executeNonQueryStatement("USE " + databaseName);
-      for (String sql : createTableSqls) {
-        session.executeNonQueryStatement(sql.replace("root.db.", treeDatabaseName + "."));
+      if (notMatchedDataType) {
+        session.executeNonQueryStatement(
+            "CREATE VIEW view1 (battery TAG, current BLOB FIELD) as "
+                + treeDatabaseName
+                + ".battery.**");
+      } else {
+        for (String sql : createTableSqls) {
+          session.executeNonQueryStatement(sql.replace("root.db.", treeDatabaseName + "."));
+        }
       }
     }
   }
@@ -184,6 +220,16 @@ public class IoTDBTableViewQueryIT {
   // fixtures; nulls, TTL, filters, fills, joins and aggregations must keep the same results.
   @Test
   public void test() throws Exception {
+    if (notMatchedDataType) {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("USE " + databaseName);
+        SessionDataSet sessionDataSet =
+            session.executeQueryStatement("select * from view1 where current is not null");
+        Assert.assertFalse(sessionDataSet.hasNext());
+        sessionDataSet.close();
+      }
+      return;
+    }
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       // All comparisons use this case's database, so select it only once per session.
       session.executeNonQueryStatement("USE " + databaseName);

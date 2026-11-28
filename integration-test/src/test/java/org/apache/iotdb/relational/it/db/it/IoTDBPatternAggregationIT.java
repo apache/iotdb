@@ -20,15 +20,8 @@
 package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -36,9 +29,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBPatternAggregationIT {
+public abstract class IoTDBPatternAggregationIT {
   private static final String DATABASE_NAME = "test";
   private static final String[] sqls =
       new String[] {
@@ -121,15 +112,8 @@ public class IoTDBPatternAggregationIT {
     }
   }
 
-  @BeforeClass
-  public static void setUp() {
-    EnvFactory.getEnv().initClusterEnvironment();
+  static void prepareAggregationFixture() {
     insertData();
-  }
-
-  @AfterClass
-  public static void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   /**

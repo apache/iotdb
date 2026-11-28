@@ -38,6 +38,8 @@ public class IoTDBOrderByWithAlignByDeviceTable3IT extends IoTDBOrderByWithAlign
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
     insertData2();
+    insertViewData();
+    insertViewData2();
   }
 
   @AfterClass

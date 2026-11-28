@@ -137,10 +137,14 @@ public class TableUtils {
       };
 
   public static void insertData() {
+    insertData("db");
+  }
+
+  public static void insertData(String databaseName) {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
 
-      for (String sql : sqls) {
+      for (String sql : getSqls(databaseName)) {
         statement.addBatch(sql);
       }
       statement.executeBatch();
@@ -148,6 +152,15 @@ public class TableUtils {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  // The first two statements select the fixture database; the remaining setup SQL is
+  // database-relative.
+  private static String[] getSqls(String databaseName) {
+    String[] databaseSqls = sqls.clone();
+    databaseSqls[0] = "CREATE DATABASE " + databaseName;
+    databaseSqls[1] = "USE " + databaseName;
+    return databaseSqls;
   }
 
   public static void insertDataWithSession() {

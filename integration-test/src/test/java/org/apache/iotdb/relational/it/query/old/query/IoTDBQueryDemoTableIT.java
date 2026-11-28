@@ -19,18 +19,11 @@
 package org.apache.iotdb.relational.it.query.old.query;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -47,10 +40,12 @@ import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBQueryDemoTableIT {
-  private static final String DATABASE_NAME = "test";
+public abstract class IoTDBQueryDemoTableIT extends IoTDBInTableIT {
+  public static void prepareQueryDemoTableFixture() {
+    prepareTableData(sqls);
+  }
+
+  private static final String DATABASE_NAME = "test_query_demo";
   private static String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -117,18 +112,6 @@ public class IoTDBQueryDemoTableIT {
         "insert into wf(time,device,temperature) values(1509466080000,'wt03',22.57987)",
         "insert into wf(time,device,temperature) values(1509466140000,'wt03',20.98177)",
       };
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-
-    prepareTableData(sqls);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
 
   @Test
   public void selectTest() {
