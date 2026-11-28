@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.schema.filter.impl;
 import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
@@ -70,7 +71,13 @@ public class DeviceFilterUtil {
           if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
             // If there is a precise filter, other filters on the same id are processed and thus
             // not exist here
-            nodes[index] = ((PreciseFilter) childFilter).getValue();
+            final String value = ((PreciseFilter) childFilter).getValue();
+            if (PathPatternUtil.hasWildcard(value)) {
+              // Keep literal tag values out of the path wildcard syntax.
+              partialPath.addMultiExactMatch(index, Collections.singleton(value));
+            } else {
+              nodes[index] = value;
+            }
           } else if (childFilter.getSchemaFilterType().equals(SchemaFilterType.IN)) {
             partialPath.addMultiExactMatch(index, ((InFilter) childFilter).getValues());
           } else {

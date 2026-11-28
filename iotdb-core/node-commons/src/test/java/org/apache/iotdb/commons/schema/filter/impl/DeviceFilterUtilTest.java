@@ -51,6 +51,34 @@ public class DeviceFilterUtilTest {
   private static final int TAG_COLUMN_NUM = 3;
 
   @Test
+  public void testPreciseTagValuesContainingAsterisks() {
+    for (final String value : Arrays.asList("*", "**", "*meter", "meter*", "*meter*", "me*ter")) {
+      final PartialPath pattern = convert(branch(precise(1, value))).get(0);
+      assertPreciseTransitionsAfterFirstTag(pattern, value);
+    }
+  }
+
+  @Test
+  public void testVisitLiteralAsterisksInTrailingTag() {
+    final TestNode root = new TestNode(PREFIX[0]);
+    final TestNode site = root.addChild(PREFIX[1]).addChild(PREFIX[2]).addChild("site");
+    final TestNode parent = site.addChild("withLastTag");
+    // A device with a trailing NULL ends at the preceding tag in the tree.
+    site.addChild("withoutLastTag");
+    final List<String> literals = Arrays.asList("*", "**", "meter*", "*meter", "[a*");
+    literals.forEach(parent::addChild);
+    parent.addChildren("meter1", "xmeter", "[abc");
+
+    for (final String literal : literals) {
+      final PartialPath pattern = convert(branch(precise(TAG_COLUMN_NUM - 1, literal))).get(0);
+      final TestVisitor visitor = new TestVisitor(root, pattern, parent);
+      Assert.assertEquals(literal, Collections.singletonList(literal), collect(visitor));
+      Assert.assertEquals(literal, 1, visitor.getTargetDirectLookupCount());
+      Assert.assertEquals(literal, 0, visitor.getTargetChildrenIterationCount());
+    }
+  }
+
+  @Test
   public void testCompactExpandedInOrOnNonLeadingTag() {
     final List<PartialPath> patterns =
         convert(branch(precise(1, "card1")), branch(precise(1, "card2")));
@@ -295,7 +323,7 @@ public class DeviceFilterUtilTest {
     private int targetChildrenIterationCount;
 
     private TestVisitor(
-        final TestNode root, final ExtendedPartialPath pathPattern, final TestNode targetParent) {
+        final TestNode root, final PartialPath pathPattern, final TestNode targetParent) {
       super(root, pathPattern, false);
       this.targetParent = targetParent;
       initStack();
@@ -388,8 +416,14 @@ public class DeviceFilterUtilTest {
       children.put(child.getName(), child);
     }
 
+    private TestNode addChild(final String name) {
+      final TestNode child = new TestNode(name);
+      addChild(child);
+      return child;
+    }
+
     private void addChildren(final String... childNames) {
-      Arrays.stream(childNames).map(TestNode::new).forEach(this::addChild);
+      Arrays.stream(childNames).forEach(this::addChild);
     }
 
     @Override
