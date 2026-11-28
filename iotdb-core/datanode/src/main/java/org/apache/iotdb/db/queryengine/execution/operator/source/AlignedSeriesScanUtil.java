@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.AlignedDe
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.AlignedPriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.TsBlockAlignedRowPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -101,7 +102,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   @Override
   protected IPointReader getPointReader(TsBlock tsBlock) {
-    return tsBlock.getTsBlockAlignedRowIterator();
+    return new TsBlockAlignedRowPointReader(tsBlock);
   }
 
   @Override

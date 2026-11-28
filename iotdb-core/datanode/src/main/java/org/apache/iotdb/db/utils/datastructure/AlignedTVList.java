@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.AlignedPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -2098,7 +2099,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   /* AlignedTVList Iterator */
-  public class AlignedTVListIterator extends TVListIterator {
+  public class AlignedTVListIterator extends TVListIterator implements AlignedPointReader {
     private final BitMap allValueColDeletedMap;
     private final List<TSDataType> dataTypeList;
     private final List<Integer> columnIndexList;
@@ -2109,6 +2110,7 @@ public abstract class AlignedTVList extends TVList {
     // remember the selected index of last not-null value for each column during prepareNext phase
     private final int[] selectedIndices;
     private boolean findValidRow;
+    private boolean lastRowComplete = false;
 
     private final List<int[]> valueColumnDeleteCursor = new ArrayList<>();
 
@@ -2237,19 +2239,33 @@ public abstract class AlignedTVList extends TVList {
     @Override
     public TimeValuePair nextTimeValuePair() {
       if (!hasNextTimeValuePair()) {
+        lastRowComplete = false;
         return null;
       }
       TsPrimitiveType[] vector = new TsPrimitiveType[dataTypeList.size()];
+      boolean complete = true;
       for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
-        vector[columnIndex] = getPrimitiveTypeObject(selectedIndices[columnIndex], columnIndex);
+        TsPrimitiveType val = getPrimitiveTypeObject(selectedIndices[columnIndex], columnIndex);
+        vector[columnIndex] = val;
+        if (complete
+            && (val == null
+                || (val instanceof TsPrimitiveType.TsBinary && val.getBinary() == null))) {
+          complete = false;
+        }
       }
       TimeValuePair tvPair =
           new TimeValuePair(
               getTime(getScanOrderIndex(index)),
               TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
 
+      lastRowComplete = complete;
       next();
       return tvPair;
+    }
+
+    @Override
+    public boolean isLastRowComplete() {
+      return lastRowComplete;
     }
 
     @Override
