@@ -79,6 +79,8 @@ public class IoTDBFilterTableIT {
           "CREATE TABLE testTimeSeries(device STRING TAG, s1 BOOLEAN FIELD, s2 BOOLEAN FIELD)");
       statement.execute("CREATE TABLE testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD)");
       statement.execute("CREATE TABLE sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD)");
+      statement.execute(
+          "CREATE TABLE testSignedZero(device STRING TAG, v DOUBLE FIELD, f FLOAT FIELD)");
 
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -116,6 +118,9 @@ public class IoTDBFilterTableIT {
       statement.execute(" insert into sg1(time, device, s1, s2) values (2,'d1',2,'2')");
       statement.execute(" insert into testUDTF(time, device, s1, s2) values (1,'d1','ss',0)");
       statement.execute(" insert into testUDTF(time, device, s1, s2) values (2,'d1','d',3)");
+      statement.execute(
+          "insert into testSignedZero(time, device, v, f) values "
+              + "(1,'d1',-0.0,-0.0),(2,'d1',0.0,0.0),(3,'d1',1.0,1.0)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -259,6 +264,47 @@ public class IoTDBFilterTableIT {
         "select s1 - null from sg1",
         new String[] {"_col0"},
         new String[] {"null,", "null,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testSignedZeroComparison() {
+    // "v = 0.0" is pushed down to the scan, "OR device = 'nope'" keeps it in a Filter node
+    String[] zeros = new String[] {"-0.0,", "0.0,"};
+    tableResultSetEqualTest(
+        "select v from testSignedZero where v = 0.0 order by time",
+        new String[] {"v"},
+        zeros,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select v from testSignedZero where v = 0.0 or device = 'nope' order by time",
+        new String[] {"v"},
+        zeros,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select f from testSignedZero where f = 0.0 or device = 'nope' order by time",
+        new String[] {"f"},
+        zeros,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select v from testSignedZero where v >= 0.0 or device = 'nope' order by time",
+        new String[] {"v"},
+        new String[] {"-0.0,", "0.0,", "1.0,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select v from testSignedZero where v < 0.0 or device = 'nope' order by time",
+        new String[] {"v"},
+        new String[] {},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select v = 0.0, v <> 0.0, v < 0.0, v between 0.0 and 1.0 from testSignedZero order by time",
+        new String[] {"_col0", "_col1", "_col2", "_col3"},
+        new String[] {"true,false,false,true,", "true,false,false,true,", "false,true,false,true,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select -0.0 = 0.0, -0.0 < 0.0",
+        new String[] {"_col0", "_col1"},
+        new String[] {"true,false,"},
         DATABASE_NAME);
   }
 }

@@ -34,7 +34,7 @@ public class CompareEqualToTransformer extends CompareBinaryTransformer {
   @Override
   protected Evaluator constructNumberEvaluator() {
     return (Column leftValues, int leftIndex, Column rightValues, int rightIndex) ->
-        Double.compare(
+        CommonTransformUtils.compare(
                 castValueToDouble(leftValues, leftReaderDataType, leftIndex),
                 castValueToDouble(rightValues, rightReaderDataType, rightIndex))
             == 0;

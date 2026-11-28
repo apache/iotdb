@@ -102,7 +102,7 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
       final double left = leftTransformer.getType().getDouble(leftColumn, index);
       final double right = rightTransformer.getType().getDouble(rightColumn, index);
       if (!Double.isNaN(left) && !Double.isNaN(right)) {
-        flag = transform(Double.compare(left, right));
+        flag = transform(CommonTransformUtils.compare(left, right));
       }
     }
     returnType.writeBoolean(builder, flag);
