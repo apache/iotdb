@@ -44,6 +44,11 @@ public final class DataNodeQueryMessages {
       "执行语句 %s 时，在转换为 tablet 前读取 TsFile 模型信息失败：%s";
   public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
       "将 TsFile 转换为 tablet 后加载仍失败。详情：%s";
+  public static final String
+      EXCEPTION_TSFILE_ARG_HAS_AN_UNCERTAIN_LOAD_OUTCOME_RETRY_WAS_SKIPPED_70149528 =
+          "TsFile %s 的 LOAD 结果不确定，已跳过重试。";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_DETAILS_ARG_D79C19DB =
+      "TsFile 加载失败。详情：%s";
   public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
       "LOAD 被拒绝：uuid={}，region={}，endpoint={}，status={}";
   public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =

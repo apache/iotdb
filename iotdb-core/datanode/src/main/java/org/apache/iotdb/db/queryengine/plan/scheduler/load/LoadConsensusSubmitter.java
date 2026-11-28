@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -45,12 +46,15 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketTimeoutException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Submits LOAD consensus lifecycle commands (PIECE, PREPARE, COMMIT, ABORT) to target DataRegions
@@ -64,6 +68,7 @@ public class LoadConsensusSubmitter {
 
   private final TEndPoint localEndPoint;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
+  private boolean lastSubmissionRpcTransportFailure;
 
   public LoadConsensusSubmitter(
       final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager) {
@@ -125,6 +130,7 @@ public class LoadConsensusSubmitter {
 
   /** Submits a consensus command node to the resolved active write peer of the replica set. */
   public TSStatus submit(final TRegionReplicaSet replicaSet, final LoadTsFileConsensusNode node) {
+    lastSubmissionRpcTransportFailure = false;
     Objects.requireNonNull(
         replicaSet, StorageEngineMessages.EXCEPTION_REPLICASET_CANNOT_BE_NULL_A7340AC3);
     Objects.requireNonNull(node, StorageEngineMessages.EXCEPTION_NODE_CANNOT_BE_NULL_BC7D5BB9);
@@ -155,6 +161,11 @@ public class LoadConsensusSubmitter {
     return isLocal(targetEndPoint)
         ? writeLocal(regionId, node)
         : writeRemote(targetEndPoint, regionId, node);
+  }
+
+  /** Returns whether the last command submission failed on its RPC transport path. */
+  boolean isLastSubmissionRpcTransportFailure() {
+    return lastSubmissionRpcTransportFailure;
   }
 
   /**
@@ -243,6 +254,7 @@ public class LoadConsensusSubmitter {
               TSStatusCode.DISPATCH_ERROR,
               StorageEngineMessages.MESSAGE_TARGET_NODE_REJECTED_COMMAND_WITHOUT_STATUS_12009B10);
     } catch (final Exception e) {
+      lastSubmissionRpcTransportFailure = isRpcTransportException(e);
       LOGGER.warn(
           StorageEngineMessages.LOG_FAILED_TO_DISPATCH_LOAD_COMMAND_TO_REMOTE_ENDPOINT_ARG_142A712A,
           endPoint,
@@ -254,6 +266,23 @@ public class LoadConsensusSubmitter {
               endPoint,
               e.getMessage()));
     }
+  }
+
+  private static boolean isRpcTransportException(Throwable error) {
+    return isPotentiallyUnstableRpcFailure(error);
+  }
+
+  static boolean isPotentiallyUnstableRpcFailure(Throwable error) {
+    while (error != null) {
+      if (error instanceof ClientManagerException
+          || error instanceof TTransportException
+          || error instanceof TimeoutException
+          || error instanceof SocketTimeoutException) {
+        return true;
+      }
+      error = error.getCause();
+    }
+    return false;
   }
 
   private boolean isLocal(final TEndPoint endPoint) {

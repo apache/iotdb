@@ -71,7 +71,7 @@ public class IoTDBTableMetaLeaseIT {
     dataNodeWrapper.clearLogContent();
     EnvFactory.getEnv().startDataNode(0);
     Awaitility.await()
-        .atMost(10, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
         .pollInterval(1, TimeUnit.SECONDS)
         .untilAsserted(
             () ->

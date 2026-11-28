@@ -40,6 +40,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY;
@@ -60,6 +61,7 @@ public class LoadFallbackHandler {
   private final boolean isGeneratedByPipe;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
   private final List<Integer> failedTsFileNodeIndexes;
+  private final Set<Integer> tabletFallbackBlockedNodeIndexes;
   private final QueryStateMachine stateMachine;
 
   public LoadFallbackHandler(
@@ -67,6 +69,22 @@ public class LoadFallbackHandler {
       final boolean isGeneratedByPipe,
       final List<LoadSingleTsFileNode> tsFileNodeList,
       final List<Integer> failedTsFileNodeIndexes,
+      final QueryStateMachine stateMachine) {
+    this(
+        queryContext,
+        isGeneratedByPipe,
+        tsFileNodeList,
+        failedTsFileNodeIndexes,
+        Collections.emptySet(),
+        stateMachine);
+  }
+
+  public LoadFallbackHandler(
+      final MPPQueryContext queryContext,
+      final boolean isGeneratedByPipe,
+      final List<LoadSingleTsFileNode> tsFileNodeList,
+      final List<Integer> failedTsFileNodeIndexes,
+      final Set<Integer> tabletFallbackBlockedNodeIndexes,
       final QueryStateMachine stateMachine) {
     this.queryContext =
         Objects.requireNonNull(
@@ -79,6 +97,8 @@ public class LoadFallbackHandler {
         Objects.requireNonNull(
             failedTsFileNodeIndexes,
             DataNodeQueryMessages.EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6);
+    this.tabletFallbackBlockedNodeIndexes =
+        Objects.requireNonNull(tabletFallbackBlockedNodeIndexes);
     this.stateMachine =
         Objects.requireNonNull(
             stateMachine, DataNodeQueryMessages.EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790);
@@ -96,10 +116,12 @@ public class LoadFallbackHandler {
     }
 
     final String initialFailedFiles = getFailedFilePathsString();
-    LOGGER.info(
-        DataNodeQueryMessages
-            .LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG,
-        initialFailedFiles);
+    if (initialFailedFiles != null && !initialFailedFiles.isEmpty()) {
+      LOGGER.info(
+          DataNodeQueryMessages
+              .LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG,
+          initialFailedFiles);
+    }
 
     final long startTime = System.nanoTime();
     try {
@@ -133,46 +155,63 @@ public class LoadFallbackHandler {
       final LoadSingleTsFileNode failedNode = tsFileNodeList.get(nodeIndex);
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
 
-      try {
-        final TSStatus status =
-            convertTsFileToTablets(
-                converter, failedNode, isGeneratedByPipe, failedNode.isDeleteAfterLoad());
-
-        if (converter.isSuccessful(status)) {
-          iterator.remove();
-          LOGGER.info(
-              DataNodeQueryMessages
-                  .LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED,
-              filePath);
-        } else {
-          final String message =
-              status == null
-                  ? String.format(
-                      DataNodeQueryMessages
-                          .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
-                      filePath,
-                      DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3)
-                  : String.format(
-                      DataNodeQueryMessages
-                          .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
-                      filePath,
-                      status);
-          failureDetails.add(message);
-          LOGGER.warn(message);
-        }
-      } catch (final Exception e) {
+      if (tabletFallbackBlockedNodeIndexes.contains(nodeIndex)) {
         final String message =
             String.format(
                 DataNodeQueryMessages
-                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
-                filePath,
-                e);
+                    .EXCEPTION_TSFILE_ARG_HAS_AN_UNCERTAIN_LOAD_OUTCOME_RETRY_WAS_SKIPPED_70149528,
+                filePath);
         failureDetails.add(message);
-        LOGGER.warn(message, e);
+        LOGGER.warn(message);
+      } else {
+        convertFailedTsFileToTablets(converter, failedNode, iterator, failureDetails);
       }
     }
 
     resolveFinalState(failureDetails);
+  }
+
+  private void convertFailedTsFileToTablets(
+      final LoadTsFileDataTypeConverter converter,
+      final LoadSingleTsFileNode failedNode,
+      final Iterator<Integer> iterator,
+      final List<String> failureDetails) {
+    final String filePath = failedNode.getTsFileResource().getTsFilePath();
+    try {
+      final TSStatus status =
+          convertTsFileToTablets(
+              converter, failedNode, isGeneratedByPipe, failedNode.isDeleteAfterLoad());
+
+      if (converter.isSuccessful(status)) {
+        iterator.remove();
+        LOGGER.info(
+            DataNodeQueryMessages.LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED,
+            filePath);
+      } else {
+        final String message =
+            status == null
+                ? String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                    filePath,
+                    DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3)
+                : String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
+                    filePath,
+                    status);
+        failureDetails.add(message);
+        LOGGER.warn(message);
+      }
+    } catch (final Exception e) {
+      final String message =
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+              filePath,
+              e);
+      failureDetails.add(message);
+      LOGGER.warn(message, e);
+    }
   }
 
   static TSStatus convertTsFileToTablets(
@@ -233,8 +272,10 @@ public class LoadFallbackHandler {
 
     final String message =
         String.format(
-            DataNodeQueryMessages
-                .EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5,
+            failedTsFileNodeIndexes.stream().anyMatch(tabletFallbackBlockedNodeIndexes::contains)
+                ? DataNodeQueryMessages.EXCEPTION_FAILED_TO_LOAD_TSFILES_DETAILS_ARG_D79C19DB
+                : DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5,
             String.join("; ", failureDetails));
     LOGGER.warn(message);
     stateMachine.transitionToFailed(new LoadFileException(message));
@@ -247,6 +288,7 @@ public class LoadFallbackHandler {
   private String getFailedFilePathsString() {
     return failedTsFileNodeIndexes.stream()
         .filter(index -> index >= 0 && index < tsFileNodeList.size())
+        .filter(index -> !tabletFallbackBlockedNodeIndexes.contains(index))
         .map(index -> tsFileNodeList.get(index).getTsFileResource().getTsFilePath())
         .collect(Collectors.joining(", "));
   }

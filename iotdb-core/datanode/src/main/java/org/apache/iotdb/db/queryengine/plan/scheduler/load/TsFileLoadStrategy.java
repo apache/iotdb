@@ -43,4 +43,14 @@ public interface TsFileLoadStrategy {
    * @return true if the file was loaded successfully
    */
   boolean execute(LoadSingleTsFileNode node) throws IoTDBException;
+
+  /** Returns whether executing this file encountered an RPC transport failure. */
+  default boolean hasRpcTransportFailure() {
+    return false;
+  }
+
+  /** Returns whether the file's LOAD outcome is unsafe to retry through tablet conversion. */
+  default boolean shouldSkipTabletFallback() {
+    return hasRpcTransportFailure();
+  }
 }

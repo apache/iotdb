@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -362,6 +363,7 @@ public class LoadTsFileScheduler implements IScheduler {
       }
       stateMachine.transitionToRunning();
       boolean allFilesSucceeded = true;
+      final Set<Integer> tabletFallbackBlockedNodeIndexes = new HashSet<>();
 
       final int totalFiles = tsFileNodeList.size();
       for (int i = 0; i < totalFiles; ++i) {
@@ -374,7 +376,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
         partitionFetcher.setDatabase(getPartitionQueryDatabase(node, isGeneratedByPipe));
 
-        if (!processSingleNode(node, i, totalFiles, userName)) {
+        if (!processSingleNode(node, i, totalFiles, userName, tabletFallbackBlockedNodeIndexes)) {
           allFilesSucceeded = false;
           failedTsFileNodeIndexes.add(i);
           continue;
@@ -392,6 +394,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 isGeneratedByPipe,
                 tsFileNodeList,
                 failedTsFileNodeIndexes,
+                tabletFallbackBlockedNodeIndexes,
                 stateMachine)
             .convertFailedTsFilesToTablets();
       }
@@ -417,10 +420,12 @@ public class LoadTsFileScheduler implements IScheduler {
       final LoadSingleTsFileNode node,
       final int index,
       final int totalFiles,
-      final String userName) {
+      final String userName,
+      final Set<Integer> tabletFallbackBlockedNodeIndexes) {
     final String filePath = node.getTsFileResource().getTsFilePath();
     final long startTimeMs = System.currentTimeMillis();
     boolean lockAcquired = false;
+    TsFileLoadStrategy strategy = null;
 
     try {
       if (!ACTIVE_LOADING_FILES.add(filePath)) {
@@ -437,8 +442,11 @@ public class LoadTsFileScheduler implements IScheduler {
         return true;
       }
 
-      final TsFileLoadStrategy strategy = resolveStrategy(node, userName);
+      strategy = resolveStrategy(node, userName);
       final boolean loadSuccess = strategy.execute(node);
+      if (!loadSuccess && strategy.shouldSkipTabletFallback()) {
+        tabletFallbackBlockedNodeIndexes.add(index);
+      }
 
       if (isRegionMigrating(startTimeMs)) {
         LOGGER.warn(
@@ -456,6 +464,9 @@ public class LoadTsFileScheduler implements IScheduler {
 
       return true;
     } catch (final Exception e) {
+      if (strategy != null && strategy.shouldSkipTabletFallback()) {
+        tabletFallbackBlockedNodeIndexes.add(index);
+      }
       LOGGER.warn(DataNodeQueryMessages.LOADTSFILESCHEDULER_LOADS_TSFILE_ERROR, filePath, e);
       return false;
     } finally {

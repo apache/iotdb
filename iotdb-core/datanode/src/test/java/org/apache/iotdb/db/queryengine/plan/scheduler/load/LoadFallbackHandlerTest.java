@@ -62,6 +62,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -143,6 +144,34 @@ public class LoadFallbackHandlerTest {
 
     Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
     Assert.assertTrue(failedIndexes.isEmpty());
+  }
+
+  @Test
+  public void testUncertainLoadOutcomeSkipsTabletFallback() throws Exception {
+    final LoadSingleTsFileNode node = newNode("uncertain.tsfile", false);
+    final List<Integer> failedIndexes = new ArrayList<>(Collections.singletonList(0));
+    final QueryStateMachine stateMachine = newStateMachine();
+
+    new LoadFallbackHandler(
+            mock(MPPQueryContext.class),
+            false,
+            Collections.singletonList(node),
+            failedIndexes,
+            Collections.singleton(0),
+            stateMachine)
+        .convertFailedTsFilesToTablets();
+
+    Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
+    Assert.assertEquals(Collections.singletonList(0), failedIndexes);
+    Assert.assertTrue(
+        stateMachine
+            .getFailureStatus()
+            .getMessage()
+            .contains(node.getTsFileResource().getTsFilePath()));
+    Assert.assertTrue(
+        stateMachine.getFailureStatus().getMessage().contains("uncertain LOAD outcome"));
+    verify(converter, never()).convertForTreeModel(any());
+    verify(converter, never()).convertForTableModel(any());
   }
 
   @Test
