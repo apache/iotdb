@@ -37,7 +37,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.avg;
@@ -3694,5 +3697,64 @@ public class IoTDBAlignedSeriesQueryTableIT {
           e.getMessage()
               .contains("The second parameter time interval should be a positive integer."));
     }
+  }
+
+  /** Regression test for #19392: partial updates across flushes merge in strict priority order. */
+  @Test
+  public void partialUpdateMergeAcrossMultipleFlushesTest() throws SQLException {
+    String db = "merge_lookahead_db";
+    String flush = "FLUSH " + db;
+    try (Connection conn = EnvFactory.getEnv().getTableConnection();
+        Statement s = conn.createStatement()) {
+      s.execute("DROP DATABASE IF EXISTS " + db);
+      s.execute("CREATE DATABASE " + db);
+      try {
+        s.execute("USE " + db);
+        s.execute("CREATE TABLE merge_lookahead_bug (d STRING TAG, x INT64 FIELD, y INT64 FIELD)");
+
+        // Ascending-scan scenario (#19392) on d1: verify before and after 3rd flush
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d1',100),(20,'d1',200)");
+        s.execute(flush);
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (20,'d1',220)");
+        s.execute(flush);
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,x) VALUES (10,'d1',110),(20,'d1',120)");
+        for (int i = 0; i < 2; i++) {
+          if (i == 1) {
+            s.execute(flush);
+          }
+          assertMergeRows(s, "d='d1' AND time=20", "20,120,220");
+          assertMergeRows(s, "d='d1' ORDER BY time", "10,110,100", "20,120,220");
+          assertMergeRows(s, "d='d1' ORDER BY time DESC", "20,120,220", "10,110,100");
+          assertMergeRows(s, "x=120 AND y=220 ORDER BY time", "20,120,220");
+        }
+
+        // Symmetric descending-scan scenario on d2: verify before and after 3rd flush
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d2',100),(20,'d2',200)");
+        s.execute(flush);
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d2',120)");
+        s.execute(flush);
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,x) VALUES (10,'d2',110),(20,'d2',210)");
+        for (int i = 0; i < 2; i++) {
+          if (i == 1) {
+            s.execute(flush);
+          }
+          assertMergeRows(s, "d='d2' ORDER BY time DESC", "20,210,200", "10,110,120");
+          assertMergeRows(s, "d='d2' AND x=110 AND y=120 ORDER BY time DESC", "10,110,120");
+        }
+      } finally {
+        s.execute("DROP DATABASE IF EXISTS " + db);
+      }
+    }
+  }
+
+  private void assertMergeRows(Statement s, String where, String... expected) throws SQLException {
+    String sql = "SELECT time, x, y FROM merge_lookahead_bug WHERE " + where;
+    List<String> actual = new ArrayList<>();
+    try (ResultSet rs = s.executeQuery(sql)) {
+      while (rs.next()) {
+        actual.add(rs.getLong(1) + "," + rs.getString(2) + "," + rs.getString(3));
+      }
+    }
+    assertEquals("Mismatch for query: " + sql, Arrays.asList(expected), actual);
   }
 }

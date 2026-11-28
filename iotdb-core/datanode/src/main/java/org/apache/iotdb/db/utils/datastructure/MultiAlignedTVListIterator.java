@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.AlignedPointReader;
 import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -36,6 +37,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.utils.TsPrimitiveType.TsBinary;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,7 +46,8 @@ import java.util.function.LongConsumer;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
-public abstract class MultiAlignedTVListIterator extends MemPointIterator {
+public abstract class MultiAlignedTVListIterator extends MemPointIterator
+    implements AlignedPointReader {
   protected List<TSDataType> tsDataTypeList;
   protected List<Integer> columnIndexList;
   protected List<AlignedTVList.AlignedTVListIterator> alignedTvListIterators;
@@ -55,6 +58,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
 
   protected boolean probeNext = false;
   protected boolean hasNext = false;
+  protected boolean lastRowComplete = false;
 
   protected long currentTime;
 
@@ -150,23 +154,36 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
   @Override
   public TimeValuePair nextTimeValuePair() {
     if (!hasNextTimeValuePair()) {
+      lastRowComplete = false;
       return null;
     }
     TsPrimitiveType[] vector = new TsPrimitiveType[tsDataTypeList.size()];
+    boolean complete = true;
     for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
       int iteratorIndex = currentIteratorIndex(columnIndex);
       if (iteratorIndex == -1) {
+        complete = false;
         continue;
       }
       AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
-      vector[columnIndex] =
+      TsPrimitiveType val =
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
+      vector[columnIndex] = val;
+      if (complete && (val == null || (val instanceof TsBinary && val.getBinary() == null))) {
+        complete = false;
+      }
     }
     TimeValuePair currentTvPair =
         new TimeValuePair(
             currentTime, Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
+    lastRowComplete = complete;
     next();
     return currentTvPair;
+  }
+
+  @Override
+  public boolean isLastRowComplete() {
+    return lastRowComplete;
   }
 
   @Override

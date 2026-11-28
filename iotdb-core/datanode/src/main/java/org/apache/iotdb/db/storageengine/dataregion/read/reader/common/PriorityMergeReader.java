@@ -89,12 +89,20 @@ public class PriorityMergeReader implements IPointReader {
   public TimeValuePair nextTimeValuePair() throws IOException {
     Element top = heap.poll();
     TimeValuePair ret = top.getTimeValuePair();
+    boolean hasOverlap = !heap.isEmpty() && heap.peek().currTime() == ret.getTimestamp();
+    boolean retComplete = hasOverlap && isRowComplete(top);
     TimeValuePair topNext = null;
+    boolean canSkipNext = false;
     if (top.hasNext()) {
       top.next();
       topNext = top.currPair();
+      if (hasOverlap && topNext != null) {
+        canSkipNext = isRowComplete(top);
+      }
     }
-    updateHeap(ret, topNext);
+    if (hasOverlap) {
+      updateHeap(ret, topNext, retComplete, canSkipNext);
+    }
     if (topNext != null) {
       top.setTimeValuePair(topNext);
       heap.add(top);
@@ -121,46 +129,52 @@ public class PriorityMergeReader implements IPointReader {
    * @throws IOException while reading next value and close the Element while there is no value,
    *     there may throw IOException
    */
-  protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
+  protected void updateHeap(
+      TimeValuePair ret, TimeValuePair topNext, boolean retComplete, boolean canSkipNext)
+      throws IOException {
     long topTime = ret.getTimestamp();
-    long topNextTime = (topNext == null ? Long.MAX_VALUE : topNext.getTimestamp());
+    boolean skipNext = canSkipNext && topNext != null;
+    long topNextTime = skipNext ? topNext.getTimestamp() : 0L;
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
-      fillNullValue(ret, e.getTimeValuePair());
+      if (!retComplete) {
+        retComplete = fillNullValue(ret, e.getTimeValuePair());
+      }
       if (!e.hasNext()) {
-        long size = e.getReader().getUsedMemorySize();
-        usedMemorySize -= size;
-        if (memoryReservationManager != null) {
-          memoryReservationManager.releaseMemoryCumulatively(size);
-        }
-        e.getReader().close();
+        releaseAndCloseElement(e);
         continue;
       }
       e.next();
-      if (e.currTime() == topNextTime) {
+      if (skipNext && e.currTime() == topNextTime) {
         // if the next value of the peek will be overwritten by the next of the top, skip it
-        fillNullValue(topNext, e.getTimeValuePair());
-        if (e.hasNext()) {
-          e.next();
-          heap.add(e);
-        } else {
-          long size = e.getReader().getUsedMemorySize();
-          usedMemorySize -= size;
-          if (memoryReservationManager != null) {
-            memoryReservationManager.releaseMemoryCumulatively(size);
-          }
+        if (!e.hasNext()) {
           // the chunk is end
-          e.close();
+          releaseAndCloseElement(e);
+          continue;
         }
-      } else {
-        heap.add(e);
+        e.next();
       }
+      heap.add(e);
     }
   }
 
-  /** this method only take effect for aligned time series, so the override version. */
-  protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
-    // do nothing for non-aligned time series
+  private void releaseAndCloseElement(Element e) throws IOException {
+    long size = e.getReader().getUsedMemorySize();
+    usedMemorySize -= size;
+    if (memoryReservationManager != null) {
+      memoryReservationManager.releaseMemoryCumulatively(size);
+    }
+    e.close();
+  }
+
+  /** Whether {@code element}'s current row has no null sub-sensor slots left to fill. */
+  protected boolean isRowComplete(Element element) {
+    return true;
+  }
+
+  /** Fills null sub-sensor slots in {@code v} from {@code c}; returns true when none remain. */
+  protected boolean fillNullValue(TimeValuePair v, TimeValuePair c) {
+    return true;
   }
 
   @Override
